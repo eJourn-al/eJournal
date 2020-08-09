@@ -11,12 +11,21 @@ def _verbose_field_type(type):
 
 
 def _select_location(g_field):
-    fields = g_field.template.set.all()
+    fields = g_field.template.field_set.all()
 
     if not fields.exists():
         return 0
 
     return fields.order_by('-location')[0].location + 1
+
+
+def _gen_options(g_field):
+    if g_field.type == Field.SELECTION:
+        return '["a", "b", "c"]'
+    # TODO JIR: Make content factory adaptive based on field..
+    # if g_field.type == Field.FILE
+    #     return 'bmp, gif, ico, cur, jpg, jpeg, jfif, pjpeg, pjp, png, svg'
+    return None
 
 
 class FieldFactory(factory.django.DjangoModelFactory):
@@ -25,10 +34,10 @@ class FieldFactory(factory.django.DjangoModelFactory):
 
     template = factory.SubFactory('test.factory.template.TemplateFactory')
 
-    type = factory.LazyAttribute(lambda o: random.choice([t for t, _ in Field.TYPES]))
+    type = factory.LazyAttribute(lambda o: random.choice([t for t, _ in Field.TYPES if t != Field.NO_SUBMISSION]))
     title = factory.LazyAttribute(lambda o: '%s field title' % (_verbose_field_type(o.type)))
     description = factory.LazyAttribute(lambda o: '%s field description' % (_verbose_field_type(o.type)))
-    options = factory.LazyAttribute(lambda o: ['A', 'B', 'C'] if o.type == Field.SELECTION else None))
+    options = factory.LazyAttribute(lambda o: _gen_options(o))
     location = factory.LazyAttribute(lambda o: _select_location(o))
     required = True
 
@@ -43,7 +52,7 @@ class RichTextFieldFactory(FieldFactory):
 
 class FileFieldFactory(FieldFactory):
     type = Field.FILE
-    # options = ['jpg', 'png']
+    # options = '["jpg", "png"]'
 
 
 class VideoFieldFactory(FieldFactory):
@@ -64,7 +73,7 @@ class DateTimeFieldFactory(FieldFactory):
 
 class SelectionFieldFactory(FieldFactory):
     type = Field.SELECTION
-    options = ['A', 'B', 'C']
+    options = '["A", "B", "C"]'
 
 
 class NoSubmissionFieldFactory(FieldFactory):

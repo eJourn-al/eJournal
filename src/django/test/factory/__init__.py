@@ -17,6 +17,7 @@ from test.factory.role import RoleFactory, StudentRoleFactory
 from test.factory.template import TemplateAllTypesFactory, TemplateFactory
 from test.factory.user import (AdminFactory, LtiStudentFactory, LtiTeacherFactory, TeacherFactory, TestUserFactory,
                                UserFactory)
+from test.factory.field import FieldFactory
 
 Instance = InstanceFactory
 Assignment = AssignmentFactory
@@ -66,3 +67,5 @@ JournalImportRequest = JournalImportRequestFactory
 FileContext = FileContextFactory
 RichTextCommentFileContext = RichTextCommentFileContextFactory
 AttachedCommentFileContext = AttachedCommentFileContextFactory
+
+Field = FieldFactory
