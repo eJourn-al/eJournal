@@ -299,3 +299,32 @@ class CommentAPITest(TestCase):
         else:
             comment_after_op = Comment.objects.get(pk=comment.pk)
             assert_comments_are_equal(comment_before_op, comment_after_op)
+
+    def test_rich_text_comment_file_context_factory(self):
+        comment = factory.StudentCommentFactory()
+        rt_comment_fc = factory.RichTextCommentFileContext(comment=comment)
+
+        assert comment.pk == rt_comment_fc.comment.pk, 'The fc is correctly linked to the given comment'
+        assert rt_comment_fc.file_name in rt_comment_fc.file.name, 'The fc file_name makes sense'
+
+        comment = factory.StudentCommentFactory(n_rt_files=2)
+        comment = Comment.objects.get(pk=comment.pk)
+
+        assert FileContext.objects.filter(comment=comment).count() == 2, 'Two embedded files are generated'
+
+        for fc in FileContext.objects.filter(comment=comment):
+            assert fc.download_url(access_id=fc.access_id) in comment.text, 'The fc download url is embedded in the RT'
+
+    def test_attached_comment_file_context_factory(self):
+        comment = factory.StudentCommentFactory()
+        att_comment_fc = factory.AttachedCommentFileContext(comment=comment)
+
+        assert comment.pk == att_comment_fc.comment.pk, 'The fc is correctly linked to the given comment'
+        assert comment.entry.node.journal.pk == att_comment_fc.journal.pk, \
+            'Attached FC comment files require the journal context to be set'
+
+        comment = factory.StudentCommentFactory(n_att_files=2)
+
+        assert comment.files.count() == 2, 'Two attached files are generated'
+        assert FileContext.objects.filter(comment=comment, journal=comment.entry.node.journal).count() == 2, \
+            'The generated files are correctly attached to the generated comment'

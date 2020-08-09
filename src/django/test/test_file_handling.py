@@ -363,3 +363,9 @@ class FileHandlingTest(TestCase):
             self, 'files', params={'file': long_name, 'in_rich_text': False},
             user=author, content_type=MULTIPART_CONTENT, status=400)
         assert 'filename' in resp['description']
+
+    def test_file_context_factory(self):
+        fc = factory.FileContext()
+
+        assert fc.file_name in fc.file.name, 'The instance file name is sensible in comparison to the underlying file.'
+        assert os.path.exists(fc.file.path), 'An actual file is created for the file context test instance'

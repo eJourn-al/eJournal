@@ -2,6 +2,8 @@ from test.factory.assignment import AssignmentFactory, GroupAssignmentFactory, L
 from test.factory.comment import StudentCommentFactory, TeacherCommentFactory
 from test.factory.course import CourseFactory, LtiCourseFactory
 from test.factory.entry import EntryFactory, PresetEntryFactory
+from test.factory.file_context import (AttachedCommentFileContextFactory, FileContextFactory,
+                                       RichTextCommentFileContextFactory)
 from test.factory.format import FormatFactory
 from test.factory.grade import GradeFactory
 from test.factory.group import GroupFactory, LtiGroupFactory
@@ -60,3 +62,7 @@ JWTParams = JWTParamsFactory
 JWTTestUserParams = JWTTestUserParamsFactory
 
 JournalImportRequest = JournalImportRequestFactory
+
+FileContext = FileContextFactory
+RichTextCommentFileContext = RichTextCommentFileContextFactory
+AttachedCommentFileContext = AttachedCommentFileContextFactory

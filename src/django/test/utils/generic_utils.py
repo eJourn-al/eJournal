@@ -1,7 +1,7 @@
 from django.db.models.fields.related import ManyToManyField
 
 
-def to_dict(instance, ignore=[]):
+def _to_dict(instance, ignore=[]):
     opts = instance._meta
     data = {}
     for f in opts.concrete_fields + opts.many_to_many:
@@ -18,7 +18,7 @@ def to_dict(instance, ignore=[]):
     return data
 
 
-def equal_dicts(d1, d2, ignore=[]):
+def _equal_dicts(d1, d2, ignore=[]):
     for k, v in d1.items():
         if d2[k] != v:
             return False
@@ -27,5 +27,5 @@ def equal_dicts(d1, d2, ignore=[]):
 
 
 def equal_models(m1, m2, ignore=[]):
-    d1, d2 = to_dict(m1, ignore), to_dict(m2, ignore)
-    return equal_dicts(d1, d2, ignore)
+    d1, d2 = _to_dict(m1, ignore), _to_dict(m2, ignore)
+    return _equal_dicts(d1, d2, ignore)

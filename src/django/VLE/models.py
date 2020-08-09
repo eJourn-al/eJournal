@@ -1524,6 +1524,7 @@ class Comment(CreateUpdateModel):
     published = models.BooleanField(
         default=True
     )
+    # TODO JIR: Why is this m2m? Are files ever shared between comments?
     files = models.ManyToManyField(
         'FileContext',
         related_name='comment_files',
