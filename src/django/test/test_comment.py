@@ -305,7 +305,8 @@ class CommentAPITest(TestCase):
         rt_comment_fc = factory.RichTextCommentFileContext(comment=comment)
 
         assert comment.pk == rt_comment_fc.comment.pk, 'The fc is correctly linked to the given comment'
-        assert rt_comment_fc.file_name in rt_comment_fc.file.name, 'The fc file_name makes sense'
+        assert comment.entry.node.journal.pk == rt_comment_fc.journal.pk, \
+            'Comment RT files require the journal context to be set'
 
         comment = factory.StudentCommentFactory(n_rt_files=2)
         comment = Comment.objects.get(pk=comment.pk)

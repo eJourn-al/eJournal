@@ -41,6 +41,18 @@ class RichTextCommentFileContextFactory(FileContextFactory):
         self.save()
 
     @factory.post_generation
+    def journal(self, create, extracted):
+        if not create:
+            return
+
+        if extracted:
+            self.journal = extracted
+        else:
+            self.journal = self.comment.entry.node.journal
+
+        self.save()
+
+    @factory.post_generation
     def set_fc_text(self, create, extracted):
         if not create:
             return
@@ -53,18 +65,6 @@ class AttachedCommentFileContextFactory(RichTextCommentFileContextFactory):
     @factory.post_generation
     def set_fc_text(self, create, extracted):
         pass
-
-    @factory.post_generation
-    def journal(self, create, extracted):
-        if not create:
-            return
-
-        if extracted:
-            self.journal = extracted
-        else:
-            self.journal = self.comment.entry.node.journal
-
-        self.save()
 
     @factory.post_generation
     def attach_file_to_comment(self, create, extracted):
