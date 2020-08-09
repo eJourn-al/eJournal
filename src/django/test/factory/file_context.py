@@ -27,6 +27,7 @@ class RichTextCommentFileContextFactory(FileContextFactory):
     author to be passed as the expected argument.
     '''
     comment = factory.SubFactory('test.factory.comment.StudentCommentFactory')
+    in_rich_text = True
 
     @factory.post_generation
     def set_author(self, create, extracted):
@@ -62,6 +63,8 @@ class RichTextCommentFileContextFactory(FileContextFactory):
 
 
 class AttachedCommentFileContextFactory(RichTextCommentFileContextFactory):
+    in_rich_text = False
+
     @factory.post_generation
     def set_fc_text(self, create, extracted):
         pass

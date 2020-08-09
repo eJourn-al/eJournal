@@ -307,6 +307,7 @@ class CommentAPITest(TestCase):
         assert comment.pk == rt_comment_fc.comment.pk, 'The fc is correctly linked to the given comment'
         assert comment.entry.node.journal.pk == rt_comment_fc.journal.pk, \
             'Comment RT files require the journal context to be set'
+        assert rt_comment_fc.in_rich_text, 'Comment rich text file context should be flagged as such'
 
         comment = factory.StudentCommentFactory(n_rt_files=2)
         comment = Comment.objects.get(pk=comment.pk)
@@ -323,6 +324,7 @@ class CommentAPITest(TestCase):
         assert comment.pk == att_comment_fc.comment.pk, 'The fc is correctly linked to the given comment'
         assert comment.entry.node.journal.pk == att_comment_fc.journal.pk, \
             'Attached FC comment files require the journal context to be set'
+        assert not att_comment_fc.in_rich_text, 'Comment attached file context should not be flagged as RT'
 
         comment = factory.StudentCommentFactory(n_att_files=2)
 
