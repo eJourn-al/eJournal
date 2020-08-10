@@ -169,7 +169,7 @@ export default {
         min-width: 80px
         height: 70px
         img
-            @extend .shadow
+            @extend .theme-shadow
             width: 70px
             height: 70px
             border-radius: 50% !important

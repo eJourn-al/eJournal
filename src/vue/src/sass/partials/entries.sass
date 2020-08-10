@@ -1,6 +1,7 @@
 .grade-section
+    @extend .theme-shadow
     border-radius: 5px !important
-    border: 2px solid $theme-dark-grey
+    border: 1px solid $theme-dark-grey
     min-width: 3em
     min-height: 3em
     background-color: white
@@ -10,9 +11,9 @@
     &.grade
         line-height: 2.5em
         font-weight: bold
-    .theme-input, .theme-input:hover:not(.no-hover), .theme-input:focus, .btn
+    .theme-input, .theme-input:hover, .theme-input:focus, .btn, .btn:hover, .btn:focus
         box-shadow: none
-    .theme-input, .theme-input:hover:not(.no-hover), .theme-input:focus
+    .theme-input, .theme-input:hover, .theme-input:focus
         width: 3em
         display: inline-block
         border: none !important

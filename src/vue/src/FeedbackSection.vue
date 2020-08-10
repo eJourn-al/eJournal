@@ -4,7 +4,7 @@
         class="feedback-wrapper"
     >
         <div
-            class="shadow feedback-button"
+            class="theme-shadow feedback-button"
             @click="showModal('feedbackModal')"
         >
             <icon

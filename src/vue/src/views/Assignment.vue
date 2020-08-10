@@ -74,43 +74,6 @@
                 </b-button>
             </div>
 
-            <div class="d-flex flex-wrap assignments-menu-wrapper-margin">
-                <b-button
-                    v-if="$hasPermission('can_publish_grades') && assignmentJournals && assignmentJournals.length > 0"
-                    class="add-button multi-form fill-form-width"
-                    @click="publishGradesAssignment"
-                >
-                    <icon name="upload"/>
-                    {{ assignment.journals.length === filteredJournals.length ?
-                        "Publish all grades" : "Publish grades" }}
-                </b-button>
-                <b-button
-                    v-if="$hasPermission('can_edit_assignment') && assignment.lti_courses
-                        && Object.keys(assignment.lti_courses).length > 1"
-                    class="add-button multi-form fill-form-width"
-                    @click="showModal('manageLTIModal')"
-                >
-                    <icon name="graduation-cap"/>
-                    Manage LTI
-                </b-button>
-                <b-button
-                    v-if="$hasPermission('can_publish_grades') && assignmentJournals.length > 0"
-                    class="change-button multi-form fill-form-width"
-                    @click="showModal('bonusPointsModal')"
-                >
-                    <icon name="star"/>
-                    Import bonus points
-                </b-button>
-                <b-button
-                    v-if="assignmentJournals.length > 0"
-                    class="add-button multi-form fill-form-width"
-                    @click="showModal('assignmentExportSpreadsheetModal')"
-                >
-                    <icon name="file-export"/>
-                    Export results
-                </b-button>
-            </div>
-
             <b-modal
                 ref="bonusPointsModal"
                 title="Import bonus points"
@@ -340,15 +303,62 @@
             </b-modal>
         </load-wrapper>
 
-        <div
-            v-if="stats"
-            slot="right-content-column"
-        >
-            <h3 class="theme-h3">
-                Insights
-            </h3>
-            <statistics-card :stats="stats"/>
-        </div>
+        <b-row slot="right-content-column">
+            <b-col
+                v-if="stats"
+                md="6"
+                lg="12"
+                class="mb-3"
+            >
+                <h3 class="theme-h3">
+                    Insights
+                </h3>
+                <statistics-card :stats="stats"/>
+            </b-col>
+            <b-col
+                v-if="canPerformActions"
+                slot="right-content-column"
+                md="6"
+                lg="12"
+            >
+                <h3 class="theme-h3">
+                    Actions
+                </h3>
+                <b-button
+                    v-if="canPublishGradesAssignment"
+                    class="add-button multi-form full-width"
+                    @click="publishGradesAssignment"
+                >
+                    <icon name="upload"/>
+                    {{ assignment.journals.length === filteredJournals.length ?
+                        "Publish all grades" : "Publish grades" }}
+                </b-button>
+                <b-button
+                    v-if="canManageLTI"
+                    class="add-button multi-form full-width"
+                    @click="showModal('manageLTIModal')"
+                >
+                    <icon name="graduation-cap"/>
+                    Manage LTI
+                </b-button>
+                <b-button
+                    v-if="canImportBonusPoints"
+                    class="change-button multi-form full-width"
+                    @click="showModal('bonusPointsModal')"
+                >
+                    <icon name="star"/>
+                    Import bonus points
+                </b-button>
+                <b-button
+                    v-if="canExportResults"
+                    class="add-button multi-form full-width"
+                    @click="showModal('assignmentExportSpreadsheetModal')"
+                >
+                    <icon name="file-export"/>
+                    Export results
+                </b-button>
+            </b-col>
+        </b-row>
     </content-columns>
 </template>
 
@@ -446,6 +456,25 @@ export default {
                 this.getJournalSearchValue, this.journalSortBy)
             this.calcStats(store.state.filteredJournals)
             return store.state.filteredJournals
+        },
+        canPerformActions () {
+            return this.canPublishGradesAssignment || this.canManageLTI || this.canImportBonusPoints
+                || this.canExportResults
+        },
+        canPublishGradesAssignment  () {
+            return this.$hasPermission('can_publish_grades') && this.assignmentJournals
+                && this.assignmentJournals.length > 0
+        },
+        canManageLTI  () {
+            return this.$hasPermission('can_edit_assignment') && this.assignment.lti_courses
+                    && Object.keys(this.assignment.lti_courses).length > 1
+        },
+        canImportBonusPoints  () {
+            return this.$hasPermission('can_publish_grades') && this.assignmentJournals
+                && this.assignmentJournals.length > 0
+        },
+        canExportResults  () {
+            return this.assignmentJournals && this.assignmentJournals.length > 0
         },
     },
     created () {
@@ -633,7 +662,4 @@ export default {
     svg
         margin-top: -5px
         fill: grey
-
-.assignments-menu-wrapper-margin
-    margin: 0px -4px
 </style>

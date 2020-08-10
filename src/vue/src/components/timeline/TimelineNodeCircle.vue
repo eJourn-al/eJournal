@@ -186,7 +186,7 @@ export default {
     padding: 5px
 
 .timeline-node-circle
-    @extend .shadow
+    @extend .theme-shadow
     width: 55px
     height: 55px
     border-radius: 50% !important

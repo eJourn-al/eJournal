@@ -111,7 +111,7 @@ export default {
 .multiselect
     color: $theme-dark-blue
     .multiselect__tags
-        @extend .shadow
+        @extend .theme-shadow
         -moz-user-select: -moz-none
         -khtml-user-select: none
         -webkit-user-select: none
@@ -171,7 +171,7 @@ export default {
     .multiselect__select::before
         border-color: $theme-dark-blue transparent transparent
     .multiselect__content-wrapper
-        @extend .shadow
+        @extend .theme-shadow
         font-family: 'Roboto Condensed', sans-serif
         font-size: 1.2em
         background-color: white

@@ -15,7 +15,7 @@
         >
             <div
                 v-if="gradePublished"
-                class="ml-2 btn float-right multi-form shadow no-hover"
+                class="ml-2 btn float-right multi-form theme-shadow no-hover"
             >
                 {{ entryNode.entry.grade.grade }}
             </div>
@@ -69,13 +69,13 @@
         >
             <div
                 v-if="gradePublished"
-                class="ml-2 grade-section grade shadow"
+                class="ml-2 grade-section grade"
             >
                 {{ entryNode.entry.grade.grade }}
             </div>
             <div
                 v-else-if="!entryNode.entry.editable"
-                class="ml-2 grade-section grade shadow"
+                class="ml-2 grade-section grade"
             >
                 <icon name="hourglass-half"/>
             </div>

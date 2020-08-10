@@ -3,7 +3,7 @@
     <b-navbar
         v-if="loggedIn"
         id="header"
-        class="shadow"
+        class="theme-shadow no-hover"
         toggleable="md"
         type="dark"
         fixed="top"
@@ -11,7 +11,7 @@
         <transition name="fade">
             <div
                 v-if="showConnectionSpinner"
-                class="spinner shadow"
+                class="spinner theme-shadow"
             >
                 <icon
                     name="circle-notch"
@@ -102,7 +102,7 @@
     <b-navbar
         v-else
         id="header"
-        class="shadow"
+        class="theme-shadow no-hover"
         toggleable="md"
         type="dark"
         fixed="top"
@@ -110,7 +110,7 @@
         <transition name="fade">
             <div
                 v-if="showConnectionSpinner"
-                class="spinner shadow"
+                class="spinner theme-shadow"
             >
                 <icon
                     name="circle-notch"
@@ -269,7 +269,7 @@ export default {
             text-align: right !important
 
 .dropdown-menu
-    @extend .shadow
+    @extend .theme-shadow
     background: $theme-dark-blue !important
     border: none !important
     border-radius: 0px 0px 5px 5px !important
