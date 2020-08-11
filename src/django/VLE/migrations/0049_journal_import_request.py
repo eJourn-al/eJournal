@@ -8,7 +8,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('VLE', '0047_dynamic_filename'),
+        ('VLE', '0048_no_submission_field'),
     ]
 
     operations = [
