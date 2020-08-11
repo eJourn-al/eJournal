@@ -506,15 +506,8 @@ class AssignmentView(viewsets.ViewSet):
 
         for template in Template.objects.filter(format=source_format_id, archived=False):
             source_template_id = template.pk
-            template.pk = None
-            template.format = format
-            template.save()
+            import_utils.import_template(template, assignment)
             template_dict[source_template_id] = template.pk
-
-            for field in Field.objects.filter(template=source_template_id):
-                field.pk = None
-                field.template = template
-                field.save()
 
         journals = assignment.journal_set.all()
         for preset in PresetNode.objects.filter(format=source_format_id):
