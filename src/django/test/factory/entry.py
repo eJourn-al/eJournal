@@ -17,6 +17,7 @@ class EntryFactory(factory.django.DjangoModelFactory):
     node = factory.SubFactory('test.factory.node.NodeFactory')
     template = None
     grade = None
+    last_edited = factory.LazyFunction(timezone.now)
 
     @factory.post_generation
     def add_node(self, create, extracted):
