@@ -24,9 +24,9 @@ class EntryAPITest(TestCase):
         self.journal_teacher.save()
         # self.teacher = self.journal_teacher.authors.first().user
         self.format = self.journal.assignment.format
-        self.template = factory.Template(format=self.format)
-        factory.Template(format=self.format)
-        factory.Template(format=self.format)
+        self.template = factory.TextTemplate(format=self.format)
+        factory.TextTemplate(format=self.format)
+        factory.TextTemplate(format=self.format)
 
         self.valid_create_params = {
             'journal_id': self.journal.pk,
@@ -68,7 +68,7 @@ class EntryAPITest(TestCase):
         # Check if template for other assignment wont work
         create_params = self.valid_create_params.copy()
         alt_journal = factory.Journal()
-        template = factory.Template(format=alt_journal.assignment.format)
+        template = factory.TextTemplate(format=alt_journal.assignment.format)
         create_params['template_id'] = template.pk
         api.create(self, 'entries', params=create_params, user=self.student, status=403)
 

@@ -5,8 +5,8 @@ from test.utils.generic_utils import equal_models
 from django.test import TestCase
 
 import VLE.utils.import_utils as import_utils
-from VLE.models import (Assignment, AssignmentParticipation, Comment, Content, Course, Entry, Field, Journal,
-                        JournalImportRequest, Node, PresetNode, Template, FileContext)
+from VLE.models import (Assignment, AssignmentParticipation, Comment, Content, Course, Entry, Field, FileContext,
+                        Journal, JournalImportRequest, Node, PresetNode, Template)
 from VLE.utils.error_handling import VLEProgrammingError
 
 
@@ -46,3 +46,24 @@ class ImportTest(TestCase):
 
         source_comment = factory.TeacherComment(published=False)
         self.assertRaises(VLEProgrammingError, import_utils.import_comment, source_comment, source_comment.entry)
+
+    # TODO JIR
+    # def test_content_import(self):
+    #     journal = factory.PopulatedJournal()
+
+    #     contents = Content.objects.filter(entry__node__journal=journal)
+    #     entries = Entry.objects.filter(node__journal=journal)
+
+    #     for entry in entries:
+    #         print(entry.template.field_set.all())
+
+    #     print(contents)
+    #     print(journal)
+
+    #     content = contents.first()
+
+    #     import_utils.import_content(content, entries.first())
+
+    #     print(Content.objects.filter(entry__node__journal=journal))
+
+    #     assert False

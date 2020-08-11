@@ -1,7 +1,9 @@
 from test.factory.assignment import AssignmentFactory, GroupAssignmentFactory, LtiAssignmentFactory
 from test.factory.comment import StudentCommentFactory, TeacherCommentFactory
+from test.factory.content import ContentFactory
 from test.factory.course import CourseFactory, LtiCourseFactory
 from test.factory.entry import EntryFactory, PresetEntryFactory
+from test.factory.field import FieldFactory
 from test.factory.file_context import (AttachedCommentFileContextFactory, FileContextFactory,
                                        RichTextCommentFileContextFactory)
 from test.factory.format import FormatFactory
@@ -14,10 +16,10 @@ from test.factory.params import JWTParamsFactory, JWTTestUserParamsFactory, User
 from test.factory.participation import AssignmentParticipationFactory, GroupParticipationFactory, ParticipationFactory
 from test.factory.presetnode import EntrydeadlineNodeFactory, ProgressNodeFactory
 from test.factory.role import RoleFactory, StudentRoleFactory
-from test.factory.template import TemplateAllTypesFactory, TemplateFactory
+from test.factory.template import (ColloquiumTemplateFactory, TemplateAllTypesFactory, TemplateFactory,
+                                   TextTemplateFactory)
 from test.factory.user import (AdminFactory, LtiStudentFactory, LtiTeacherFactory, TeacherFactory, TestUserFactory,
                                UserFactory)
-from test.factory.field import FieldFactory
 
 Instance = InstanceFactory
 Assignment = AssignmentFactory
@@ -47,8 +49,12 @@ LtiJournal = LtiJournalFactory
 GroupJournal = GroupJournalFactory
 PopulatedJournal = PopulatedJournalFactory
 Format = FormatFactory
+
 Template = TemplateFactory
+TextTemplate = TextTemplateFactory
+ColloquiumTemplate = ColloquiumTemplateFactory
 TemplateAllTypes = TemplateAllTypesFactory
+
 ProgressNode = ProgressNodeFactory
 EntrydeadlineNode = EntrydeadlineNodeFactory
 
@@ -69,3 +75,4 @@ RichTextCommentFileContext = RichTextCommentFileContextFactory
 AttachedCommentFileContext = AttachedCommentFileContextFactory
 
 Field = FieldFactory
+Content = ContentFactory

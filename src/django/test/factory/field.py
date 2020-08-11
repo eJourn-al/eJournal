@@ -1,4 +1,5 @@
 import random
+
 import factory
 
 from VLE.models import Field
@@ -22,7 +23,7 @@ def _select_location(g_field):
 def _gen_options(g_field):
     if g_field.type == Field.SELECTION:
         return '["a", "b", "c"]'
-    # TODO JIR: Make content factory adaptive based on field..
+    # TODO JIR: enable once _gen_file_field_file works
     # if g_field.type == Field.FILE
     #     return 'bmp, gif, ico, cur, jpg, jpeg, jfif, pjpeg, pjp, png, svg'
     return None
@@ -37,8 +38,8 @@ class FieldFactory(factory.django.DjangoModelFactory):
     type = factory.LazyAttribute(lambda o: random.choice([t for t, _ in Field.TYPES if t != Field.NO_SUBMISSION]))
     title = factory.LazyAttribute(lambda o: '%s field title' % (_verbose_field_type(o.type)))
     description = factory.LazyAttribute(lambda o: '%s field description' % (_verbose_field_type(o.type)))
-    options = factory.LazyAttribute(lambda o: _gen_options(o))
-    location = factory.LazyAttribute(lambda o: _select_location(o))
+    options = factory.LazyAttribute(_gen_options)
+    location = factory.LazyAttribute(_select_location)
     required = True
 
 
@@ -78,3 +79,5 @@ class SelectionFieldFactory(FieldFactory):
 
 class NoSubmissionFieldFactory(FieldFactory):
     type = Field.NO_SUBMISSION
+    required = False
+    description = '<p>This is a description only field</p><p>{}</p>'.format(factory.Faker('text').generate())

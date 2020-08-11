@@ -1,6 +1,9 @@
 import os
+import random
 
 import factory
+
+from VLE.models import Field
 
 
 class FileContextFactory(factory.django.DjangoModelFactory):
@@ -27,6 +30,7 @@ class RichTextCommentFileContextFactory(FileContextFactory):
     author to be passed as the expected argument.
     '''
     comment = factory.SubFactory('test.factory.comment.StudentCommentFactory')
+    file = factory.django.FileField(filename=factory.Faker('file_name', category='image'))
     in_rich_text = True
 
     @factory.post_generation
@@ -76,3 +80,78 @@ class AttachedCommentFileContextFactory(RichTextCommentFileContextFactory):
 
         self.comment.files.add(self)
         self.comment.save()
+
+
+def _gen_file_field_file(cf):
+    '''
+    Ensures the generated file name adheres to the options set the by the content's field.
+    '''
+    file_name = factory.Faker('file_name').generate()
+
+    if cf.content.field.options:
+        extention = random.choice(cf.content.field.options.split(', '))
+        file_name = factory.Faker('file_name', extension=extention).generate()
+
+    return factory.django.FileField(filename=file_name)
+
+
+class FileContentFileContextFactory(FileContextFactory):
+    in_rich_text = False
+    content = factory.SubFactory('test.factory.content.ContentFactory', field__type=Field.FILE)
+    # TODO JIR: WTH does this not work
+    # file = factory.LazyAttribute(_gen_file_field_file)
+
+    @factory.post_generation
+    def set_author(self, create, extracted):
+        if not create:
+            return
+
+        if extracted:
+            self.author = extracted
+        else:
+            self.author = self.content.entry.node.journal.authors.first().user
+
+        self.save()
+
+    @factory.post_generation
+    def journal(self, create, extracted):
+        if not create:
+            return
+
+        if extracted:
+            self.journal = extracted
+        else:
+            self.journal = self.content.entry.node.journal
+
+        self.save()
+
+    @factory.post_generation
+    def update_content_data(self, create, extracted):
+        if not create:
+            return
+
+        if extracted:
+            self.content.data = extracted
+        else:
+            self.content.data = str(self.pk)
+
+        self.content.save()
+
+
+class RichTextContentFileContextFactory(FileContentFileContextFactory):
+    in_rich_text = True
+    content = factory.SubFactory('test.factory.content.ContentFactory', field__type=Field.RICH_TEXT)
+    file = factory.django.FileField(filename=factory.Faker('file_name', category='image'))
+
+    @factory.post_generation
+    def update_content_data(self, create, extracted):
+        if not create:
+            return
+
+        if extracted:
+            self.content.data = extracted
+        else:
+            img_link = '<img src="{}"/>'.format(self.download_url(access_id=self.access_id))
+            self.content.data = self.content.data + img_link if self.content.data else img_link
+
+        self.content.save()

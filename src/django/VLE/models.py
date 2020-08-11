@@ -1306,6 +1306,7 @@ class Entry(CreateUpdateModel):
         null=True,
     )
 
+    # QUESTION JIR: Why do only 100 out of 12k entries have an author?
     author = models.ForeignKey(
         'User',
         on_delete=models.SET_NULL,

@@ -27,6 +27,7 @@ class AssignmentFactory(factory.django.DjangoModelFactory):
 
     @factory.post_generation
     def courses(self, create, extracted):
+        # TODO JIR cleanup
         if not create:
             return
 
@@ -36,6 +37,7 @@ class AssignmentFactory(factory.django.DjangoModelFactory):
                 self.save()
             for course in extracted:
                 self.add_course(course)
+                # TODO JIR: Directly call
                 p = factory.SubFactory('test.factory.participation.ParticipationFactory')
                 p.user = self.author
                 p.course = course
