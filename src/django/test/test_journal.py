@@ -30,6 +30,14 @@ class JournalAPITest(TestCase):
     def test_journal_factory(self):
         journal = factory.Journal()
 
+        # # TODO JIR: Enable once possible
+        # ap = AssignmentParticipation.objects.get(journal=journal, assignment=journal.assignment)
+
+        # user = factory.Student()
+        # journal = factory.Journal(ap__user=user)
+
+        # ap = AssignmentParticipation.objects.get(journal=journal, assignment=journal.assignment)
+
         # Generating a journal also generates a single corresponding AP
         ap = AssignmentParticipation.objects.get(journal=journal)
 
@@ -46,7 +54,8 @@ class JournalAPITest(TestCase):
         ap_count = AssignmentParticipation.objects.count()
         e_count = Entry.objects.count()
 
-        journal = factory.PopulatedJournal()
+        # TODO JIR: Move to normal journal..
+        journal = factory.PopulatedJournalFactory()
 
         assert Course.objects.filter(assignment=journal.assignment).exists() and Course.objects.count() == c_count + 1,\
             'A single course is generated when generating a journal'

@@ -9,19 +9,18 @@ from VLE.utils.error_handling import VLEProgrammingError
 
 class ContentTest(TestCase):
     def test_content_factory(self):
-        content = factory.Content()
-
-        # Generating content should attach it to a valid journal
-        journal = content.entry.node.journal
+        entry = factory.Entry()
+        content = factory.Content(entry=entry, field=entry.template.field_set.first())
 
         c_count = Content.objects.count()
-        j_count = Journal.objects.count()
 
-        content = factory.Content(entry__node__journal=journal, field__type=Field.TEXT)
+        content = factory.Content(entry=entry, field__type=Field.TEXT)
 
-        assert content.entry.node.journal.pk == journal.pk, 'Content should chain upto journal'
+        # TODO JIR: Test what happens when multiple contents are created for the same field and journal
+
+        assert content.entry.pk == entry.pk, 'Content should chain upto entry'
+        assert Journal.objects.count() == 1, 'Generating content for a given entry generates a single journal'
         assert c_count + 1 == Content.objects.count(), 'No additional content is created'
-        assert j_count == Journal.objects.count(), 'No additional journals are created'
 
         for type in [t for (t, _) in Field.TYPES if t != Field.NO_SUBMISSION]:
             content = factory.Content(field__type=type, entry=content.entry)

@@ -7,9 +7,13 @@ import VLE.models
 
 
 class EntryFactory(factory.django.DjangoModelFactory):
+    # TODO JIR: Currently an upwards chain is not formed, breaking at template
+    # TODO JIR: CHeck if instantation of an Entry by this factory does not loop recursively via the node
     class Meta:
         model = 'VLE.Entry'
 
+    # node = factory.SubFactory('test.factory.node.EntryNodeFactory')
+    # TODO JIR: Switch to entry node, removed crap in add node
     node = factory.SubFactory('test.factory.node.NodeFactory')
     template = None
     grade = None
@@ -19,6 +23,7 @@ class EntryFactory(factory.django.DjangoModelFactory):
         if not create:
             return
 
+        # Accomplished by relatedfactory from EntryNode
         self.node.entry = self
         self.node.type = VLE.models.Node.ENTRY
         self.node.save()
@@ -30,6 +35,7 @@ class EntryFactory(factory.django.DjangoModelFactory):
         self.author = self.node.journal.authors.first().user
         self.save()
 
+        # TODO JIR: Ensure possibility to specify what content should be generated more cleanly, e.g. by template
         if self.template:
             for field in self.template.field_set.all():
                 VLE.models.Content.objects.create(
