@@ -3,7 +3,7 @@ from test.utils import api
 
 from django.test import TestCase
 
-from VLE.models import (Assignment, AssignmentParticipation, Content, Course, Entry, Field, Journal,
+from VLE.models import (Assignment, AssignmentParticipation, Content, Course, Entry, Field, Format, Journal,
                         JournalImportRequest, Node, PresetNode, Template)
 
 
@@ -98,8 +98,12 @@ class JournalImportRequestTest(TestCase):
         data = {'pk': jir.pk, 'jir_action': invalid_action}
         api.update(self, 'journal_import_request', params=data, user=jir.target.assignment.author, status=400)
 
-        # A JIR can be updated by a supervisor
+        # A JIR can only be updated by a supervisor
         data = {'pk': jir.pk, 'jir_action': valid_action}
         api.update(self, 'journal_import_request', params=data, user=jir.author, status=403)
         api.update(self, 'journal_import_request', params=data, user=unrelated_teacher, status=403)
         api.update(self, 'journal_import_request', params=data, user=supervisor, status=200)
+
+    # def test_jir_copy(self):
+    #     # TODO JIR: TODO
+    #     assert False

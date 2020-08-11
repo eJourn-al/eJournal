@@ -1,3 +1,4 @@
+import mimetypes
 import random
 import string
 import test.factory as factory
@@ -301,6 +302,7 @@ class CommentAPITest(TestCase):
             assert_comments_are_equal(comment_before_op, comment_after_op)
 
     def test_rich_text_comment_file_context_factory(self):
+        number_of_embedded_files = 2
         comment = factory.StudentCommentFactory()
         rt_comment_fc = factory.RichTextCommentFileContext(comment=comment)
 
@@ -309,13 +311,18 @@ class CommentAPITest(TestCase):
             'Comment RT files require the journal context to be set'
         assert rt_comment_fc.in_rich_text, 'Comment rich text file context should be flagged as such'
 
-        comment = factory.StudentCommentFactory(n_rt_files=2)
+        comment = factory.StudentCommentFactory(n_rt_files=number_of_embedded_files)
         comment = Comment.objects.get(pk=comment.pk)
 
-        assert FileContext.objects.filter(comment=comment).count() == 2, 'Two embedded files are generated'
+        assert FileContext.objects.filter(comment=comment).count() == number_of_embedded_files, \
+            '{} embedded files are generated'.format(number_of_embedded_files)
 
         for fc in FileContext.objects.filter(comment=comment):
             assert fc.download_url(access_id=fc.access_id) in comment.text, 'The fc download url is embedded in the RT'
+            file_name_type, _ = mimetypes.guess_type(fc.file_name)
+            file_type, _ = mimetypes.guess_type(fc.file.path)
+
+            assert file_name_type.split('/')[0] == file_type.split('/')[0] == 'image'
 
     def test_attached_comment_file_context_factory(self):
         comment = factory.StudentCommentFactory()
