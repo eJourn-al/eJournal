@@ -4,7 +4,7 @@ from test.utils import api
 from django.test import TestCase
 
 from VLE.models import (Assignment, AssignmentParticipation, Content, Course, Entry, Field, Format, Journal,
-                        JournalImportRequest, Node, PresetNode, Template)
+                        JournalImportRequest, Node, PresetNode, Role, Template)
 
 
 class JournalImportRequestTest(TestCase):
@@ -87,8 +87,15 @@ class JournalImportRequestTest(TestCase):
         api.create(self, 'journal_import_request', params=data, user=student1, status=201)
 
     def test_patch_jir(self):
-        jir = factory.JournalImportRequest()
+        # TODO JIR: Fix 5 line instantation...
+        course = factory.Course()
+        teacher = course.author
+        source_journal = factory.Journal(assignment__author=teacher, assignment__courses=[course])
+        target_journal = factory.Journal(assignment__author=teacher, assignment__courses=[course])
+        jir = factory.JournalImportRequest(source=source_journal, target=target_journal)
+
         supervisor = jir.target.assignment.author
+        assert supervisor.pk == teacher.pk
         unrelated_teacher = factory.Teacher()
 
         valid_action = JournalImportRequest.DECLINED

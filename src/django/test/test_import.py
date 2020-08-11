@@ -48,22 +48,22 @@ class ImportTest(TestCase):
         self.assertRaises(VLEProgrammingError, import_utils.import_comment, source_comment, source_comment.entry)
 
     # TODO JIR
-    # def test_content_import(self):
-    #     journal = factory.PopulatedJournal()
+    def test_content_import(self):
+        journal = factory.Journal()
 
-    #     contents = Content.objects.filter(entry__node__journal=journal)
-    #     entries = Entry.objects.filter(node__journal=journal)
+        contents = Content.objects.filter(entry__node__journal=journal)
+        entries = Entry.objects.filter(node__journal=journal)
 
-    #     for entry in entries:
-    #         print(entry.template.field_set.all())
+        for entry in entries:
+            print(entry.template.field_set.all())
 
-    #     print(contents)
-    #     print(journal)
+        print(contents)
+        print(journal)
 
-    #     content = contents.first()
+        content = contents.first()
 
-    #     import_utils.import_content(content, entries.first())
+        import_utils.import_content(content, entries.first())
 
-    #     print(Content.objects.filter(entry__node__journal=journal))
+        print(Content.objects.filter(entry__node__journal=journal))
 
-    #     assert False
+        assert False

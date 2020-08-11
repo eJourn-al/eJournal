@@ -95,5 +95,5 @@ class JournalImportRequestFactory(factory.django.DjangoModelFactory):
         model = 'VLE.JournalImportRequest'
 
     author = factory.SubFactory('test.factory.user.UserFactory')
-    source = factory.LazyAttribute(lambda self: PopulatedJournalFactory(add_user=self.author))
+    source = factory.LazyAttribute(lambda self: JournalFactory(add_user=self.author))
     target = factory.LazyAttribute(lambda self: JournalFactory(add_user=self.author))

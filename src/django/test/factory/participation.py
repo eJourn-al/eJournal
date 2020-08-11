@@ -1,9 +1,9 @@
+import test.factory.assignment
+
 import factory
 
 import VLE.factory
 import VLE.models
-
-import test.factory.assignment
 
 
 class ParticipationFactory(factory.django.DjangoModelFactory):
