@@ -19,20 +19,14 @@ class CourseFactory(factory.django.DjangoModelFactory):
     author = factory.SubFactory('test.factory.user.TeacherFactory')
 
     @factory.post_generation
-    def author_participation(self, create, extracted):
+    def ensure_author_is_course_teacher(self, create, extracted):
         if not create:
             return
 
-        # Ensure TeacherRole is always created.
-        role = test.factory.role.TeacherRoleFactory(course=self)
-
-        if extracted:
-            return extracted
-
-        participation = VLE.models.Participation(course=self, user=self.author, role=role)
-        participation.save()
-
-        return participation
+        if not VLE.models.Participation.objects.filter(user=self.author, course=self).exists():
+            role = test.factory.role.TeacherRoleFactory(course=self)
+            participation = VLE.models.Participation(course=self, user=self.author, role=role)
+            participation.save()
 
 
 class LtiCourseFactory(CourseFactory):
