@@ -18,16 +18,27 @@ class ImportTest(TestCase):
         count = Comment.objects.filter(entry=source_comment.entry).count()
         imported_comment = import_utils.import_comment(source_comment, source_comment.entry)
         source_comment = Comment.objects.get(pk=source_comment_pk)
+        source_fc = source_comment.files.first()
+        import_fc = imported_comment.files.first()
 
+        assert source_comment.files.count() == 1, 'M2M files of the source comment is of correct length'
+        assert FileContext.objects.filter(comment=source_comment, in_rich_text=False).count() == 1, \
+            'No additional files are associated with the source comment'
+        assert source_comment.files.filter(pk=source_fc.pk).exists(), \
+            'Source comment M2M files still contains the correct fc'
+
+        assert source_comment.pk != imported_comment.pk, 'The imported comment instance differs from the original'
         assert Comment.objects.filter(entry=source_comment.entry).count() == count + 1, \
             'One additional comment is created'
-        assert source_comment.pk != imported_comment.pk, 'The imported comment instance differs from the original'
         assert equal_models(
             source_comment, imported_comment, ignore=['last_edited', 'creation_date', 'update_date', 'files', 'id']), \
             'The imported model is mostly equal to the source model'
+
         assert FileContext.objects.filter(comment=imported_comment).count() == 1, \
             'FCs are copied alongside the comment import.'
-        assert imported_comment.files.count() == 1, 'One attached file context is created'
+        assert imported_comment.files.count() == 1, 'Comment M2M files is updated'
+        assert imported_comment.files.filter(pk=import_fc.pk).exists(), \
+            'imported comment M2M files contains the correct FC'
 
         source_comment = factory.StudentComment(n_rt_files=1)
         source_comment_pk = source_comment.pk
