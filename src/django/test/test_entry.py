@@ -4,7 +4,7 @@ from test.utils import api
 
 from django.test import TestCase
 
-from VLE.models import Entry, Field, Node
+from VLE.models import Entry, Field, Node, Content, PresetNode
 from VLE.utils import generic_utils as utils
 from VLE.utils.error_handling import VLEPermissionError
 
@@ -35,6 +35,23 @@ class EntryAPITest(TestCase):
         }
         fields = Field.objects.filter(template=self.template)
         self.valid_create_params['content'] = [{'data': 'test data', 'id': field.id} for field in fields]
+
+    def test_entry_factory(self):
+        # TODO JIR: This requires massive expansion inc Entry factory and PresetEntry factory
+        entry = factory.Entry()
+
+        generated_content = Content.objects.filter(entry=entry)
+        assert generated_content.exists(), 'Content is created for the generated entry'
+        for content in generated_content:
+            assert content.field.template.format.assignment.pk == entry.node.journal.assignment.pk, \
+                'Content is linked to the same assignment via two different paths'
+
+    def test_preset_entry_factory(self):
+        journal = factory.Journal()
+        factory.PresetEntry(node__journal=journal)
+
+        assert PresetNode.objects.filter(type=Node.ENTRYDEADLINE, node__journal=journal).exists(), \
+            'An actual preset node of type entry deadline is created and attached to the journal'
 
     def test_create_entry(self):
         # Check valid entry creation

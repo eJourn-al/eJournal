@@ -9,6 +9,46 @@ from VLE.models import (Assignment, AssignmentParticipation, Comment, Content, C
 from VLE.utils.error_handling import VLEProgrammingError
 
 
+def import_entry(entry, journal, copy_grade):
+    '''
+    Creates a new entry object attached to the given journal.
+
+    Any nested content (node, comments, contents, and associated files) are copied.
+    Nested templates are copied and added to the journal assignment format as archived (along with any fields).
+    A new grade object is created, as the start of a fresh grading history for the entry.
+
+    Args:
+        entry (:model:`VLE.entry`): Entry to copy.
+        journal (:model:`VLE.journal`): Journal which the entry should be copied into.
+        copy_grade (bool): Flag indicating whether the entry grade should be copied, if not grade is set to None.
+
+    Returns:
+        The copied entry.
+    '''
+    # TODO JIR: Nested templates are copied and added to the journal assignment as archived.
+
+    # TODO JIR: A new grade object is created, as the start of a fresh grading history for the entry.
+
+    # TODO JIR: Create differentiating labels indicating the entry was imported (update docstring once decided)
+
+    copied_entry = copy_entry(
+        entry,
+        grade=entry.grade if copy_grade else None,
+        # QUESTION JIR: Double check if this correct, needs submission not often used
+        vle_coupling=Entry.NEEDS_GRADE_PASSBACK if copy_grade else Entry.NEEDS_SUBMISSION
+    )
+    # TODO JIR: If a link to presetnode exists can this be maintained? node.preset.format.assignment will diff
+    copy_node(entry.node, copied_entry, journal)
+
+    for comment in Comment.objects.filter(entry=entry, published=True):
+        import_comment(comment, copied_entry)
+
+    for content in Content.objects.filter(entry=entry):
+        import_content(content, copied_entry)
+
+    return copied_entry
+
+
 def import_comment(comment, entry):
     '''
     Creates a new comment object attached to the target entry.
@@ -58,9 +98,14 @@ def import_content(content, entry):
     '''
     Creates a new content instance attached to the target entry.
 
-    The source content is edited in place, any in memory references will be altered. The source comment in db remains
+    The source content is edited in place, any in memory references will be altered. The source content in db remains
     untouched.
+
+    Args:
+        content (:model:`VLE.content`): Content to import.
+        entry (:model:`VLE.entry`): Entry to attach content to.
     '''
+    # TODO Jir test
     source_content_pk = content.pk
     content.pk = None
     # TODO JIR: Can the old Field link remain intact? field.template.format.assignment will be different
@@ -76,7 +121,6 @@ def import_content(content, entry):
             is_temp=False,
             creation_date=old_fc.creation_date,
             update_date=old_fc.update_date,
-            last_edited=old_fc.last_edited,
             content=content,
             journal=old_fc.journal,
             in_rich_text=old_fc.in_rich_text
@@ -112,3 +156,31 @@ def import_template(template, assignment, archived=None):
         field.save()
 
     return template
+
+
+def copy_entry(entry, grade=None, vle_coupling=None):
+    '''
+    Create a copy of an entry instance
+    '''
+    return Entry.objects.create(
+        template=entry.template,
+        grade=grade if grade else entry.grade,
+        author=entry.author,
+        last_edited=entry.last_edited,
+        last_edited_by=entry.last_edited_by,
+        vle_coupling=vle_coupling if vle_coupling else entry.vle_coupling
+    )
+
+
+def copy_node(node, entry, journal):
+    '''
+    Create a copy of a node instance
+
+    Since a node has a one to one relation with an entry, a new entry is expected.
+    '''
+    return Node.objects.create(
+        type=node.type,
+        entry=entry,
+        journal=journal,
+        preset=node.preset
+    )
