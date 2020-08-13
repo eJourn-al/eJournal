@@ -8,7 +8,7 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
 
 import VLE.factory as nfac
-from VLE.models import Comment, FileContext
+from VLE.models import Comment, FileContext, Participation
 
 
 def set_entry_comment_counts(obj):
@@ -51,6 +51,25 @@ class CommentAPITest(TestCase):
         assert self.entry_comments == 3, 'Journal should have 3 comments total'
         assert self.entry_published_comments == 1, 'Journal should have 3 comments of which only one is published'
         assert self.entry_unpublished_comments == 2, 'Expected 2 unpublished comments'
+
+    def test_comment_factory(self):
+        entry = factory.Entry()
+        comment = factory.StudentComment(entry=entry)
+        journal = entry.node.journal
+
+        assert comment.author.pk == entry.author.pk, 'Student comment author is equal to the attached entry by default'
+        assert entry.node.journal.authors.filter(user=comment.author).exists(), \
+            'Student comment author is among the participants of the attached journal when instantiated via entry'
+
+        comment = factory.StudentComment(entry__node__journal=journal)
+        assert entry.node.journal.authors.filter(user=comment.author).exists(), \
+            'Student comment author is among the participants of the attached journal when instantiated via journal'
+
+        comment = factory.TeacherComment(entry=entry)
+        # QUESTION JIR: Why can course__in=journal.assignment.courses not be added to the below query?
+        participations = Participation.objects.filter(role__name='Teacher', user=comment.author)
+        assert any([journal.assignment.courses.filter(pk=p.course.pk).exists() for p in participations]), \
+            'Teacher comment author has Teacher role for the entry used for initialization'
 
     def test_get(self):
         comments = api.get(

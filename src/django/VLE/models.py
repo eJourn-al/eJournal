@@ -1314,6 +1314,7 @@ class Entry(CreateUpdateModel):
         null=True,
     )
 
+    # QUESTION JIR: Should we just add auto_now_add=True and remove the save?
     last_edited = models.DateTimeField()
     last_edited_by = models.ForeignKey(
         'User',
