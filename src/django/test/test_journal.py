@@ -9,6 +9,7 @@ from django.test import TestCase
 import VLE.factory
 from VLE.models import Assignment, AssignmentParticipation, Content, Course, Entry, Journal, Node, Template, User
 from VLE.utils.error_handling import VLEBadRequest
+from django.core.exceptions import ValidationError
 
 
 class JournalAPITest(TestCase):
@@ -28,72 +29,75 @@ class JournalAPITest(TestCase):
         self.g_teacher = group_course.author
 
     def test_journal_factory(self):
-        journal = factory.Journal()
-
-        # # TODO JIR: Enable once possible
-        # ap = AssignmentParticipation.objects.get(journal=journal, assignment=journal.assignment)
-
-        # user = factory.Student()
-        # journal = factory.Journal(ap__user=user)
-
-        # ap = AssignmentParticipation.objects.get(journal=journal, assignment=journal.assignment)
-
-        # Generating a journal also generates a single corresponding AP
-        ap = AssignmentParticipation.objects.get(journal=journal)
-
-        user = factory.Student()
-        journal = factory.Journal(add_user=user)
-        ap = AssignmentParticipation.objects.get(journal=journal)
-
-        assert ap.user.pk is user.pk, 'It is possible to generate a journal whilst adding a specific user'
-
-    def test_populated_journal_factory(self):
         c_count = Course.objects.count()
         a_count = Assignment.objects.count()
         j_count = Journal.objects.count()
         ap_count = AssignmentParticipation.objects.count()
-        e_count = Entry.objects.count()
 
-        # TODO JIR: Move to normal journal..
-        journal = factory.PopulatedJournalFactory()
+        journal = factory.JournalFactory()
 
         assert Course.objects.filter(assignment=journal.assignment).exists() and Course.objects.count() == c_count + 1,\
             'A single course is generated when generating a journal'
         assert Assignment.objects.filter(journal=journal).exists() and Assignment.objects.count() == a_count + 1, \
-            'A single assignment is generated when generating an assignment'
+            'A single assignment is generated when generating a journal'
         assert Journal.objects.count() == j_count + 1, 'A single journal is generated'
-        assert AssignmentParticipation.objects.filter(journal=journal).exists(), 'Journal generates an AP'
         assert AssignmentParticipation.objects.count() == ap_count + 1, 'Generating a journal generates a single AP'
 
-        assert Node.objects.filter(journal=journal).exists(), 'Generating a journal generates one or more nodes'
-        assert list(journal.node_set.all()) == list(Node.objects.filter(journal=journal))
-
-        assert Entry.objects.filter(node__journal=journal).exists(), \
-            'Generating a journal generates one or more entries'
-        assert Node.objects.filter(journal=journal).count() == Entry.objects.filter(node__journal=journal).count(), \
-            'Node - Entry one to one relation is maintained when generating a journal'
-
-        assert not Entry.objects.filter(node__journal=journal, template=None).exists() == \
-            'All generated entries hold a valid template'
-        assert Entry.objects.filter(node__journal=journal).count() == e_count + 1, \
-            'Only entries related to the journal are generated'
-        # NOTE: Currently each AssignmentFactory will generate two templates
-        assert Template.objects.filter(format__assignment=journal.assignment).exists(), \
-            'Templates related to the assignment are generated'
-
-        entry_qry = Entry.objects.filter(node__journal=journal)
-
-        for entry in entry_qry:
-            assert Content.objects.filter(entry=entry).filter(~Q(data='')).exists(), \
-                'Non empty content is generated for each entry'
-
-        assert entry.template.format.assignment.pk == entry.node.journal.assignment.pk, \
-            'The Entry Template format is linked to the assignment of the journal'
-
-        factory.PopulatedJournal(assignment=journal.assignment)
+        assignment = factory.Assignment()
+        journal = factory.Journal(assignment=assignment)
 
         assert c_count + 1 and a_count + 1, \
             'Generating an additional journal with a specific assignment, yields no additional courses or assignments'
+
+        # Creating a journal creates an accompanying assignment participation and user
+        AssignmentParticipation.objects.get(journal=journal, assignment=journal.assignment)
+
+        user = factory.Student()
+        journal = factory.Journal(ap__user=user, assignment=assignment)
+
+        # It is possible to specify which user via deep paramater syntax
+        AssignmentParticipation.objects.get(journal=journal, assignment=journal.assignment, user=user)
+        # Generating a journal also generates a single corresponding AP
+        AssignmentParticipation.objects.get(journal=journal)
+
+        lti_journal = factory.LtiJournal(ap__user=user)
+        # LtiJournal also creates a single user
+        ap = AssignmentParticipation.objects.get(journal=lti_journal, assignment=lti_journal.assignment, user=user)
+        assert ap.grade_url and ap.sourcedid, 'Lti journal requires a non empty grade_url and sourcedid'
+
+    def test_group_journal_factory(self):
+        users = [factory.Student(), factory.Student(), factory.Student()]
+
+        group_journal = factory.GroupJournal(users=users, author_limit=3)
+        aps = AssignmentParticipation.objects.filter(
+            journal=group_journal, assignment=group_journal.assignment, user__in=users)
+        assert aps.count() == len(users), 'An assignment participation is created for each student'
+
+        users.append(factory.Student())
+
+        self.assertRaises(ValidationError, factory.GroupJournal, users=users, author_limit=3)
+
+    def test_populated_journal_factory(self):
+        # TODO JIR
+        pass
+        # e_count = Entry.objects.count()
+        # journal = factory.PopulatedJournalFactory()
+
+        # # Generating a journal should generate entries, this should be specifiable
+        # # 'Node - Entry one to one relation is maintained when generating a journal'
+
+        # assert not Entry.objects.filter(node__journal=journal, template=None).exists(), \
+        #     'All generated entries hold a valid template'
+        # assert Entry.objects.filter(node__journal=journal).count() == e_count + 1, \
+        #     'Only entries related to the journal are generated'
+
+        # entry_qry = Entry.objects.filter(node__journal=journal)
+
+        # for entry in entry_qry:
+        #     assert Content.objects.filter(entry=entry).filter(~Q(data='')).exists(), \
+        #         'Non empty content is generated for each entry'
+        #     assert entry.template.format.assignment.pk == entry.node.journal.assignment.pk, \
+        #         'The Entry Template format is linked to the assignment of the journal'
 
     def test_computed_name(self):
         journal = factory.Journal()
@@ -416,6 +420,7 @@ class JournalAPITest(TestCase):
             self, 'journals/get_members', params={'pk': self.group_journal.pk},
             user=factory.Teacher(), status=403)
 
+        # print(self.group_journal.authors.all())
         # Test before adding student, that student is not returned
         members = api.get(
             self, 'journals/get_members', params={'pk': self.group_journal.pk},

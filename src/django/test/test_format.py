@@ -4,7 +4,7 @@ from test.utils import api
 from django.test import TestCase
 
 import VLE.serializers as serialize
-from VLE.models import Entry, Group, Journal
+from VLE.models import Entry, Group, Journal, Field
 
 
 class FormatAPITest(TestCase):
@@ -26,6 +26,14 @@ class FormatAPITest(TestCase):
             'removed_templates': [],
             'presets': []
         }
+
+    def test_template_factory(self):
+        template = factory.Template()
+        assert not template.field_set.exists(), 'By default a template should be iniated without fields'
+
+        template = factory.Template(gen_fields=[{'type': Field.URL}])
+        Field.objects.get(template=template, type=Field.URL)
+        assert template.field_set.count() == 1, 'It is possible to generate fields including kwargs'
 
     def test_update_assign_to(self):
         def check_groups(groups, status=200):

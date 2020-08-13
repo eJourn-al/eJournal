@@ -13,13 +13,13 @@ class TemplateFactory(factory.django.DjangoModelFactory):
     name = 'Empty Template'
 
     @factory.post_generation
-    def add_fields(self, create, extracted):
+    def gen_fields(self, create, extracted):
         if not create:
             return
 
         if extracted:
-            for field in extracted:
-                self.field_set.add(field)
+            for kwargs in extracted:
+                FieldFactory(**kwargs, template=self)
 
 
 class TextTemplateFactory(TemplateFactory):
