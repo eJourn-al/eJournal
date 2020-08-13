@@ -44,11 +44,10 @@ class ContentTest(TestCase):
             field__type=Field.FILE, field__options='jpg', entry=content.entry, field__template=entry.template)
         fc = FileContext.objects.get(content=content, journal=content.entry.node.journal, in_rich_text=False)
 
-        # TODO JIR: Enable tests once _gen_file_field_file works
-        # assert fc.file_name.split('.')[-1] in content.field.options, \
-        #     'The generated fc file_name conforms to the extension options'
-        # assert fc.file.path.split('.')[-1] in content.field.options, \
-        #     'The generated fc file path conforms to the extension options'
+        assert fc.file_name.split('.')[-1] in content.field.options, \
+            'The generated fc file_name conforms to the extension options'
+        assert fc.file.path.split('.')[-1] in content.field.options, \
+            'The generated fc file path conforms to the extension options'
 
     def test_rich_text_content_factory(self):
         entry = factory.Entry()

@@ -39,7 +39,9 @@ class ContentFactory(factory.django.DjangoModelFactory):
                 self.data = factory.Faker('text').generate() + self.data if self.data else ''
             elif self.field.type == Field.FILE:
                 # The factory sets the data to the fc id
-                FileContentFileContextFactory(content=self)
+                extention = random.choice(self.field.options.split(', ')) if self.field.options else None
+                file_name = factory.Faker('file_name', extension=extention).generate()
+                FileContentFileContextFactory(content=self, file__filename=file_name)
             elif self.field.type == Field.VIDEO:
                 # According to our current validators this can be any url
                 self.data = 'https://www.youtube.com/watch?v=lJMNA7UcpxE'
@@ -58,7 +60,7 @@ class ContentFactory(factory.django.DjangoModelFactory):
 
     @factory.post_generation
     def validate_content(self, create, extracted, **kwargs):
-        # QUESTION: Does this need enforcement in our own content save?
+        # QUESTION: Does this need enforcement in our VLE.models.Content save?
         if self.field.template.pk != self.entry.template.pk:
             raise VLEProgrammingError('Content field has no connection to the entries template. Set field__template.')
         if Content.objects.filter(field=self.field, entry=self.entry).count() > 1:

@@ -82,24 +82,9 @@ class AttachedCommentFileContextFactory(RichTextCommentFileContextFactory):
         self.comment.save()
 
 
-def _gen_file_field_file(cf):
-    '''
-    Ensures the generated file name adheres to the options set the by the content's field.
-    '''
-    file_name = factory.Faker('file_name').generate()
-
-    if cf.content.field.options:
-        extention = random.choice(cf.content.field.options.split(', '))
-        file_name = factory.Faker('file_name', extension=extention).generate()
-
-    return factory.django.FileField(filename=file_name)
-
-
 class FileContentFileContextFactory(FileContextFactory):
     in_rich_text = False
     content = factory.SubFactory('test.factory.content.ContentFactory', field__type=Field.FILE)
-    # TODO JIR: WTH does this not work
-    # file = factory.LazyAttribute(_gen_file_field_file)
 
     @factory.post_generation
     def set_author(self, create, extracted):
