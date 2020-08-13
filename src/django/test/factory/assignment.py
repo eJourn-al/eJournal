@@ -1,10 +1,18 @@
 import datetime
-import test.factory.course
+import test.factory
 
 import factory
 from django.utils import timezone
 
-from VLE.models import Field, Template
+from VLE.models import Participation, Role, User
+
+
+def _add_courses(self, create, extracted, **kwargs):
+    if extracted or extracted == []:
+        for course in extracted:
+            self.add_course(course)
+    else:
+        self.courses.add(test.factory.course.CourseFactory())
 
 
 class AssignmentFactory(factory.django.DjangoModelFactory):
@@ -26,75 +34,68 @@ class AssignmentFactory(factory.django.DjangoModelFactory):
     format = factory.SubFactory('test.factory.format.FormatFactory')
 
     @factory.post_generation
-    def courses(self, create, extracted):
-        # TODO JIR cleanup
+    def courses(self, create, extracted, **kwargs):
         if not create:
             return
 
-        if extracted:
-            if self.author is None:
-                self.author = extracted[0].author
-                self.save()
-            for course in extracted:
-                self.add_course(course)
-                # TODO JIR: Directly call
-                p = factory.SubFactory('test.factory.participation.ParticipationFactory')
-                p.user = self.author
-                p.course = course
-                p.role = factory.SubFactory('test.factory.role.TeacherRoleFactory')
-        else:
-            course = test.factory.course.CourseFactory()
-            self.courses.add(course)
-
-            if self.author is None:
-                self.author = self.courses.first().author
-                self.save()
+        _add_courses(self, create, extracted, **kwargs)
 
     @factory.post_generation
-    def add_timeline(self, create, extracted):
+    def author(self, create, extracted, **kwargs):
         if not create:
             return
 
-        template1 = Template.objects.create(format=self.format, name="template 1 - required summary")
-        self.format.template_set.add(template1)
-        Field.objects.create(type=Field.TEXT, title="Title", location=1, template=template1, required=True)
-        Field.objects.create(type=Field.RICH_TEXT, title="Summary", location=2, template=template1, required=True)
+        if isinstance(extracted, User):
+            self.author = extracted
+        elif kwargs:
+            self.author = test.factory.user.UserFactory(**kwargs)
+        else:
+            if self.courses.exists():
+                self.author = self.courses.first().author
+            else:
+                self.author = test.factory.user.UserFactory()
+        self.save()
 
-        template2 = Template.objects.create(format=self.format, name="template 2 - optional summary")
-        self.format.template_set.add(template2)
-        Field.objects.create(type=Field.TEXT, title="Title", location=1, template=template2, required=False)
-        Field.objects.create(type=Field.RICH_TEXT, title="Summary", location=2, template=template2, required=False)
+    @factory.post_generation
+    def templates(self, create, extracted, **kwargs):
+        if not create:
+            return
+
+        if extracted or extracted == []:
+            for template in extracted:
+                if not template.format.pk == self.format.pk:
+                    old_format = template.format
+                    template.format = self.format
+                    template.save()
+                    old_format.delete()
+        else:
+            test.factory.template.TextTemplateFactory(format=self.format)
+            test.factory.template.ColloquiumTemplateFactory(format=self.format)
+
+    @factory.post_generation
+    def make_author_teacher_in_all_courses(self, create, extracted, **kwargs):
+        if not create or extracted is False:
+            return
+
+        for course in self.courses.all():
+            if not Participation.objects.filter(course=course, user=self.author).exists():
+                teacher_role = Role.objects.get(course=course, name='Teacher')
+                test.factory.participation.ParticipationFactory(course=course, user=self.author, role=teacher_role)
 
 
 class LtiAssignmentFactory(AssignmentFactory):
     active_lti_id = factory.Sequence(lambda x: "assignment_lti_id{}".format(x))
 
     @factory.post_generation
-    def courses(self, create, extracted):
+    def courses(self, create, extracted, **kwargs):
         if not create:
             return
 
-        if extracted:
-            if self.author is None:
-                self.author = extracted[0].author
-                self.save()
-            for course in extracted:
-                self.add_course(course)
-                p = factory.SubFactory('test.factory.participation.ParticipationFactory')
-                p.user = self.author
-                p.course = course
-                course.assignment_lti_id_set.append(self.active_lti_id)
-                course.save()
-                p.role = factory.SubFactory('test.factory.role.TeacherRoleFactory')
-        else:
-            course = test.factory.course.LtiCourseFactory()
+        _add_courses(self, create, extracted, **kwargs)
+
+        for course in self.courses.all():
             course.assignment_lti_id_set.append(self.active_lti_id)
             course.save()
-            self.courses.add(course)
-
-            if self.author is None:
-                self.author = self.courses.first().author
-                self.save()
 
 
 class GroupAssignmentFactory(AssignmentFactory):

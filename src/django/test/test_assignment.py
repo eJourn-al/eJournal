@@ -59,6 +59,47 @@ class AssignmentAPITest(TestCase):
                       create_status=403,
                       user=factory.Student())
 
+    def test_assignment_factory(self):
+        assignment = factory.Assignment()
+        assert assignment.author is not None, 'Author should be generated if not specified'
+        assert assignment.courses.exists(), 'Course is generated for the generated assignment'
+        assert assignment.format.template_set.exists(), 'Templates are generated alongside the assignment'
+
+        template = factory.TemplateAllTypes()
+        assignment = factory.Assignment(templates=[template])
+        assert template.format.pk == assignment.format.pk and assignment.format.template_set.count() == 1, \
+            'Generating an assignment with a template only adds that specific template'
+
+        assignment = factory.Assignment(courses=[])
+        assert not assignment.courses.exists(), 'It is possible to generate an assignment without any associated course'
+        assert assignment.author, 'The assignment still has an author, even without associated course.'
+
+        assignment_author_name = 'Test'
+        assignment = factory.Assignment(author__full_name=assignment_author_name)
+        assert assignment.author.full_name == assignment_author_name, \
+            'If any kwargs relate to the author, generate the author and pass the args along'
+
+        course = factory.Course()
+        assignment = factory.Assignment(courses=[course])
+        teacher_role = Role.objects.get(name='Teacher', course=course)
+
+        assert assignment.courses.filter(pk=course.pk).exists(), 'Assignment is succesfully linked to the course'
+        assert course.author.pk == assignment.author.pk, 'Course author is reused for the assignment by default'
+        assert Participation.objects.filter(role=teacher_role, user=assignment.author, course=course).exists(), \
+            'Assignment author is an actual teacher in the associated course'
+
+        teacher = factory.Teacher()
+        course2 = factory.Course()
+        assignment2 = factory.Assignment(courses=[course, course2], author=teacher)
+        assert assignment2.author.pk == teacher.pk, 'Assignment author can be specified manually as well'
+        assert Participation.objects.filter(
+            role__name='Teacher', user=assignment2.author, course__in=[course, course2]).count() == 2, \
+            'Assignment author is also an actual teacher in the associated courses when specified manually'
+
+        lti_assignment = factory.LtiAssignment()
+        lti_assignment.courses.filter(assignment_lti_id_set__contains=[lti_assignment.active_lti_id]).count() \
+            == lti_assignment.courses.count(), 'The lti id is added to each course\'s assignment id'
+
     def test_create_assignment(self):
         lti_params = {**self.create_params, **{'lti_id': 'new_lti_id'}}
         resp = api.create(self, 'assignments', params=lti_params, user=self.teacher)['assignment']
@@ -255,10 +296,12 @@ class AssignmentAPITest(TestCase):
         resp = api.update(self, 'assignments', params=params, user=self.teacher)['assignment']
         assert resp['description'] != params['description']
 
-    def test_delete(self):
+    def test_delete_assignment(self):
         teach_course = factory.Course(author=self.teacher)
         other_course = factory.Course()
-        assignment = factory.Assignment(courses=[self.course, teach_course, other_course])
+
+        assignment = factory.Assignment(
+            courses=[self.course, teach_course, other_course], make_author_teacher_in_all_courses=False)
 
         # Test no course specified
         api.delete(self, 'assignments', params={'pk': assignment.pk}, user=self.teacher, status=400)
