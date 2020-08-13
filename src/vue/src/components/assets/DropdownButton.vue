@@ -130,7 +130,7 @@ export default {
         position: absolute
         top: 100%
         right: 0px
-        @extend .shadow
+        @extend .theme-shadow
         background: $theme-medium-grey !important
         border: none !important
         border-radius: 0px 0px 5px 5px !important

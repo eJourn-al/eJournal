@@ -17,7 +17,7 @@
             >
                 <img
                     src="/journal-view.png"
-                    class="screenshot round-border shadow no-hover"
+                    class="screenshot round-border theme-shadow no-hover"
                 />
             </b-col>
             <b-col lg="7">

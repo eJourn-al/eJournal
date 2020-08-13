@@ -12,7 +12,7 @@
             <div>
                 <div
                     v-if="$hasPermission('can_grade')"
-                    class="grade-section shadow sticky"
+                    class="grade-section sticky"
                 >
                     <b-form-input
                         v-model="grade.grade"
@@ -50,13 +50,13 @@
                 </div>
                 <div
                     v-else-if="gradePublished"
-                    class="grade-section grade shadow"
+                    class="grade-section grade"
                 >
                     {{ entryNode.entry.grade.grade }}
                 </div>
                 <div
                     v-else
-                    class="grade-section grade shadow"
+                    class="grade-section grade"
                 >
                     <icon name="hourglass-half"/>
                 </div>
