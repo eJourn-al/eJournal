@@ -4,7 +4,7 @@ from test.factory.file_context import FileContentFileContextFactory, RichTextCon
 
 import factory
 
-from VLE.models import Field
+from VLE.models import Field, Content
 from VLE.utils.error_handling import VLEProgrammingError
 
 
@@ -55,3 +55,11 @@ class ContentFactory(factory.django.DjangoModelFactory):
                 raise VLEProgrammingError('Content should never be generated for a no submission field')
 
         self.save()
+
+    @factory.post_generation
+    def validate_content(self, create, extracted, **kwargs):
+        # QUESTION: Does this need enforcement in our own content save?
+        if self.field.template.pk != self.entry.template.pk:
+            raise VLEProgrammingError('Content field has no connection to the entries template. Set field__template.')
+        if Content.objects.filter(field=self.field, entry=self.entry).count() > 1:
+            raise VLEProgrammingError('Multiple content instances for the same field and entry')
