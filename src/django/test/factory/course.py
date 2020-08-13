@@ -4,6 +4,8 @@ import factory
 
 import VLE.models
 
+from test.factory.participation import ParticipationFactory
+
 
 class CourseFactory(factory.django.DjangoModelFactory):
     class Meta:
@@ -13,10 +15,11 @@ class CourseFactory(factory.django.DjangoModelFactory):
     abbreviation = "AVI1"
     startdate = factory.Faker('date_between', start_date="-10y", end_date="-1y")
     enddate = factory.Faker('date_between', start_date="+1y", end_date="+10y")
-
-    student_role = factory.RelatedFactory('test.factory.role.StudentRoleFactory', 'course')
-    ta_role = factory.RelatedFactory('test.factory.role.TaRoleFactory', 'course')
     author = factory.SubFactory('test.factory.user.TeacherFactory')
+
+    student_role = factory.RelatedFactory('test.factory.role.StudentRoleFactory', factory_related_name='course')
+    ta_role = factory.RelatedFactory('test.factory.role.TaRoleFactory', factory_related_name='course')
+    teacher_role = factory.RelatedFactory('test.factory.role.TeacherRoleFactory', factory_related_name='course')
 
     @factory.post_generation
     def ensure_author_is_course_teacher(self, create, extracted):
@@ -24,9 +27,8 @@ class CourseFactory(factory.django.DjangoModelFactory):
             return
 
         if not VLE.models.Participation.objects.filter(user=self.author, course=self).exists():
-            role = test.factory.role.TeacherRoleFactory(course=self)
-            participation = VLE.models.Participation(course=self, user=self.author, role=role)
-            participation.save()
+            role = VLE.models.Role.objects.get(name='Teacher', course=self)
+            ParticipationFactory(user=self.author, course=self, role=role)
 
 
 class LtiCourseFactory(CourseFactory):

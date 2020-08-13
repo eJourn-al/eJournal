@@ -2,9 +2,11 @@ import test.factory as factory
 from test.utils import api
 from test.utils.response import is_response
 
+from django.conf import settings
+
 from django.test import TestCase
 
-from VLE.models import Assignment, Role
+from VLE.models import Assignment, Role, Participation
 
 
 class CourseAPITest(TestCase):
@@ -37,6 +39,16 @@ class CourseAPITest(TestCase):
                       create_params=self.create_params,
                       create_status=403,
                       user=factory.Student())
+
+    def test_course_factory(self):
+        course = factory.Course()
+
+        for expected_role in settings.ROLES.keys():
+            assert Role.objects.filter(course=course, name=expected_role).exists()
+
+        teacher_role = Role.objects.get(name='Teacher', course=course)
+        assert Participation.objects.filter(course=course, role=teacher_role, user=course.author).exists(), \
+            'Author of the course is made a teacher by default'
 
     def test_get(self):
         factory.Participation(user=self.teacher2, course=self.course2)

@@ -5,7 +5,7 @@ class RoleFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = 'VLE.Role'
 
-    name = factory.Sequence(lambda x: 'Undifined' + str(x))
+    name = factory.Sequence(lambda x: 'Undefined role ' + str(x))
     course = factory.SubFactory('test.factory.course.CourseFactory')
 
 
