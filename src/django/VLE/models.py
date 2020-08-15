@@ -1328,6 +1328,14 @@ class Entry(CreateUpdateModel):
         choices=TYPES,
     )
 
+    # TODO JIR, finish test, serialize use front end
+    jir = models.ForeignKey(
+        'JournalImportRequest',
+        on_delete=models.SET_NULL,
+        blank=True,
+        null=True,
+    )
+
     def is_locked(self):
         return (self.node.preset and self.node.preset.is_locked()) or self.node.journal.assignment.is_locked()
 
