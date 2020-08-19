@@ -6,7 +6,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('VLE', '0048_auto_20200818_1551'),
+        ('VLE', '0047_dynamic_filename'),
     ]
 
     operations = [
