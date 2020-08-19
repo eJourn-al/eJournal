@@ -67,7 +67,7 @@ def compress_all_user_data(user, extra_data_dict=None, archive_extension='zip'):
 
 
 def establish_file(author, identifier, course=None, assignment=None, journal=None, content=None, comment=None,
-                   in_rich_text=False):
+                   in_rich_text=False, is_comment_file=False):
     """establish files, after this they won't be removed."""
     if str(identifier).isdigit():
         file_context = VLE.models.FileContext.objects.get(pk=identifier)
@@ -96,6 +96,7 @@ def establish_file(author, identifier, course=None, assignment=None, journal=Non
     file_context.course = course
     file_context.is_temp = False
     file_context.in_rich_text = in_rich_text
+    file_context.is_comment_file = is_comment_file
 
     # Move the file on filesystem to a permanent location
     initial_path = file_context.file.path
@@ -151,7 +152,7 @@ def remove_unused_user_files(user):
                 file.delete()
     for file in VLE.models.FileContext.objects.filter(author=user, comment__isnull=False):
         # Check if url is not in comment anymore
-        if not file.comment_files.filter(pk=file.comment.pk).exists() and \
+        if not file.is_comment_file and \
            (not file.comment.text or str(file.access_id) not in file.comment.text):
             file.delete()
     for file in VLE.models.FileContext.objects.filter(

@@ -478,7 +478,7 @@ class CommentSerializer(serializers.ModelSerializer):
             return comment.last_edited
 
     def get_files(self, comment):
-        return FileSerializer(comment.files, many=True).data
+        return FileSerializer(FileContext.objects.filter(comment=comment, is_comment_file=True), many=True).data
 
     def get_can_edit(self, comment):
         user = self.context.get('user', None)

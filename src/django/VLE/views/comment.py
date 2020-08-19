@@ -18,12 +18,11 @@ def handle_comment_files(user, files, comment):
     # Add new files
     for file_id in files:
         file = FileContext.objects.get(pk=int(file_id))
-        if not comment.files.filter(pk=file.pk).exists():
-            comment.files.add(file)
-            file_handling.establish_file(user, file.access_id, comment=comment)
-    # Remove old files
-    comment.files.exclude(pk__in=files).delete()
+        if not file.comment == comment:
+            file_handling.establish_file(user, file.access_id, comment=comment, is_comment_file=True)
     file_handling.establish_rich_text(user, comment.text, comment=comment)
+    # Remove old files
+    FileContext.objects.filter(comment=comment, is_comment_file=True).exclude(pk__in=files).delete()
     file_handling.remove_unused_user_files(user)
 
 

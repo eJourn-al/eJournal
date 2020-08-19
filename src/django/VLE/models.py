@@ -118,6 +118,9 @@ class FileContext(CreateUpdateModel):
     is_temp = models.BooleanField(
         default=True
     )
+    is_comment_file = models.BooleanField(
+        default=False
+    )
 
     def download_url(self, access_id=False):
         if access_id:
@@ -1523,10 +1526,6 @@ class Comment(CreateUpdateModel):
     text = models.TextField()
     published = models.BooleanField(
         default=True
-    )
-    files = models.ManyToManyField(
-        'FileContext',
-        related_name='comment_files',
     )
     last_edited = models.DateTimeField(auto_now_add=True)
     last_edited_by = models.ForeignKey(
