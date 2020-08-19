@@ -1105,10 +1105,16 @@ class Journal(CreateUpdateModel, ComputedFieldsModel):
             Node.objects.create(type=preset_node.type, journal=self, preset=preset_node)
 
     def save(self, *args, **kwargs):
+        if not self.author_limit == self.UNLIMITED and self.authors.count() > self.author_limit:
+            raise ValidationError('Journal users exceed author limit.')
+        # QUESTION: Can a journal belong to a non group assignment with an author limit > 1?
+        # Otherwise this would form a reasonable validation rule
+
         is_new = self._state.adding
         if self.stored_name is None:
             if self.assignment.is_group_assignment:
                 self.stored_name = 'Journal {}'.format(Journal.objects.filter(assignment=self.assignment).count() + 1)
+
         super(Journal, self).save(*args, **kwargs)
         # On create add preset nodes
         if is_new:
@@ -1135,6 +1141,8 @@ class Journal(CreateUpdateModel, ComputedFieldsModel):
         return "the {0} journal of {1}".format(self.assignment.name, self.get_full_names())
 
 
+# You can only have node of a PresetNode for the same journal
+# TODO JIR: Unique together (journal, preset)
 class Node(CreateUpdateModel):
     """Node.
 
@@ -1306,7 +1314,6 @@ class Entry(CreateUpdateModel):
         null=True,
     )
 
-    # QUESTION JIR: Why do only 100 out of 12k entries have an author?
     author = models.ForeignKey(
         'User',
         on_delete=models.SET_NULL,
@@ -1314,8 +1321,7 @@ class Entry(CreateUpdateModel):
         null=True,
     )
 
-    # QUESTION JIR: Should we just add auto_now_add=True and remove the save?
-    last_edited = models.DateTimeField()
+    last_edited = models.DateTimeField(auto_now_add=True)
     last_edited_by = models.ForeignKey(
         'User',
         on_delete=models.SET_NULL,
@@ -1344,12 +1350,6 @@ class Entry(CreateUpdateModel):
 
     def is_graded(self):
         return not (self.grade is None or self.grade.grade is None)
-
-    def save(self, *args, **kwargs):
-        if not self.pk:
-            self.last_edited = timezone.now()
-
-        return super(Entry, self).save(*args, **kwargs)
 
     def to_string(self, user=None):
         return "Entry"
@@ -1430,12 +1430,19 @@ class Template(CreateUpdateModel):
     def to_string(self, user=None):
         return "Template"
 
+    # TODO JIR: On delete check if any Content exists which fields are liked to this template, ERROR IF SO
+    # This can also happen for imported entries, of which the template belongs to a different assignment format
+    # than the journal
+
 
 class Field(CreateUpdateModel):
     """Field.
 
     Defines the fields of an Template
     """
+    ALLOWED_URL_SCHEMES = ('http', 'https', 'ftp', 'ftps')
+    ALLOWED_DATE_FORMAT = '%Y-%m-%d'
+    ALLOWED_DATETIME_FORMAT = '%Y-%m-%dT%H:%M:%S'
 
     TEXT = 't'
     RICH_TEXT = 'rt'
@@ -1495,17 +1502,20 @@ class Content(CreateUpdateModel):
         'Entry',
         on_delete=models.CASCADE
     )
-    # Question: Why can this be null?
     field = models.ForeignKey(
         'Field',
-        on_delete=models.SET_NULL,
-        null=True
+        on_delete=models.CASCADE,
     )
     data = models.TextField(
         null=True
     )
 
     def save(self, *args, **kwargs):
+        if Content.objects.filter(field=self.field, entry=self.entry).count() > 1:
+            raise VLEProgrammingError('Multiple content instances for the same field and entry')
+        if self.field.template.pk != self.entry.template.pk:
+            raise VLEProgrammingError('Content field has no connection to the entries template. Set field__template.')
+
         self.data = sanitization.strip_script_tags(self.data)
 
         return super(Content, self).save(*args, **kwargs)
@@ -1534,7 +1544,6 @@ class Comment(CreateUpdateModel):
     published = models.BooleanField(
         default=True
     )
-    # TODO JIR: Why is this m2m? Are files ever shared between comments?
     files = models.ManyToManyField(
         'FileContext',
         related_name='comment_files',
@@ -1605,6 +1614,7 @@ class JournalImportRequest(CreateUpdateModel):
         choices=STATES,
         default=PENDING,
     )
+    # TODO JIR: Case or set null, if JIR is pending and source is deleted, delted JIr as well.
     source = models.ForeignKey(
         'journal',
         related_name='import_request_source',
@@ -1617,9 +1627,8 @@ class JournalImportRequest(CreateUpdateModel):
         related_name='import_request_target',
         blank=True,
         null=True,
-        on_delete=models.SET_NULL
+        on_delete=models.CASCADE
     )
-    # TODO JIR: CASCADE_OR_SET_NUL: Decide if some fields should in fact CASCADE on deletion
     author = models.ForeignKey(
         'user',
         related_name='jir_author',

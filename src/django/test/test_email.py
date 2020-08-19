@@ -10,7 +10,7 @@ from django.test import TestCase
 from django.test.utils import override_settings
 from django.utils import timezone
 
-from VLE.models import Grade, Group, Node, Participation, PresetNode, Template, User
+from VLE.models import Group, Node, Participation, PresetNode, Template, User
 from VLE.tasks.beats import notifications
 
 
@@ -140,76 +140,59 @@ class EmailAPITest(TestCase):
     def test_deadline_email(self):
         assignment = factory.Assignment()
 
-        # ENTRYDEADLINE inside deadline
-        PresetNode.objects.create(
-            description='Entrydeadline node description',
+        preset_entry_deadlines_in_notification_window = 1
+        progress_goals_in_notification_window = 1
+        deadlines_in_notification_window = \
+            preset_entry_deadlines_in_notification_window + progress_goals_in_notification_window
+
+        deadline_inside_notification_window = factory.DeadlinePresetNode(
             due_date=timezone.now().date() + datetime.timedelta(days=7, hours=2),
             lock_date=timezone.now().date() + datetime.timedelta(days=8),
-            type=Node.ENTRYDEADLINE,
-            forced_template=Template.objects.filter(format__assignment=assignment).first(),
+            forced_template=assignment.format.template_set.first(),
             format=assignment.format,
         )
-        # ENTRYDEADLINE outside deadline
-        PresetNode.objects.create(
-            description='Entrydeadline node description',
-            due_date=timezone.now().date() + datetime.timedelta(days=14, hours=2),
-            lock_date=timezone.now().date() + datetime.timedelta(days=15),
-            type=Node.ENTRYDEADLINE,
-            forced_template=Template.objects.filter(format__assignment=assignment).first(),
-            format=assignment.format,
-        )
-        # PROGRESS inside deadline
-        PresetNode.objects.create(
-            description='Progress node description',
+        # Progress goal, inside notification window
+        factory.ProgressPresetNode(
             due_date=timezone.now().date() + datetime.timedelta(days=1, hours=2),
             lock_date=timezone.now().date() + datetime.timedelta(days=2),
-            type=Node.PROGRESS,
-            target=5,
             format=assignment.format,
         )
-        # PROGRESS outside deadline
-        PresetNode.objects.create(
-            description='Progress node description',
+
+        # Deadline outside notification window
+        factory.DeadlinePresetNode(
             due_date=timezone.now().date() + datetime.timedelta(days=14, hours=2),
             lock_date=timezone.now().date() + datetime.timedelta(days=15),
-            type=Node.PROGRESS,
-            target=5,
+            forced_template=assignment.format.template_set.first(),
+            format=assignment.format,
+        )
+        # Progress goal, outside notification window
+        factory.ProgressPresetNode(
+            due_date=timezone.now().date() + datetime.timedelta(days=14, hours=2),
+            lock_date=timezone.now().date() + datetime.timedelta(days=15),
             format=assignment.format,
         )
 
-        journal_empty = factory.Journal(assignment=assignment)
-        journal_filled = factory.Journal(assignment=assignment)
-        journal_filled_and_graded_2 = factory.Journal(assignment=assignment)
-        journal_filled_and_graded_100 = factory.Journal(assignment=assignment)
-        journal_empty_but_no_notifications = factory.Journal(
-            assignment=assignment)
-        p = journal_empty_but_no_notifications.authors.first().user.preferences
-        p.upcoming_deadline_notifications = False
-        p.save()
+        journal_empty = factory.Journal(assignment=assignment, entries__n=0)
 
-        factory.Entry(
-            node__journal=journal_filled,
-            node=Node.objects.filter(journal=journal_filled).first(),
-            author=journal_filled.authors.first().user)
-        e_100 = factory.Entry(
-            node__journal=journal_filled_and_graded_100,
-            template=Template.objects.filter(format__assignment=assignment).first(),
-            author=journal_filled_and_graded_100.authors.first().user)
-        e_100.grade = Grade.objects.create(grade=100, published=True, entry=e_100)
-        e_100.save()
-        e_2 = factory.Entry(
-            node__journal=journal_filled_and_graded_2,
-            template=Template.objects.filter(format__assignment=assignment).first(),
-            author=journal_filled_and_graded_2.authors.first().user)
-        e_2.grade = Grade.objects.create(grade=2, published=True, entry=e_2)
-        e_2.save()
+        journal_filled = factory.Journal(assignment=assignment, entries__n=0)
+        factory.PresetEntry(node__journal=journal_filled, node__preset=deadline_inside_notification_window)
+
+        journal_filled_and_graded_2 = factory.Journal(assignment=assignment)
+        factory.PresetEntry(node__journal=journal_filled_and_graded_2, grade__grade=2)
+
+        journal_filled_and_graded_100 = factory.Journal(assignment=assignment)
+        factory.PresetEntry(node__journal=journal_filled_and_graded_100, grade__grade=100)
+
+        journal_empty_but_no_notifications = factory.Journal(
+            assignment=assignment, ap__user__preferences__upcoming_deadline_notifications=False)
 
         mails = notifications.send_upcoming_deadlines()
-        assert mails.count(journal_empty.authors.first().user.email) == 2, \
-            'Journal without entries should get all deadlines'
-        assert mails.count(journal_filled.authors.first().user.email) == 1, \
-            'Journal without any grade should get notified of upcoming preset node'
-        assert mails.count(journal_filled_and_graded_2.authors.first().user.email) == 2, \
+        assert mails.count(journal_empty.authors.first().user.email) == deadlines_in_notification_window, \
+            'Journal without entries should get an deadline email for both the progress and deadline presets'
+        assert mails.count(journal_filled.authors.first().user.email) == progress_goals_in_notification_window, \
+            '''Journal with preset deadline entry, but without any grade should get only notified of upcoming progress
+            goal and not of the preset deadline entry, since it is filled.'''
+        assert mails.count(journal_filled_and_graded_2.authors.first().user.email) == deadlines_in_notification_window,\
             'Journal without proper grade should get notified of upcoming preset node'
         assert mails.count(journal_filled_and_graded_100.authors.first().user.email) == 1, \
             'Journal with proper grade should only get notified of unfilled entries'
@@ -250,7 +233,7 @@ class EmailAPITest(TestCase):
             'Unpublished assignment should get no emails'
 
     def test_deadline_email_groups(self):
-        group_assignment = factory.GroupAssignment()
+        group_assignment = factory.Assignment(group_assignment=True)
         # ENTRYDEADLINE inside deadline
         PresetNode.objects.create(
             description='Entrydeadline node description',

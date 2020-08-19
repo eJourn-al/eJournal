@@ -9,9 +9,10 @@ from VLE.utils.error_handling import VLEProgrammingError
 
 class ContentTest(TestCase):
     def test_content_factory(self):
-        entry = factory.Entry()
+        entry = factory.UnlimitedEntry()
         c_count = Content.objects.count()
-        content = factory.Content(entry=entry, field__type=Field.TEXT, field__template=entry.template)
+        content = factory.Content(entry=entry, field__type=Field.TEXT)
+        content_field_types = [t for (t, _) in Field.TYPES if t != Field.NO_SUBMISSION]
 
         # assert False, 'The content is attached to the template of the entry'
         assert content.entry.pk == entry.pk, 'Content should chain upto entry'
@@ -20,21 +21,29 @@ class ContentTest(TestCase):
         assert entry.template.pk == content.field.template.pk, \
             'The template of the entry is equal to the template of the content'
 
-        for type in [t for (t, _) in Field.TYPES if t != Field.NO_SUBMISSION]:
-            content = factory.Content(field__type=type, entry=content.entry, field__template=entry.template)
+        for type in content_field_types:
+            # FILE type content data does not match its expected validation data input (dict vs string)
+            if type == Field.FILE:
+                continue
+            content = factory.Content(field__type=type, entry=content.entry)
             assert content.field.type == type, 'Content type should be specifiable via its field'
             VLE.validators.validate_entry_content(content.data, content.field)
 
+        file_content = factory.Content(field__type=Field.FILE, entry=content.entry)
+        assert file_content.filecontext_set.count() == 1, 'A single File is created'
+        fc = file_content.filecontext_set.first()
+        assert int(file_content.data) == fc.pk, 'file content data should be equal to the fc\'s pk'
+
         with self.assertRaises(VLEProgrammingError):
-            factory.Content(entry=content.entry, field__type=Field.NO_SUBMISSION, field__template=entry.template)
+            factory.Content(entry=content.entry, field__type=Field.NO_SUBMISSION)
 
         # It should not be possible to create content for the same field of the same entry
         with self.assertRaises(VLEProgrammingError):
-            factory.Content(entry=entry, field__type=Field.TEXT, field__template=entry.template, field=content.field)
+            factory.Content(entry=entry, field__type=Field.TEXT, field=content.field)
 
     def test_file_content_factory(self):
-        entry = factory.Entry()
-        content = factory.Content(entry=entry, field__type=Field.FILE, field__template=entry.template)
+        entry = factory.UnlimitedEntry()
+        content = factory.Content(entry=entry, field__type=Field.FILE)
         # Exactly one FileContext should be generated for the file content
         fc = FileContext.objects.get(content=content, journal=content.entry.node.journal, in_rich_text=False)
 
@@ -50,7 +59,7 @@ class ContentTest(TestCase):
             'The generated fc file path conforms to the extension options'
 
     def test_rich_text_content_factory(self):
-        entry = factory.Entry()
+        entry = factory.UnlimitedEntry()
         number_of_files_in_rich_text = 2
         content = factory.Content(
             entry=entry,

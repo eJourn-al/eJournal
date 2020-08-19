@@ -1,9 +1,8 @@
 import os
-import random
+import test.factory
 
 import factory
-
-from VLE.models import Field
+from VLE.models import Field, Journal
 
 
 class FileContextFactory(factory.django.DjangoModelFactory):
@@ -25,37 +24,14 @@ class FileContextFactory(factory.django.DjangoModelFactory):
 
 
 class RichTextCommentFileContextFactory(FileContextFactory):
-    '''
-    We enforce the save order for author on the FC model level, otherwise 'add_author' could be 'author' allowing
-    author to be passed as the expected argument.
-    '''
-    comment = factory.SubFactory('test.factory.comment.StudentCommentFactory')
-    file = factory.django.FileField(filename=factory.Faker('file_name', category='image'))
     in_rich_text = True
-
-    @factory.post_generation
-    def set_author(self, create, extracted):
-        if not create:
-            return
-
-        if extracted:
-            self.author = extracted
-        else:
-            self.author = self.comment.entry.node.journal.authors.first().user
-
-        self.save()
+    comment = factory.SubFactory('test.factory.comment.StudentCommentFactory')
+    author = factory.SelfAttribute('comment.author')
+    file = factory.django.FileField(filename=factory.Faker('file_name', category='image'))
 
     @factory.post_generation
     def journal(self, create, extracted):
-        if not create:
-            return
-
-        if extracted:
-            self.journal = extracted
-        else:
-            self.journal = self.comment.entry.node.journal
-
-        self.save()
+        test.factory.rel_factory(self, create, extracted, 'journal', Journal, default=self.comment.entry.node.journal)
 
     @factory.post_generation
     def set_fc_text(self, create, extracted):
@@ -68,6 +44,8 @@ class RichTextCommentFileContextFactory(FileContextFactory):
 
 class AttachedCommentFileContextFactory(RichTextCommentFileContextFactory):
     in_rich_text = False
+    # Order matters, cannot inherit the FileContextFactory file property, the author would be set after.
+    file = factory.django.FileField()
 
     @factory.post_generation
     def set_fc_text(self, create, extracted):
@@ -85,47 +63,26 @@ class AttachedCommentFileContextFactory(RichTextCommentFileContextFactory):
 class FileContentFileContextFactory(FileContextFactory):
     in_rich_text = False
     content = factory.SubFactory('test.factory.content.ContentFactory', field__type=Field.FILE)
-
-    @factory.post_generation
-    def set_author(self, create, extracted):
-        if not create:
-            return
-
-        if extracted:
-            self.author = extracted
-        else:
-            self.author = self.content.entry.node.journal.authors.first().user
-
-        self.save()
+    author = factory.SelfAttribute('content.entry.author')
 
     @factory.post_generation
     def journal(self, create, extracted):
-        if not create:
-            return
-
-        if extracted:
-            self.journal = extracted
-        else:
-            self.journal = self.content.entry.node.journal
-
-        self.save()
+        test.factory.rel_factory(self, create, extracted, 'journal', Journal, default=self.content.entry.node.journal)
 
     @factory.post_generation
     def update_content_data(self, create, extracted):
         if not create:
             return
 
-        if extracted:
-            self.content.data = extracted
-        else:
-            self.content.data = str(self.pk)
-
+        self.content.data = str(self.pk)
         self.content.save()
 
 
 class RichTextContentFileContextFactory(FileContentFileContextFactory):
     in_rich_text = True
     content = factory.SubFactory('test.factory.content.ContentFactory', field__type=Field.RICH_TEXT)
+    # Order is relevant, need content to be set first (since content is overwritten parent author would run first
+    author = factory.SelfAttribute('content.entry.author')
     file = factory.django.FileField(filename=factory.Faker('file_name', category='image'))
 
     @factory.post_generation
@@ -133,10 +90,6 @@ class RichTextContentFileContextFactory(FileContentFileContextFactory):
         if not create:
             return
 
-        if extracted:
-            self.content.data = extracted
-        else:
-            img_link = '<img src="{}"/>'.format(self.download_url(access_id=self.access_id))
-            self.content.data = self.content.data + img_link if self.content.data else img_link
-
+        img_link = '<img src="{}"/>'.format(self.download_url(access_id=self.access_id))
+        self.content.data = self.content.data + img_link if self.content.data else img_link
         self.content.save()

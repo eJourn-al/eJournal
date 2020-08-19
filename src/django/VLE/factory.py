@@ -220,6 +220,7 @@ def make_node(journal, entry=None, type=Node.ENTRY, preset=None):
     return Node.objects.get_or_create(type=type, entry=entry, preset=preset, journal=journal)[0]
 
 
+# QUESTION: Not used anywhere except tests and preset db?
 def make_journal(assignment, author=None, author_limit=None):
     """Make a new journal.
 

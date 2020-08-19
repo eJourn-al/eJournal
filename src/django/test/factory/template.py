@@ -9,17 +9,10 @@ class TemplateFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = 'VLE.Template'
 
-    format = factory.SubFactory('test.factory.format.FormatFactory')
     name = 'Empty Template'
 
-    @factory.post_generation
-    def gen_fields(self, create, extracted):
-        if not create:
-            return
-
-        if extracted:
-            for kwargs in extracted:
-                FieldFactory(**kwargs, template=self)
+    # Forces format specification
+    format = None
 
 
 class TextTemplateFactory(TemplateFactory):

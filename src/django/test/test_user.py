@@ -28,6 +28,13 @@ class UserAPITest(TestCase):
             'custom_user_email': 'validLMS@address.com',
         }
 
+    def test_user_factory(self):
+        user = factory.Student()
+        assert user.preferences.grade_notifications, 'Generating a user also generates preferences, set to default'
+
+        user = factory.Student(preferences__grade_notifications=False)
+        assert not user.preferences.grade_notifications, 'User factory supports deep syntax for preferences'
+
     def test_rest(self):
         api.test_rest(self, 'users',
                       create_params=self.create_params, get_is_create=False,
@@ -319,7 +326,7 @@ class UserAPITest(TestCase):
         User.objects.create(**params)
 
     def test_gdpr(self):
-        entry = factory.Entry()
+        entry = factory.UnlimitedEntry()
         user = entry.node.journal.authors.first().user
         user2 = factory.Student()
         admin = factory.Admin()

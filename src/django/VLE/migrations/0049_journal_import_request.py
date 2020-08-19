@@ -20,7 +20,7 @@ class Migration(migrations.Migration):
                 ('author', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='jir_author', to=settings.AUTH_USER_MODEL)),
                 ('processor', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='jir_processor', to=settings.AUTH_USER_MODEL)),
                 ('source', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='import_request_source', to='VLE.Journal')),
-                ('target', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='import_request_target', to='VLE.Journal')),
+                ('target', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, related_name='import_request_target', to='VLE.Journal')),
             ],
             options={
                 'abstract': False,

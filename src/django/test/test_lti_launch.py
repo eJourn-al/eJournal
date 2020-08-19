@@ -550,9 +550,7 @@ class LtiLaunchTest(TestCase):
         assignment = factory.LtiAssignment(
             author=self.teacher, courses=[course], name=REQUEST['custom_assignment_title'])
         student = factory.LtiStudent()
-        ap = factory.AssignmentParticipation(user=student, assignment=assignment)
-        journal = factory.Journal(assignment=assignment)
-        journal.add_author(ap)
+        journal = factory.Journal(assignment=assignment, ap__user=student)
         assignment = journal.assignment
 
         journal_exists = Journal.objects.filter(authors__user=student, assignment=assignment, pk=journal.pk).exists()

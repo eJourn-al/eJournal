@@ -1,7 +1,8 @@
+import test.factory
+
 import factory
 
-import test.factory
-from django.core.exceptions import ValidationError
+import VLE.models
 
 
 class BaseJournalFactory(factory.django.DjangoModelFactory):
@@ -18,39 +19,61 @@ class JournalFactory(BaseJournalFactory):
         assignment=factory.SelfAttribute('..assignment')
     )
 
+    # NOTE: Can become be a RelatedFactoryList once size is passable as an initialisation arg
+    # entries = factory.RelatedFactoryList(
+    #     'test.factory.entry.UnlimitedEntryFactory',
+    #     factory_related_name='node__journal',
+    #     node__journal=factory.SelfAttribute('..'),
+    #     size=1
+    # )
+
+    @factory.post_generation
+    def entries(self, create, extracted, **kwargs):
+        if not create:
+            return
+
+        for _ in range(kwargs['n'] if 'n' in kwargs else 1):
+            test.factory.UnlimitedEntry(node__journal=self)
+
 
 class LtiJournalFactory(BaseJournalFactory):
     assignment = factory.SubFactory('test.factory.assignment.LtiAssignmentFactory')
 
     ap = factory.RelatedFactory(
-        'test.factory.participation.LtiAssignmentParticipationFactory',
+        'test.factory.participation.AssignmentParticipationFactory',
         factory_related_name='journal',
-        assignment=factory.SelfAttribute('..assignment')
+        assignment=factory.SelfAttribute('..assignment'),
+        lti=True
     )
 
 
 class GroupJournalFactory(BaseJournalFactory):
-    assignment = factory.SubFactory('test.factory.assignment.GroupAssignmentFactory')
+    assignment = factory.SubFactory('test.factory.assignment.AssignmentFactory', group_assignment=True)
     author_limit = 3
 
+    ap = factory.RelatedFactory(
+        'test.factory.participation.AssignmentParticipationFactory',
+        factory_related_name='journal',
+        assignment=factory.SelfAttribute('..assignment')
+    )
+
     @factory.post_generation
-    def users(self, create, extracted):
+    def entries(self, create, extracted, **kwargs):
+        if not create:
+            return
+
+        for _ in range(kwargs['n'] if 'n' in kwargs else 1):
+            test.factory.UnlimitedEntry(node__journal=self)
+
+    @factory.post_generation
+    def add_users(self, create, extracted):
         if not create:
             return
 
         if extracted:
             for user in extracted:
-                # QUESTION: Something to move to an actual validator?
-                if self.authors.count() >= self.author_limit:
-                    raise ValidationError('Journal users exceed author limit.')
-                test.factory.participation.AssignmentParticipationFactory(
+                test.factory.AssignmentParticipation(
                     journal=self, assignment=self.assignment, user=user)
-        else:
-            test.factory.participation.AssignmentParticipationFactory(journal=self, assignment=self.assignment)
-
-
-class PopulatedJournalFactory(JournalFactory):
-    pass
 
 
 class JournalImportRequestFactory(factory.django.DjangoModelFactory):
@@ -58,5 +81,13 @@ class JournalImportRequestFactory(factory.django.DjangoModelFactory):
         model = 'VLE.JournalImportRequest'
 
     author = factory.SubFactory('test.factory.user.UserFactory')
-    source = factory.LazyAttribute(lambda self: JournalFactory(ap__user=self.author))
-    target = factory.LazyAttribute(lambda self: JournalFactory(ap__user=self.author))
+
+    @factory.post_generation
+    def source(self, create, extracted, **kwargs):
+        test.factory.rel_factory(self, create, extracted, 'source', VLE.models.Journal, JournalFactory,
+                                 cond_kwargs={'ap__user': self.author}, **kwargs)
+
+    @factory.post_generation
+    def target(self, create, extracted, **kwargs):
+        test.factory.rel_factory(self, create, extracted, 'target', VLE.models.Journal, JournalFactory,
+                                 cond_kwargs={'ap__user': self.author}, **kwargs)

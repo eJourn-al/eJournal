@@ -3,10 +3,9 @@ from test.utils import api
 from test.utils.response import is_response
 
 from django.conf import settings
-
 from django.test import TestCase
 
-from VLE.models import Assignment, Role, Participation
+from VLE.models import Assignment, Course, Participation, Role, User
 
 
 class CourseAPITest(TestCase):
@@ -41,7 +40,15 @@ class CourseAPITest(TestCase):
                       user=factory.Student())
 
     def test_course_factory(self):
+        c_c = Course.objects.count()
+        u_c = User.objects.count()
+        a_c = Assignment.objects.count()
+
         course = factory.Course()
+
+        assert c_c + 1 == Course.objects.count(), 'One course is generated'
+        assert u_c + 1 == User.objects.count() and User.objects.last().pk == course.author.pk, 'One user is generated'
+        assert a_c == Assignment.objects.count(), 'No assignment is generated'
 
         for expected_role in settings.ROLES.keys():
             assert Role.objects.filter(course=course, name=expected_role).exists()

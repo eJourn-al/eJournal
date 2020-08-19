@@ -6,7 +6,7 @@ from test.utils import api
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
 
-from VLE.models import Entry, Field, FileContext, PresetNode, Template
+from VLE.models import Content, Entry, Field, FileContext, PresetNode, Template, User
 from VLE.utils import file_handling
 from VLE.utils.error_handling import VLEBadRequest, VLEPermissionError
 
@@ -39,6 +39,48 @@ class FileHandlingTest(TestCase):
         infact deletes corresponding files"""
         FileContext.objects.all().delete()
 
+    def test_file_context_factory(self):
+        u_count = User.objects.count()
+
+        fc = factory.FileContext()
+        assert u_count + 1 == User.objects.count(), 'One user is generated'
+        assert User.objects.last().pk == fc.author.pk, 'The generated user is indeed the author of the fc'
+        assert fc.file_name in fc.file.name, 'The instance file name is sensible in comparison to the underlying file.'
+        assert os.path.exists(fc.file.path), 'An actual file is created for the file context test instance'
+
+        author = factory.Student()
+        u_count = User.objects.count()
+
+        fc = factory.FileContext(author=author)
+        assert u_count == User.objects.count(), 'No user is generated if the author is specified'
+
+    def test_file_content_file_context_factory(self):
+        entry = factory.UnlimitedEntry()
+        u_count = User.objects.count()
+
+        file_content_fc = factory.FileContentFileContext(author=entry.author, content__entry=entry)
+        assert u_count == User.objects.count(), 'No additional user is created if the author is specified'
+        assert entry.author.pk == file_content_fc.author.pk, 'The entry user is indeed the author of the fc'
+
+        entry = factory.UnlimitedEntry()
+        u_count = User.objects.count()
+
+        file_content_fc = factory.FileContentFileContext(content__entry=entry)
+        assert u_count == User.objects.count(), 'No additional user is created if the entry is specified'
+        assert entry.author.pk == file_content_fc.author.pk, 'The entry user is indeed the author of the fc'
+
+        entry = factory.UnlimitedEntry()
+        u_count = User.objects.count()
+        c_count = Content.objects.count()
+
+        file_content = factory.Content(field__type=Field.FILE, entry=entry)
+        assert file_content.filecontext_set.count() == 1
+        fc = file_content.filecontext_set.first()
+
+        assert c_count + 1 == Content.objects.count(), 'A single content instance is generated'
+        assert u_count == User.objects.count(), 'No additional user is generated'
+        assert entry.author.pk == fc.author.pk, 'The entries user should be used as the author of the fc'
+
     def test_file_retrieve(self):
         file = FileContext.objects.create(file=self.video, author=self.student, file_name=self.video.name)
 
@@ -54,7 +96,7 @@ class FileHandlingTest(TestCase):
         # Test only teacher can see own unpublished comment
         file = FileContext.objects.create(file=self.video, author=self.teacher, file_name=self.video.name)
         hidden_comment = factory.TeacherComment(
-            author=self.teacher, entry=factory.Entry(node__journal=self.journal), published=False)
+            author=self.teacher, entry=factory.UnlimitedEntry(node__journal=self.journal), published=False)
         file_handling.establish_file(self.teacher, file.pk, comment=hidden_comment)
         api.get(self, 'files', params={'pk': file.pk}, user=factory.Teacher(), status=403)
         api.get(self, 'files', params={'pk': file.pk}, user=self.student, status=403)
@@ -186,7 +228,7 @@ class FileHandlingTest(TestCase):
             self, 'files', params={'file': self.image, 'in_rich_text': True}, user=self.student,
             content_type=MULTIPART_CONTENT, status=201)
         params = {
-            'entry_id': factory.Entry(node__journal=self.journal).pk,
+            'entry_id': factory.UnlimitedEntry(node__journal=self.journal).pk,
             'text': '<p><img src="{}"</p>'.format(content_real['download_url']),
             'published': True,
             'files': [],
@@ -331,7 +373,10 @@ class FileHandlingTest(TestCase):
         assert 'No accompanying file found in the request.' in response['description']
 
     def test_long_file_name(self):
-        entry = factory.PresetEntry()
+        assignment = factory.Assignment()
+        template = assignment.format.template_set.first()
+        entry = factory.PresetEntry(template=template)
+
         node = entry.node
         author = entry.author
         entry.delete()
@@ -363,9 +408,3 @@ class FileHandlingTest(TestCase):
             self, 'files', params={'file': long_name, 'in_rich_text': False},
             user=author, content_type=MULTIPART_CONTENT, status=400)
         assert 'filename' in resp['description']
-
-    def test_file_context_factory(self):
-        fc = factory.FileContext()
-
-        assert fc.file_name in fc.file.name, 'The instance file name is sensible in comparison to the underlying file.'
-        assert os.path.exists(fc.file.path), 'An actual file is created for the file context test instance'

@@ -1,10 +1,8 @@
-import test.factory.role
+from test.factory.participation import ParticipationFactory
 
 import factory
 
 import VLE.models
-
-from test.factory.participation import ParticipationFactory
 
 
 class CourseFactory(factory.django.DjangoModelFactory):

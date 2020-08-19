@@ -33,10 +33,21 @@ def import_entry(entry, journal, copy_grade):
 
     copied_entry = copy_entry(
         entry,
-        grade=entry.grade if copy_grade else None,
+        grade=None,
         # QUESTION JIR: Double check if this correct, needs submission not often used
         vle_coupling=Entry.NEEDS_GRADE_PASSBACK if copy_grade else Entry.NEEDS_SUBMISSION
     )
+
+    # Copied entry niet kunnen editen
+    # Als geen grade, moet de docent dan normaal "Need grading" krijgen
+
+    # Alle cijfers op 0 zetten
+    # Alle cijfers op None zetten (docent kan andere cijfers geven)
+    # ALle cijfers overnemen, sommige cijfers kunnen nog steeds None (als dat zo in source). Voor deze entries,
+    # mogen deze een nieuw cijfer krijgen? geedit worden?
+    # TODO JIR: Create grade object with grade 0, if not copy grade
+    # use old factory to immediately set the entry fk factory.make_grade
+
     # TODO JIR: If a link to presetnode exists can this be maintained? node.preset.format.assignment will diff
     copy_node(entry.node, copied_entry, journal)
 
@@ -158,13 +169,21 @@ def import_template(template, assignment, archived=None):
     return template
 
 
+# TODO JIR: This might be cleaner copy wise despite computed field dependencies block pk=None
+# Another advantage is we access the DB one time less
+# Double edged sword, will copy all fields (including some undesired ones)
+# from copy import deepcopy
+
+# new_instance = deepcopy(object_you_want_copied)
+# new_instance.id = None
+# new_instance.save()
 def copy_entry(entry, grade=None, vle_coupling=None):
     '''
     Create a copy of an entry instance
     '''
     return Entry.objects.create(
         template=entry.template,
-        grade=grade if grade else entry.grade,
+        grade=grade,
         author=entry.author,
         last_edited=entry.last_edited,
         last_edited_by=entry.last_edited_by,

@@ -4,11 +4,10 @@ from rest_framework import viewsets
 import VLE.utils.generic_utils as utils
 import VLE.utils.import_utils as import_utils
 import VLE.utils.responses as response
-from VLE.utils import grading
-
 from VLE.models import (AssignmentParticipation, Comment, Content, Entry, FileContext, Grade, Journal,
                         JournalImportRequest, Node, PresetNode)
 from VLE.serializers import JournalImportRequestSerializer
+from VLE.utils import grading
 
 
 class JournalImportRequestView(viewsets.ViewSet):
@@ -24,13 +23,12 @@ class JournalImportRequestView(viewsets.ViewSet):
         journal_target = Journal.objects.get(pk=journal_target_id)
         request.user.check_can_view(journal_target)
 
-        # QUESTION: How to work with JIRs of which the requestee cannot see the source? The source journal IS serialized
-
         serializer = JournalImportRequestSerializer(
             journal_target.import_request_target.filter(state=JournalImportRequest.PENDING),
             context={'user': request.user},
             many=True
         )
+
         return response.success({'journal_import_requests': serializer.data})
 
     def create(self, request):
@@ -45,10 +43,12 @@ class JournalImportRequestView(viewsets.ViewSet):
         ap_source = AssignmentParticipation.objects.filter(user=request.user, journal=journal_source)
         ap_target = AssignmentParticipation.objects.filter(user=request.user, journal=journal_target)
 
+        # TODO JIR: Block creation of JIR from source to target more than once once approved (with or without grade)
+        # or Pending
+
         if not ap_source.exists() or not ap_target.exists():
             return response.forbidden('You can only import from or into your own journals.')
-
-        # QUESTION: Do we care about the lock state of the assignment source or destination?
+        # TODO JIR: Block on lock of target assignment
 
         if not Entry.objects.filter(node__journal=journal_source).exists():
             return response.bad_request('Please select a non empty journal.')
@@ -68,7 +68,6 @@ class JournalImportRequestView(viewsets.ViewSet):
 
         The processed JIR instance is stored as a history of import requests.
         """
-        # QUESTION JIR: Safeguards for importing the same journal multiple times?
         pk, = utils.required_typed_params(kwargs, (int, 'pk'))
         jir_action, = utils.required_typed_params(request.data, (str, 'jir_action'))
 
@@ -78,11 +77,9 @@ class JournalImportRequestView(viewsets.ViewSet):
         if jir_action not in allowed_actions:
             return response.bad_request('Invalid journal import request action.')
 
-        # QUESTION: What permissions are required by the user of the source?
-        # Since after the import, much of the source journal is viewable by the approving user.
         if not request.user.has_permission('can_grade', jir.target.assignment):
             return response.forbidden('You require the ability to grade the journal in order to approve the import.')
-        request.user.check_permission('can_edit_assignment', jir.source.assignment)
+        # TODO JIR: Make new permission for importing
         request.user.check_permission('can_edit_assignment', jir.target.assignment)
 
         jir.state = jir_action
@@ -98,7 +95,7 @@ class JournalImportRequestView(viewsets.ViewSet):
         for source_entry in source_entries:
             import_utils.import_entry(source_entry, jir.target, copy_grade=jir_action == jir.APPROVED_INC_GRADES)
 
-        # TODO JIR: This requires some tests
+        # TODO JIR: Grading update requires some tests
         if jir_action == jir.APPROVED_INC_GRADES:
             grading.task_journal_status_to_LMS.delay(jir.target.pk)
 

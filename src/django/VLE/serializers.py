@@ -708,16 +708,25 @@ class JournalImportRequestSerializer(serializers.ModelSerializer):
     author = serializers.SerializerMethodField()
     source = serializers.SerializerMethodField()
     target = serializers.SerializerMethodField()
+    processor = serializers.SerializerMethodField()
 
     class Meta:
         model = JournalImportRequest
-        fields = ('id', 'source', 'target', 'author')
+        fields = ('id', 'source', 'target', 'author', 'processor')
         read_only_fields = ('id', 'source', 'target', 'author')
 
     def get_author(self, jir):
         return UserSerializer(jir.author, context=self.context).data
 
+    def get_processor(self, jir):
+        return UserSerializer(jir.processor, context=self.context).data
+
+    # TODO JIR: Check if this can leak data which is not required, since the user does not have rights
+    # to see the source journal / assignment / course
     def get_source(self, jir):
+        if self.source is None:
+            return 'Source journal no longer exists.'
+
         return {
             'journal': JournalSerializer(jir.source, context=self.context).data,
             'assignment': AssignmentSerializer(jir.source.assignment, context=self.context).data,

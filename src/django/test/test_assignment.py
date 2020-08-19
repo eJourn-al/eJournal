@@ -8,6 +8,7 @@ from dateutil import parser
 from dateutil.relativedelta import relativedelta
 from django.core.exceptions import ValidationError
 from django.core.files.uploadedfile import SimpleUploadedFile
+from django.db.models import Q
 from django.db.utils import IntegrityError
 from django.test import TestCase
 from django.test.utils import override_settings
@@ -18,7 +19,7 @@ import VLE.utils.generic_utils as utils
 from VLE.models import (Assignment, AssignmentParticipation, Course, Entry, Field, Format, Journal, Node, Participation,
                         PresetNode, Role, Template)
 from VLE.serializers import AssignmentSerializer
-from VLE.utils.error_handling import VLEParticipationError
+from VLE.utils.error_handling import VLEParticipationError, VLEProgrammingError
 from VLE.views.assignment import day_neutral_datetime_increment, set_assignment_dates
 
 
@@ -60,15 +61,24 @@ class AssignmentAPITest(TestCase):
                       user=factory.Student())
 
     def test_assignment_factory(self):
+        # A Format should only be intialized via its respective Assignment
+        self.assertRaises(VLEProgrammingError, factory.Format)
+
+        j_all_count = Journal.all_objects.count()
+        j_count = Journal.objects.count()
+        ap_count = AssignmentParticipation.objects.count()
+
         assignment = factory.Assignment()
         assert assignment.author is not None, 'Author should be generated if not specified'
         assert assignment.courses.exists(), 'Course is generated for the generated assignment'
         assert assignment.format.template_set.exists(), 'Templates are generated alongside the assignment'
-
-        template = factory.TemplateAllTypes()
-        assignment = factory.Assignment(templates=[template])
-        assert template.format.pk == assignment.format.pk and assignment.format.template_set.count() == 1, \
-            'Generating an assignment with a template only adds that specific template'
+        assert not assignment.format.presetnode_set.exists(), 'Assignment is initialized by default without PresetNodes'
+        assert j_count == Journal.objects.count(), 'The created journal (teachers) cannot be queried directly'
+        assert j_all_count + 1 == Journal.all_objects.count(), 'One journal is created (assuming the teachers)'
+        assert ap_count + 1 == AssignmentParticipation.objects.count(), 'One AP is created (assuming the teachers)'
+        ap = AssignmentParticipation.objects.get(~Q(journal=None), user=assignment.author, assignment=assignment)
+        assert ap.journal.authors.first().user.pk == assignment.author.pk, 'The AP belongs to the assignment author'
+        assert ap.journal.assignment.pk == assignment.pk, 'AP is correctly linked to the teacher and assignment'
 
         assignment = factory.Assignment(courses=[])
         assert not assignment.courses.exists(), 'It is possible to generate an assignment without any associated course'
@@ -99,6 +109,33 @@ class AssignmentAPITest(TestCase):
         lti_assignment = factory.LtiAssignment()
         lti_assignment.courses.filter(assignment_lti_id_set__contains=[lti_assignment.active_lti_id]).count() \
             == lti_assignment.courses.count(), 'The lti id is added to each course\'s assignment id'
+
+    def test_group_assignment_factory(self):
+        j_all_count = Journal.all_objects.count()
+        ap_count = AssignmentParticipation.objects.count()
+        j_count = Journal.all_objects.count()
+        g_assignment = factory.Assignment(group_assignment=True)
+
+        assert g_assignment.is_group_assignment
+        assert j_all_count == Journal.all_objects.count(), \
+            'There is no journal created for the teacher in a group assignment'
+        assert ap_count + 1 == AssignmentParticipation.objects.count(), 'One AP created for the teacher'
+        ap = AssignmentParticipation.objects.get(user=g_assignment.author, assignment=g_assignment)
+        assert ap.journal is None, 'The AP of the teacher does not link to any journal in a group assignment'
+
+        g_assignment.is_group_assignment = False
+        g_assignment.save()
+
+        ap = AssignmentParticipation.objects.get(user=g_assignment.author, assignment=g_assignment)
+        assert j_all_count + 1 == Journal.all_objects.count(), 'One journal is created (assuming the teachers)'
+        assert j_count == Journal.objects.count(), 'The created journal (teachers) cannot be queried directly'
+        assert ap_count + 1 == AssignmentParticipation.objects.count(), 'One AP is created (assuming the teachers)'
+        assert ap.journal.authors.first().user.pk == g_assignment.author.pk, 'The AP belongs to the assignment author'
+        assert ap.journal.assignment.pk == g_assignment.pk, 'AP is correctly linked to the teacher and assignment'
+        assert ap.journal is not None, \
+            'The AP is linked to a journal now that the assignment is no longer a group assignment'
+        assert ap.journal.authors.count() == 1 and ap.journal.authors.first().user.pk == g_assignment.author.pk, \
+            'The created journal is linked to the assignment teacher'
 
     def test_create_assignment(self):
         lti_params = {**self.create_params, **{'lti_id': 'new_lti_id'}}
@@ -168,7 +205,7 @@ class AssignmentAPITest(TestCase):
             )
             journal = Journal.objects.get(authors__user=student, assignment=assignment)
             for i in range(10):
-                entry = factory.Entry(node__journal=journal)
+                entry = factory.UnlimitedEntry(node__journal=journal)
                 if i > 5:
                     api.create(self, 'grades', params={'entry_id': entry.pk, 'grade': 5, 'published': False},
                                user=self.teacher)
@@ -218,7 +255,7 @@ class AssignmentAPITest(TestCase):
         assert resp['stats']['unpublished_own_groups'] == 0, 'All entries are graded and grades are published'
 
         # Check group assignment
-        group_assignment = factory.GroupAssignment()
+        group_assignment = factory.Assignment(group_assignment=True)
         student = factory.AssignmentParticipation(assignment=group_assignment).user
         api.get(self, 'assignments', params={'pk': group_assignment.pk}, user=student)
 
@@ -422,13 +459,13 @@ class AssignmentAPITest(TestCase):
         source_assignment.active_lti_id = 'some id'
         source_assignment.save()
         source_format = source_assignment.format
-        source_progress_node = factory.ProgressNode(
+        source_progress_node = factory.ProgressPresetNode(
             format=source_format,
             unlock_date=start2018_2019,
             due_date=start2018_2019 + relativedelta(months=6),
             lock_date=start2018_2019 + relativedelta(months=6),
         )
-        source_deadline_node = factory.EntrydeadlineNode(
+        source_deadline_node = factory.DeadlinePresetNode(
             format=source_format,
             unlock_date=None,
             due_date=start2018_2019 + relativedelta(months=6),
@@ -447,7 +484,8 @@ class AssignmentAPITest(TestCase):
         source_entries = []
         number_of_source_student_journal_entries = 4
         for _ in range(number_of_source_student_journal_entries):
-            source_entries.append(factory.Entry(template=source_template, node__journal=source_student_journal))
+            source_entries.append(
+                factory.UnlimitedEntry(template=source_template, node__journal=source_student_journal))
 
         assert Node.objects.count() == 10, \
             '2 nodes for the presets for teacher and student each, 4 for the student entries'
@@ -552,9 +590,9 @@ class AssignmentAPITest(TestCase):
             'Format of the import should be equal to the import target'
         ignoring = ['id', 'format', 'forced_template', 'creation_date', 'update_date']
         for before_n, created_n in zip(before_source_preset_nodes, created_preset_nodes):
-            assert equal_models(before_n, created_n, ignore=ignoring), 'Import preset nodes should be equal'
+            assert equal_models(before_n, created_n, ignore_keys=ignoring), 'Import preset nodes should be equal'
         for before_t, created_t in zip(before_source_templates, created_templates):
-            assert equal_models(before_t, created_t, ignore=ignoring), 'Import target templates should be equal'
+            assert equal_models(before_t, created_t, ignore_keys=ignoring), 'Import target templates should be equal'
 
         # Import again, but now update all dates
         resp = api.post(self, 'assignments/{}/copy'.format(source_assignment.pk), params={
@@ -583,11 +621,11 @@ class AssignmentAPITest(TestCase):
             'Format of the import should be equal to the import target'
         for before_n, created_n in zip(before_source_preset_nodes, created_preset_nodes):
             assert equal_models(before_n, created_n,
-                                ignore=ignoring + ['unlock_date', 'due_date', 'lock_date']), \
+                                ignore_keys=ignoring + ['unlock_date', 'due_date', 'lock_date']), \
                 'Import preset nodes should be equal, apart from the moved dates'
         for before_t, created_t in zip(before_source_templates, created_templates):
             assert equal_models(before_t, created_t,
-                                ignore=ignoring + ['unlock_date', 'due_date', 'lock_date']), \
+                                ignore_keys=ignoring + ['unlock_date', 'due_date', 'lock_date']), \
                 'Import target templates should be equal, apart from the moved dates'
 
         created_progress_node = created_preset_nodes.filter(type=Node.PROGRESS).first()
@@ -669,10 +707,9 @@ class AssignmentAPITest(TestCase):
             'journals'
 
     def test_deadline(self):
-        journal = factory.Journal(assignment=factory.Assignment())
+        journal = factory.Journal(assignment=factory.Assignment(points_possible=10), entries__n=0)
         assignment = journal.assignment
         teacher = assignment.courses.first().author
-        assignment.points_possible = 10
 
         resp = api.get(self, 'assignments/upcoming', user=journal.authors.first().user)['upcoming']
         assert resp[0]['deadline']['name'] == 'End of assignment', \
@@ -689,15 +726,17 @@ class AssignmentAPITest(TestCase):
         assert resp[0]['deadline']['name'] == '0/7 points', \
             'When not having completed an progress node, that should be shown'
 
-        entrydeadline = VLE.factory.make_entrydeadline_node(
-            assignment.format, timezone.now() + datetime.timedelta(days=1), assignment.format.template_set.first())
-        utils.update_journals(assignment.journal_set.distinct(), entrydeadline)
+        entrydeadline = factory.DeadlinePresetNode(
+            format=assignment.format,
+            due_date=timezone.now() + datetime.timedelta(days=1),
+            forced_template=assignment.format.template_set.first()
+        )
 
         resp = api.get(self, 'assignments/upcoming', user=journal.authors.first().user)['upcoming']
         assert resp[0]['deadline']['name'] == assignment.format.template_set.first().name, \
             'When not having completed an entry deadline, that should be shown'
 
-        entry = factory.Entry(node=Node.objects.get(journal=journal, preset=entrydeadline))
+        entry = factory.PresetEntry(node__journal=journal, node__preset=entrydeadline)
 
         resp = api.get(self, 'assignments/upcoming', user=teacher)['upcoming']
         assert resp[0]['deadline']['date'] is not None, \
@@ -777,7 +816,7 @@ class AssignmentAPITest(TestCase):
         assert assignment.get_active_course(factory.Student()) is None, \
             'When someone is not related to the assignment, it should not respond with any course'
 
-        lti_course = factory.LtiCourseFactory(startdate=timezone.now() + datetime.timedelta(weeks=1), author=teacher)
+        lti_course = factory.LtiCourse(startdate=timezone.now() + datetime.timedelta(weeks=1), author=teacher)
         assignment.courses.add(lti_course)
         assignment.active_lti_id = 'lti_id'
         lti_course.assignment_lti_id_set.append('lti_id')
@@ -792,7 +831,7 @@ class AssignmentAPITest(TestCase):
         assignment.courses.add(past)
         future = factory.Course(startdate=timezone.now() + datetime.timedelta(days=1))
         assignment.courses.add(future)
-        lti = factory.LtiCourseFactory(startdate=timezone.now() + datetime.timedelta(weeks=1))
+        lti = factory.LtiCourse(startdate=timezone.now() + datetime.timedelta(weeks=1))
         assignment.courses.add(lti)
         assert assignment.get_active_course(teacher) == lti_course, \
             'Do not select any course that the user is not in'
@@ -854,11 +893,11 @@ class AssignmentAPITest(TestCase):
         student_before = factory.Student()
         student_after = factory.Student()
         normal_before = factory.Assignment(courses=[course_before])
-        factory.GroupAssignment(courses=[course_before])
+        factory.Assignment(courses=[course_before], group_assignment=True)
         normal_unpublished = factory.Assignment(courses=[course_before], is_published=False)
         factory.Participation(user=student_before, course=course_before)
         normal_after = factory.Assignment(courses=[course_before])
-        group_after = factory.GroupAssignment(courses=[course_before])
+        group_after = factory.Assignment(courses=[course_before], group_assignment=True)
         journals = Journal.all_objects.filter(authors__user=student_before)
 
         assert journals.filter(assignment=normal_before).exists(), 'Normal assignment should get journals'
@@ -892,7 +931,7 @@ class AssignmentAPITest(TestCase):
         self.assertRaises(IntegrityError, AssignmentParticipation.objects.create, user=student, assignment=assignment)
 
     def test_participants_without_journal(self):
-        assignment = factory.GroupAssignment()
+        assignment = factory.Assignment(group_assignment=True)
         ap1 = factory.AssignmentParticipation(user=factory.Student(), assignment=assignment)
         ap2 = factory.AssignmentParticipation(user=factory.Student(), assignment=assignment)
         ap3_in_journal = factory.AssignmentParticipation(user=factory.Student(), assignment=assignment)

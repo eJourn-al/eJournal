@@ -1,10 +1,12 @@
 import test.factory as factory
 from test.utils import api
 
+from django.db.utils import IntegrityError
 from django.test import TestCase
 
 import VLE.serializers as serialize
-from VLE.models import Entry, Group, Journal, Field
+from VLE.models import Assignment, Course, Entry, Field, Format, Group, Journal, Template
+from VLE.utils.error_handling import VLEProgrammingError
 
 
 class FormatAPITest(TestCase):
@@ -13,7 +15,7 @@ class FormatAPITest(TestCase):
         self.admin = factory.Admin()
         self.course = factory.Course(author=self.teacher)
         self.assignment = factory.Assignment(courses=[self.course])
-        self.format = factory.Format(assignment=self.assignment)
+        self.format = self.assignment.format
         self.template = factory.Template(format=self.format)
         self.update_dict = {
             'assignment_details': {
@@ -27,13 +29,40 @@ class FormatAPITest(TestCase):
             'presets': []
         }
 
+    def test_format_factory(self):
+        self.assertRaises(VLEProgrammingError, factory.Format)
+        assignment = factory.Assignment(format__templates=[])
+
+        template = factory.TemplateAllTypes(format=assignment.format)
+        assert template.format.pk == assignment.format.pk and assignment.format.template_set.count() == 1 \
+            and assignment.format.template_set.get(pk=template.pk), \
+            'A format can be generated via an assignment, and its templates can be set'
+
+        assignment = factory.Assignment(format__templates=[{'type': Field.URL}])
+        assert assignment.format.template_set.count() == 1, 'One template is created'
+        field = Field.objects.get(template=assignment.format.template_set.first())
+        assert field.type == Field.URL, 'And the template consists only out of the specified field'
+
+    def test_template_without_format(self):
+        self.assertRaises(IntegrityError, factory.Template)
+
     def test_template_factory(self):
-        template = factory.Template()
+        assignment = factory.Assignment()
+
+        t_c = Template.objects.count()
+        a_c = Assignment.objects.count()
+        j_c = Journal.objects.count()
+        c_c = Course.objects.count()
+        f_c = Format.objects.count()
+
+        template = factory.Template(format=assignment.format)
         assert not template.field_set.exists(), 'By default a template should be iniated without fields'
 
-        template = factory.Template(gen_fields=[{'type': Field.URL}])
-        Field.objects.get(template=template, type=Field.URL)
-        assert template.field_set.count() == 1, 'It is possible to generate fields including kwargs'
+        assert f_c == Format.objects.count(), 'No additional format is generated'
+        assert a_c == Assignment.objects.count(), 'No additional assignment should be generated'
+        assert c_c == Course.objects.count(), 'No additional course should be generated'
+        assert j_c == Journal.objects.count(), 'No journals should be generated'
+        assert t_c + 1 == Template.objects.count(), 'One template should be generated'
 
     def test_update_assign_to(self):
         def check_groups(groups, status=200):
@@ -112,7 +141,7 @@ class FormatAPITest(TestCase):
                    user=factory.Admin())
 
         # Check cannot unpublish/change assignment type if there are entries
-        factory.Entry(node__journal__assignment=self.assignment)
+        factory.UnlimitedEntry(node__journal__assignment=self.assignment)
         group_dict = self.update_dict.copy()
         group_dict['assignment_details']['is_group_assignment'] = True
         self.update_dict['assignment_details']['is_published'] = False

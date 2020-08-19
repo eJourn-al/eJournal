@@ -8,7 +8,7 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
 
 import VLE.factory as nfac
-from VLE.models import Comment, FileContext, Participation
+from VLE.models import Comment, FileContext, Participation, User
 
 
 def set_entry_comment_counts(obj):
@@ -53,7 +53,7 @@ class CommentAPITest(TestCase):
         assert self.entry_unpublished_comments == 2, 'Expected 2 unpublished comments'
 
     def test_comment_factory(self):
-        entry = factory.Entry()
+        entry = factory.UnlimitedEntry()
         comment = factory.StudentComment(entry=entry)
         journal = entry.node.journal
 
@@ -66,7 +66,7 @@ class CommentAPITest(TestCase):
             'Student comment author is among the participants of the attached journal when instantiated via journal'
 
         comment = factory.TeacherComment(entry=entry)
-        # QUESTION JIR: Why can course__in=journal.assignment.courses not be added to the below query?
+        # QUESTION JIR: Why can course__in=journal.assignment.courses.all() not be added to the below query?
         participations = Participation.objects.filter(role__name='Teacher', user=comment.author)
         assert any([journal.assignment.courses.filter(pk=p.course.pk).exists() for p in participations]), \
             'Teacher comment author has Teacher role for the entry used for initialization'
@@ -238,7 +238,7 @@ class CommentAPITest(TestCase):
         self.check_comment_update(self.comment, self.student, True, files=[file])
         self.check_comment_update(self.comment, self.student, True, files=[])
 
-        entry = factory.Entry(author=self.student, node__journal=self.journal)
+        entry = factory.UnlimitedEntry(author=self.student, node__journal=self.journal)
         file = FileContext.objects.create(file=video, author=self.student, file_name=video.name)
         file2 = FileContext.objects.create(file=video, author=self.student, file_name=video.name)
         self.check_comment_create(entry, self.student, files=[file])
@@ -322,15 +322,19 @@ class CommentAPITest(TestCase):
 
     def test_rich_text_comment_file_context_factory(self):
         number_of_embedded_files = 2
-        comment = factory.StudentCommentFactory()
-        rt_comment_fc = factory.RichTextCommentFileContext(comment=comment)
+        comment = factory.StudentComment()
+        u_count = User.objects.count()
 
+        rt_comment_fc = factory.RichTextCommentFileContext(comment=comment)
+        assert u_count == User.objects.count(), \
+            'Generating a rich text comment\'s fc, generates no additional users if the comment is provied'
+        assert rt_comment_fc.author.pk == comment.author.pk, 'The RT comment\'s FC\'s author is the comment\'s author'
         assert comment.pk == rt_comment_fc.comment.pk, 'The fc is correctly linked to the given comment'
         assert comment.entry.node.journal.pk == rt_comment_fc.journal.pk, \
             'Comment RT files require the journal context to be set'
         assert rt_comment_fc.in_rich_text, 'Comment rich text file context should be flagged as such'
 
-        comment = factory.StudentCommentFactory(n_rt_files=number_of_embedded_files)
+        comment = factory.StudentComment(n_rt_files=number_of_embedded_files)
         comment = Comment.objects.get(pk=comment.pk)
 
         assert FileContext.objects.filter(comment=comment).count() == number_of_embedded_files, \
@@ -344,7 +348,7 @@ class CommentAPITest(TestCase):
             assert file_name_type.split('/')[0] == file_type.split('/')[0] == 'image'
 
     def test_attached_comment_file_context_factory(self):
-        comment = factory.StudentCommentFactory()
+        comment = factory.StudentComment()
         att_comment_fc = factory.AttachedCommentFileContext(comment=comment)
 
         assert comment.pk == att_comment_fc.comment.pk, 'The fc is correctly linked to the given comment'
@@ -352,7 +356,7 @@ class CommentAPITest(TestCase):
             'Attached FC comment files require the journal context to be set'
         assert not att_comment_fc.in_rich_text, 'Comment attached file context should not be flagged as RT'
 
-        comment = factory.StudentCommentFactory(n_att_files=2)
+        comment = factory.StudentComment(n_att_files=2)
 
         assert comment.files.count() == 2, 'Two attached files are generated'
         assert FileContext.objects.filter(comment=comment, journal=comment.entry.node.journal).count() == 2, \

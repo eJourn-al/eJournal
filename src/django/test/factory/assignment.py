@@ -12,12 +12,24 @@ def _add_courses(self, create, extracted, **kwargs):
         for course in extracted:
             self.add_course(course)
     else:
-        self.courses.add(test.factory.course.CourseFactory())
+        self.add_course(test.factory.Course())
 
 
 class AssignmentFactory(factory.django.DjangoModelFactory):
+    '''
+    Defaults to a format consisting of two templates: Text and Colloquium
+
+    It is ensured that the author is a teacher for each attached course. By default the author of the generated
+    course is use.
+    '''
     class Meta:
         model = 'VLE.Assignment'
+
+    class Params:
+        group_assignment = factory.Trait(
+            is_group_assignment=True,
+            can_lock_journal=True
+        )
 
     name = factory.Sequence(lambda x: "Assignment_{}".format(x))
     description = 'Logboek for all your logging purposes'
@@ -31,7 +43,7 @@ class AssignmentFactory(factory.django.DjangoModelFactory):
     can_lock_journal = False
     points_possible = 10
 
-    format = factory.SubFactory('test.factory.format.FormatFactory')
+    format = factory.SubFactory('test.factory.format.FormatFactory', called_from_assignment=True)
 
     @factory.post_generation
     def courses(self, create, extracted, **kwargs):
@@ -42,35 +54,9 @@ class AssignmentFactory(factory.django.DjangoModelFactory):
 
     @factory.post_generation
     def author(self, create, extracted, **kwargs):
-        if not create:
-            return
-
-        if isinstance(extracted, User):
-            self.author = extracted
-        elif kwargs:
-            self.author = test.factory.user.UserFactory(**kwargs)
-        else:
-            if self.courses.exists():
-                self.author = self.courses.first().author
-            else:
-                self.author = test.factory.user.UserFactory()
-        self.save()
-
-    @factory.post_generation
-    def templates(self, create, extracted, **kwargs):
-        if not create:
-            return
-
-        if extracted or extracted == []:
-            for template in extracted:
-                if not template.format.pk == self.format.pk:
-                    old_format = template.format
-                    template.format = self.format
-                    template.save()
-                    old_format.delete()
-        else:
-            test.factory.template.TextTemplateFactory(format=self.format)
-            test.factory.template.ColloquiumTemplateFactory(format=self.format)
+        if not extracted and not kwargs:
+            extracted = self.courses.first().author if self.courses.exists() else extracted
+        test.factory.rel_factory(self, create, extracted, 'author', User, test.factory.Teacher, **kwargs)
 
     @factory.post_generation
     def make_author_teacher_in_all_courses(self, create, extracted, **kwargs):
@@ -80,7 +66,7 @@ class AssignmentFactory(factory.django.DjangoModelFactory):
         for course in self.courses.all():
             if not Participation.objects.filter(course=course, user=self.author).exists():
                 teacher_role = Role.objects.get(course=course, name='Teacher')
-                test.factory.participation.ParticipationFactory(course=course, user=self.author, role=teacher_role)
+                test.factory.Participation(course=course, user=self.author, role=teacher_role)
 
 
 class LtiAssignmentFactory(AssignmentFactory):
@@ -96,8 +82,3 @@ class LtiAssignmentFactory(AssignmentFactory):
         for course in self.courses.all():
             course.assignment_lti_id_set.append(self.active_lti_id)
             course.save()
-
-
-class GroupAssignmentFactory(AssignmentFactory):
-    is_group_assignment = True
-    can_lock_journal = True

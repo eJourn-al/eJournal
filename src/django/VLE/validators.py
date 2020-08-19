@@ -1,4 +1,5 @@
 import json
+import os
 import re
 from datetime import datetime
 
@@ -52,12 +53,17 @@ def validate_entry_content(data, field):
     """Validates the given data based on its field type, any validation error will be thrown."""
     if field.required and not (data or data == ''):
         raise VLEMissingRequiredField(field)
+    # QUESTION: Is '' really valid data for all fields?
     if not data:
         return
 
+    if field.type == Field.RICH_TEXT:
+        # TODO JIR: Check if any files are mentioned in the data, if so check if the FC and FC.file exist
+        pass
+
     # TODO: improve VIDEO validator
     if field.type == Field.URL or field.type == Field.VIDEO:
-        url_validate = URLValidator(schemes=('http', 'https', 'ftp', 'ftps'))
+        url_validate = URLValidator(schemes=Field.ALLOWED_URL_SCHEMES)
         url_validate(data)
 
     if field.type == Field.SELECTION:
@@ -66,20 +72,30 @@ def validate_entry_content(data, field):
 
     if field.type == Field.DATE:
         try:
-            datetime.strptime(data, '%Y-%m-%d')
+            datetime.strptime(data, Field.ALLOWED_DATE_FORMAT)
         except (ValueError, TypeError) as e:
             raise ValidationError(str(e))
 
     if field.type == Field.DATETIME:
         try:
-            datetime.strptime(data, '%Y-%m-%dT%H:%M:%S')
+            datetime.strptime(data, Field.ALLOWED_DATETIME_FORMAT)
         except (ValueError, TypeError) as e:
             raise ValidationError(str(e))
 
     if field.type == Field.FILE:
+        try:
+            int(data['id'])
+        except (ValueError, KeyError):
+            raise ValidationError("The data['id'] of a field file should contain the pk of the related file")
+
+        # Ensures the FC still exists
+        fc = FileContext.objects.get(pk=int(data['id']))
+        if not os.path.isfile(fc.file.path):
+            raise ValidationError("Entry references non existing file")
+
         if field.options:
             validator = FileExtensionValidator(field.options.split(', '))
-            validator(FileContext.objects.get(pk=data['id']).file)
+            validator(fc.file)
 
     if field.type == Field.NO_SUBMISSION:
         raise ValidationError("No submission is allowed for this field.")

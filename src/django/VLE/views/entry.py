@@ -59,11 +59,11 @@ class EntryView(viewsets.ViewSet):
 
         entry_utils.check_fields(template, content_list)
 
-        # Node specific entry
+        # Deadline entry
         if node_id:
             node = Node.objects.get(pk=node_id, journal=journal)
             entry = entry_utils.add_entry_to_node(node, template, request.user)
-        # Template specific entry
+        # Unlimited entry
         else:
             entry = factory.make_entry(template, request.user)
             node = factory.make_node(journal, entry)

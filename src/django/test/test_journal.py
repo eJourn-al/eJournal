@@ -3,13 +3,12 @@ from test.utils import api
 
 from computedfields.models import update_dependent
 from django.conf import settings
-from django.db.models import Q
+from django.core.exceptions import ValidationError
 from django.test import TestCase
 
 import VLE.factory
-from VLE.models import Assignment, AssignmentParticipation, Content, Course, Entry, Journal, Node, Template, User
+from VLE.models import Assignment, AssignmentParticipation, Course, Journal, User
 from VLE.utils.error_handling import VLEBadRequest
-from django.core.exceptions import ValidationError
 
 
 class JournalAPITest(TestCase):
@@ -20,28 +19,51 @@ class JournalAPITest(TestCase):
         self.course = self.assignment.courses.first()
         self.teacher = self.course.author
 
-        self.group_assignment = factory.GroupAssignment()
+        self.group_assignment = factory.Assignment(group_assignment=True)
         self.group_journal = factory.GroupJournal(assignment=self.group_assignment)
         self.group_journal2 = factory.GroupJournal(assignment=self.group_assignment)
         self.ap = factory.AssignmentParticipation(assignment=self.group_assignment)
         self.g_student = self.ap.user
-        group_course = self.group_assignment.courses.first()
-        self.g_teacher = group_course.author
+        self.g_teacher = self.group_assignment.courses.first().author
 
     def test_journal_factory(self):
         c_count = Course.objects.count()
         a_count = Assignment.objects.count()
+        j_count = Journal.all_objects.count()
+        ap_count = AssignmentParticipation.objects.count()
+        u_count = User.objects.count()
+
+        # Generate a journal whose assignment is not attached to any courses
+        journal = factory.Journal(assignment__courses=[])
+
+        assert Course.objects.count() == c_count,\
+            'Generating a journal whose assignment hold no courses, does indeed generate no courses'
+        assert Assignment.objects.filter(journal=journal).exists() and Assignment.objects.count() == a_count + 1, \
+            'A single assignment is generated when generating a journal'
+        # QUESTION: Lars is het logisch dat hier all_objects nodig is?
+        assert Journal.all_objects.count() == j_count + 1, 'A single journal is generated'
+        assert AssignmentParticipation.objects.count() == ap_count + 1, 'Generating a journal generates a single AP'
+        assert u_count + 2 == User.objects.count(), \
+            'A single user is created when generating a user (plus assignment author)'
+
+        c_count = Course.objects.count()
+        a_count = Assignment.objects.count()
         j_count = Journal.objects.count()
         ap_count = AssignmentParticipation.objects.count()
+        u_count = User.objects.count()
 
-        journal = factory.JournalFactory()
+        # Generate a fully connected journal (course and assignment)
+        journal = factory.Journal()
 
         assert Course.objects.filter(assignment=journal.assignment).exists() and Course.objects.count() == c_count + 1,\
             'A single course is generated when generating a journal'
         assert Assignment.objects.filter(journal=journal).exists() and Assignment.objects.count() == a_count + 1, \
             'A single assignment is generated when generating a journal'
         assert Journal.objects.count() == j_count + 1, 'A single journal is generated'
-        assert AssignmentParticipation.objects.count() == ap_count + 1, 'Generating a journal generates a single AP'
+        assert AssignmentParticipation.objects.count() == ap_count + 2, \
+            'Generating a journal generates an AP for both the journal user and the course author'
+        assert u_count + 2 == User.objects.count(), \
+            'When generating an assignment, a journal AP user is created, and a course author'
 
         assignment = factory.Assignment()
         journal = factory.Journal(assignment=assignment)
@@ -66,50 +88,39 @@ class JournalAPITest(TestCase):
         assert ap.grade_url and ap.sourcedid, 'Lti journal requires a non empty grade_url and sourcedid'
 
     def test_group_journal_factory(self):
-        users = [factory.Student(), factory.Student(), factory.Student()]
+        course = factory.Course()
+        users = [factory.Student(), factory.Student()]
+        user_count = User.objects.count()
+        ap_count = AssignmentParticipation.objects.count()
 
-        group_journal = factory.GroupJournal(users=users, author_limit=3)
-        aps = AssignmentParticipation.objects.filter(
-            journal=group_journal, assignment=group_journal.assignment, user__in=users)
-        assert aps.count() == len(users), 'An assignment participation is created for each student'
+        # Group journal, like journal, defaults to one user, here we add two more.
+        group_journal = factory.GroupJournal(add_users=users, author_limit=3, assignment__courses=[course])
+
+        assert user_count + 1 == User.objects.count(), 'One user is created by a group journal by default'
+        assert ap_count + 4 == AssignmentParticipation.objects.count(), \
+            '''Creating a group journal with 3 users, also creates three assignment participations (plus one for the
+            teacher)'''
+        assert AssignmentParticipation.objects.filter(
+            journal=group_journal, user__in=group_journal.authors.all().values('user')).count() == 3, \
+            'All students APs are attached to the journal'
 
         users.append(factory.Student())
-
-        self.assertRaises(ValidationError, factory.GroupJournal, users=users, author_limit=3)
-
-    def test_populated_journal_factory(self):
-        # TODO JIR
-        pass
-        # e_count = Entry.objects.count()
-        # journal = factory.PopulatedJournalFactory()
-
-        # # Generating a journal should generate entries, this should be specifiable
-        # # 'Node - Entry one to one relation is maintained when generating a journal'
-
-        # assert not Entry.objects.filter(node__journal=journal, template=None).exists(), \
-        #     'All generated entries hold a valid template'
-        # assert Entry.objects.filter(node__journal=journal).count() == e_count + 1, \
-        #     'Only entries related to the journal are generated'
-
-        # entry_qry = Entry.objects.filter(node__journal=journal)
-
-        # for entry in entry_qry:
-        #     assert Content.objects.filter(entry=entry).filter(~Q(data='')).exists(), \
-        #         'Non empty content is generated for each entry'
-        #     assert entry.template.format.assignment.pk == entry.node.journal.assignment.pk, \
-        #         'The Entry Template format is linked to the assignment of the journal'
+        self.assertRaises(ValidationError, factory.GroupJournal, add_users=users, author_limit=3)
 
     def test_computed_name(self):
+        # A short name which will not be truncated with two users in a journal
+        short_name = 'Short name'
+        # NOTE, comments or assert messages why the behaviour is expected missing
         journal = factory.Journal()
         assert journal.name == journal.authors.first().user.full_name
 
         # Test author name
         user = journal.authors.first().user
-        user.full_name = 'Other name'
+        user.full_name = short_name
         user.save()
         journal.refresh_from_db()
-        assert journal.name == 'Other name'
-        assert journal.full_names == 'Other name'
+        assert journal.name == short_name
+        assert journal.full_names == short_name
         assert journal.usernames == user.username
 
         # Test stored name
@@ -117,37 +128,37 @@ class JournalAPITest(TestCase):
         journal.save()
         journal.refresh_from_db()
         assert journal.name == 'stored name'
-        assert journal.full_names == 'Other name'
-        journal.stored_name = None
-        journal.save()
+        assert journal.full_names == short_name
 
         # Test add author
-        ap = AssignmentParticipation.objects.create(user=factory.Student(), assignment=journal.assignment)
-        journal.add_author(ap)
-        journal.refresh_from_db()
-        assert ', ' in journal.name
-        assert ap.user.full_name in journal.name
-        assert 'Other name' in journal.full_names
-        assert ap.user.full_name in journal.full_names
-        assert ap.user.username in journal.usernames
-        assert ', ' in journal.usernames
+        group_journal = factory.GroupJournal(ap__user__full_name='Short name', add_users=[factory.Student()])
+        ap = group_journal.authors.first()
+        assert ', ' in group_journal.full_names
+        assert ap.user.full_name in group_journal.full_names
+        assert user.full_name in group_journal.full_names
+        assert ap.user.username in group_journal.usernames
+        assert ', ' in group_journal.usernames
+        assert group_journal.name == 'Journal {}'.format(Journal.objects.filter(assignment=self.assignment).count()), \
+            'Group journal name should default to assignments journal count'
 
         # Test updates also on .update
         User.objects.filter(pk=ap.user.pk).update(full_name='update name')
         update_dependent(User.objects.filter(pk=ap.user.pk))
-        journal.refresh_from_db()
-        assert 'update name' in journal.name
-        assert 'update name' in journal.full_names
+        group_journal.refresh_from_db()
+        assert 'update name' in group_journal.full_names, \
+            'Updated users name is reflected in cached journals full names'
+        assert group_journal.name
 
         # Test remove author
-        journal.remove_author(ap)
-        assert ap.user.full_name not in journal.name
-        assert ap.user.full_name not in journal.full_names
-        assert journal.name == 'Other name'
-        assert journal.full_names == 'Other name'
+        group_journal.remove_author(ap)
+        assert ap.user.full_name not in group_journal.name
+        assert ap.user.full_name not in group_journal.full_names
+        assert group_journal.full_names == group_journal.authors.first().user.full_name
+        assert group_journal.name == 'Journal {}'.format(Journal.objects.filter(assignment=self.assignment).count()), \
+            'Group journal name should still default to assignments journal count'
 
     def test_computed_grade(self):
-        journal = factory.Journal()
+        journal = factory.Journal(entries__n=0)
         assert journal.grade == 0
         assert journal.unpublished == 0
         assert journal.needs_marking == 0
@@ -170,7 +181,7 @@ class JournalAPITest(TestCase):
         assert journal.unpublished == 1
         assert journal.needs_marking == 0
 
-        entry = factory.Entry(grade=None, node__journal=journal)
+        entry = factory.UnlimitedEntry(grade=None, node__journal=journal)
         journal.refresh_from_db()
         assert journal.grade == 3
         assert journal.unpublished == 1
@@ -314,32 +325,40 @@ class JournalAPITest(TestCase):
         # Check teacher can update author_limit only for group assignment
         api.update(self, 'journals', params={'pk': self.journal.pk, 'author_limit': 4}, user=self.teacher, status=400)
         api.update(self, 'journals', params={'pk': self.group_journal.pk, 'author_limit': 4}, user=self.g_teacher)
-        assert Journal.objects.get(pk=self.group_journal.pk).author_limit == 4
+        self.group_journal.refresh_from_db()
+        assert self.group_journal.author_limit == 4, 'Author limit is succsefully update'
+
+        assert self.group_journal.authors.count() == 1
         # Check teacher cannot update author_limit when there are more student in journal
         self.group_journal.add_author(factory.AssignmentParticipation(assignment=self.group_assignment))
         self.group_journal.add_author(factory.AssignmentParticipation(assignment=self.group_assignment))
-        self.group_journal.add_author(factory.AssignmentParticipation(assignment=self.group_assignment))
         api.update(
-            self, 'journals', params={'pk': self.group_journal.pk, 'author_limit': 1}, user=self.g_teacher, status=400)
+            self, 'journals',
+            params={'pk': self.group_journal.pk, 'author_limit': self.group_journal.authors.count() - 1},
+            user=self.g_teacher, status=400
+        )
 
         # Check teacher can update name and author_limit
         api.update(
             self, 'journals', params={'pk': self.group_journal.pk, 'author_limit': 9, 'name': 'NEW'},
             user=self.g_teacher)
-        journal = Journal.objects.get(pk=self.group_journal.pk)
-        assert journal.author_limit == 9 and journal.name == 'NEW'
-        for _ in range(9):
+        self.group_journal.refresh_from_db()
+        assert self.group_journal.author_limit == 9 and self.group_journal.name == 'NEW'
+
+        for i in range(self.group_journal.author_limit - self.group_journal.authors.count()):
             self.group_journal.add_author(factory.AssignmentParticipation(assignment=self.group_assignment))
+
         api.update(
-            self, 'journals', params={'pk': self.group_journal.pk, 'author_limit': 0},
+            self, 'journals', params={'pk': self.group_journal.pk, 'author_limit': Journal.UNLIMITED},
             user=self.g_teacher)
-        journal = Journal.objects.get(pk=self.group_journal.pk)
-        assert journal.author_limit == 0
+        self.group_journal.refresh_from_db()
+        assert self.group_journal.author_limit == Journal.UNLIMITED
+
         api.update(
             self, 'journals', params={'pk': self.group_journal.pk, 'author_limit': 3},
             user=self.g_teacher, status=400)
-        journal = Journal.objects.get(pk=self.group_journal.pk)
-        assert journal.author_limit == 0
+        self.group_journal.refresh_from_db()
+        assert self.group_journal.author_limit == Journal.UNLIMITED
         api.update(
             self, 'journals', params={'pk': self.journal.pk, 'author_limit': 3}, user=self.teacher, status=400)
         api.update(
@@ -365,7 +384,7 @@ class JournalAPITest(TestCase):
         self.group_journal.remove_author(self.group_journal.authors.first())
         api.delete(self, 'journals', params={'pk': self.group_journal.pk}, user=self.g_teacher)
 
-    def test_join(self):
+    def test_join_journal(self):
         assert not self.group_journal.authors.filter(user=self.g_student).exists(), \
             'Check if student is not yet in the journal'
         api.update(self, 'journals/join', params={'pk': self.group_journal.pk}, user=self.g_student)
@@ -389,7 +408,7 @@ class JournalAPITest(TestCase):
             user=factory.AssignmentParticipation(assignment=self.group_assignment).user, status=400)
 
         # Check max set to 0 enables infinite amount
-        self.group_journal2.author_limit = 0
+        self.group_journal2.author_limit = Journal.UNLIMITED
         self.group_journal2.save()
         for _ in range(3):
             api.update(
@@ -397,7 +416,7 @@ class JournalAPITest(TestCase):
                 user=factory.AssignmentParticipation(assignment=self.group_assignment).user)
 
         # Check can only leave if author_limit is too low
-        self.group_journal2.author_limit = 2
+        self.group_journal2.author_limit = self.group_journal2.authors.count()
         self.group_journal2.save()
         api.update(
             self, 'journals/join', params={'pk': self.group_journal2.pk},
@@ -420,7 +439,6 @@ class JournalAPITest(TestCase):
             self, 'journals/get_members', params={'pk': self.group_journal.pk},
             user=factory.Teacher(), status=403)
 
-        # print(self.group_journal.authors.all())
         # Test before adding student, that student is not returned
         members = api.get(
             self, 'journals/get_members', params={'pk': self.group_journal.pk},
