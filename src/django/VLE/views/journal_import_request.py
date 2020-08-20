@@ -21,6 +21,7 @@ class JournalImportRequestView(viewsets.ViewSet):
 
         journal_target = Journal.objects.get(pk=journal_target_id)
         request.user.check_can_view(journal_target)
+        request.user.check_permission('can_manage_journal_import_requests', journal_target.assignment)
 
         serializer = JournalImportRequestSerializer(
             journal_target.import_request_target.filter(state=JournalImportRequest.PENDING),
@@ -84,8 +85,7 @@ class JournalImportRequestView(viewsets.ViewSet):
 
         if not request.user.has_permission('can_grade', jir.target.assignment):
             return response.forbidden('You require the ability to grade the journal in order to approve the import.')
-        # TODO JIR: Make new permission for importing
-        request.user.check_permission('can_edit_assignment', jir.target.assignment)
+        request.user.check_permission('can_manage_journal_import_requests', jir.target.assignment)
 
         jir.state = jir_action
         jir.processor = request.user
@@ -96,7 +96,6 @@ class JournalImportRequestView(viewsets.ViewSet):
             if not source_entries.exists():
                 jir.state = jir.EMPTY_WHEN_PROCESSED
 
-        # TODO JIR: Wrap in transaction.atomic block
         for source_entry in source_entries:
             import_utils.import_entry(source_entry, jir.target, copy_grade=jir_action == jir.APPROVED_INC_GRADES)
 

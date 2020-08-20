@@ -31,4 +31,9 @@ class Migration(migrations.Migration):
             name='jir',
             field=models.ForeignKey(null=True, blank=True, on_delete=django.db.models.deletion.SET_NULL, to='VLE.JournalImportRequest'),
         ),
+        migrations.AddField(
+            model_name='role',
+            name='can_manage_journal_import_requests',
+            field=models.BooleanField(default=False),
+        ),
     ]

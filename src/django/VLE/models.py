@@ -551,6 +551,8 @@ class Role(CreateUpdateModel):
 
         'can_comment',
         'can_edit_staff_comment',
+
+        'can_manage_journal_import_requests',
     ]
     PERMISSIONS = COURSE_PERMISSIONS + ASSIGNMENT_PERMISSIONS
 
@@ -583,6 +585,7 @@ class Role(CreateUpdateModel):
     can_comment = models.BooleanField(default=False)
     can_edit_staff_comment = models.BooleanField(default=False)
     can_view_unpublished_assignment = models.BooleanField(default=False)
+    can_manage_journal_import_requests = models.BooleanField(default=False)
 
     def save(self, *args, **kwargs):
         if self.can_add_course_users and not self.can_view_course_users:
@@ -615,6 +618,9 @@ class Role(CreateUpdateModel):
 
         if self.can_edit_staff_comment and not self.can_comment:
             raise ValidationError('A user needs to be able to comment in order to edit other comments.')
+
+        if self.can_manage_journal_import_requests and not self.can_grade:
+            raise ValidationError('A user needs the permission to grade in order to manage import requests.')
 
         super(Role, self).save(*args, **kwargs)
 

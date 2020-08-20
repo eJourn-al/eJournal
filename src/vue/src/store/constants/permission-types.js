@@ -29,6 +29,7 @@ export const ASSIGNMENT_LEVEL_PERMISSIONS = new Set([
     'can_have_journal',
     'can_comment',
     'can_edit_staff_comment',
+    'can_manage_journal_import_requests',
 ])
 
 export const ALL_PERIMSSIONS = new Set([

@@ -52,15 +52,23 @@ class JournalImportRequestTest(TestCase):
         data = {'journal_target_id': jir.target.pk}
 
         # Only relevant users can access JIRs
-        api.get(self, 'journal_import_request', params=data, user=jir.author)
-        api.get(self, 'journal_import_request', params=data, user=supervisor)
+        api.get(self, 'journal_import_request', params=data, user=jir.author, status=403)
         api.get(self, 'journal_import_request', params=data, user=unrelated_teacher, status=403)
+        api.get(self, 'journal_import_request', params=data, user=supervisor)
+
+        # Supervisor can only access JIRs with can_manage_journal_import_requests permission
+        supervisor_role = supervisor.participation_set.get(course=jir.target.assignment.courses.first()).role
+        supervisor_role.can_manage_journal_import_requests = False
+        supervisor_role.save()
+        api.get(self, 'journal_import_request', params=data, user=supervisor, status=403)
+        supervisor_role.can_manage_journal_import_requests = True
+        supervisor_role.save()
 
         jir2 = factory.JournalImportRequest(author=jir.author, target=jir.target)
         # Also generate an unrelated JIR
         factory.JournalImportRequest()
 
-        resp = api.get(self, 'journal_import_request', params=data, user=jir.author)['journal_import_requests']
+        resp = api.get(self, 'journal_import_request', params=data, user=supervisor)['journal_import_requests']
 
         assert len(resp) == 2, 'All JIRs for the given target are serialized'
         assert resp[0]['id'] == jir.pk and resp[1]['id'] == jir2.pk, 'The correct JIRs are serialized'

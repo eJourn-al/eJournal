@@ -48,3 +48,4 @@ class TeacherRoleFactory(TaRoleFactory):
     can_comment = True
     can_edit_staff_comment = True
     can_view_grade_history = True
+    can_manage_journal_import_requests = True

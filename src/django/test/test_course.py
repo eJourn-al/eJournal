@@ -80,9 +80,13 @@ class CourseAPITest(TestCase):
         # Check participating
         get_resp = api.get(self, 'courses', params={'pk': self.course2.pk}, user=self.teacher2)
 
-    def test_create(self):
+    def test_create_course(self):
         # Test courses with same name and abbreviation
-        api.create(self, 'courses', params=self.create_params, user=self.teacher1)
+        resp = api.create(self, 'courses', params=self.create_params, user=self.teacher1)['course']
+        course = Course.objects.get(pk=resp['id'])
+        teacher_role = Role.objects.get(course=course, name='Teacher')
+        assert teacher_role.can_manage_journal_import_requests, 'A teacher should be able to manage JIRs by default'
+
         api.create(self, 'courses', params=self.create_params, user=self.teacher1)
 
         # Test admin without is_teacher can make a course
