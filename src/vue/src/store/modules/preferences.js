@@ -10,8 +10,10 @@ const getters = {
     hideVersionAlert: state => state.hideVersionAlert,
     gradeButtonSetting: state => state.gradeButtonSetting,
     commentButtonSetting: state => state.commentButtonSetting,
+    journalImportRequestButtonSetting: state => state.journalImportRequestButtonSetting,
     autoSelectUngradedEntry: state => state.autoSelectUngradedEntry,
     autoProceedNextJournal: state => state.autoProceedNextJournal,
+    dismissedJIRs: state => state.dismissedJIRs,
 
     // Search filters.
     todoSortBy: state => state.todo.sortBy,
@@ -67,6 +69,9 @@ const mutations = {
     },
     [types.SET_COMMENT_BUTTON_SETTING] (state, val) {
         state.commentButtonSetting = val
+    },
+    [types.SET_JOURNAL_IMPORT_REQUEST_BUTTON_SETTING] (state, val) {
+        state.journalImportRequestButtonSetting = val
     },
     [types.SET_AUTO_SELECT_UNGRADED_ENTRY] (state, val) {
         state.autoSelectUngradedEntry = val
@@ -142,6 +147,9 @@ const mutations = {
     [types.SET_ASSIGNMENT_OVERVIEW_FILTER_OWN_GROUPS] (state, filterOwnGroups) {
         state.assignmentOverview.filterOwnGroups = filterOwnGroups
     },
+    [types.ADD_DISMISSED_JIRS_TO_JOURNAL] (state, data) {
+        state.dismissedJIRs = [...state.dismissedJIRs, ...data]
+    },
     [types.RESET_PREFERENCES] (state) {
         state.gradeNotifications = null
         state.commentNotifications = null
@@ -150,6 +158,7 @@ const mutations = {
         state.hideVersionAlert = null
         state.gradeButtonSetting = 'p'
         state.commentButtonSetting = 'p'
+        state.journalImportRequestButtonSetting = 'AIG'
         state.autoSelectUngradedEntry = null
         state.autoProceedNextJournal = null
         state.todo.sortBy = 'date'
@@ -169,6 +178,7 @@ const mutations = {
         state.assignmentOverview.searchValue = ''
         state.assignmentOverview.sortBy = 'name'
         state.assignmentOverview.filterOwnGroups = true
+        state.dismissedJIRs = []
     },
 }
 
@@ -184,6 +194,7 @@ export default {
         autoProceedNextJournal: null,
         gradeButtonSetting: 'p',
         commentButtonSetting: 'p',
+        journalImportRequestButtonSetting: 'AIG',
         todo: {
             sortBy: 'date',
             filterOwnGroups: true,
@@ -209,6 +220,7 @@ export default {
             sortBy: 'name',
             filterOwnGroups: true,
         },
+        dismissedJIRs: [],
     },
     getters,
     mutations,
