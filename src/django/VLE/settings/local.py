@@ -73,3 +73,5 @@ else:
     }
 
 DEBUG = True
+
+LTI_KEYS = os.path.join(settings.BASE_DIR, '../..', 'config', 'lti_keys.json')

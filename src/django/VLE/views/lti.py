@@ -1,5 +1,6 @@
 import datetime
 import enum
+import pprint
 
 import jwt
 import oauth2
@@ -196,9 +197,10 @@ def lti_launch(request):
 
     If the parameters are not validated a redirection is send with the parameter state set to BAD_AUTH.
     """
-    secret = settings.LTI_SECRET
-    key = settings.LTI_KEY
-
+    message_launch = ExtendedDjangoMessageLaunch(
+        request, settings.LTI_KEYS, launch_data_storage=get_launch_data_storage())
+    message_launch_data = message_launch.get_launch_data()
+    pprint.pprint(message_launch_data)
     try:
         lti.OAuthRequestValidater.check_signature(key, secret, request)
     except (oauth2.Error, ValueError):

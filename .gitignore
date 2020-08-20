@@ -73,3 +73,5 @@ fabric.properties
 
 # psql dump
 *.dump
+
+zube_api_key.pem
