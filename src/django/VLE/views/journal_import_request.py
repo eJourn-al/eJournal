@@ -1,11 +1,10 @@
-from django.core.files.base import ContentFile
+from django.utils import timezone
 from rest_framework import viewsets
 
 import VLE.utils.generic_utils as utils
 import VLE.utils.import_utils as import_utils
 import VLE.utils.responses as response
-from VLE.models import (AssignmentParticipation, Comment, Content, Entry, FileContext, Grade, Journal,
-                        JournalImportRequest, Node, PresetNode)
+from VLE.models import Assignment, AssignmentParticipation, Entry, Journal, JournalImportRequest
 from VLE.serializers import JournalImportRequestSerializer
 from VLE.utils import grading
 
@@ -32,23 +31,29 @@ class JournalImportRequestView(viewsets.ViewSet):
         return response.success({'journal_import_requests': serializer.data})
 
     def create(self, request):
-        journal_source_id, journal_target_id = utils.required_typed_params(
-            request.data, (int, 'journal_source_id'), (int, 'journal_target_id'))
+        assignment_source_id, assignment_target_id = utils.required_typed_params(
+            request.data, (int, 'assignment_source_id'), (int, 'assignment_target_id'))
 
-        if journal_source_id is journal_target_id:
+        if assignment_source_id == assignment_target_id:
             return response.bad_request('You cannot import a journal into itself.')
 
-        journal_source = Journal.objects.get(pk=journal_source_id)
-        journal_target = Journal.objects.get(pk=journal_target_id)
-        ap_source = AssignmentParticipation.objects.filter(user=request.user, journal=journal_source)
-        ap_target = AssignmentParticipation.objects.filter(user=request.user, journal=journal_target)
+        assignment_target = Assignment.objects.get(pk=assignment_target_id)
 
-        # TODO JIR: Block creation of JIR from source to target more than once once approved (with or without grade)
-        # or Pending
+        if assignment_target.lock_date and assignment_target.lock_date < timezone.now():
+            return response.bad_request('You are not allowed to create an import request for a locked assignment.')
 
-        if not ap_source.exists() or not ap_target.exists():
-            return response.forbidden('You can only import from or into your own journals.')
-        # TODO JIR: Block on lock of target assignment
+        journal_source = AssignmentParticipation.objects.get(
+            user=request.user, assignment=assignment_source_id).journal
+        journal_target = AssignmentParticipation.objects.get(
+            user=request.user, assignment=assignment_target).journal
+
+        if JournalImportRequest.objects.filter(state__in=JournalImportRequest.APPROVED_STATES, target=journal_target,
+                                               source=journal_source).exists():
+            return response.bad_request('This journal has already been imported')
+        if JournalImportRequest.objects.filter(state=JournalImportRequest.PENDING, target=journal_target,
+                                               source=journal_source).exists():
+            return response.success(
+                description='The journal import request is awaiting approval from your instructor.')
 
         if not Entry.objects.filter(node__journal=journal_source).exists():
             return response.bad_request('Please select a non empty journal.')

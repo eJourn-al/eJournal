@@ -1601,6 +1601,7 @@ class JournalImportRequest(CreateUpdateModel):
     APPROVED_INC_GRADES = 'AIG'
     APPROVED_EXC_GRADES = 'AEG'
     EMPTY_WHEN_PROCESSED = 'EWP'
+    APPROVED_STATES = [APPROVED_INC_GRADES, APPROVED_EXC_GRADES]
     STATES = (
         (PENDING, 'Pending'),
         (DECLINED, 'Declined'),

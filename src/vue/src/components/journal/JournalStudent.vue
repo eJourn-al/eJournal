@@ -167,6 +167,7 @@
             <journal-import-modal
                 v-if="!loadingNodes"
                 modalID="journal-import-modal"
+                :targetAssignmentID="Number(aID)"
             />
 
             <transition name="fade">

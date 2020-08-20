@@ -3,7 +3,9 @@ import test.factory as factory
 import test.utils.generic_utils as test_utils
 from test.utils import api
 
+from dateutil.relativedelta import relativedelta
 from django.test import TestCase
+from django.utils import timezone
 
 from VLE.models import (Assignment, AssignmentParticipation, Comment, Content, Course, Entry, Field, Format, Journal,
                         JournalImportRequest, Node, PresetNode, Role, Template)
@@ -76,28 +78,49 @@ class JournalImportRequestTest(TestCase):
         student = source_journal.authors.first().user
 
         target_assignment = factory.Assignment()
-        different_student_journal = factory.Journal(assignment=target_assignment)
+        different_assignment = factory.Assignment()
 
         ap = factory.AssignmentParticipation(assignment=target_assignment, user=student)
         target_journal = ap.journal
 
         # You cannot import a journal into itself
-        data = {'journal_source_id': source_journal.pk, 'journal_target_id': source_journal.pk}
+        data = {'assignment_source_id': source_journal.assignment.pk,
+                'assignment_target_id': source_journal.assignment.pk}
         api.create(self, 'journal_import_request', params=data, user=student, status=400)
 
         # You can only import from and to ones own journal
-        data = {'journal_source_id': source_journal.pk, 'journal_target_id': different_student_journal.pk}
-        api.create(self, 'journal_import_request', params=data, user=student, status=403)
+        data = {'assignment_source_id': source_journal.assignment.pk, 'assignment_target_id': different_assignment.pk}
+        api.create(self, 'journal_import_request', params=data, user=student, status=404)
+
+        # Valid creation data
+        data = {'assignment_source_id': source_journal.assignment.pk,
+                'assignment_target_id': target_journal.assignment.pk}
+
+        # You cannot create a JIR for a locked assignment
+        target_assignment.lock_date = timezone.now() - relativedelta(seconds=1)
+        target_assignment.save()
+        api.create(self, 'journal_import_request', params=data, user=student, status=400)
+        target_assignment.lock_date = timezone.now() + relativedelta(days=1)
+        target_assignment.save()
+
+        # If a pending JIR exists for the same target and source, respond with success
+        pending_jir = factory.JournalImportRequest(
+            state=JournalImportRequest.PENDING, source=source_journal, target=target_journal)
+        api.create(self, 'journal_import_request', params=data, user=student, status=200)
+        pending_jir.delete()
+
+        approved_jir = factory.JournalImportRequest(
+            state=JournalImportRequest.APPROVED_INC_GRADES, source=source_journal, target=target_journal)
+        api.create(self, 'journal_import_request', params=data, user=student, status=400)
+        approved_jir.delete()
 
         # You cannot request to import an empty journal
-        data = {'journal_source_id': source_journal.pk, 'journal_target_id': target_journal.pk}
         api.create(self, 'journal_import_request', params=data, user=student, status=400)
 
         # So we create an entry in source_journal
         factory.UnlimitedEntry(node__journal=source_journal)
 
         # Succesfully create a JournalImportRequest
-        data = {'journal_source_id': source_journal.pk, 'journal_target_id': target_journal.pk}
         resp = api.create(
             self, 'journal_import_request', params=data, user=student, status=201)['journal_import_request']
 
