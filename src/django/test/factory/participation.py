@@ -18,6 +18,15 @@ class GroupParticipationFactory(ParticipationFactory):
 
 
 class AssignmentParticipationFactory(factory.django.DjangoModelFactory):
+    '''
+    Generates an assignment participation. Will add the provided user to all the assignment's courses via default
+    participations.
+
+    Default yields:
+        - User: Student user
+        - Assignment and via upwards chain course.
+        - Lti trait can be activitated as factory.AssignmentParticipation(lti=True)
+    '''
     class Meta:
         model = 'VLE.AssignmentParticipation'
 

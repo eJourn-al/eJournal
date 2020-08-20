@@ -27,6 +27,14 @@ def _gen_options(g_field):
 
 
 class FieldFactory(factory.django.DjangoModelFactory):
+    '''
+    Generates a field for a given template. If no template is provided a template is also generated.
+    The field type is randomly chosen unless specified.
+
+    Default yields:
+        - Field
+        - Template, requires a format to be intialized in advance.
+    '''
     class Meta:
         model = 'VLE.Field'
 

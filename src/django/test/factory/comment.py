@@ -5,6 +5,14 @@ import factory
 
 
 class CommentFactory(factory.django.DjangoModelFactory):
+    '''
+    Creates a comment attached to a limited entry
+
+    Kwargs:
+        n_att_files (int): Number of files that should be generated as attached to the comment
+        n_rt_files (int): Number of files which should be embedded in the comment text. Will append the download links
+        to the end of the comment itself.
+    '''
     class Meta:
         model = 'VLE.Comment'
 

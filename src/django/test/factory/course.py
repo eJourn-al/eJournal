@@ -6,6 +6,11 @@ import VLE.models
 
 
 class CourseFactory(factory.django.DjangoModelFactory):
+    '''
+    Provides a (:model:`VLE.Course`) instance
+
+    The author generated unless specified and a given (:model:`VLE.Role`) as a Teacher with the expected permissions.
+    '''
     class Meta:
         model = 'VLE.Course'
 

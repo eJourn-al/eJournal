@@ -9,8 +9,6 @@
 # save is called anyway ins post generation hook
 
 
-# TODO JIR: use rel factory in factories
-# # Should simply be callable as test.factory.rel_factory(self, create, extracted, 'grade', VLE.models.Grade)
 def rel_factory(instance, create, extracted, key, model, factory=None, size=1, non_cond_kwargs={}, cond_kwargs={},
                 default=None, **kwargs):
     '''
@@ -74,7 +72,6 @@ from test.factory.file_context import RichTextContentFileContextFactory as RichT
 from test.factory.format import FormatFactory as Format  # noqa: F401
 from test.factory.grade import GradeFactory as Grade  # noqa: F401
 from test.factory.group import GroupFactory as Group  # noqa: F401
-from test.factory.group import LtiGroupFactory as LtiGroup  # noqa: F401
 from test.factory.instance import InstanceFactory as Instance  # noqa: F401
 from test.factory.journal import GroupJournalFactory as GroupJournal  # noqa: F401
 from test.factory.journal import JournalFactory as Journal  # noqa: F401

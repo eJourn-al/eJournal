@@ -8,7 +8,8 @@ from VLE.utils.error_handling import VLEProgrammingError
 
 class FormatFactory(factory.django.DjangoModelFactory):
     '''
-    A format is only created by an Assignment. Do not initialise.
+    A format is only created by an Assignment. Do not initialise in isolation or via an upwards chain. E.g.
+    format.Template without arguments.
     '''
     class Meta:
         model = 'VLE.Format'
@@ -26,6 +27,8 @@ class FormatFactory(factory.django.DjangoModelFactory):
         - factory.Format(): Should yield a format but also generate an assignment.
         - factory.Format(assignment=assignment): Should yield a format, but the assignment already has a format with
         possible instances attached to it.
+        - It gets worse the further down the chain an initialisation is called. E.g. format.Content(), as this
+        is linked to a format via, content.entry.node.journal.assignment.format and content.field.template.format.
 
         Simply only allowing an assignment to create a format removes this ambiguity.
         '''

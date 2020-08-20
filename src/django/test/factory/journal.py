@@ -13,6 +13,15 @@ class BaseJournalFactory(factory.django.DjangoModelFactory):
 
 
 class JournalFactory(BaseJournalFactory):
+    '''
+    Generates a Journal
+
+    Default yields:
+        - AssignmentParticipation: AP for the attached assignment, will generate a user unless specified as
+        factory.Journal(ap__user=user).
+        - Assignment: generates a new one unless set.
+        - Entry: will generate one unlimited entry by default, can be changed via entries__n=int
+    '''
     ap = factory.RelatedFactory(
         'test.factory.participation.AssignmentParticipationFactory',
         factory_related_name='journal',
@@ -37,6 +46,9 @@ class JournalFactory(BaseJournalFactory):
 
 
 class LtiJournalFactory(BaseJournalFactory):
+    '''
+    Equal to a JournalFactory but generates an Lti assignment and AP.
+    '''
     assignment = factory.SubFactory('test.factory.assignment.LtiAssignmentFactory')
 
     ap = factory.RelatedFactory(
@@ -46,8 +58,22 @@ class LtiJournalFactory(BaseJournalFactory):
         lti=True
     )
 
+    @factory.post_generation
+    def entries(self, create, extracted, **kwargs):
+        if not create:
+            return
+
+        for _ in range(kwargs['n'] if 'n' in kwargs else 1):
+            test.factory.UnlimitedEntry(node__journal=self)
+
 
 class GroupJournalFactory(BaseJournalFactory):
+    '''
+    Generates a group assignment, still defaults to a single user. Any additional users can be set via add_users.
+    Note that factory.GroupJournal(add_users=[user1, users2]) will generate three users as the default AP has
+    not been overwritten. This was a convenience trade off, as factory.GroupJournal(add_users=[user1, users2], ap=None)
+    would no longer generate an assignment.
+    '''
     assignment = factory.SubFactory('test.factory.assignment.AssignmentFactory', group_assignment=True)
     author_limit = 3
 

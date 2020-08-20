@@ -12,7 +12,10 @@ class ContentFactory(factory.django.DjangoModelFactory):
     '''
     Generates valid content for the selected (:model:`VLE.Field`): type
 
-    The number of desired RichText images can be specified as 'ContentFactory(data__n_files=Number)' defaults to one
+    Kwargs:
+        data__n_files (int): The number of desired RichText images defaults to one.
+
+    Does not support deep syntax for the generated FileContext models.
     '''
     class Meta:
         model = 'VLE.Content'

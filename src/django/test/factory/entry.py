@@ -35,12 +35,14 @@ class UnlimitedEntryFactory(factory.django.DjangoModelFactory):
     '''
     Creates an 'unlimited' template entry.
 
-    Will generate content for all allowed fields of its template.
-
-    Methods:
-        author: Set author as given user or first author of the associated journal. Has to be an author of the journal.
-        template: Set template as given template or random template of the associated assignment. If not found, creates
-            a text template.
+    Default Yields:
+        - Entry: An Entry attached to a Node.
+        - Author: If no author is provided it will select the first author of the journal the entry is attached to.
+        - Template: If no template is provided it will randomly select an available tempalte from the assignment's
+        format. If the format holds no template a TextTemplate is generated.
+        - Grade: Ungraded by default.
+        - Content: Will generate content for all allowed fields of its template.
+        - Node: A node attached to a journal of type Entry, chains via journal to an assignment and a course.
     '''
     class Meta:
         model = 'VLE.Entry'
@@ -103,6 +105,15 @@ class UnlimitedEntryFactory(factory.django.DjangoModelFactory):
 
 
 class PresetEntryFactory(UnlimitedEntryFactory):
+    '''
+    Creates a Deadline entry for a ENTRYDEADLINE preset node.
+
+    Yields:
+        - If the entry is not attached to a Node linked to a ENTRYDEADLINE preset, it will create an ENTRYDEADLINE
+          preset node for the entire assignment (and so in turn a ENTRYDEADLINE node for each journal in the
+          assignment). In order to support deep syntax, e.g. factory.PresetEntry(node__journal=journal), the
+          entry will always be initiated with a node of type Entry. Its type is later corrected.
+    '''
     @factory.post_generation
     def fix_node(self, create, extracted, **kwargs):
         if not create:

@@ -7,6 +7,13 @@ import VLE.models
 
 
 class GradeFactory(factory.django.DjangoModelFactory):
+    '''
+    Generates a grade instance for an entry.
+
+    Default yields:
+        - UnlimitedEntry
+        - Author: Defaults to the assignment author.
+    '''
     class Meta:
         model = 'VLE.Grade'
 

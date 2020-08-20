@@ -6,6 +6,15 @@ from VLE.models import Field, Journal
 
 
 class FileContextFactory(factory.django.DjangoModelFactory):
+    '''
+    An instance of a VLE.models.FileContext.
+
+    The file_name attribute will default to the fc.file.file basename.
+
+    Default yields:
+        - File: A file with a random name (not just in memory but also on disk)
+        - Author: a student user
+    '''
     class Meta:
         model = 'VLE.FileContext'
 
@@ -24,6 +33,17 @@ class FileContextFactory(factory.django.DjangoModelFactory):
 
 
 class RichTextCommentFileContextFactory(FileContextFactory):
+    '''
+    Generates a FC which is embedded in the rich text of a comment
+
+    An embedded download image link of the generated file is appended to the comment's text
+
+    Default Yields:
+        - Comment: student comment
+        - Author: equal to the author of the student comment itself
+        - File: By default an image type file.
+        - Journal: By default attached to the journal of the comment.
+    '''
     in_rich_text = True
     comment = factory.SubFactory('test.factory.comment.StudentCommentFactory')
     author = factory.SelfAttribute('comment.author')
@@ -43,6 +63,11 @@ class RichTextCommentFileContextFactory(FileContextFactory):
 
 
 class AttachedCommentFileContextFactory(RichTextCommentFileContextFactory):
+    '''
+    Yields a FC which is attached to a student comment by default.
+
+    Equal yields to RichText comment. However, the file can be of any type.
+    '''
     in_rich_text = False
     # Order matters, cannot inherit the FileContextFactory file property, the author would be set after.
     file = factory.django.FileField()
@@ -61,6 +86,16 @@ class AttachedCommentFileContextFactory(RichTextCommentFileContextFactory):
 
 
 class FileContentFileContextFactory(FileContextFactory):
+    '''
+    Generates a FC attached to the content of a FILE field.
+
+    Will set the data of the content its attached to to its own pk.
+
+    Additional Default yields:
+        - Content: VLE.models.Content whose field of is type FILE
+        - Author: VLE.models.User who is equal to the author of content's entry by default.
+        - Journal: VLE.models.Journal, equal by default of the content's entry's journal.
+    '''
     in_rich_text = False
     content = factory.SubFactory('test.factory.content.ContentFactory', field__type=Field.FILE)
     author = factory.SelfAttribute('content.entry.author')
@@ -79,6 +114,15 @@ class FileContentFileContextFactory(FileContextFactory):
 
 
 class RichTextContentFileContextFactory(FileContentFileContextFactory):
+    '''
+    Generates a FC embedded to the content of rich text field.
+
+    Will appended a html img tag containing the download link of the FC to the data of the attached content.
+
+    Additional Default Yields:
+        - Content: VLE.models.Content whose field is of type RICH_TEXT
+        - File: Image category
+    '''
     in_rich_text = True
     content = factory.SubFactory('test.factory.content.ContentFactory', field__type=Field.RICH_TEXT)
     # Order is relevant, need content to be set first (since content is overwritten parent author would run first
