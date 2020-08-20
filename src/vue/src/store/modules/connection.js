@@ -84,6 +84,9 @@ const actions = {
      * - On failure all queued request are failed silently, and the user is redirected to login. */
     setupTokenRefreshErrorInterceptor ({ commit, getters, dispatch }, { connection }) { // eslint-disable-line no-shadow
         connection.interceptors.response.use(null, (error) => {
+            if (error.response === undefined) {
+                return Promise.reject(error)
+            }
             const { config, response: { status } } = error
             const originalRequest = config
 
