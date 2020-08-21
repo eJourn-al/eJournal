@@ -1,20 +1,19 @@
 <template>
     <b-card :class="$root.getBorderClass(deadline.id)">
         <!-- Teacher show things todo -->
-        <number-badge
-            v-if="unpublishedOrNeedsMarking"
-            v-b-tooltip.hover="squareInfo"
-            :leftNum="filterOwnGroups ? deadline.stats.needs_marking_own_groups : deadline.stats.needs_marking"
-            :rightNum="filterOwnGroups ? deadline.stats.unpublished_own_groups : deadline.stats.unpublished"
+        <number-badges-display
+            v-if="thingsToDo"
+            :absolute="false"
+            :badges="[
+                { value: filterOwnGroups ? deadline.stats.needs_marking_own_groups : deadline.stats.needs_marking,
+                  tooltip: 'needsMarking' },
+                { value: filterOwnGroups ? deadline.stats.unpublished_own_groups : deadline.stats.unpublished,
+                  tooltip: 'unpublished' },
+                { value: deadline.journal_import_requests, tooltip: 'importRequests' },
+            ]"
             class="float-right multi-form"
+            keyPrefix="todo"
         />
-        <b-badge
-            v-if="deadline.journal_import_requests && $hasPermission('can_grade', 'assignment', deadline.id)"
-            v-b-tooltip.hover="`${deadline.journal_import_requests} outstanding journal import requests`"
-            class="float-right number-badge"
-        >
-            {{ deadline.journal_import_requests }}
-        </b-badge>
 
         <b class="field-heading">
             {{ deadline.name }}
@@ -29,7 +28,7 @@
         <br/>
         <span v-if="deadline.deadline.date">
             <!-- Teacher deadline shows last submitted entry date  -->
-            <span v-if="unpublishedOrNeedsMarking">
+            <span v-if="thingsToDo">
                 <icon
                     name="eye"
                     class="fill-grey shift-up-3"
@@ -60,11 +59,11 @@
 </template>
 
 <script>
-import numberBadge from '@/components/assets/NumberBadge.vue'
+import numberBadgesDisplay from '@/components/assets/NumberBadgesDisplay.vue'
 
 export default {
     components: {
-        numberBadge,
+        numberBadgesDisplay,
     },
     props: {
         deadline: {
@@ -130,7 +129,7 @@ export default {
             const s = info.join(' and ')
             return `${s.charAt(0).toUpperCase()}${s.slice(1)}`
         },
-        unpublishedOrNeedsMarking () {
+        thingsToDo () {
             if (this.filterOwnGroups) {
                 return this.deadline.stats && this.deadline.stats.needs_marking_own_groups
                     + this.deadline.stats.unpublished_own_groups > 0
@@ -141,15 +140,3 @@ export default {
     },
 }
 </script>
-
-<style lang="sass">
-@import '~sass/modules/colors.sass'
-// TODO JIR: refactor for generic badge style once thread is settled.
-.number-badge
-    background-color: white
-    color: $theme-dark-blue
-    font-family: 'Roboto Condensed', sans-serif
-    font-size: 1em
-    border-radius: 5px !important
-    border: 1px solid #CCCCCC
-</style>
