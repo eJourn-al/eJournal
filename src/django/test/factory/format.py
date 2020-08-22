@@ -3,6 +3,7 @@ import test.factory
 
 import factory
 
+import VLE.models
 from VLE.utils.error_handling import VLEProgrammingError
 
 
@@ -45,7 +46,11 @@ class FormatFactory(factory.django.DjangoModelFactory):
         if not create:
             return
 
-        if extracted:
+        if extracted and isinstance(extracted, list) and isinstance(extracted[0], VLE.models.Template):
+            self.template_set.set(extracted)
+        elif isinstance(extracted, VLE.models.Template):
+            self.template_set.add(extracted)
+        elif extracted:
             for kwargs in extracted:
                 template = test.factory.Template(format=self)
                 test.factory.Field(**{**kwargs, 'template': template})

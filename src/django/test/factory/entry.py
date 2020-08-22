@@ -52,6 +52,7 @@ class UnlimitedEntryFactory(factory.django.DjangoModelFactory):
     last_edited = factory.LazyFunction(timezone.now)
     template = None
 
+    # TODO JIR: default random.choice(self.node.journal.authors.all()).user
     @factory.post_generation
     def author(self, create, extracted, **kwargs):
         test.factory.rel_factory(self, create, extracted, 'author', VLE.models.User, factory=None,
@@ -119,6 +120,8 @@ class PresetEntryFactory(UnlimitedEntryFactory):
         if not create:
             return
 
+        # TODO JIR: Does the if block really work? Cannot pass a node directly.. E.g.
+        # PrsetEntry(node=node)
         if self.node.preset:
             # We have an additional node which was added to the journal by the PresetNodeFactory
             correct_node = self.node.preset.node_set.filter(journal=self.node.journal).first()
@@ -126,7 +129,6 @@ class PresetEntryFactory(UnlimitedEntryFactory):
             related_factory_generated_node = self.node
             self.node = correct_node
             related_factory_generated_node.delete()
-
             # PresetNode template should match entry template, initialisation conflict, default to forced_template
             self.template = self.node.preset.forced_template
         else:

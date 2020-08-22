@@ -1,6 +1,7 @@
+import test.factory
+
 import factory
 
-import VLE.factory
 import VLE.models
 
 
@@ -12,9 +13,18 @@ class ParticipationFactory(factory.django.DjangoModelFactory):
     course = factory.SubFactory('test.factory.course.CourseFactory')
     role = factory.SubFactory('test.factory.role.RoleFactory', course=factory.SelfAttribute('..course'))
 
+    @factory.post_generation
+    def group(self, create, extracted, **kwargs):
+        if not create:
+            return
 
-class GroupParticipationFactory(ParticipationFactory):
-    group = factory.SubFactory('test.factory.group.GroupFactory')
+        if extracted and isinstance(extracted, list):
+            if all(isinstance(obj, VLE.models.Group) for obj in extracted):
+                self.groups.set(extracted)
+        elif isinstance(extracted, VLE.models.Group):
+            self.groups.add(extracted)
+        elif kwargs:
+            test.factory.Group(**{**kwargs, 'course': self.course})
 
 
 class AssignmentParticipationFactory(factory.django.DjangoModelFactory):

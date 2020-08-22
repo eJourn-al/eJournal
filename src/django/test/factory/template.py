@@ -15,6 +15,14 @@ class TemplateFactory(factory.django.DjangoModelFactory):
     format = None
 
 
+class MentorgesprekTemplateFactory(TemplateFactory):
+    name = 'Mentorgesprek'
+
+    @factory.post_generation
+    def gen_fields(self, create, extracted):
+        FieldFactory(type=Field.TEXT, title='title', template=self, required=True)
+
+
 class TextTemplateFactory(TemplateFactory):
     name = 'Default Text'
 
@@ -25,14 +33,27 @@ class TextTemplateFactory(TemplateFactory):
         FieldFactory(type=Field.TEXT, title='optional', template=self, required=False)
 
 
+class FilesTemplateFactory(TemplateFactory):
+    name = 'Files'
+
+    @factory.post_generation
+    def gen_fields(self, create, extracted):
+        FieldFactory(type=Field.FILE, title='IMG', template=self,
+                     options='bmp, gif, ico, cur, jpg, jpeg, jfif, pjpeg, pjp, png, svg', required=False)
+        FieldFactory(type=Field.FILE, title='FILE', template=self, required=False)
+        FieldFactory(type=Field.FILE, title='PDF', template=self, options='pdf', required=False)
+
+
 class ColloquiumTemplateFactory(TemplateFactory):
     name = 'Colloquium'
 
     @factory.post_generation
     def gen_fields(self, create, extracted):
         FieldFactory(type=Field.TEXT, title='Title', template=self, required=True)
-        FieldFactory(type=Field.TEXT, title='Summary', template=self, required=True)
-        FieldFactory(type=Field.FILE, title='Proof of presence', template=self, options='png, jpg, svg', required=False)
+        FieldFactory(type=Field.RICH_TEXT, title='Summary', template=self, required=True)
+        FieldFactory(type=Field.RICH_TEXT, title='Experience', template=self, required=True)
+        FieldFactory(type=Field.TEXT, title='Requested Points', template=self, required=True)
+        FieldFactory(type=Field.FILE, title='Proof', template=self, options='png, jpg, svg', required=False)
 
 
 class TemplateAllTypesFactory(TemplateFactory):

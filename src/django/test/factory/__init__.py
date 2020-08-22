@@ -81,13 +81,14 @@ from test.factory.params import JWTParamsFactory as JWTParams  # noqa: F401
 from test.factory.params import JWTTestUserParamsFactory as JWTTestUserParams  # noqa: F401
 from test.factory.params import UserParamsFactory as UserParams  # noqa: F401
 from test.factory.participation import AssignmentParticipationFactory as AssignmentParticipation  # noqa: F401
-from test.factory.participation import GroupParticipationFactory as GroupParticipation  # noqa: F401
 from test.factory.participation import ParticipationFactory as Participation  # noqa: F401
 from test.factory.presetnode import DeadlinePresetNodeFactory as DeadlinePresetNode  # noqa: F401
 from test.factory.presetnode import ProgressPresetNodeFactory as ProgressPresetNode  # noqa: F401
 from test.factory.role import RoleFactory as Role  # noqa: F401
 from test.factory.role import StudentRoleFactory as StudentRole  # noqa: F401
 from test.factory.template import ColloquiumTemplateFactory as ColloquiumTemplate  # noqa: F401
+from test.factory.template import FilesTemplateFactory as FilesTemplate  # noqa: F401
+from test.factory.template import MentorgesprekTemplateFactory as MentorgesprekTemplate  # noqa: F401
 from test.factory.template import TemplateAllTypesFactory as TemplateAllTypes  # noqa: F401
 from test.factory.template import TemplateFactory as Template  # noqa: F401
 from test.factory.template import TextTemplateFactory as TextTemplate  # noqa: F401

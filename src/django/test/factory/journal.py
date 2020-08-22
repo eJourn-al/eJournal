@@ -71,7 +71,7 @@ class GroupJournalFactory(BaseJournalFactory):
     '''
     Generates a group assignment, still defaults to a single user. Any additional users can be set via add_users.
     Note that factory.GroupJournal(add_users=[user1, users2]) will generate three users as the default AP has
-    not been overwritten. This was a convenience trade off, as factory.GroupJournal(add_users=[user1, users2], ap=None)
+    not been overwritten. This was a convenience trade off, as factory.GroupJournal(add_users=[user1, users2], ap=False)
     would no longer generate an assignment.
     '''
     assignment = factory.SubFactory('test.factory.assignment.AssignmentFactory', group_assignment=True)
@@ -98,8 +98,13 @@ class GroupJournalFactory(BaseJournalFactory):
 
         if extracted:
             for user in extracted:
-                test.factory.AssignmentParticipation(
-                    journal=self, assignment=self.assignment, user=user)
+                ap = VLE.models.AssignmentParticipation.objects.filter(assignment=self.assignment, user=user)
+                if ap.exists():
+                    ap = ap.first()
+                    ap.journal = self
+                    ap.save()
+                else:
+                    test.factory.AssignmentParticipation(journal=self, assignment=self.assignment, user=user)
 
 
 class JournalImportRequestFactory(factory.django.DjangoModelFactory):

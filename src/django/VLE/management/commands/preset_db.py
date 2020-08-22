@@ -3,19 +3,15 @@ Generate preset data.
 
 Generate preset data and save it to the database.
 """
-
-import datetime
 import random
+import test.factory as factory
 
-from django.conf import settings
-from django.core.files.uploadedfile import SimpleUploadedFile
+from dateutil.relativedelta import relativedelta
 from django.core.management.base import BaseCommand
+from django.utils import timezone
 from faker import Faker
 
-import VLE.factory as factory
-from VLE.models import (Assignment, AssignmentParticipation, Course, Field, FileContext, Journal, JournalImportRequest,
-                        Node, Participation, Role, Template, User)
-from VLE.utils import file_handling
+from VLE.models import Entry, Journal, Node, Role
 
 faker = Faker()
 
@@ -26,516 +22,290 @@ class Command(BaseCommand):
     help = 'Generates useful data for the database.'
 
     def gen_users(self):
-        """Generate users with password 'pass'."""
-        users_examples = {
-            "Student": {
-                "username": "student",
-                "full_name": "Lars van Hijfte",
-                "verified_email": True,
-                "password": "pass",
-                "email": "lars@eJournal.app",
-                "is_superuser": False,
-                "is_teacher": False
-            },
-            "Student2": {
-                "username": "student2",
-                "full_name": "Rick Watertor",
-                "verified_email": True,
-                "password": "pass",
-                "email": "rick@eJournal.app",
-                "is_superuser": False,
-                "is_teacher": False
-            },
-            "Student3": {
-                "username": "student3",
-                "full_name": "Dennis Wind",
-                "password": "pass",
-                "email": "dennis@eJournal.app",
-                "verified_email": True,
-                "is_superuser": False,
-                "is_teacher": False
-            },
-            "Student4": {
-                "username": "student4",
-                "full_name": "Maarten van Keulen",
-                "password": "pass",
-                "email": "maarten@eJournal.app",
-                "verified_email": False,
-                "is_superuser": False,
-                "is_teacher": False
-            },
-            "Student5": {
-                "username": "student5",
-                "full_name": "Zi Long Zhu",
-                "password": "pass",
-                "email": "zi@eJournal.app",
-                "verified_email": False,
-                "is_superuser": False,
-                "is_teacher": False
-            },
-            "TestUser": {
-                "username": "305c9b180a9ce9684ea62aeff2b2e97052cf2d4b1",
-                "full_name": settings.LTI_TEST_STUDENT_FULL_NAME,
-                "password": "pass",
-                "email": "",
-                "verified_email": False,
-                "is_superuser": False,
-                "is_teacher": False,
-                "is_test_student": True,
-            },
-            "Teacher": {
-                "username": "teacher",
-                "full_name": "Engel Hamer",
-                "password": "pass",
-                "email": "test@eJournal.app",
-                "verified_email": True,
-                "is_superuser": False,
-                "is_teacher": True
-            },
-            "TA": {
-                "username": "TA",
-                "full_name": "De TA van TAing",
-                "verified_email": False,
-                "password": "pass",
-                "email": "ta@eJournal.app",
-                "is_superuser": False,
-                "is_teacher": False
-            },
-            "TA2": {
-                "username": "TA2",
-                "full_name": "Backup TA van TAing",
-                "verified_email": False,
-                "password": "pass",
-                "email": "ta2@eJournal.app",
-                "is_superuser": False,
-                "is_teacher": False
-            },
-            "Superuser": {
-                "username": "superuser",
-                "full_name": "Super User",
-                "password": "pass",
-                "email": "superuser@eJournal.app",
-                "verified_email": False,
-                "is_superuser": True,
-                "is_teacher": True,
-                "is_staff": True
-            }
-        }
+        self.student = factory.Student(
+                username="student",
+                full_name="Lars van Hijfte",
+                password="pass",
+                email="lars@eJournal.app",
+        )
+        self.student2 = factory.Student(
+            username="student2",
+            full_name="Rick Watertor",
+            password="pass",
+            email="rick@eJournal.app",
+        )
+        self.student3 = factory.Student(
+            username="student3",
+            full_name="Dennis Wind",
+            password="pass",
+            email="dennis@eJournal.app",
+        )
+        self.student4 = factory.Student(
+            username="student4",
+            full_name="Maarten van Keulen",
+            password="pass",
+            email="maarten@eJournal.app",
+            verified_email=False,
+        )
+        self.student5 = factory.Student(
+            username="student5",
+            full_name="Zi Long Zhu",
+            password="pass",
+            email="zi@eJournal.app",
+            verified_email=False,
+        )
+        self.test_user = factory.TestUser(is_test_student=True)
+        self.teacher = factory.Teacher(
+            username="teacher",
+            full_name="Engel Hamer",
+            password="pass",
+            email="test@eJournal.app",
+        )
+        self.ta = factory.Student(
+            username="TA",
+            full_name="De TA van TAing",
+            verified_email=False,
+            password="pass",
+            email="ta@eJournal.app",
+        )
+        self.ta2 = factory.Student(
+            username="TA2",
+            full_name="Backup TA van TAing",
+            verified_email=False,
+            password="pass",
+            email="ta2@eJournal.app",
+        )
+        self.superuser = factory.Admin(
+            username="superuser",
+            full_name="Super User",
+            password="pass",
+            email="superuser@eJournal.app",
+            verified_email=False,
+            is_superuser=True,
+            is_teacher=True,
+            is_staff=True
+        )
 
-        self.users = {}
-
-        for key, value in users_examples.items():
-            self.users[key] = User.objects.create(**value)
-            self.users[key].set_password(value['password'])
-            self.users[key].profile_picture = settings.DEFAULT_PROFILE_PICTURE
-            self.users[key].save()
+        self.students = [self.student, self.student2, self.student3, self.student4, self.student5]
+        self.tas = [self.ta, self.ta2]
+        self.users = self.students + self.tas + [self.teacher] + [self.test_user] + [self.superuser]
 
     def gen_courses(self):
-        """Generate courses."""
-        courses_examples = {
+        self.courses = {
             "Portfolio Academische Vaardigheden - Cohort 1": {
-                "pk": 1697,
-                "name": "Portfolio Academische Vaardigheden - Cohort 1",
-                "abbr": "PAV1",
-                "author": self.users["Teacher"],
-                "students": [self.users[s] for s in ["Student", "Student2", "Student3", "Student4", "Student5",
-                                                     "TestUser"]],
-                "teachers": [self.users["Teacher"]],
-                "tas": [self.users["TA"]],
-                "start_date": faker.date("2018-09-01"),
-                "end_date": faker.date("2021-07-31"),
-                "student_group_names": ["Cobol", "Smalltalk"]
+                'instance': factory.Course(
+                    pk=1697,
+                    name="Portfolio Academische Vaardigheden - Cohort 1",
+                    abbreviation="PAV1",
+                    author=self.teacher,
+                    startdate=faker.date("2018-09-01"),
+                    enddate=faker.date("2021-07-31"),
+                ),
+                "students": self.students + [self.test_user],
+                "student_group_names": ["Cobol", "Smalltalk"],
+                "tas": [self.ta],
             },
-            "Portfolio Academische Vaardigheden - Cohort 2": {
-                "pk": 1698,
-                "name": "Portfolio Academische Vaardigheden - Cohort 2",
-                "abbr": "PAV2",
-                "author": self.users["Teacher"],
-                "students": [self.users[s] for s in ["Student", "Student2", "Student3", "Student4", "Student5",
-                                                     "TestUser"]],
-                "teachers": [self.users["Teacher"]],
-                "tas": [self.users["TA2"]],
-                "start_date": faker.date("2019-09-01"),
-                "end_date": faker.date("2022-07-31"),
+            "Portfolio Academische Vaardigheden - Cohort 2":  {
+                'instance': factory.Course(
+                    pk=1698,
+                    name="Portfolio Academische Vaardigheden - Cohort 2",
+                    abbreviation="PAV2",
+                    author=self.teacher,
+                    startdate=faker.date("2019-09-01"),
+                    enddate=faker.date("2022-07-31"),
+                ),
+                "students": self.students + [self.test_user],
+                "tas": [self.ta2],
                 "student_group_names": ["Algol", "Ruby"]
             }
         }
 
-        self.courses = {}
-        for c in courses_examples.values():
-            course = Course(pk=c["pk"], name=c["name"], abbreviation=c["abbr"], startdate=c["start_date"],
-                            enddate=c["end_date"], author=c["author"])
-            course.save()
+        for c in self.courses.values():
+            course = c['instance']
+            student_groups = [
+                factory.Group(course=course, name=name, lti_id=None) for name in c["student_group_names"]]
+            staff_group = factory.Group(name="Staff", course=course)
 
-            student_groups = [factory.make_course_group(g, course) for g in c["student_group_names"]]
-            staff_group = factory.make_course_group("Staff", course)
-
-            role_student = factory.make_role_student('Student', course)
-            role_ta = factory.make_role_ta('TA', course)
-            role_teacher = factory.make_role_teacher('Teacher', course)
+            role_student = Role.objects.get(name='Student', course=course)
+            role_ta = Role.objects.get(name='TA', course=course)
 
             for student in c["students"]:
-                factory.make_participation(student, course, role_student, [random.choice(student_groups)])
+                factory.Participation(
+                    user=student, course=course, role=role_student, group=random.choice(student_groups))
             for ta in c["tas"]:
-                factory.make_participation(ta, course, role_ta, [random.choice(student_groups)])
-            for teacher in c["teachers"]:
-                factory.make_participation(teacher, course, role_teacher, [staff_group])
-
-            self.courses[c["name"]] = course
-
-    def gen_templates(self, format):
-        """Generate templates.
-
-        One with title, summary, experience, requested points and proof.
-        One with only text.
-        """
-        template_examples = [
-            {
-                "name": "Colloquium",
-                "fields": [
-                    {"title": "Title", "location": 0, "type": Field.TEXT},
-                    {"title": "Summary", "location": 1, "type": Field.RICH_TEXT},
-                    {"title": "Experience", "location": 2, "type": Field.RICH_TEXT},
-                    {"title": "Requested Points", "location": 3, "type": Field.TEXT},
-                    {"title": "Proof", "location": 4, "type": Field.FILE, "required": False},
-                ]
-            },
-            {
-                "name": "Mentorgesprek",
-                "fields": [
-                    {"title": "Text", "location": 0, "type": Field.TEXT},
-                ]
-            },
-            {
-                "name": "Files",
-                "fields": [
-                    {
-                        "title": "IMG",
-                        "location": 0,
-                        "type": Field.FILE,
-                        "required": False,
-                        "options": 'bmp, gif, ico, cur, jpg, jpeg, jfif, pjpeg, pjp, png, svg',
-                    },
-                    {
-                        "title": "FILE",
-                        "location": 1,
-                        "type": Field.FILE,
-                        "required": False,
-                    },
-                    {
-                        "title": "PDF",
-                        "location": 2,
-                        "type": Field.FILE,
-                        "required": False,
-                        "options": 'pdf',
-                    },
-                ]
-            }
-        ]
-
-        templates = []
-        for t in template_examples:
-            template = factory.make_entry_template(t["name"], format)
-            templates.append(template)
-            for f in t["fields"]:
-                factory.make_field(
-                    template, f["title"], f["location"], f["type"],
-                    required=f.get('required', True), options=f.get('options', None)
-                )
-
-        return templates
-
-    def gen_format(self):
-        """Generate a format."""
-        format_examples = [
-            {
-                "presets": [
-                    {"type": Node.PROGRESS, "points": 10},
-                ]
-            },
-            {
-                "presets": [
-                    {"type": Node.PROGRESS, "points": 5},
-                    {"type": Node.PROGRESS, "points": 1, "description": "1 day", "deadline_days": 1},
-                    {"type": Node.PROGRESS, "points": 3, "description": "1 week", "deadline_days": 7},
-                    {"type": Node.ENTRYDEADLINE, "template": 1, "description": "1 week entrydl", "deadline_days": 7},
-                    {"type": Node.ENTRYDEADLINE, "template": 1},
-                ]
-            },
-            {
-                "templates": [0, 1],
-                "presets": [
-                    {"type": Node.PROGRESS, "points": 10},
-                ]
-            },
-        ]
-
-        self.formats = []
-        for f in format_examples:
-            format = factory.make_default_format()
-            templates = self.gen_templates(format)
-
-            for p in f["presets"]:
-                if "deadline_days" in p:
-                    due_date = datetime.datetime.utcnow() + datetime.timedelta(days=p["deadline_days"])
-                else:
-                    due_date = faker.date_time_between(start_date="now", end_date="+1y", tzinfo=None)
-
-                if p["type"] == Node.PROGRESS:
-                    node = factory.make_progress_node(format, due_date, p["points"])
-                    if "description" in p:
-                        node.description = p["description"]
-                        node.save()
-                elif p["type"] == Node.ENTRYDEADLINE:
-                    factory.make_entrydeadline_node(format, due_date, templates[p["template"]])
-
-            self.formats.append(format)
+                factory.Participation(user=ta, course=course, role=role_ta, group=random.choice(student_groups))
+            teacher_p = course.author.participation_set.get(course=course)
+            teacher_p.groups.add(staff_group)
 
     def gen_assignments(self):
-        """Generate assignments."""
-        assign_examples = [
-            {
-                "name": "Logboek",
-                "description": "<p>This is a logboek for all your logging purposes</p>",
-                "courses": [
-                    self.courses["Portfolio Academische Vaardigheden - Cohort 1"],
-                    self.courses["Portfolio Academische Vaardigheden - Cohort 2"]
-                ],
-                "format": 0,
-                "author": self.users["Teacher"],
-                "is_group_assignment": False,
-            },
-            {
-                "name": "Colloquium",
-                "description": "<p>This is the best colloquium logbook in the world</p>",
-                "courses": [self.courses["Portfolio Academische Vaardigheden - Cohort 1"]],
-                "format": 1,
-                "author": self.users["Teacher"],
-                "is_group_assignment": False,
-            },
-            {
-                "name": "Group Assignment",
-                "description":
-                    "<p>This is a group assignment. This is purely for testing group assignment stuff.<br/>" +
-                    "Initialized with student and student2 in 1 journal and student3 in another.</p>",
-                "courses": [self.courses["Portfolio Academische Vaardigheden - Cohort 2"]],
-                "format": 2,
-                "author": self.users["Teacher"],
-                "is_group_assignment": True,
-            }
-        ]
+        self.logboek = factory.Assignment(
+            name="Logboek",
+            description="<p>This is a logboek for all your logging purposes</p>",
+            courses=[
+                self.courses["Portfolio Academische Vaardigheden - Cohort 1"]['instance'],
+                self.courses["Portfolio Academische Vaardigheden - Cohort 2"]['instance']
+            ],
+            format__templates=False,
+        )
+        self.colloquium = factory.Assignment(
+            name="Colloquium",
+            description="<p>This is the best colloquium logbook in the world</p>",
+            courses=[self.courses["Portfolio Academische Vaardigheden - Cohort 1"]['instance']],
+            format__templates=False,
+        )
+        self.group_assignment = factory.Assignment(
+            name="Group Assignment",
+            description="<p>This is a group assignment. This is purely for testing group assignment stuff.<br/>" +
+                        "Initialized with student and student2 in 1 journal and student3 in another.</p>",
+            courses=[self.courses["Portfolio Academische Vaardigheden - Cohort 2"]['instance']],
+            is_group_assignment=True,
+            format__templates=False,
+        )
 
-        self.assignments = []
-        for a in assign_examples:
-            format = self.formats[a["format"]]
-            faker.date_time_between(start_date="now", end_date="+1y", tzinfo=None)
-            assignment = factory.make_assignment(a["name"], a["description"], a["author"], format, courses=a["courses"],
-                                                 is_published=True, is_group_assignment=a["is_group_assignment"])
-            self.assignments.append(assignment)
+        self.assignments = [self.logboek, self.colloquium, self.group_assignment]
 
-        journal = factory.make_journal(self.assignments[2], author_limit=3)
-        journal.add_author(AssignmentParticipation.objects.get(assignment=assignment, user=self.users["Student2"]))
-        journal.add_author(AssignmentParticipation.objects.get(assignment=assignment, user=self.users["Student"]))
-        journal.save()
-        journal = factory.make_journal(self.assignments[2], author_limit=3)
-        journal.add_author(AssignmentParticipation.objects.get(assignment=assignment, user=self.users["Student3"]))
+    def gen_group_journals(self):
+        '''
+        Creating an assignment will create an AP for ALL of its linked course users.
+        Journals are created upon the creation of an AP except if we are dealing with a group assignment.
+        '''
+        factory.GroupJournal(
+            assignment=self.group_assignment,
+            ap=False,
+            add_users=[self.student, self.student2, self.student3],
+            entries__n=0,
+        )
+        factory.GroupJournal(
+            assignment=self.group_assignment,
+            ap=False,
+            add_users=[self.student4, self.student5],
+            entries__n=0,
+        )
 
-    def gen_journals(self):
-        """Generate journals."""
-        self.journals = Journal.objects.all()
+    def gen_format(self):
+        for a in self.assignments:
+            factory.FilesTemplate(format=a.format)
+            factory.ColloquiumTemplate(format=a.format)
+            factory.MentorgesprekTemplate(format=a.format)
 
-    def gen_entries(self, assignment):
-        """Generate entries."""
-        coll = Template.objects.get(name='Colloquium', format__assignment=assignment)
-        mentor = Template.objects.get(name='Mentorgesprek', format__assignment=assignment)
-        files = Template.objects.get(name='Files', format__assignment=assignment)
-        entries_to_gen = [
-            {
-                'user': self.users['Student'],
-                'entries': [
-                    {
-                        'template': coll,
-                        'grade': 3,
-                        'published': True,
-                        'amount': 3
-                    },
-                    {
-                        'template': mentor,
-                        'grade': 1,
-                        'published': False,
-                        'amount': 5
-                    },
-                    {
-                        'template': coll,
-                        'grade': None,
-                        'published': False,
-                        'amount': 3
-                    },
-                    {
-                        'template': files,
-                        'grade': None,
-                        'published': False,
-                        'amount': 1
-                    },
-                ]
-            },
-            {
-                'user': self.users['Student2'],
-                'entries': [
-                    {
-                        'template': mentor,
-                        'grade': 2,
-                        'published': True,
-                        'amount': 3
-                    },
-                    {
-                        'template': coll,
-                        'grade': 2,
-                        'published': False,
-                        'amount': 0
-                    },
-                    {
-                        'template': coll,
-                        'grade': None,
-                        'published': False,
-                        'amount': 10
-                    },
-                ]
-            },
-            {
-                'user': self.users['Student3'],
-                'entries': [
-                    {
-                        'template': coll,
-                        'grade': 2,
-                        'published': True,
-                        'amount': 2
-                    },
-                    {
-                        'template': mentor,
-                        'grade': 1,
-                        'published': False,
-                        'amount': 3
-                    },
-                    {
-                        'template': mentor,
-                        'grade': None,
-                        'published': False,
-                        'amount': 0
-                    },
-                ]
-            },
-            {
-                'user': self.users['Student4'],
-                'entries': [
-                    {
-                        'template': mentor,
-                        'grade': 2,
-                        'published': True,
-                        'amount': 4
-                    },
-                    {
-                        'template': coll,
-                        'grade': 2,
-                        'published': False,
-                        'amount': 0
-                    },
-                    {
-                        'template': mentor,
-                        'grade': None,
-                        'published': False,
-                        'amount': 0
-                    },
-                ]
-            },
-        ]
-        for user_entries in entries_to_gen:
-            user = user_entries['user']
-            for entry_obj in user_entries['entries']:
-                for _ in range(entry_obj['amount']):
-                    entry = factory.make_entry(entry_obj['template'], user)
-                    if entry_obj['grade'] is not None:
-                        factory.make_grade(entry, self.users['Teacher'].pk, entry_obj['grade'], entry_obj['published'])
-                    factory.make_node(Journal.objects.get(authors__user=user, assignment=assignment), entry)
+        # Logboek
+        factory.ProgressPresetNode(
+            format=self.logboek.format,
+            target=10,
+            due_date=timezone.now() + relativedelta(years=1),
+            lock_date=timezone.now() + relativedelta(years=1),
+        )
 
-    def gen_content(self):
-        """Generate content for an entry."""
-        for journal in self.journals:
-            for node in journal.node_set.all():
-                if node.type == Node.ENTRY or node.type == Node.ENTRYDEADLINE:
-                    if node.entry is None:
-                        continue
+        # Colloquium
+        factory.ProgressPresetNode(
+            format=self.colloquium.format,
+            target=1,
+            due_date=timezone.now() + relativedelta(days=1),
+            lock_date=timezone.now() + relativedelta(days=1),
+            description="One day",
+        )
+        factory.ProgressPresetNode(
+            format=self.colloquium.format,
+            target=3,
+            due_date=timezone.now() + relativedelta(weeks=7),
+            lock_date=timezone.now() + relativedelta(weeks=7),
+            description="One week",
+        )
+        factory.ProgressPresetNode(
+            format=self.colloquium.format,
+            target=5,
+            due_date=timezone.now() + relativedelta(years=1),
+        )
+        factory.DeadlinePresetNode(
+            format=self.colloquium.format,
+            due_date=timezone.now() + relativedelta(weeks=7),
+            lock_date=timezone.now() + relativedelta(weeks=7),
+            forced_template=self.colloquium.format.template_set.get(name="Mentorgesprek")
+        )
+        factory.DeadlinePresetNode(
+            format=self.colloquium.format,
+            due_date=timezone.now() + relativedelta(months=7),
+            lock_date=timezone.now() + relativedelta(months=7),
+            forced_template=self.colloquium.format.template_set.get(name="Mentorgesprek")
+        )
 
-                    template = node.entry.template
-                    for field in template.field_set.all():
-                        if field.type in [Field.TEXT, Field.RICH_TEXT]:  # Files requires the actual file...
-                            if "Requested Points" in field.title:
-                                factory.make_content(node.entry, str(random.randint(1, 3)), field)
-                            else:
-                                factory.make_content(node.entry, faker.catch_phrase(), field)
+        # Group Assignment
+        factory.ProgressPresetNode(format=self.group_assignment.format, target=10)
 
-                        try:
-                            if field.type == Field.FILE and (not field.options or 'png' in field.options):
-                                with open('../vue/public/journal-view.png', 'rb') as file:
-                                    image = SimpleUploadedFile('test-image.png', file.read(), content_type='image/png')
-                                    fc = FileContext.objects.create(
-                                        file=image, author=journal.authors.first().user, file_name=image.name)
-                                    content = factory.make_content(node.entry, str(fc.pk), field)
-                                    file_handling.establish_file(journal.authors.first().user, fc.pk, content=content)
-                            elif field.type == Field.FILE:
-                                with open('./VLE/management/commands/dummy.pdf', 'rb') as file:
-                                    pdf = SimpleUploadedFile(
-                                        'dummy.pdf', file.read(), content_type='application/pdf')
-                                    fc = FileContext.objects.create(
-                                        file=pdf, author=journal.authors.first().user, file_name=pdf.name)
-                                    content = factory.make_content(node.entry, str(fc.pk), field)
-                                    file_handling.establish_file(journal.authors.first().user, fc.pk, content=content)
-                        except FileNotFoundError:
-                            continue
+    def gen_entries(self):
+        for a in self.assignments:
+            # NOTE: carefull to use a.journal_set or query via AP, both will yield teacher journals
+            for j in Journal.objects.filter(assignment=a):
+                grade = random.choice([factory.Grade(grade=random.randint(0, 3)), None])
+                factory.UnlimitedEntry(node__journal=j, grade=grade)
+
+                # Colloquium holds some preset nodes
+                if a.name == "Colloquium":
+                    deadline_nodes = list(j.node_set.filter(type=Node.ENTRYDEADLINE))
+                    n_deadline_entries = random.randint(0, j.node_set.filter(type=Node.ENTRYDEADLINE).count())
+                    for deadline_node in random.sample(deadline_nodes, n_deadline_entries):
+                        factory.PresetEntry(node__preset=deadline_node.preset, node__journal=j)
+
+    # def gen_content(self):
+    #     """Generate content for an entry."""
+    #     for journal in self.journals:
+    #         for node in journal.node_set.all():
+    #             if node.type == Node.ENTRY or node.type == Node.ENTRYDEADLINE:
+    #                 if node.entry is None:
+    #                     continue
+
+    #                 template = node.entry.template
+    #                 for field in template.field_set.all():
+    #                     if field.type in [Field.TEXT, Field.RICH_TEXT]:  # Files requires the actual file...
+    #                         if "Requested Points" in field.title:
+    #                             factory.make_content(node.entry, str(random.randint(1, 3)), field)
+    #                         else:
+    #                             factory.make_content(node.entry, faker.catch_phrase(), field)
+
+    #                     try:
+    #                         if field.type == Field.FILE and (not field.options or 'png' in field.options):
+    #                             with open('../vue/public/journal-view.png', 'rb') as file:
+    #                                 image = SimpleUploadedFile('test-image.png', file.read(), content_type='image/png')
+    #                                 fc = FileContext.objects.create(
+    #                                     file=image, author=journal.authors.first().user, file_name=image.name)
+    #                                 content = factory.make_content(node.entry, str(fc.pk), field)
+    #                                 file_handling.establish_file(journal.authors.first().user, fc.pk, content=content)
+    #                         elif field.type == Field.FILE:
+    #                             with open('./VLE/management/commands/dummy.pdf', 'rb') as file:
+    #                                 pdf = SimpleUploadedFile(
+    #                                     'dummy.pdf', file.read(), content_type='application/pdf')
+    #                                 fc = FileContext.objects.create(
+    #                                     file=pdf, author=journal.authors.first().user, file_name=pdf.name)
+    #                                 content = factory.make_content(node.entry, str(fc.pk), field)
+    #                                 file_handling.establish_file(journal.authors.first().user, fc.pk, content=content)
+    #                     except FileNotFoundError:
+    #                         continue
 
     def gen_journal_import_requests(self):
         """
         Generates a JIR for each logboek student (who is also a colloquium student) from colloquium into logboek
         Generates one JIR from group assignment to logboek for 'Student'
         """
+        for logboek_ap in self.logboek.assignmentparticipation_set.filter(user__in=self.students):
+            col_ap = self.colloquium.assignmentparticipation_set.filter(user=logboek_ap.user)
+            if col_ap.exists():
+                col_ap = col_ap.first()
+                if Entry.objects.filter(node__journal=col_ap.journal).exists():
+                    factory.JournalImportRequest(
+                        source=col_ap.journal, target=logboek_ap.journal, author=logboek_ap.user)
 
-        colloquium = Assignment.objects.get(name='Colloquium')
-        colloquium_course = colloquium.courses.first()
-        logboek = Assignment.objects.get(name='Logboek')
-        group_assignment = Assignment.objects.get(name='Group Assignment')
-        student_role = Role.objects.get(course=colloquium_course, name='Student')
-
-        for colloquium_course_p in Participation.objects.filter(role=student_role, course=colloquium_course):
-            logboek_ap = logboek.assignmentparticipation_set.filter(
-                user=colloquium_course_p.user, user__is_test_student=False)
-            if logboek_ap.exists():
-                logboek_ap = logboek_ap.first()
-                JournalImportRequest.objects.create(
-                    source=AssignmentParticipation.objects.get(
-                        assignment=colloquium, user=colloquium_course_p.user).journal,
-                    target=logboek_ap.journal,
-                    author=colloquium_course_p.user
-                )
-
-        JournalImportRequest.objects.create(
-            source=AssignmentParticipation.objects.get(
-                assignment=group_assignment, user=self.users['Student']).journal,
-            target=AssignmentParticipation.objects.get(
-                assignment=logboek, user=self.users['Student']).journal,
-            author=self.users['Student']
-        )
+        student_logboek = self.logboek.journal_set.get(authors__user=self.student)
+        student_group_journal = self.group_assignment.journal_set.get(authors__user=self.student)
+        factory.JournalImportRequest(source=student_group_journal, target=student_logboek, author=self.student)
 
     def handle(self, *args, **options):
-        """Generate data to test and fill the database with.
-
-        This only contains the 'useful data'. For random data, execute demo_db as well.
+        """
+        Generates a dummy data for a testing environment.
         """
         self.gen_users()
         self.gen_courses()
-        self.gen_format()
         self.gen_assignments()
-        self.gen_journals()
-        self.gen_entries(Assignment.objects.get(name='Logboek'))
-        self.gen_entries(Assignment.objects.get(name='Colloquium'))
-        self.gen_content()
+        self.gen_group_journals()
+        self.gen_format()
+        self.gen_entries()
         self.gen_journal_import_requests()
