@@ -4,6 +4,7 @@ import test.utils.generic_utils as test_utils
 from test.utils import api
 
 from dateutil.relativedelta import relativedelta
+from django.db.models import Q
 from django.test import TestCase
 from django.utils import timezone
 
@@ -73,6 +74,18 @@ class JournalImportRequestTest(TestCase):
         jir.state = JournalImportRequest.DECLINED
         jir.save()
         api.update(self, 'assignments', params={'pk': target_ass.pk, 'is_published': False}, user=target_ass.author)
+
+    def test_pending_jir_delete_on_leave_group_journal(self):
+        g_journal = factory.GroupJournal()
+        factory.JournalImportRequest(target=g_journal)
+        factory.JournalImportRequest(target=g_journal, state=JournalImportRequest.APPROVED_EXC_GRADES)
+
+        assert g_journal.import_request_targets.count() == 2, 'Both a pending and approved JIR should exist'
+        api.update(self, 'journals/leave', params={'pk': g_journal.pk}, user=g_journal.authors.first().user)
+        assert not g_journal.import_request_targets.filter(state=JournalImportRequest.PENDING).exists(), \
+            'The pending JIR should have been removed'
+        assert g_journal.import_request_targets.filter(~Q(state=JournalImportRequest.PENDING)).exists(), \
+            'Non JIRs should remain untouched'
 
     def test_list_jir(self):
         jir = factory.JournalImportRequest()

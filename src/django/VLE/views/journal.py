@@ -11,7 +11,7 @@ import VLE.utils.generic_utils as utils
 import VLE.utils.grading as grading
 import VLE.utils.responses as response
 import VLE.validators as validators
-from VLE.models import Assignment, AssignmentParticipation, Course, FileContext, Journal, User
+from VLE.models import Assignment, AssignmentParticipation, Course, FileContext, Journal, JournalImportRequest, User
 from VLE.serializers import AssignmentParticipationSerializer, JournalSerializer
 from VLE.utils import file_handling
 
@@ -358,6 +358,7 @@ class JournalView(viewsets.ViewSet):
         journal.remove_author(author)
         if journal.authors.count() == 0:
             journal.reset()
+        JournalImportRequest.objects.filter(target=journal, state=JournalImportRequest.PENDING).delete()
 
         grading.task_author_status_to_LMS.delay(journal.pk, author.pk, left_journal=True)
         return response.success(description='Successfully removed from the journal.')
