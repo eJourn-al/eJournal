@@ -8,14 +8,9 @@ class StudentCommentFactory(factory.django.DjangoModelFactory):
     entry = factory.SubFactory('test.factory.entry.EntryFactory')
     text = 'test-comment'
     published = True
-
-    @factory.post_generation
-    def add_author(self, create, extracted):
-        if not create:
-            return
-
-        self.author = self.entry.node.journal.authors.first().user
-        self.save()
+    author = factory.LazyAttribute(
+        lambda self: self.entry.node.journal.authors.first().user
+    )
 
 
 class TeacherCommentFactory(factory.django.DjangoModelFactory):
@@ -25,11 +20,6 @@ class TeacherCommentFactory(factory.django.DjangoModelFactory):
     entry = factory.SubFactory('test.factory.entry.EntryFactory')
     text = 'test-comment'
     published = False
-
-    @factory.post_generation
-    def add_author(self, create, extracted):
-        if not create:
-            return
-
-        self.author = self.entry.node.journal.assignment.courses.first().author
-        self.save()
+    author = factory.LazyAttribute(
+        lambda self: self.entry.node.journal.assignment.courses.first().author
+    )

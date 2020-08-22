@@ -6,6 +6,9 @@ class NodeFactory(factory.django.DjangoModelFactory):
         model = 'VLE.Node'
 
     journal = factory.SubFactory('test.factory.journal.JournalFactory')
+    preset = factory.SubFactory(
+        'test.factory.presetnode.ProgressNodeFactory',
+        format=factory.SelfAttribute('..journal.assignment.format'))
 
     @factory.post_generation
     def add_to_node_set(self, create, extracted):

@@ -20,6 +20,7 @@ from django.utils.timezone import now
 
 import VLE.permissions as permissions
 import VLE.utils.file_handling as file_handling
+from VLE.tasks.email import send_push_notification
 from VLE.utils import sanitization
 from VLE.utils.error_handling import (VLEBadRequest, VLEParticipationError, VLEPermissionError, VLEProgrammingError,
                                       VLEUnverifiedEmailError)
@@ -47,6 +48,37 @@ class Instance(CreateUpdateModel):
 
     def to_string(self, user=None):
         return self.name
+
+
+def gen_url(node=None, journal=None, assignment=None, course=None, user=None):
+    """Generate the corresponding frontend url to the supplied object.
+
+    Works for: node, journal, assignment, and course
+    User needs to be added if no course is supplied, this is to get the correct course.
+    """
+    if not (node or journal or assignment or course):
+        raise VLEProgrammingError('(gen_url) no object was supplied')
+
+    if journal is None and node is not None:
+        journal = node.journal
+    if assignment is None and journal is not None:
+        assignment = journal.assignment
+    if course is None and assignment is not None:
+        if user is None:
+            raise VLEProgrammingError('(gen_url) if course is not supplied, user needs to be supplied')
+        course = assignment.get_active_course(user)
+        if course is None:
+            raise VLEParticipationError(assignment, user)
+
+    url = '{}/Home/Course/{}'.format(settings.BASELINK, course.pk)
+    if assignment:
+        url += '/Assignment/{}'.format(assignment.pk)
+        if journal:
+            url += '/Journal/{}'.format(journal.pk)
+            if node:
+                url += '?nID={}'.format(node.pk)
+
+    return url
 
 
 # https://stackoverflow.com/a/2257449
@@ -352,25 +384,73 @@ class Preferences(CreateUpdateModel):
 
     Describes the preferences of a user:
     - show_format_tutorial: whether or not to show the assignment format tutorial.
-    - grade_notifications: whether or not to receive grade notifications via email.
-    - comment_notifications: whether or not to receive comment notifications via email.
-    - upcoming_deadline_notifications: whether or not to receive upcoming deadline notifications via email.
+    - ..._reminder: when a user wants to be reminded of an event that will happen in the future
+    - ..._notifications: when a user wants to receive this notification, either immidiatly, daily, weekly, or never
     - hide_version_alert: latest version number for which a version alert has been dismissed.
     """
+    DAILY = 'd'
+    WEEKLY = 'w'
+    PUSH = 'p'
+    OFF = 'o'
+    DAY_AND_WEEK = 'p'
+    WEEK = 'w'
+    DAY = 'd'
+    FREQUENCIES = (
+        (DAILY, 'd'),
+        (WEEKLY, 'w'),
+        (PUSH, 'p'),
+        (OFF, 'o'),
+    )
+    REMINDER = (
+        (DAY, 'd'),
+        (WEEK, 'w'),
+        (DAY_AND_WEEK, 'p'),
+        (OFF, 'o'),
+    )
+
     user = models.OneToOneField(
         User,
         on_delete=models.CASCADE,
         primary_key=True
     )
-    grade_notifications = models.BooleanField(
-        default=True
+
+    new_grade_notifications = models.TextField(
+        max_length=1,
+        choices=FREQUENCIES,
+        default=PUSH,
     )
-    comment_notifications = models.BooleanField(
-        default=True
+    new_comment_notifications = models.TextField(
+        max_length=1,
+        choices=FREQUENCIES,
+        default=DAILY,
     )
-    upcoming_deadline_notifications = models.BooleanField(
-        default=True
+    new_assignment_notifications = models.TextField(
+        max_length=1,
+        choices=FREQUENCIES,
+        default=WEEKLY,
     )
+    new_course_notifications = models.TextField(
+        max_length=1,
+        choices=FREQUENCIES,
+        default=WEEKLY,
+    )
+    new_entry_notifications = models.TextField(
+        max_length=1,
+        choices=FREQUENCIES,
+        default=WEEKLY,
+    )
+    new_node_notifications = models.TextField(
+        max_length=1,
+        choices=FREQUENCIES,
+        default=WEEKLY,
+    )
+
+    upcoming_deadline_reminder = models.TextField(
+        max_length=1,
+        choices=REMINDER,
+        default=DAY_AND_WEEK,
+    )
+
     show_format_tutorial = models.BooleanField(
         default=True
     )
@@ -409,6 +489,195 @@ class Preferences(CreateUpdateModel):
 
     def to_string(self, user=None):
         return "Preferences"
+
+
+class Notification(CreateUpdateModel):
+    NEW_COURSE = 1
+    NEW_ASSIGNMENT = 2
+    NEW_NODE = 3
+    NEW_ENTRY = 4
+    NEW_GRADE = 5
+    NEW_COMMENT = 6
+    UPCOMING_DEADLINE = 7
+    TYPES = {
+        NEW_COURSE: {
+            'name': 'new_course_notifications',
+            'content': {
+                'title': 'New course membership',
+                'content': 'You are now a member of {course}.',
+                'button_text': 'View Course',
+            },
+        },
+        NEW_ASSIGNMENT: {
+            'name': 'new_assignment_notifications',
+            'content': {
+                'title': 'New assignment',
+                'content': 'The assignment {assignment} is now available.',
+                'button_text': 'View Assignment',
+            },
+        },
+        NEW_NODE: {
+            'name': 'new_node_notifications',
+            'content': {
+                'title': 'New deadline',
+                'content': 'A new deadline has been added to your journal.',
+                'button_text': 'View Deadline',
+            },
+        },
+        NEW_ENTRY: {
+            'name': 'new_entry_notifications',
+            'content': {
+                'title': 'New entry',
+                'content': '{entry} was posted in the journal of {journal}.',
+                'batch_content': '{n} new entries were posted in  the journal of {journal}.',
+                'button_text': 'View Entry',
+            },
+        },
+        NEW_GRADE: {
+            'name': 'new_grade_notifications',
+            'content': {
+                'title': 'New grade',
+                'content': '{entry} has been graded.',
+                'batch_content': '{entry} has been graded.',
+                'button_text': 'View Grade',
+            },
+        },
+        NEW_COMMENT: {
+            'name': 'new_comment_notifications',
+            'content': {
+                'title': 'New comment',
+                'content': '{comment} commented on {entry}.',
+                'batch_content': '{n} new comments on {entry} in the journal of {journal}.',
+                'button_text': 'View Comment',
+            },
+        },
+        UPCOMING_DEADLINE: {
+            'name': 'None',
+            'content': {
+                'title': 'Upcoming deadline',
+                'content': 'You have an unfinished deadline ({node}) that is due on {deadline}',
+                'button_text': 'View Deadline',
+            },
+        },
+    }
+    # Specify which notifications can be batched in the email, and on what model field they need to be batched to
+    BATCHED_TYPES = {
+        NEW_ENTRY: 'journal',
+        NEW_GRADE: 'entry',
+        NEW_COMMENT: 'entry',
+    }
+
+    type = models.IntegerField(
+        choices=((type, dic['name']) for type, dic in TYPES.items()),
+        null=False,
+    )
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+    )
+    message = models.TextField()
+    sent = models.BooleanField(
+        default=False
+    )
+
+    course = models.ForeignKey(
+        'course',
+        on_delete=models.CASCADE,
+        null=True,
+    )
+    assignment = models.ForeignKey(
+        'assignment',
+        on_delete=models.CASCADE,
+        null=True,
+    )
+    journal = models.ForeignKey(
+        'journal',
+        on_delete=models.CASCADE,
+        null=True,
+    )
+    node = models.ForeignKey(
+        'node',
+        on_delete=models.CASCADE,
+        null=True,
+    )
+    entry = models.ForeignKey(
+        'entry',
+        on_delete=models.CASCADE,
+        null=True,
+    )
+    grade = models.ForeignKey(
+        'grade',
+        on_delete=models.CASCADE,
+        null=True,
+    )
+    comment = models.ForeignKey(
+        'comment',
+        on_delete=models.CASCADE,
+        null=True,
+    )
+
+    def _fill_text(self, text, n=None):
+        node_name = None
+        if self.node:
+            if self.node.type == Node.PROGRESS:
+                node_name = f"{self.journal.grade}/{self.node.preset.target}"
+            elif self.node.type == Node.ENTRYDEADLINE:
+                node_name = self.node.preset.forced_template.name
+
+        return text.format(
+            comment=self.comment.author.full_name if self.comment else None,
+            entry=self.entry.template.name if self.entry and self.entry.template else None,
+            node=node_name,
+            journal=self.journal.name if self.journal else None,
+            assignment=self.assignment.name if self.assignment else None,
+            course=self.course.name if self.course else None,
+            deadline=self.node.preset.due_date.strftime("%B %-d at %H:%M") if self.node and self.node.preset else None,
+            n=n,
+        )
+
+    @property
+    def title(self):
+        return self._fill_text(self.TYPES[self.type]['content']['title'])
+
+    @property
+    def content(self):
+        return self._fill_text(self.TYPES[self.type]['content']['content'])
+
+    @property
+    def button_text(self):
+        return Notification.TYPES[self.type]['content']['button_text']
+
+    def batch_content(self, n=None):
+        return self._fill_text(self.TYPES[self.type]['content']['batch_content'], n=n)
+
+    @property
+    def url(self):
+        return gen_url(
+            node=self.node, journal=self.journal, assignment=self.assignment, course=self.course, user=self.user)
+
+    def save(self, *args, **kwargs):
+        is_new = self._state.adding
+        if is_new:
+            if self.comment:
+                self.entry = self.comment.entry
+            elif self.grade:
+                self.entry = self.grade.entry
+            if self.entry:
+                self.node = self.entry.node
+            if self.node:
+                self.journal = self.node.journal
+            if self.journal:
+                self.assignment = self.journal.assignment
+            if self.assignment:
+                self.course = self.assignment.get_active_course(self.user)
+
+        super(Notification, self).save(*args, **kwargs)
+
+        if is_new:
+            # Send notification on creation if user preference is set to push, default (for reminders) is daily
+            if getattr(self.user.preferences, Notification.TYPES[self.type]['name'], Preferences.DAILY) == \
+               Preferences.PUSH:
+                send_push_notification.delay(self.pk)
 
 
 class Course(CreateUpdateModel):
@@ -654,6 +923,7 @@ class Participation(CreateUpdateModel):
 
     def save(self, *args, **kwargs):
         is_new = self._state.adding
+        notify_user = kwargs.pop('notify_user', True)
         super(Participation, self).save(*args, **kwargs)
 
         # Instance is being created (not modified)
@@ -661,6 +931,12 @@ class Participation(CreateUpdateModel):
             existing = AssignmentParticipation.objects.filter(user=self.user).values('assignment')
             for assignment in Assignment.objects.filter(courses__in=[self.course]).exclude(pk__in=existing):
                 AssignmentParticipation.objects.create(assignment=assignment, user=self.user)
+            if notify_user and self.user != self.course.author:
+                Notification.objects.create(
+                    type=Notification.NEW_COURSE,
+                    user=self.user,
+                    course=self.course
+                )
 
     class Meta:
         """Meta data for the model: unique_together."""
@@ -798,9 +1074,9 @@ class Assignment(CreateUpdateModel):
 
         is_new = self._state.adding
         if not self._state.adding and self.pk:
-            old_publish = Assignment.objects.get(pk=self.pk).is_published
+            was_published = Assignment.objects.get(pk=self.pk).is_published
         else:
-            old_publish = self.is_published
+            was_published = self.is_published
 
         super(Assignment, self).save(*args, **kwargs)
 
@@ -808,7 +1084,7 @@ class Assignment(CreateUpdateModel):
             # Delete all journals if assignment type changes
             Journal.objects.filter(assignment=self).delete()
 
-        if type_changed or not old_publish and self.is_published:
+        if type_changed or not was_published and self.is_published:
             # Create journals if it is changed to (or published as) a non group assignment
             if not self.is_group_assignment:
                 users = self.courses.values('users').distinct()
@@ -819,10 +1095,27 @@ class Assignment(CreateUpdateModel):
                 else:
                     existing = Journal.objects.filter(assignment=self).values('authors__user')
                 for user in users.exclude(pk__in=existing):
-                    ap = AssignmentParticipation.objects.get(assignment=self, user=user['users'])
+                    ap = AssignmentParticipation.objects.get_or_create(
+                        assignment=self, user=User.objects.get(pk=user['users']))[0]
                     if not Journal.objects.filter(assignment=self, authors__in=[ap]).exists():
                         journal = Journal.objects.create(assignment=self)
                         journal.add_author(ap)
+
+        # Send notifications once an assignment is published
+        if (is_new or not was_published) and self.is_published:
+            for ap in AssignmentParticipation.objects.filter(assignment=self):
+                if ap.user.has_permission('can_have_journal', self):
+                    Notification.objects.create(
+                        type=Notification.NEW_ASSIGNMENT,
+                        user=ap.user,
+                        assignment=self,
+                    )
+        # Delete notifications if a teacher unpublishes an assignment after publishing
+        elif was_published and not self.is_published:
+            Notification.objects.filter(
+                type=Notification.NEW_ASSIGNMENT,
+                assignment=self,
+            ).delete()
 
     def get_active_lti_course(self):
         """"Query for retrieving the course which matches the active lti id of the assignment."""
@@ -1127,12 +1420,10 @@ class Journal(CreateUpdateModel, ComputedFieldsModel):
             entry__isnull=False).order_by('entry__last_edited')
 
     def to_string(self, user=None):
-        if user is None:
-            return "Journal"
-        if not user.can_view(self):
-            return "Journal"
+        if user is None or not user.can_view(self):
+            return 'Journal'
 
-        return "the {0} journal of {1}".format(self.assignment.name, self.get_full_names())
+        return self.get_name()
 
 
 class Node(CreateUpdateModel):
@@ -1336,10 +1627,19 @@ class Entry(CreateUpdateModel):
         return not (self.grade is None or self.grade.grade is None)
 
     def save(self, *args, **kwargs):
-        if not self.pk:
+        is_new = not self.pk
+        if is_new:
             self.last_edited = timezone.now()
 
-        return super(Entry, self).save(*args, **kwargs)
+        super(Entry, self).save(*args, **kwargs)
+
+        if is_new:
+            for user in permissions.get_supervisors_of(self.node.journal):
+                Notification.objects.create(
+                    type=Notification.NEW_ENTRY,
+                    user=user,
+                    entry=self,
+                )
 
     def to_string(self, user=None):
         return "Entry"
@@ -1372,7 +1672,15 @@ class Grade(CreateUpdateModel):
     )
 
     def save(self, *args, **kwargs):
-        return super(Grade, self).save(*args, **kwargs)
+        super(Grade, self).save(*args, **kwargs)
+
+        if self.published:
+            for author in self.entry.node.journal.authors.all():
+                Notification.objects.create(
+                    type=Notification.NEW_GRADE,
+                    user=author.user,
+                    grade=self
+                )
 
     def to_string(self, user=None):
         return "Grade"
@@ -1556,8 +1864,24 @@ class Comment(CreateUpdateModel):
             not self.entry.node.journal.authors.filter(user=self.author).exists()
 
     def save(self, *args, **kwargs):
+        is_new = not self.pk
         self.text = sanitization.strip_script_tags(self.text)
-        return super(Comment, self).save(*args, **kwargs)
+        super(Comment, self).save(*args, **kwargs)
+
+        if is_new:
+            if self.published:
+                for user in permissions.get_supervisors_of(self.entry.node.journal).exclude(pk=self.author.pk):
+                    Notification.objects.create(
+                        type=Notification.NEW_COMMENT,
+                        user=user,
+                        comment=self,
+                    )
+                for author in self.entry.node.journal.authors.all().exclude(user=self.author):
+                    Notification.objects.create(
+                        type=Notification.NEW_COMMENT,
+                        user=author.user,
+                        comment=self,
+                    )
 
     def to_string(self, user=None):
         return "Comment"

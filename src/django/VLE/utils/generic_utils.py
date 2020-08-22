@@ -11,7 +11,7 @@ from django.core.files.base import ContentFile
 from django.db.models import Case, When
 
 import VLE.factory as factory
-from VLE.models import Entry, Journal, Node, PresetNode, Template
+from VLE.models import Entry, Journal, Node, Notification, PresetNode, Template
 from VLE.utils.error_handling import VLEBadRequest, VLEMissingRequiredKey, VLEParamWrongType
 
 
@@ -89,53 +89,6 @@ def optional_typed_params(post, *keys):
 
     return result
 # END: API-POST functions
-
-
-# START: journal stat functions
-def get_journal_entries(journal):
-    """Get the journal entries from a journal.
-
-    - journal: the journal in question.
-
-    Returns a QuerySet of entries from a journal.
-    """
-    return Entry.objects.filter(node__journal=journal)
-
-
-def get_points_possible(journal):
-    """Get the maximum amount of points for an assignment."""
-    return journal.assignment.points_possible
-
-
-def get_submitted_count(entries):
-    """Count the number of submitted entries.
-
-    - entries: the entries to count with.
-
-    Returns the submitted entry count.
-    """
-    return entries.count()
-
-
-def get_graded_count(entries):
-    """Count the number of graded entries.
-
-    - entries: the entries to count with.
-
-    Returns the graded entry count.
-    """
-    return entries.exclude(grade=None).exclude(grade__grade=None).count()
-
-
-def get_published_count(entries):
-    """Count the number of published entries.
-
-    - entries: the entries to count with.
-
-    Returns the published entry count.
-    """
-    return entries.filter(published=True).count()
-# END journal stat functions
 
 
 def get_sorted_nodes(journal):
@@ -233,7 +186,14 @@ def update_journals(journals, preset):
     preset -- the preset node to add to the journals.
     """
     for journal in journals:
-        factory.make_node(journal, None, preset.type, preset)
+        node = factory.make_node(journal, None, preset.type, preset)
+        for author in journal.authors.all():
+            if author.user.can_view(journal):
+                Notification.objects.create(
+                    type=Notification.NEW_NODE,
+                    user=author.user,
+                    node=node,
+                )
 
 
 def update_presets(assignment, presets, new_ids):

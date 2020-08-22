@@ -174,11 +174,12 @@ class Command(BaseCommand):
             role_teacher = factory.make_role_teacher('Teacher', course)
 
             for student in c["students"]:
-                factory.make_participation(student, course, role_student, [random.choice(student_groups)])
+                factory.make_participation(
+                    student, course, role_student, [random.choice(student_groups)], notify_user=False)
             for ta in c["tas"]:
-                factory.make_participation(ta, course, role_ta, [random.choice(student_groups)])
+                factory.make_participation(ta, course, role_ta, [random.choice(student_groups)], notify_user=False)
             for teacher in c["teachers"]:
-                factory.make_participation(teacher, course, role_teacher, [staff_group])
+                factory.make_participation(teacher, course, role_teacher, [staff_group], notify_user=False)
 
             self.courses[c["name"]] = course
 
@@ -452,10 +453,10 @@ class Command(BaseCommand):
             user = user_entries['user']
             for entry_obj in user_entries['entries']:
                 for _ in range(entry_obj['amount']):
-                    entry = factory.make_entry(entry_obj['template'], user)
+                    node = factory.make_node(Journal.objects.get(authors__user=user, assignment=assignment))
+                    entry = factory.make_entry(entry_obj['template'], user, node)
                     if entry_obj['grade'] is not None:
                         factory.make_grade(entry, self.users['Teacher'].pk, entry_obj['grade'], entry_obj['published'])
-                    factory.make_node(Journal.objects.get(authors__user=user, assignment=assignment), entry)
 
     def gen_content(self):
         """Generate content for an entry."""

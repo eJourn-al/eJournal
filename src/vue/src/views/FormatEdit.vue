@@ -247,7 +247,6 @@ import templateImportModal from '@/components/template/TemplateImportModal.vue'
 import templateEdit from '@/components/template/TemplateEdit.vue'
 
 import formatAPI from '@/api/format.js'
-import preferencesAPI from '@/api/preferences.js'
 import assignmentAPI from '@/api/assignment.js'
 
 export default {
@@ -315,9 +314,8 @@ export default {
                     this.newTemplateId = -1
                     this.newPresetId = -1
 
-                    if (this.$store.getters['preferences/showFormatTutorial']) {
-                        preferencesAPI.update(this.$store.getters['user/uID'], { show_format_tutorial: false })
-                            .then(() => { this.$store.commit('preferences/SET_FORMAT_TUTORIAL', false) })
+                    if (this.$store.getters['preferences/saved'].show_format_tutorial) {
+                        this.$store.commit('preferences/CHANGE_PREFERENCES', { show_format_tutorial: false })
                         this.startTour()
                     }
                 })

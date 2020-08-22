@@ -65,8 +65,8 @@ class EntryView(viewsets.ViewSet):
             entry = entry_utils.add_entry_to_node(node, template, request.user)
         # Template specific entry
         else:
-            entry = factory.make_entry(template, request.user)
-            node = factory.make_node(journal, entry)
+            node = factory.make_node(journal)
+            entry = factory.make_entry(template, request.user, node)
 
         try:
             files_to_establish = []

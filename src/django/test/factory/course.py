@@ -9,7 +9,7 @@ class CourseFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = 'VLE.Course'
 
-    name = 'Academische Vaardigheden 1'
+    name = factory.Sequence(lambda x: "Academische Vaardigheden {}".format(x))
     abbreviation = "AVI1"
     startdate = factory.Faker('date_between', start_date="-10y", end_date="-1y")
     enddate = factory.Faker('date_between', start_date="+1y", end_date="+10y")

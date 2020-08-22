@@ -72,7 +72,7 @@
         </div>
         <div
             v-if="$hasPermission('can_manage_journals') && (journal.author_limit === 0 ||
-                journal.author_count < journal.author_limit)"
+                journal.author_count < journal.author_limit) && participantsWithoutJournal.length > 0"
             class="d-flex mt-3 full-width"
         >
             <theme-select

@@ -535,7 +535,8 @@ class AssignmentView(viewsets.ViewSet):
             if preset.forced_template:
                 preset.forced_template = Template.objects.get(pk=template_dict[preset.forced_template.pk])
             preset.save()
-            utils.update_journals(journals, preset)
+            for journal in journals:
+                factory.make_node(journal, None, preset.type, preset)
 
         # Add new lti id to new assignment
         lti_id, = utils.optional_typed_params(request.data, (str, 'lti_id'))

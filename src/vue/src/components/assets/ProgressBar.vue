@@ -124,7 +124,7 @@ export default {
     },
     methods: {
         zeroIfNull (val) {
-            return (val === null) ? 0 : val
+            return !val ? 0 : val
         },
     },
 }

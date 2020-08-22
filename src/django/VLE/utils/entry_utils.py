@@ -60,7 +60,7 @@ def add_entry_to_node(node, template, author):
     if node.preset.is_locked():
         raise VLEBadRequest('The lock date for this node has passed.')
 
-    entry = factory.make_entry(template, author)
+    entry = factory.make_entry(template, author, node)
     node.entry = entry
     node.save()
     return entry

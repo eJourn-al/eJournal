@@ -120,9 +120,18 @@ class OwnUserSerializer(serializers.ModelSerializer):
 class PreferencesSerializer(serializers.ModelSerializer):
     class Meta:
         model = Preferences
-        fields = ('user', 'grade_notifications', 'comment_notifications', 'upcoming_deadline_notifications',
-                  'show_format_tutorial', 'hide_version_alert', 'grade_button_setting', 'comment_button_setting',
-                  'auto_select_ungraded_entry', 'auto_proceed_next_journal')
+        fields = (
+            'user',
+            # Toggle preferences
+            'auto_select_ungraded_entry', 'auto_proceed_next_journal',
+            # notification preferences
+            'new_grade_notifications', 'new_comment_notifications', 'new_entry_notifications',
+            'new_course_notifications', 'new_assignment_notifications', 'new_node_notifications',
+            # reminder preferences
+            'upcoming_deadline_reminder',
+            # Hidden preferences
+            'show_format_tutorial', 'hide_version_alert', 'grade_button_setting', 'comment_button_setting',
+        )
         read_only_fields = ('user', )
 
 

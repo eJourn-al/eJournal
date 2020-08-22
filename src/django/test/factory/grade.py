@@ -11,14 +11,14 @@ class GradeFactory(factory.django.DjangoModelFactory):
     grade = 1
     published = True
     creation_date = date(2019, 1, 1)
-    author = None
+    author = factory.LazyAttribute(
+        lambda self: self.entry.node.journal.assignment.courses.first().author
+    )
 
     @factory.post_generation
     def add_author(self, create, extracted):
         if not create:
             return
 
-        self.author = self.entry.node.journal.assignment.courses.first().author
-        self.save()
         self.entry.grade = self
         self.entry.save()
