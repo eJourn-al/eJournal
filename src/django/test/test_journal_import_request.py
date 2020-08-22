@@ -124,7 +124,7 @@ class JournalImportRequestTest(TestCase):
     def test_create_jir(self):
         # TODO JIR, test group journals, can a member of target import? source? both required?
         # it only makes sense if a student creates an import request of which he/she is both member, which is tested
-        source_journal = factory.Journal(entries__n=0)
+        source_journal = factory.Journal()
         student = source_journal.authors.first().user
 
         target_assignment = factory.Assignment()
@@ -164,6 +164,7 @@ class JournalImportRequestTest(TestCase):
         api.create(self, 'journal_import_request', params=data, user=student, status=400)
         approved_jir.delete()
 
+        Entry.objects.filter(node__journal=source_journal).first().delete()
         # You cannot request to import an empty journal
         api.create(self, 'journal_import_request', params=data, user=student, status=400)
 

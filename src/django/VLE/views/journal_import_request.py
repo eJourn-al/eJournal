@@ -1,4 +1,3 @@
-from django.utils import timezone
 from rest_framework import viewsets
 
 import VLE.utils.generic_utils as utils
@@ -35,29 +34,17 @@ class JournalImportRequestView(viewsets.ViewSet):
         assignment_source_id, assignment_target_id = utils.required_typed_params(
             request.data, (int, 'assignment_source_id'), (int, 'assignment_target_id'))
 
-        if assignment_source_id == assignment_target_id:
-            return response.bad_request('You cannot import a journal into itself.')
-
         assignment_target = Assignment.objects.get(pk=assignment_target_id)
-
-        if assignment_target.lock_date and assignment_target.lock_date < timezone.now():
-            return response.bad_request('You are not allowed to create an import request for a locked assignment.')
 
         journal_source = AssignmentParticipation.objects.get(
             user=request.user, assignment=assignment_source_id).journal
         journal_target = AssignmentParticipation.objects.get(
             user=request.user, assignment=assignment_target).journal
 
-        if JournalImportRequest.objects.filter(state__in=JournalImportRequest.APPROVED_STATES, target=journal_target,
-                                               source=journal_source).exists():
-            return response.bad_request('This journal has already been imported')
         if JournalImportRequest.objects.filter(state=JournalImportRequest.PENDING, target=journal_target,
                                                source=journal_source).exists():
             return response.success(
                 description='The journal import request is awaiting approval from your instructor.')
-
-        if not Entry.objects.filter(node__journal=journal_source).exists():
-            return response.bad_request('Please select a non empty journal.')
 
         jir = JournalImportRequest.objects.create(source=journal_source, target=journal_target, author=request.user)
 

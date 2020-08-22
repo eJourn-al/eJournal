@@ -1690,3 +1690,31 @@ class JournalImportRequest(CreateUpdateModel):
         }
 
         return responses[self.state]
+
+    def save(self, *args, **kwargs):
+        target_id = self.__dict__.get('target_id', None)
+        source_id = self.__dict__.get('source_id', None)
+
+        if target_id:
+            target = Journal.objects.get(pk=target_id)
+            if target.assignment.lock_date and target.assignment.lock_date < timezone.now():
+                raise ValidationError('You are not allowed to create an import request for a locked assignment.')
+
+        if source_id:
+            source = Journal.objects.get(pk=source_id)
+            if not Entry.objects.filter(node__journal=source).exists():
+                raise ValidationError('You cannot create an import request whose source is empty.')
+
+        # QUESTION: Could even move the permission checks here, e.g. need to be author of both source and target journal
+        if target_id and source_id:
+            if source.assignment.pk == target.assignment.pk:
+                raise ValidationError('You cannot import a journal into itself.')
+
+            existing_import_qry = target.import_request_targets.filter(
+                state__in=JournalImportRequest.APPROVED_STATES, source=source)
+            if self.pk:
+                existing_import_qry = existing_import_qry.exclude(pk=self.pk)
+            if existing_import_qry.exists():
+                raise ValidationError('You cannot import the same journal multiple times')
+
+        return super(JournalImportRequest, self).save(*args, **kwargs)

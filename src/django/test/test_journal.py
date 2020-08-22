@@ -180,15 +180,13 @@ class JournalAPITest(TestCase):
 
     def test_computed_import_requests(self):
         journal = factory.Journal(entries__n=0)
-        source = factory.Journal()
         assert journal.import_requests == 0, 'A journal has no JIRs by default'
 
-        jir = factory.JournalImportRequest(
-            target=journal, state=JournalImportRequest.APPROVED_EXC_GRADES, source=source)
+        jir = factory.JournalImportRequest(target=journal, state=JournalImportRequest.APPROVED_EXC_GRADES)
         assert journal.import_requests == 0, 'Only pending JIRs should count towards import request total'
 
-        jir = factory.JournalImportRequest(target=journal, source=source, state=JournalImportRequest.PENDING)
-        jir2 = factory.JournalImportRequest(target=journal, source=source, state=JournalImportRequest.PENDING)
+        jir = factory.JournalImportRequest(target=journal, state=JournalImportRequest.PENDING)
+        jir2 = factory.JournalImportRequest(target=journal, state=JournalImportRequest.PENDING)
         journal.refresh_from_db()
         assert journal.import_request_targets.count() == 3, 'Journal should have three JIRs with journal as target'
         assert journal.import_requests == 2, 'Import requests should update on the creation of a JIR'
