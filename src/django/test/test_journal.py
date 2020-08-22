@@ -7,7 +7,8 @@ from django.core.exceptions import ValidationError
 from django.test import TestCase
 
 import VLE.factory
-from VLE.models import Assignment, AssignmentParticipation, Course, Journal, User
+from VLE.models import (Assignment, AssignmentParticipation, Course, Journal, JournalImportRequest, Participation, Role,
+                        User)
 from VLE.utils.error_handling import VLEBadRequest
 
 
@@ -87,6 +88,26 @@ class JournalAPITest(TestCase):
         ap = AssignmentParticipation.objects.get(journal=lti_journal, assignment=lti_journal.assignment, user=user)
         assert ap.grade_url and ap.sourcedid, 'Lti journal requires a non empty grade_url and sourcedid'
 
+    def test_journal_authors_course_participation(self):
+        assignment = factory.Assignment()
+        course = assignment.courses.first()
+        student_role = Role.objects.get(name='Student', course=course)
+
+        journal = factory.Journal(assignment=assignment)
+
+        assert Participation.objects.filter(
+            user=journal.authors.first().user, course=course, role=student_role).exists(), \
+            'Journal authors are course members'
+
+        g_assignment = factory.Assignment(group_assignment=True)
+        course = g_assignment.courses.first()
+        student_role = Role.objects.get(name='Student', course=course)
+        journal = factory.GroupJournal(assignment=g_assignment, add_users=[factory.Student(), factory.Student()])
+
+        for author in journal.authors.all():
+            assert Participation.objects.filter(
+                user=author.user, course=course, role=student_role).exists(), 'Journal authors are course members'
+
     def test_group_journal_factory(self):
         course = factory.Course()
         users = [factory.Student(), factory.Student()]
@@ -156,6 +177,30 @@ class JournalAPITest(TestCase):
         assert group_journal.full_names == group_journal.authors.first().user.full_name
         assert group_journal.name == 'Journal {}'.format(Journal.objects.filter(assignment=self.assignment).count()), \
             'Group journal name should still default to assignments journal count'
+
+    def test_computed_import_requests(self):
+        journal = factory.Journal(entries__n=0)
+        source = factory.Journal()
+        assert journal.import_requests == 0, 'A journal has no JIRs by default'
+
+        jir = factory.JournalImportRequest(
+            target=journal, state=JournalImportRequest.APPROVED_EXC_GRADES, source=source)
+        assert journal.import_requests == 0, 'Only pending JIRs should count towards import request total'
+
+        jir = factory.JournalImportRequest(target=journal, source=source, state=JournalImportRequest.PENDING)
+        jir2 = factory.JournalImportRequest(target=journal, source=source, state=JournalImportRequest.PENDING)
+        journal.refresh_from_db()
+        assert journal.import_request_targets.count() == 3, 'Journal should have three JIRs with journal as target'
+        assert journal.import_requests == 2, 'Import requests should update on the creation of a JIR'
+
+        jir.delete()
+        journal.refresh_from_db()
+        assert journal.import_requests == 1, 'Import requests should update on the deletion of a JIR'
+
+        jir2.state = JournalImportRequest.DECLINED
+        jir2.save()
+        journal.refresh_from_db()
+        assert journal.import_requests == 0, 'Import requests should update on the state change of a JIR'
 
     def test_computed_grade(self):
         journal = factory.Journal(entries__n=0)

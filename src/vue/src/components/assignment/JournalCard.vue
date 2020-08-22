@@ -14,12 +14,14 @@
                         :src="journal.image"
                     />
                     <number-badges-display
-                        v-if="$hasPermission('can_view_all_journals') && (journal.needs_marking || journal.unpublished)"
+                        v-if="$hasPermission('can_view_all_journals')
+                            && (journal.needs_marking || journal.unpublished || journal.import_requests)"
                         :badges="[
                             { value: journal.needs_marking, tooltip: 'needsMarking' },
                             { value: journal.unpublished, tooltip: 'unpublished' },
                             { value: journal.import_requests, tooltip: 'importRequests' },
                         ]"
+                        :displayZeroValues="false"
                         :keyPrefix="journal.id"
                     />
                 </div>
@@ -77,12 +79,6 @@
                     :currentPoints="journal.grade"
                     :totalPoints="assignment.points_possible"
                 />
-                <span
-                    v-if="journal.import_requests"
-                >
-                    <b> {{ journal.import_requests }} </b>
-                    {{ `Import request${(journal.import_requests > 1) ?'s' : ''}` }}
-                </span>
             </b-col>
         </b-row>
         <slot/>

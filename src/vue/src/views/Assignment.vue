@@ -608,15 +608,18 @@ export default {
             let needsMarking = 0
             let unpublished = 0
             let points = 0
+            let importRequests = 0
 
             for (let i = 0; i < filteredJournals.length; i++) {
                 needsMarking += filteredJournals[i].needs_marking
                 unpublished += filteredJournals[i].unpublished
                 points += filteredJournals[i].grade
+                importRequests += filteredJournals[i].import_requests
             }
             this.stats = {
                 needsMarking,
                 unpublished,
+                importRequests,
                 averagePoints: points / filteredJournals.length,
             }
         },

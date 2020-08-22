@@ -14,7 +14,7 @@ from faker import Faker
 
 import VLE.factory as factory
 from VLE.models import (Assignment, AssignmentParticipation, Course, Field, FileContext, Journal, JournalImportRequest,
-                        Node, Template, User)
+                        Node, Participation, Role, Template, User)
 from VLE.utils import file_handling
 
 faker = Faker()
@@ -495,19 +495,27 @@ class Command(BaseCommand):
 
     def gen_journal_import_requests(self):
         """
-        Generates a JournalImportRequest for user "Student" from his Colloquium journal into his Logboek journal.
+        Generates a JIR for each logboek student (who is also a colloquium student) from colloquium into logboek
+        Generates one JIR from group assignment to logboek for 'Student'
         """
+
         colloquium = Assignment.objects.get(name='Colloquium')
+        colloquium_course = colloquium.courses.first()
         logboek = Assignment.objects.get(name='Logboek')
         group_assignment = Assignment.objects.get(name='Group Assignment')
+        student_role = Role.objects.get(course=colloquium_course, name='Student')
 
-        JournalImportRequest.objects.create(
-            source=AssignmentParticipation.objects.get(
-                assignment=colloquium, user=self.users['Student']).journal,
-            target=AssignmentParticipation.objects.get(
-                assignment=logboek, user=self.users['Student']).journal,
-            author=self.users['Student']
-        )
+        for colloquium_course_p in Participation.objects.filter(role=student_role, course=colloquium_course):
+            logboek_ap = logboek.assignmentparticipation_set.filter(
+                user=colloquium_course_p.user, user__is_test_student=False)
+            if logboek_ap.exists():
+                logboek_ap = logboek_ap.first()
+                JournalImportRequest.objects.create(
+                    source=AssignmentParticipation.objects.get(
+                        assignment=colloquium, user=colloquium_course_p.user).journal,
+                    target=logboek_ap.journal,
+                    author=colloquium_course_p.user
+                )
 
         JournalImportRequest.objects.create(
             source=AssignmentParticipation.objects.get(

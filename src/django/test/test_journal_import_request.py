@@ -45,6 +45,35 @@ class JournalImportRequestTest(TestCase):
         # j2 = factory.Journal(assignment__courses=[course])
         # factory.JournalImportRequest(source=j1, target=j2)
 
+    def test_unpublish_assignment_with_outstanding_jirs(self):
+        source_ass = factory.Assignment()
+        target_ass = factory.Assignment()
+
+        # It should be no problem to change the published state of a fresh assignment
+        assert target_ass.can_unpublish(), 'Without entries or JIRs it should be possible to unpublish the assignment'
+        api.update(self, 'assignments', params={'pk': target_ass.pk, 'is_published': False}, user=target_ass.author)
+        api.update(self, 'assignments', params={'pk': target_ass.pk, 'is_published': True}, user=target_ass.author)
+
+        # Create an outstanding JIR for the target assignment
+        jir = factory.JournalImportRequest(source__assignment=source_ass, state=JournalImportRequest.PENDING,
+                                           target__assignment=target_ass, target__entries__n=0)
+
+        # It should no longer be possible to unpublish
+        assert target_ass.has_outstanding_jirs(), 'Target assignment should now register outstanding JIRs'
+        assert not target_ass.can_unpublish(), 'With outstanding JIRs it should not be possible to unpublish'
+        jir.state = JournalImportRequest.DECLINED
+        jir.save()
+        assert not target_ass.has_outstanding_jirs(), 'Target assignment should no longer register outstanding JIRs'
+        assert target_ass.can_unpublish(), 'Without outstanding JIRs it should again be possible to unpublish'
+        jir.state = JournalImportRequest.PENDING
+        jir.save()
+        api.update(self, 'assignments', params={'pk': target_ass.pk, 'is_published': False},
+                   user=target_ass.author, status=400)
+
+        jir.state = JournalImportRequest.DECLINED
+        jir.save()
+        api.update(self, 'assignments', params={'pk': target_ass.pk, 'is_published': False}, user=target_ass.author)
+
     def test_list_jir(self):
         jir = factory.JournalImportRequest()
         supervisor = jir.target.assignment.author

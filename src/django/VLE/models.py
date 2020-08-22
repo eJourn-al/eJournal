@@ -777,8 +777,9 @@ class Assignment(CreateUpdateModel):
                 pre_save = Assignment.objects.get(pk=self.pk)
                 active_lti_id_modified = pre_save.active_lti_id != self.active_lti_id
 
-                if pre_save.is_published and not self.is_published and pre_save.has_entries():
-                    raise ValidationError('Cannot unpublish an assignment that has entries.')
+                if pre_save.is_published and not self.is_published and not pre_save.can_unpublish():
+                    raise ValidationError(
+                        'Cannot unpublish an assignment that has entries or outstanding journal import requests.')
                 if pre_save.is_group_assignment != self.is_group_assignment:
                     if pre_save.has_entries():
                         raise ValidationError('Cannot change the type of an assignment that has entries.')
@@ -897,6 +898,12 @@ class Assignment(CreateUpdateModel):
     def has_entries(self):
         return Entry.objects.filter(node__journal__assignment=self).exists()
 
+    def has_outstanding_jirs(self):
+        return JournalImportRequest.objects.filter(target__assignment=self, state=JournalImportRequest.PENDING).exists()
+
+    def can_unpublish(self):
+        return not (self.has_entries() or self.has_outstanding_jirs())
+
     def to_string(self, user=None):
         if user is None:
             return "Assignment"
@@ -904,6 +911,19 @@ class Assignment(CreateUpdateModel):
             return "Assignment"
 
         return "{} ({})".format(self.name, self.pk)
+
+# @receiver(models.signals.pre_save, sender=Assignment)
+# def model_pre_save(sender, instance, **kwargs):
+#     try:
+#         instance._pre_save_instance = Assignment.objects.get(pk=instance.pk)
+#     except Assignment.DoesNotExist:
+#         instance._pre_save_instance = instance
+
+
+# @receiver(signal=models.signals.post_save, sender=Assignment)
+# def model_post_save(sender, instance, created, **kwargs):
+#     pre_save_instance = instance._pre_save_instance
+#     post_save_instance = instance
 
 
 class AssignmentParticipation(CreateUpdateModel):
@@ -1042,6 +1062,13 @@ class Journal(CreateUpdateModel, ComputedFieldsModel):
     ])
     def unpublished(self):
         return self.node_set.filter(entry__grade__published=False).count()
+
+    # TODO JIR: Is this required
+    @computed(models.IntegerField(null=True), depends=[
+        ['import_request_targets', ['target']],
+    ])
+    def import_requests(self):
+        return self.import_request_targets.filter(state=JournalImportRequest.PENDING).count()
 
     @computed(models.FloatField(null=True), depends=[
         ['node_set', ['entry']],
@@ -1624,14 +1651,14 @@ class JournalImportRequest(CreateUpdateModel):
     # TODO JIR: Case or set null, if JIR is pending and source is deleted, delted JIr as well.
     source = models.ForeignKey(
         'journal',
-        related_name='import_request_source',
+        related_name='import_request_sources',
         blank=True,
         null=True,
         on_delete=models.SET_NULL
     )
     target = models.ForeignKey(
         'journal',
-        related_name='import_request_target',
+        related_name='import_request_targets',
         blank=True,
         null=True,
         on_delete=models.CASCADE

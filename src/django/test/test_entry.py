@@ -255,6 +255,24 @@ class EntryAPITest(TestCase):
         self.assertRaises(
             ValidationError, validate_entry_content, 'some data', factory.NoSubmissionField(template=template))
 
+    def test_assignment_unpublish_with_entries(self):
+        assignment = factory.Assignment()
+
+        # It should be no problem to change the published state of a fresh assignment
+        assert not assignment.has_entries(), 'Empty assignment should hold no entries'
+        assert assignment.can_unpublish(), 'Without entries it should be possible to unpublish the assignment'
+        api.update(self, 'assignments', params={'pk': assignment.pk, 'is_published': False}, user=assignment.author)
+        api.update(self, 'assignments', params={'pk': assignment.pk, 'is_published': True}, user=assignment.author)
+
+        # Create a journal with non graded entries
+        factory.Journal(assignment=assignment, entries__n=1)
+
+        # It should no longer be possible to unpublish as the assignment now holds entries
+        assert assignment.has_entries(), 'Assignment should now hold entries'
+        assert not assignment.can_unpublish(), 'Assignment should no longer be unpublishable'
+        api.update(self, 'assignments', params={'pk': assignment.pk, 'is_published': False},
+                   user=assignment.author, status=400)
+
     def test_create_entry(self):
         # Check valid entry creation
         resp = api.create(self, 'entries', params=self.valid_create_params, user=self.student)['entry']

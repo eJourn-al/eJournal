@@ -9,8 +9,10 @@
                   tooltip: 'needsMarking' },
                 { value: filterOwnGroups ? deadline.stats.unpublished_own_groups : deadline.stats.unpublished,
                   tooltip: 'unpublished' },
-                { value: deadline.journal_import_requests, tooltip: 'importRequests' },
+                { value: filterOwnGroups ? deadline.journal_import_requests_own_groups :
+                    deadline.journal_import_requests, tooltip: 'importRequests' },
             ]"
+            :displayZeroValues="false"
             class="float-right multi-form"
             keyPrefix="todo"
         />
@@ -131,10 +133,13 @@ export default {
         },
         thingsToDo () {
             if (this.filterOwnGroups) {
-                return this.deadline.stats && this.deadline.stats.needs_marking_own_groups
-                    + this.deadline.stats.unpublished_own_groups > 0
+                return this.deadline.stats
+                    && (this.deadline.stats.needs_marking_own_groups || this.deadline.stats.unpublished_own_groups
+                        || this.deadline.stats.journal_import_requests_own_groups)
             } else {
-                return this.deadline.stats && this.deadline.stats.needs_marking + this.deadline.stats.unpublished > 0
+                return this.deadline.stats
+                    && (this.deadline.stats.needs_marking || this.deadline.stats.unpublished
+                        || this.deadline.stats.journal_import_requests)
             }
         },
     },

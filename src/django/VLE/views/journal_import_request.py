@@ -24,7 +24,7 @@ class JournalImportRequestView(viewsets.ViewSet):
         request.user.check_permission('can_manage_journal_import_requests', journal_target.assignment)
 
         serializer = JournalImportRequestSerializer(
-            journal_target.import_request_target.filter(state=JournalImportRequest.PENDING),
+            journal_target.import_request_targets.filter(state=JournalImportRequest.PENDING),
             context={'user': request.user},
             many=True
         )

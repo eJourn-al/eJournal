@@ -4,17 +4,17 @@
         class="number-badges-container"
     >
         <b-badge
-            v-for="(badge, i) in displayedBadges"
+            v-for="(d, i) in displayedBadges"
             :key="`${keyPrefix}-badge-${i}`"
-            v-b-tooltip.hover="('tooltip' in badge) ? tooltipToMsg(badge.tooltip, badge.value) : ''"
+            v-b-tooltip.hover="('tooltip' in d.badge) ? tooltipToMsg(d.badge.tooltip, d.badge.value) : ''"
             class="badge-part"
             :class="{
                 'border-left': i == 0,
                 'border-right': i == displayedBadges.length - 1,
             }"
-            :style="{ ...colorsStyles[displayedBadges.length - 1 - i] }"
+            :style="{ ...d.styles }"
         >
-            {{ badge.value ? Math.round(badge.value * 100) / 100 : 0 }}
+            {{ d.badge.value ? Math.round(d.badge.value * 100) / 100 : 0 }}
         </b-badge>
     </div>
 </template>
@@ -27,7 +27,7 @@ export default {
             type: Boolean,
         },
         displayZeroValues: {
-            default: false,
+            default: true,
             type: Boolean,
         },
         keyPrefix: {
@@ -59,9 +59,19 @@ export default {
         }
     },
     computed: {
-        /* Reverse so we grow the list from right to left */
         displayedBadges () {
-            return this.badges.filter(badge => (badge.value === 0 && this.displayZeroValues) || badge.value).reverse()
+            const result = []
+
+            /* Create a mapping from badge to color, keeping the colors mapped in order despite reverse and
+             * zero not displayed value */
+            this.badges.forEach((badge, index) => {
+                if ((badge.value === 0 && this.displayZeroValues) || badge.value) {
+                    result.push({ badge, styles: this.colorsStyles[index % this.colorsStyles.length] })
+                }
+            })
+
+            /* Reverse so we grow the list from right to left */
+            return result.reverse()
         },
     },
     methods: {

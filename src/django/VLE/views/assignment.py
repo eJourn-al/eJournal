@@ -213,6 +213,7 @@ class AssignmentView(viewsets.ViewSet):
         if not (request.user.is_superuser or request.user == assignment.author):
             req_data.pop('author', None)
 
+        # TODO JIR: Can only go to not published when there are no outstanding JIRS with the assignment as target
         is_published, can_set_journal_name, can_set_journal_image, can_lock_journal = \
             utils.optional_typed_params(
                 request.data, (bool, 'is_published'),

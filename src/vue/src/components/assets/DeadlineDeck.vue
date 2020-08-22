@@ -132,10 +132,18 @@ export default {
             const filterOwnGroupsCopy = this.filterOwnGroups
             function compareMarkingNeeded (a, b) {
                 if (filterOwnGroupsCopy) {
-                    return (b.stats.needs_marking_own_groups + b.stats.unpublished_own_groups)
-                    - (a.stats.needs_marking_own_groups + a.stats.unpublished_own_groups)
+                    return (
+                        b.stats.needs_marking_own_groups
+                        + b.stats.unpublished_own_groups
+                        + b.stats.import_requests_own_groups
+                    ) - (
+                        a.stats.needs_marking_own_groups
+                        + a.stats.unpublished_own_groups
+                        + a.stats.import_requests_own_groups
+                    )
                 } else {
-                    return (b.stats.needs_marking + b.stats.unpublished) - (a.stats.needs_marking + a.stats.unpublished)
+                    return (b.stats.needs_marking + b.stats.unpublished + b.stats.import_requests)
+                        - (a.stats.needs_marking + a.stats.unpublished + a.stats.import_requests)
                 }
             }
 

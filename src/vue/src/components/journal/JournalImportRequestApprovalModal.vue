@@ -147,7 +147,7 @@ export default {
     created () {
         journalImportRequestAPI.list(this.$route.params.jID).then((jirs) => {
             this.jirs = jirs
-            if (jirs.length === 1) { this.selectedAssignment = { jir: jirs[0] } }
+            if (jirs.length === 1) { this.selectedAssignment = { jir: jirs[0], name: jirs[0].target.assignment.name } }
             this.loading = false
 
             if (this.autoShow) {

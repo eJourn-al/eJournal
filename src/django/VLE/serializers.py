@@ -353,6 +353,13 @@ class AssignmentSerializer(serializers.ModelSerializer):
                 'needs_marking_own_groups': own_group.aggregate(Sum('needs_marking'))['needs_marking__sum'] or 0,
                 'unpublished_own_groups': own_group.aggregate(Sum('unpublished'))['unpublished__sum'] or 0,
             })
+        # TODO JIR Test
+        if self.context['user'].has_permission('can_manage_journal_import_requests', assignment):
+            own_group = journal_set.filter(authors__user__in=own_group_users)
+            stats.update({
+                'import_requests': journal_set.aggregate(Sum('import_requests'))['import_requests__sum'] or 0,
+                'import_requests_own_groups': own_group.aggregate(Sum('import_requests'))['import_requests__sum'] or 0,
+            })
         # Other stats
         stats['average_points'] = journal_set.aggregate(Avg('grade'))['grade__avg']
 
@@ -504,14 +511,13 @@ class JournalSerializer(serializers.ModelSerializer):
     author_count = serializers.SerializerMethodField()
     groups = serializers.SerializerMethodField()
     usernames = serializers.SerializerMethodField()
-    import_requests = serializers.SerializerMethodField()
 
     class Meta:
         model = Journal
         fields = ('id', 'bonus_points', 'grade', 'name', 'image', 'author_limit',
                   'locked', 'author_count', 'full_names', 'groups', 'import_requests',
                   'grade', 'name', 'image', 'needs_lti_link', 'unpublished', 'needs_marking', 'usernames')
-        read_only_fields = ('id', 'assignment', 'authors', 'grade')
+        read_only_fields = ('id', 'assignment', 'authors', 'grade', 'import_requests')
 
     def get_author_count(self, journal):
         # If annotated in the query, get that, else query here
@@ -531,9 +537,6 @@ class JournalSerializer(serializers.ModelSerializer):
         return list(Participation.objects.filter(
             user__in=journal.authors.values('user'),
             course=self.context['course']).values_list('groups__pk', flat=True).distinct())
-
-    def get_import_requests(self, journal):
-        return journal.import_request_target.count()
 
 
 class FormatSerializer(serializers.ModelSerializer):
