@@ -1,11 +1,28 @@
+import io
 import json
 import random
 from test.factory.file_context import FileContentFileContextFactory, RichTextContentFileContextFactory
 
 import factory
+from django.core.exceptions import ValidationError
 
-from VLE.models import Content, Field
+from VLE.models import Field
 from VLE.utils.error_handling import VLEProgrammingError
+
+IMG_FILE_PATH = '/home/maarten/Repos/eJournal/src/vue/public/journal-view.png'
+PDF_FILE_PATH = '/home/maarten/Repos/eJournal/src/django/VLE/management/commands/dummy.pdf'
+
+
+def _from_file_to_file(from_file):
+    '''
+    factoryboy's FileField from_path default is ''
+    '''
+
+    if isinstance(from_file, io.IOBase):
+        return from_file
+    if isinstance(from_file, str) and from_file != '':
+        return open(from_file, 'rb')
+    return ''
 
 
 class ContentFactory(factory.django.DjangoModelFactory):
@@ -16,6 +33,11 @@ class ContentFactory(factory.django.DjangoModelFactory):
         data__n_files (int): The number of desired RichText images defaults to one.
 
     Does not support deep syntax for the generated FileContext models.
+
+    ToDo:
+        Make from_file passing argument checks clean
+        Provide a way to provide more varied from file arguments
+        Make from file argument compatible with field options
     '''
     class Meta:
         model = 'VLE.Content'
@@ -34,20 +56,44 @@ class ContentFactory(factory.django.DjangoModelFactory):
             if self.field.type == Field.TEXT:
                 self.data = factory.Faker('text').generate()
             elif self.field.type == Field.RICH_TEXT:
+                from_file = ''
+                filename = factory.Faker('file_name', category='image').generate()
+                # Use a preexisintg file on os
+                if 'from_file' in kwargs and not kwargs['from_file'] == '':
+                    from_file = _from_file_to_file(IMG_FILE_PATH)
+                    filename = factory.Faker('file_name', category='image', extension='png').generate()
+
                 # NOTE: Params are not available in post generation
                 # https://github.com/FactoryBoy/factory_boy/issues/544
                 for _ in range(kwargs['n_files'] if 'n_files' in kwargs else 1):
                     # TODO deep syntax could be made available by using a dedicated class with its own related
                     # factory. Could be done via traits as well, could these be unlocked based on field type?
                     # Same for FileContentFileContextFactory
-                    RichTextContentFileContextFactory(content=self, author=self.entry.author)
+                    RichTextContentFileContextFactory(
+                        content=self,
+                        author=self.entry.author,
+                        file__from_file=from_file,
+                        file__filename=filename,
+                    )
+
                 # The factory appends the created download urls, so here we prepend so text
                 self.data = factory.Faker('text').generate() + self.data if self.data else ''
             elif self.field.type == Field.FILE:
-                # The factory sets the data to the fc id
+                from_file = ''
                 extention = random.choice(self.field.options.split(', ')) if self.field.options else None
-                file_name = factory.Faker('file_name', extension=extention).generate()
-                FileContentFileContextFactory(content=self, file__filename=file_name, author=self.entry.author)
+                filename = factory.Faker('file_name', extension=extention).generate()
+                # Use a preexisting file on os
+                if 'from_file' in kwargs and not kwargs['from_file'] == '':
+                    from_file = _from_file_to_file(PDF_FILE_PATH)
+                    filename = factory.Faker('file_name', category='text', extension='pdf').generate()
+
+                # The factory sets the data to the fc id
+                FileContentFileContextFactory(
+                    content=self,
+                    file__filename=filename,
+                    file__from_file=from_file,
+                    author=self.entry.author
+                )
             elif self.field.type == Field.VIDEO:
                 # According to our current validators this can be any url
                 self.data = 'https://www.youtube.com/watch?v=lJMNA7UcpxE'
@@ -63,3 +109,11 @@ class ContentFactory(factory.django.DjangoModelFactory):
                 raise VLEProgrammingError('Content should never be generated for a no submission field')
 
         self.save()
+
+    @factory.post_generation
+    def validate(self, create, extracted, **kwargs):
+        if not create:
+            return
+
+        if not self.entry.template.field_set.filter(pk=self.field.pk).exists():
+            raise ValidationError('Content initiated for a field which is not part of its entries template')

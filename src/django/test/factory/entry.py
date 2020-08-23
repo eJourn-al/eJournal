@@ -52,7 +52,7 @@ class UnlimitedEntryFactory(factory.django.DjangoModelFactory):
     last_edited = factory.LazyFunction(timezone.now)
     template = None
 
-    # TODO JIR: default random.choice(self.node.journal.authors.all()).user
+    # TODO JIR: default random.choice(self.node.journal.authors.all()).user to better support group journals
     @factory.post_generation
     def author(self, create, extracted, **kwargs):
         test.factory.rel_factory(self, create, extracted, 'author', VLE.models.User, factory=None,
@@ -79,14 +79,15 @@ class UnlimitedEntryFactory(factory.django.DjangoModelFactory):
         self.save()
 
     @factory.post_generation
-    def gen_content(self, create, extracted):
-        if not create:
+    def gen_content(self, create, extracted, **kwargs):
+        if not create or extracted is False:
             return
 
         for field in self.template.field_set.all():
             if field.type == VLE.models.Field.NO_SUBMISSION:
                 continue
-            test.factory.Content(field=field, entry=self)
+
+            test.factory.Content(field=field, entry=self, data__from_file=kwargs.get('from_file', ''))
 
     @factory.post_generation
     def validate(self, create, extracted):
@@ -107,7 +108,7 @@ class UnlimitedEntryFactory(factory.django.DjangoModelFactory):
 
 class PresetEntryFactory(UnlimitedEntryFactory):
     '''
-    Creates a Deadline entry for a ENTRYDEADLINE preset node.
+    Creates a Deadline entry for a ENTRYDEADLINE preset node. Cannot provide the node directly.
 
     Yields:
         - If the entry is not attached to a Node linked to a ENTRYDEADLINE preset, it will create an ENTRYDEADLINE
@@ -120,8 +121,6 @@ class PresetEntryFactory(UnlimitedEntryFactory):
         if not create:
             return
 
-        # TODO JIR: Does the if block really work? Cannot pass a node directly.. E.g.
-        # PrsetEntry(node=node)
         if self.node.preset:
             # We have an additional node which was added to the journal by the PresetNodeFactory
             correct_node = self.node.preset.node_set.filter(journal=self.node.journal).first()

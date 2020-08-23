@@ -5,6 +5,7 @@ import test.factory as factory
 from datetime import date, timedelta
 from test.utils import api
 
+from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.test import TestCase
 from faker import Faker
@@ -164,9 +165,8 @@ class EntryAPITest(TestCase):
             'Correct node type is created, attached to the journal, whose PresetNode links to the correct template'
 
     def test_validate_entry_content(self):
-        # TODO JIR: Finish? RT file checks
-        assignment = factory.Assignment()
-        template = factory.Template(format=assignment.format)
+        assignment = factory.Assignment(format__templates=False)
+        template = factory.TemplateAllTypes(format=assignment.format)
         journal = factory.Journal(assignment=assignment, entries__n=0)
         entry = factory.UnlimitedEntry(node__journal=journal, template=template)
 
@@ -193,54 +193,51 @@ class EntryAPITest(TestCase):
         validate_entry_content(json.loads(selection_field.options)[0], selection_field)
         self.assertRaises(ValidationError, validate_entry_content, 'Not in options', selection_field)
 
-        date_field = factory.DateField(template=template)
-        valid_date_content = factory.Content(entry=entry, field=date_field)
-        validate_entry_content(valid_date_content.data, date_field)
+        valid_date_content = entry.content_set.get(field__type=Field.DATE)
+        validate_entry_content(valid_date_content.data, valid_date_content.field)
         self.assertRaises(
             ValidationError,
             validate_entry_content,
             faker.date(pattern='NOT-Y%-ALLOWED-%m-FORMAT-%d'),
-            date_field
+            valid_date_content.field
         )
 
-        datetime_field = factory.DateTimeField(template=template)
-        valid_datetime_content = factory.Content(entry=entry, field=datetime_field)
-        validate_entry_content(valid_datetime_content.data, datetime_field)
+        valid_datetime_content = entry.content_set.get(field__type=Field.DATETIME)
+        validate_entry_content(valid_datetime_content.data, valid_datetime_content.field)
         self.assertRaises(
             ValidationError,
             validate_entry_content,
             faker.date(pattern='NOT-Y%-ALLOWED-%m-FORMAT-%d'),
-            datetime_field
+            valid_datetime_content.field
         )
 
-        file_field = factory.FileField(template=template)
-        valid_file_field_content = factory.Content(entry=entry, field=file_field)
+        valid_file_field_content = entry.content_set.filter(field__type=Field.FILE).first()
         fc = FileContext.objects.get(content=valid_file_field_content)
 
         # QUESTION: Now the data which is validated is no longer equal to the data of the actual content.
         # Should this be addressed?
         correct_data_dict = {'id': fc.pk, 'download_url': valid_file_field_content.data}
-        validate_entry_content(correct_data_dict, file_field)
+        validate_entry_content(correct_data_dict, valid_file_field_content.field)
 
         incorrect_data_dict = copy.deepcopy(correct_data_dict)
-        validate_entry_content(incorrect_data_dict, file_field)
+        validate_entry_content(incorrect_data_dict, valid_file_field_content.field)
         incorrect_data_dict['id'] = 'incorrectly_formatted'
         self.assertRaises(
             ValidationError,
             validate_entry_content,
             incorrect_data_dict,
-            file_field
+            valid_file_field_content.field
         )
 
         # FC does not exist
         incorrect_data_dict = copy.deepcopy(correct_data_dict)
-        validate_entry_content(incorrect_data_dict, file_field)
+        validate_entry_content(incorrect_data_dict, valid_file_field_content.field)
         incorrect_data_dict['id'] = FileContext.objects.count() + 9000
         self.assertRaises(
             FileContext.DoesNotExist,
             validate_entry_content,
             incorrect_data_dict,
-            file_field
+            valid_file_field_content.field
         )
 
         # FC file no longer exists
@@ -249,11 +246,34 @@ class EntryAPITest(TestCase):
             ValidationError,
             validate_entry_content,
             correct_data_dict,
-            file_field
+            valid_file_field_content.field
         )
 
         self.assertRaises(
             ValidationError, validate_entry_content, 'some data', factory.NoSubmissionField(template=template))
+
+        valid_rich_text_field_content = entry.content_set.get(field__type=Field.RICH_TEXT)
+        fc = FileContext.objects.get(content=valid_rich_text_field_content)
+
+        # Data contains bogus FC's
+        self.assertRaises(
+            ValidationError,
+            validate_entry_content,
+            valid_rich_text_field_content.data.replace(
+                fc.download_url(access_id=fc.access_id),
+                f'{settings.API_URL}/files/{fc.pk}?access_id=123fake',
+            ),
+            valid_rich_text_field_content.field
+        )
+
+        # FC file no longer exists
+        os.remove(fc.file.path)
+        self.assertRaises(
+            ValidationError,
+            validate_entry_content,
+            valid_rich_text_field_content.data,
+            valid_rich_text_field_content.field
+        )
 
     def test_assignment_unpublish_with_entries(self):
         assignment = factory.Assignment()

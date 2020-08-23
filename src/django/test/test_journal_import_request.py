@@ -215,7 +215,9 @@ class JournalImportRequestTest(TestCase):
     def test_jir_import(self):
         # TODO JIR: Test jir_action variant impact on entry grade and vle coupling states
         course = factory.Course()
-        source_journal = factory.Journal(assignment__courses=[course])
+        source_assignment = factory.Assignment(format__templates=False, courses=[course])
+        factory.TemplateAllTypes(format=source_assignment.format)
+        source_journal = factory.Journal(assignment=source_assignment)
         target_journal = factory.Journal(assignment__courses=[course])
         jir = factory.JournalImportRequest(source=source_journal, target=target_journal)
 
@@ -271,7 +273,9 @@ class JournalImportRequestTest(TestCase):
     # TODO JIR: Reenable once tests are fixed
     # def test_jir_import_result_via_serialization(self):
     #     course = factory.Course()
-    #     source_journal = factory.Journal(assignment__courses=[course])
+    #     source_assignment = factory.Assignment(courses=[course])
+    #     factory.TemplateAllTypes(format=source_assignment.format)
+    #     source_journal = factory.Journal(assignment=source_assignment)
     #     jir = factory.JournalImportRequest(
     #         source=source_journal,
     #         target=factory.Journal(assignment__courses=[course], entries__n=0)

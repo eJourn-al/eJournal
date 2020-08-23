@@ -2,6 +2,7 @@ import os
 import test.factory
 
 import factory
+from django.core.exceptions import ValidationError
 
 from VLE.models import Field, Journal
 
@@ -31,6 +32,14 @@ class FileContextFactory(factory.django.DjangoModelFactory):
         if not extracted:
             self.file_name = os.path.basename(self.file.name)
             self.save()
+
+    # @factory.post_generation
+    # def validate(self, create, extracted):
+    #     if not create:
+    #         return
+
+    #     if not self.file or not os.path.exists(self.file.path):
+    #         raise ValidationError('FC created without underlying file.')
 
 
 class RichTextCommentFileContextFactory(FileContextFactory):

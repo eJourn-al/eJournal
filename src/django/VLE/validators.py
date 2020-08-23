@@ -8,6 +8,7 @@ from django.core.exceptions import ValidationError
 from django.core.validators import FileExtensionValidator, URLValidator
 from sentry_sdk import capture_message
 
+import VLE.utils.file_handling as file_handling
 from VLE.models import Field, FileContext
 from VLE.utils.error_handling import VLEMissingRequiredField
 
@@ -58,8 +59,13 @@ def validate_entry_content(data, field):
         return
 
     if field.type == Field.RICH_TEXT:
-        # TODO JIR: Check if any files are mentioned in the data, if so check if the FC and FC.file exist
-        pass
+        for access_id in file_handling.get_access_ids_from_rich_text(data):
+            fc = FileContext.objects.filter(access_id=access_id)
+            if not fc.exists():
+                raise ValidationError('Rich text contains reference to non existing file')
+            fc = fc.first()
+            if not fc.file or not os.path.exists(fc.file.path):
+                raise ValidationError('Rich text linked to file context whose file does not exists.')
 
     # TODO: improve VIDEO validator
     if field.type == Field.URL or field.type == Field.VIDEO:

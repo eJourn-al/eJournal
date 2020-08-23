@@ -2,6 +2,8 @@
 Model import helper functionality
 '''
 
+import os
+
 from django.core.files.base import ContentFile
 
 from VLE.models import (Assignment, AssignmentParticipation, Comment, Content, Course, Entry, Field, FileContext,

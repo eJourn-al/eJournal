@@ -1,3 +1,4 @@
+import os
 import test.factory as factory
 
 from django.test import TestCase
@@ -8,11 +9,18 @@ from VLE.utils.error_handling import VLEProgrammingError
 
 
 class ContentTest(TestCase):
+    def test_temp_todo_remove(self):
+        journal = factory.Journal(entries__n=0, assignment__format__templates=[{'type': Field.RICH_TEXT}])
+        entry = factory.UnlimitedEntry(node__journal=journal)
+
+        for c in entry.content_set.all():
+            VLE.validators.validate_entry_content(c.data, c.field)
+
     def test_content_factory(self):
         entry = factory.UnlimitedEntry()
+        n_template_fields = entry.template.field_set.count()
         c_count = Content.objects.count()
         content = factory.Content(entry=entry, field__type=Field.TEXT)
-        content_field_types = [t for (t, _) in Field.TYPES if t != Field.NO_SUBMISSION]
 
         # assert False, 'The content is attached to the template of the entry'
         assert content.entry.pk == entry.pk, 'Content should chain upto entry'
@@ -20,14 +28,19 @@ class ContentTest(TestCase):
         assert c_count + 1 == Content.objects.count(), 'No additional content is created'
         assert entry.template.pk == content.field.template.pk, \
             'The template of the entry is equal to the template of the content'
+        assert n_template_fields + 1 == entry.template.field_set.count(), \
+            'If no field is specified for the content, the content creates a field'
 
-        for type in content_field_types:
+        assignment = factory.Assignment(format__templates=False)
+        factory.TemplateAllTypes(format=assignment.format)
+        entry = factory.UnlimitedEntry(node__journal__assignment=assignment)
+
+        for c in entry.content_set.all():
             # FILE type content data does not match its expected validation data input (dict vs string)
-            if type == Field.FILE:
-                continue
-            content = factory.Content(field__type=type, entry=content.entry)
-            assert content.field.type == type, 'Content type should be specifiable via its field'
-            VLE.validators.validate_entry_content(content.data, content.field)
+            if c.field.type == Field.FILE:
+                VLE.validators.validate_entry_content({'id': c.data}, c.field)
+            else:
+                VLE.validators.validate_entry_content(c.data, c.field)
 
         file_content = factory.Content(field__type=Field.FILE, entry=content.entry)
         assert file_content.filecontext_set.count() == 1, 'A single File is created'
@@ -42,8 +55,11 @@ class ContentTest(TestCase):
             factory.Content(entry=entry, field__type=Field.TEXT, field=content.field)
 
     def test_file_content_factory(self):
-        entry = factory.UnlimitedEntry()
-        content = factory.Content(entry=entry, field__type=Field.FILE)
+        assignment = factory.Assignment(format__templates=[{'type': Field.FILE}])
+        entry = factory.UnlimitedEntry(node__journal__assignment=assignment)
+
+        assert entry.content_set.count() == 1, 'Entry contains content for the single template FILE field'
+        content = entry.content_set.first()
         # Exactly one FileContext should be generated for the file content
         fc = FileContext.objects.get(content=content, journal=content.entry.node.journal, in_rich_text=False)
 
@@ -59,17 +75,50 @@ class ContentTest(TestCase):
             'The generated fc file path conforms to the extension options'
 
     def test_rich_text_content_factory(self):
-        entry = factory.UnlimitedEntry()
-        number_of_files_in_rich_text = 2
-        content = factory.Content(
-            entry=entry,
-            field__template=entry.template,
-            field__type=Field.RICH_TEXT,
-            data__n_files=number_of_files_in_rich_text,
-        )
+        journal = factory.Journal(assignment__format__templates=[{'type': Field.RICH_TEXT}])
+        entry = factory.UnlimitedEntry(node__journal=journal)
+        content = entry.content_set.first()
         fcs = FileContext.objects.filter(content=content, journal=content.entry.node.journal, in_rich_text=True)
 
-        assert fcs.count() == number_of_files_in_rich_text
         for fc in fcs:
             assert fc.download_url(access_id=fc.access_id) in content.data, \
                 'The file context download url should be present in the data of the RichText content'
+
+        journal = factory.Journal(assignment__format__templates=[{'type': Field.RICH_TEXT}])
+        entry = factory.UnlimitedEntry(gen_content=True, node__journal=journal)
+        content = entry.content_set.first()
+        assert content.field.type == Field.RICH_TEXT, 'Content is only generated for the template with a single field'
+
+        journal = factory.Journal(assignment__format__templates=[{'type': Field.RICH_TEXT}])
+        entry = factory.UnlimitedEntry(gen_content=False, node__journal=journal)
+
+        assert not entry.content_set.exists(), 'Content generation can be toggled off'
+
+    def test_content_factory_with_deep_field_syntax(self):
+        # TODO JIR: Why does a content generation with deep syntax for its field, or setting the field,
+        # yield FileContexts without a file?
+
+        entry = factory.UnlimitedEntry()
+
+        factory.Content(
+            entry=entry,
+            # field=field,
+            # field__template=entry.template,
+            # field__type=Field.RICH_TEXT,
+            data__n_files=2
+        )
+
+    def test_entry_file_content_from_file_factory(self):
+        assignment = factory.Assignment(format__templates=[{'type': Field.FILE}])
+        entry = factory.UnlimitedEntry(node__journal__assignment=assignment, gen_content__from_file=True)
+
+        content = entry.content_set.first()
+        fc = content.filecontext_set.first()
+        assert os.path.exists(fc.file.path), 'An actual file is created when working from file object'
+
+        assignment = factory.Assignment(format__templates=[{'type': Field.RICH_TEXT}])
+        entry = factory.UnlimitedEntry(node__journal__assignment=assignment, gen_content__from_file=True)
+
+        content = entry.content_set.first()
+        fc = content.filecontext_set.first()
+        assert os.path.exists(fc.file.path), 'An actual file is created when working from file object'

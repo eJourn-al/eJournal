@@ -16,6 +16,10 @@ from VLE.models import Entry, Journal, Node, Role
 faker = Faker()
 
 
+IMG_FILE_PATH = '/home/maarten/Repos/eJournal/src/vue/public/journal-view.png'
+PDF_FILE_PATH = '/home/maarten/Repos/eJournal/src/django/VLE/management/commands/dummy.pdf'
+
+
 class Command(BaseCommand):
     """Generate preset data and save it to the database."""
 
@@ -23,10 +27,10 @@ class Command(BaseCommand):
 
     def gen_users(self):
         self.student = factory.Student(
-                username="student",
-                full_name="Lars van Hijfte",
-                password="pass",
-                email="lars@eJournal.app",
+            username="student",
+            full_name="Lars van Hijfte",
+            password="pass",
+            email="lars@eJournal.app",
         )
         self.student2 = factory.Student(
             username="student2",
@@ -237,14 +241,15 @@ class Command(BaseCommand):
             # NOTE: carefull to use a.journal_set or query via AP, both will yield teacher journals
             for j in Journal.objects.filter(assignment=a):
                 grade = random.choice([factory.Grade(grade=random.randint(0, 3)), None])
-                factory.UnlimitedEntry(node__journal=j, grade=grade)
+                factory.UnlimitedEntry(node__journal=j, grade=grade, gen_content__from_file=True)
 
                 # Colloquium holds some preset nodes
                 if a.name == "Colloquium":
                     deadline_nodes = list(j.node_set.filter(type=Node.ENTRYDEADLINE))
                     n_deadline_entries = random.randint(0, j.node_set.filter(type=Node.ENTRYDEADLINE).count())
                     for deadline_node in random.sample(deadline_nodes, n_deadline_entries):
-                        factory.PresetEntry(node__preset=deadline_node.preset, node__journal=j)
+                        factory.PresetEntry(
+                            node__preset=deadline_node.preset, node__journal=j, gen_content__from_file=True)
 
     # def gen_content(self):
     #     """Generate content for an entry."""
