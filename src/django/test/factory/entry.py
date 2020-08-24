@@ -52,11 +52,13 @@ class UnlimitedEntryFactory(factory.django.DjangoModelFactory):
     last_edited = factory.LazyFunction(timezone.now)
     template = None
 
-    # TODO JIR: default random.choice(self.node.journal.authors.all()).user to better support group journals
     @factory.post_generation
     def author(self, create, extracted, **kwargs):
+        default = self.node.journal.authors.first().user
+        if self.node.journal.assignment.is_group_assignment:
+            default = random.choice(self.node.journal.authors.all()).user
         test.factory.rel_factory(self, create, extracted, 'author', VLE.models.User, factory=None,
-                                 default=self.node.journal.authors.first().user)
+                                 default=default)
 
     @factory.post_generation
     def template(self, create, extracted, **kwargs):

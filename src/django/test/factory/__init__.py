@@ -6,7 +6,7 @@
 # set values required in the post generation methods.
 
 # TODO JIR: CHeck if save in post generation methods is actually unneeded (and duplicate) cause
-# save is called anyway ins post generation hook
+# save is called anyway in post generation hook when looking at factory base
 
 
 def rel_factory(instance, create, extracted, key, model, factory=None, size=1, non_cond_kwargs={}, cond_kwargs={},
