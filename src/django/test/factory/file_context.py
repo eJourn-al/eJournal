@@ -33,14 +33,13 @@ class FileContextFactory(factory.django.DjangoModelFactory):
             self.file_name = os.path.basename(self.file.name)
             self.save()
 
-    # TODO JIR: FIXED?
-    # @factory.post_generation
-    # def validate(self, create, extracted):
-    #     if not create:
-    #         return
+    @factory.post_generation
+    def validate(self, create, extracted):
+        if not create:
+            return
 
-    #     if not self.file or not os.path.exists(self.file.path):
-    #         raise ValidationError('FC created without underlying file.')
+        if not self.file or not os.path.exists(self.file.path):
+            raise ValidationError('FC created without underlying file.')
 
 
 class RichTextCommentFileContextFactory(FileContextFactory):
