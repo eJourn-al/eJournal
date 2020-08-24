@@ -171,6 +171,7 @@ def make_lti_groups(course):
                 continue
 
 
+# TODO: Remove the chain of not used factories (or only used in tests)
 def make_default_format(due_date=None, points_possible=10):
     format = Format()
     format.save()
@@ -190,23 +191,6 @@ def make_progress_node(format, due_date, target):
     """
     node = PresetNode(type=Node.PROGRESS, due_date=due_date, target=target, format=format)
     node.save()
-    return node
-
-
-def make_entrydeadline_node(format, due_date, template, unlock_date=None, lock_date=None):
-    """Make entry deadline.
-
-    Arguments:
-    format -- format of the entry deadline.
-    unlock_date -- unlock date of the entry deadline.
-    due_date -- due date of the entry deadline.
-    lock_date -- lock date of the entry deadline.
-    template -- template of the entrydeadline.
-    """
-    node = PresetNode(type=Node.ENTRYDEADLINE, unlock_date=unlock_date, due_date=due_date,
-                      lock_date=lock_date, forced_template=template, format=format)
-    node.save()
-
     return node
 
 

@@ -22,11 +22,12 @@ class TimelineTests(TestCase):
         self.student = factory.Student()
 
         f_colloq = VLE.factory.make_default_format()
-        self.deadlineentry = VLE.factory.make_entrydeadline_node(
-            f_colloq, due_date=datetime.datetime.now() - datetime.timedelta(days=10),
-            template=f_colloq.template_set.first())
-        self.progressnode = VLE.factory.make_progress_node(
-            f_colloq, datetime.datetime.now() + datetime.timedelta(days=10), 10)
+
+        self.deadlineentry = factory.DeadlinePresetNode(
+            format=f_colloq, due_date=datetime.datetime.now() - datetime.timedelta(days=10),
+            forced_template=f_colloq.template_set.first())
+        self.progressnode = factory.ProgressPresetNode(
+            format=f_colloq, due_date=datetime.datetime.now() + datetime.timedelta(days=10), target=10)
 
         self.template = f_colloq.template_set.first()
 
@@ -45,8 +46,8 @@ class TimelineTests(TestCase):
 
         format = VLE.factory.make_default_format()
         format.save()
-        preset = VLE.factory.make_entrydeadline_node(
-            format, due_date=due_date, template=format.template_set.first())
+        preset = factory.DeadlinePresetNode(
+            format=format, due_date=due_date, forced_template=format.template_set.first())
 
         self.assertEqual(due_date, preset.due_date)
 

@@ -735,7 +735,8 @@ class AssignmentAPITest(TestCase):
         assert resp[0]['deadline']['date'] is None, \
             'Default no deadline for a teacher be shown'
 
-        progress = VLE.factory.make_progress_node(assignment.format, timezone.now() + datetime.timedelta(days=3), 7)
+        progress = factory.ProgressPresetNode(
+            format=assignment.format, due_date=timezone.now() + datetime.timedelta(days=3), target=7)
         utils.update_journals(assignment.journal_set.distinct(), progress)
 
         resp = api.get(self, 'assignments/upcoming', user=journal.authors.first().user)['upcoming']
