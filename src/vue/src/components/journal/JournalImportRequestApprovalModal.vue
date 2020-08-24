@@ -163,6 +163,7 @@ export default {
                 + `Journal/${jir.source.journal.id}`
         },
         handleJIR (jir) {
+            // TODO JIR: Update timeline without required reload
             journalImportRequestAPI.update(
                 jir.id,
                 this.$store.getters['preferences/journalImportRequestButtonSetting'],

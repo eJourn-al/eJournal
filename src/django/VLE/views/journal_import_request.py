@@ -84,7 +84,8 @@ class JournalImportRequestView(viewsets.ViewSet):
                 jir.state = jir.EMPTY_WHEN_PROCESSED
 
         for source_entry in source_entries:
-            import_utils.import_entry(source_entry, jir.target, copy_grade=jir_action == jir.APPROVED_INC_GRADES)
+            import_utils.import_entry(
+                source_entry, jir.target, copy_grade=jir_action == jir.APPROVED_INC_GRADES, jir=jir)
 
         # TODO JIR: Grading update requires some tests
         if jir_action == jir.APPROVED_INC_GRADES:

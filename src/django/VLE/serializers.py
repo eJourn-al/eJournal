@@ -598,11 +598,12 @@ class EntrySerializer(serializers.ModelSerializer):
     comments = serializers.SerializerMethodField()
     author = serializers.SerializerMethodField()
     last_edited_by = serializers.SerializerMethodField()
+    jir = serializers.SerializerMethodField()
 
     class Meta:
         model = Entry
         fields = ('id', 'creation_date', 'template', 'content', 'editable',
-                  'grade', 'last_edited', 'comments', 'author', 'last_edited_by')
+                  'grade', 'last_edited', 'comments', 'author', 'last_edited_by', 'jir')
         read_only_fields = ('id', 'template', 'creation_date', 'content', 'grade')
 
     def get_author(self, entry):
@@ -634,6 +635,17 @@ class EntrySerializer(serializers.ModelSerializer):
         if 'comments' not in self.context or not self.context['comments']:
             return None
         return CommentSerializer(Comment.objects.filter(entry=entry), many=True).data
+
+    # TODO JIR: Test and use front end
+    def get_jir(self, entry):
+        if entry.jir:
+            return {
+                'source': {
+                    'assignment': AssignmentSerializer(entry.jir.source.assignment, context=self.context).data,
+                },
+                'processor': UserSerializer(entry.jir.processor, context=self.context).data
+            }
+        return None
 
 
 class GradeSerializer(serializers.ModelSerializer):

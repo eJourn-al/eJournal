@@ -11,7 +11,7 @@ from VLE.models import (Assignment, AssignmentParticipation, Comment, Content, C
 from VLE.utils.error_handling import VLEProgrammingError
 
 
-def import_entry(entry, journal, copy_grade):
+def import_entry(entry, journal, copy_grade, jir=None):
     '''
     Creates a new entry object attached to the given journal.
 
@@ -23,6 +23,7 @@ def import_entry(entry, journal, copy_grade):
         entry (:model:`VLE.entry`): Entry to copy.
         journal (:model:`VLE.journal`): Journal which the entry should be copied into.
         copy_grade (bool): Flag indicating whether the entry grade should be copied, if not grade is set to None.
+        jir (:model:`VLE.JournalImportRequest`): JIR instance triggering the import action
 
     Returns:
         The copied entry.
@@ -37,6 +38,8 @@ def import_entry(entry, journal, copy_grade):
         # QUESTION JIR: Double check if this correct, needs submission not often used
         vle_coupling=Entry.NEEDS_GRADE_PASSBACK if copy_grade else Entry.NEEDS_SUBMISSION
     )
+    copied_entry.jir = jir
+    copied_entry.save()
 
     # Copied entry niet kunnen editen
     # Als geen grade, moet de docent dan normaal "Need grading" krijgen

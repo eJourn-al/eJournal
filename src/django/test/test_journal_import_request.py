@@ -314,7 +314,7 @@ class JournalImportRequestTest(TestCase):
             diff = test_utils.equal_models(
                 source_node, target_node,
                 return_diff=True,
-                ignore_keys=['jID', 'nID', 'creation_date', 'last_edited', 'download_url'],
+                ignore_keys=['jID', 'nID', 'creation_date', 'last_edited', 'download_url', 'jir'],
                 exclude_regex_paths=[
                     # Ignores ids entry.content.<id>.entry, entry.<id>, entry.content.<id>.data.id
                     "^{}\d{}$".format(re.escape(r"root['entry']['content']["), re.escape(r"]['entry']")),  # noqa: W605
@@ -322,6 +322,8 @@ class JournalImportRequestTest(TestCase):
                     "^{}\d{}$".format(re.escape(r"root['entry']['content']["), re.escape(r"]['data']['id']")),  # noqa: W605 E501
                 ]
             )
+
+            assert target_node['entry']['jir']['source']['assignment']['name'] == source_assignment.name
 
             # The only remaining allowed difference would be RichText content of which the download url should
             # be updated to match the new (copied) file context, or content for a FILE field of which the data
@@ -353,6 +355,7 @@ class JournalImportRequestTest(TestCase):
                     else:
                         test_utils.check_equality_of_imported_rich_text(
                             change['old_value'], change['new_value'], Content)
+
 
     def test_jir_import_action_approve_including_grade(self):
         pass
