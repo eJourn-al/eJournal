@@ -451,7 +451,7 @@ class SmallAssignmentSerializer(AssignmentSerializer):
         model = Assignment
         fields = (
             'id', 'name', 'is_group_assignment', 'is_published', 'points_possible', 'unlock_date', 'due_date',
-            'lock_date', 'deadline', 'journal', 'stats', 'course')
+            'lock_date', 'deadline', 'journal', 'stats', 'course', 'active_lti_course')
         read_only_fields = ('id', )
 
 
