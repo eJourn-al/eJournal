@@ -47,7 +47,7 @@ def _equal_dicts(d1, d2, ignore_keys=[], exclude_regex_paths=[], return_diff=Fal
     diff = DeepDiff(d1, d2, exclude_regex_paths=exclude_regex_paths)
 
     if diff != {} and settings.ENVIRONMENT == 'LOCAL':
-        print(diff)
+        print(f"\n{80 * '-'}\n", diff, f"\n{80 * '-'}\n")
 
     if return_diff:
         return diff
