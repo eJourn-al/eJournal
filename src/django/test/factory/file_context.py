@@ -33,6 +33,7 @@ class FileContextFactory(factory.django.DjangoModelFactory):
             self.file_name = os.path.basename(self.file.name)
             self.save()
 
+    # TODO JIR: FIXED?
     # @factory.post_generation
     # def validate(self, create, extracted):
     #     if not create:
