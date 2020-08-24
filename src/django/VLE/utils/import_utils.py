@@ -27,8 +27,6 @@ def import_entry(entry, journal, copy_grade):
     Returns:
         The copied entry.
     '''
-    # TODO JIR: Nested templates are copied and added to the journal assignment as archived.
-
     # TODO JIR: A new grade object is created, as the start of a fresh grading history for the entry.
 
     # TODO JIR: Create differentiating labels indicating the entry was imported (update docstring once decided)
@@ -70,6 +68,10 @@ def import_comment(comment, entry):
 
     The source comment is edited in place, any in memory references will be altered. The source comment in db remains
     untouched.
+
+    Args:
+        comment (:model:`VLE.comment`): Comment to import.
+        entry (:model:`VLE.entry`): Entry to attach content to.
     '''
     if not comment.published:
         raise VLEProgrammingError('Unpublished comments should not be imported')
@@ -87,10 +89,8 @@ def import_comment(comment, entry):
             file_name=old_fc.file_name,
             author=old_fc.author,
             is_temp=False,
-            creation_date=old_fc.creation_date,
-            update_date=old_fc.update_date,
             comment=comment,
-            journal=old_fc.journal,
+            journal=comment.entry.node.journal,
             in_rich_text=old_fc.in_rich_text
         )
 
@@ -118,11 +118,8 @@ def import_content(content, entry):
         content (:model:`VLE.content`): Content to import.
         entry (:model:`VLE.entry`): Entry to attach content to.
     '''
-    # TODO Jir test
     source_content_pk = content.pk
     content.pk = None
-    # TODO JIR: Can the old Field link remain intact? field.template.format.assignment will be different
-    # If not, a new template including field set will need to be created and added to assignment format
     content.entry = entry
     content.save()
 
@@ -132,10 +129,8 @@ def import_content(content, entry):
             file_name=old_fc.file_name,
             author=old_fc.author,
             is_temp=False,
-            creation_date=old_fc.creation_date,
-            update_date=old_fc.update_date,
             content=content,
-            journal=old_fc.journal,
+            journal=content.entry.node.journal,
             in_rich_text=old_fc.in_rich_text
         )
 
@@ -155,7 +150,7 @@ def import_content(content, entry):
 
 def import_template(template, assignment, archived=None):
     '''
-    Copies the given template and adds it to the given assignment format
+    Copies the given template and adds it to the given assignment's format
     '''
     source_template_id = template.pk
     template.pk = None
@@ -171,14 +166,6 @@ def import_template(template, assignment, archived=None):
     return template
 
 
-# TODO JIR: This might be cleaner copy wise despite computed field dependencies block pk=None
-# Another advantage is we access the DB one time less
-# Double edged sword, will copy all fields (including some undesired ones)
-# from copy import deepcopy
-
-# new_instance = deepcopy(object_you_want_copied)
-# new_instance.id = None
-# new_instance.save()
 def copy_entry(entry, grade=None, vle_coupling=None):
     '''
     Create a copy of an entry instance
@@ -187,7 +174,6 @@ def copy_entry(entry, grade=None, vle_coupling=None):
         template=entry.template,
         grade=grade,
         author=entry.author,
-        last_edited=entry.last_edited,
         last_edited_by=entry.last_edited_by,
         vle_coupling=vle_coupling if vle_coupling else entry.vle_coupling
     )
@@ -198,6 +184,11 @@ def copy_node(node, entry, journal):
     Create a copy of a node instance
 
     Since a node has a one to one relation with an entry, a new entry is expected.
+
+    Args:
+        node (:model:`VLE.node`): Node to copy.
+        entry (:model:`VLE.entry`): Entry to attach the node to.
+        journal (:model:`VLE.journal`): Journal to attach the node to.
     '''
     return Node.objects.create(
         type=node.type,

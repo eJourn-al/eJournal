@@ -1063,7 +1063,6 @@ class Journal(CreateUpdateModel, ComputedFieldsModel):
     def unpublished(self):
         return self.node_set.filter(entry__grade__published=False).count()
 
-    # TODO JIR: Is this required
     @computed(models.IntegerField(null=True), depends=[
         ['import_request_targets', ['target']],
     ])

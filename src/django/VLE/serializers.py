@@ -353,7 +353,6 @@ class AssignmentSerializer(serializers.ModelSerializer):
                 'needs_marking_own_groups': own_group.aggregate(Sum('needs_marking'))['needs_marking__sum'] or 0,
                 'unpublished_own_groups': own_group.aggregate(Sum('unpublished'))['unpublished__sum'] or 0,
             })
-        # TODO JIR Test
         if self.context['user'].has_permission('can_manage_journal_import_requests', assignment):
             own_group = journal_set.filter(authors__user__in=own_group_users)
             stats.update({
@@ -708,6 +707,8 @@ class FieldSerializer(serializers.ModelSerializer):
 
 
 class JournalImportRequestSerializer(serializers.ModelSerializer):
+    # TODO JIR: Reduce information fetched
+
     author = serializers.SerializerMethodField()
     source = serializers.SerializerMethodField()
     target = serializers.SerializerMethodField()
@@ -724,8 +725,6 @@ class JournalImportRequestSerializer(serializers.ModelSerializer):
     def get_processor(self, jir):
         return UserSerializer(jir.processor, context=self.context).data
 
-    # TODO JIR: Check if this can leak data which is not required, since the user does not have rights
-    # to see the source journal / assignment / course
     def get_source(self, jir):
         if self.source is None:
             return 'Source journal no longer exists.'

@@ -8,8 +8,8 @@ from django.db.models import Q
 from django.test import TestCase
 from django.utils import timezone
 
-from VLE.models import (Assignment, AssignmentParticipation, Comment, Content, Course, Entry, Field, Format, Journal,
-                        JournalImportRequest, Node, PresetNode, Role, Template)
+from VLE.models import (AssignmentParticipation, Comment, Content, Entry, FileContext, JournalImportRequest, Node,
+                        PresetNode)
 
 
 class JournalImportRequestTest(TestCase):
@@ -271,58 +271,94 @@ class JournalImportRequestTest(TestCase):
             'Approving excluding grades should increase needs marking'
 
     # TODO JIR: Reenable once tests are fixed
-    # def test_jir_import_result_via_serialization(self):
-    #     course = factory.Course()
-    #     source_assignment = factory.Assignment(courses=[course])
-    #     factory.TemplateAllTypes(format=source_assignment.format)
-    #     source_journal = factory.Journal(assignment=source_assignment)
-    #     jir = factory.JournalImportRequest(
-    #         source=source_journal,
-    #         target=factory.Journal(assignment__courses=[course], entries__n=0)
-    #     )
+    def test_jir_import_result_via_serialization(self):
+        course = factory.Course()
+        source_assignment = factory.Assignment(courses=[course])
+        factory.TemplateAllTypes(format=source_assignment.format)
+        source_journal = factory.Journal(assignment=source_assignment, entries__n=1)
+        jir = factory.JournalImportRequest(
+            source=source_journal,
+            target=factory.Journal(assignment__courses=[course], entries__n=0)
+        )
 
-    #     assert not jir.target.node_set.exists() and not jir.target.assignment.format.presetnode_set.exists(), \
-    #         'Target journal is initialized empty'
+        assert not jir.target.node_set.exists() and not jir.target.assignment.format.presetnode_set.exists(), \
+            'Target journal is initialized empty'
 
-    #     entry1 = factory.UnlimitedEntry(node__journal=source_journal)
-    #     factory.StudentComment(entry=entry1, published=True)
-    #     factory.TeacherComment(entry=entry1, published=True)
-    #     factory.PresetEntry(node__journal=source_journal)
-    #     factory.ProgressPresetNode(format=source_journal.assignment.format)
+        entry = Entry.objects.get(node__journal=source_journal)
+        factory.StudentComment(entry=entry, published=True)
+        factory.TeacherComment(entry=entry, published=True)
+        factory.PresetEntry(node__journal=source_journal)
+        factory.ProgressPresetNode(format=source_journal.assignment.format)
 
-    #     pre_source_journal_resp = api.get(self, 'journals', params={'pk': jir.source.pk}, user=course.author)['journal']
-    #     pre_source_node_resp = api.get(self, 'nodes', params={'journal_id': jir.source.pk}, user=course.author)['nodes']
-    #     pre_target_journal_resp = api.get(self, 'journals', params={'pk': jir.target.pk}, user=course.author)['journal']
+        pre_source_journal_resp = api.get(self, 'journals', params={'pk': jir.source.pk}, user=course.author)['journal']
+        pre_source_node_resp = api.get(self, 'nodes', params={'journal_id': jir.source.pk}, user=course.author)['nodes']
+        pre_target_journal_resp = api.get(self, 'journals', params={'pk': jir.target.pk}, user=course.author)['journal']
 
-    #     data = {'pk': jir.pk, 'jir_action': JournalImportRequest.APPROVED_INC_GRADES}
-    #     api.update(self, 'journal_import_request', params=data, user=course.author, status=200)
+        data = {'pk': jir.pk, 'jir_action': JournalImportRequest.APPROVED_INC_GRADES}
+        api.update(self, 'journal_import_request', params=data, user=course.author, status=200)
 
-    #     post_source_journal_resp = api.get(
-    #         self, 'journals', params={'pk': jir.source.pk}, user=course.author)['journal']
-    #     post_source_node_resp = api.get(
-    #         self, 'nodes', params={'journal_id': jir.source.pk}, user=course.author)['nodes']
+        post_source_journal_resp = api.get(
+            self, 'journals', params={'pk': jir.source.pk}, user=course.author)['journal']
+        post_source_node_resp = api.get(
+            self, 'nodes', params={'journal_id': jir.source.pk}, user=course.author)['nodes']
 
-    #     post_target_journal_resp = api.get(
-    #         self, 'journals', params={'pk': jir.target.pk}, user=course.author)['journal']
-    #     post_target_node_resp = api.get(
-    #         self, 'nodes', params={'journal_id': jir.target.pk}, user=course.author)['nodes']
+        post_target_journal_resp = api.get(
+            self, 'journals', params={'pk': jir.target.pk}, user=course.author)['journal']
+        post_target_node_resp = api.get(
+            self, 'nodes', params={'journal_id': jir.target.pk}, user=course.author)['nodes']
 
-    #     assert pre_source_journal_resp == post_source_journal_resp, 'Soure journal is unchanged'
-    #     assert pre_source_node_resp == post_source_node_resp, 'Source journal nodes are unchanged'
+        assert pre_source_journal_resp == post_source_journal_resp, 'Soure journal is unchanged'
+        assert pre_source_node_resp == post_source_node_resp, 'Source journal nodes are unchanged'
 
-    #     for source_node, target_node in zip(pre_source_node_resp, post_target_node_resp):
-    #         assert test_utils.equal_models(
-    #             source_node, target_node,
-    #             ignore_keys=['jID', 'nID', 'creation_date', 'last_edited', 'download_url'],
-    #             exclude_regex_paths=[
-    #                 # QUESTION: Below fixes flake8 warning for IDE, but not for pytest? Cleanest solution?
-    #                 # noqa: W605
-    #                 "^{}\d{}$".format(re.escape(r"root['entry']['content']["), re.escape(r"]['entry']")),
-    #                 re.escape(r"root['entry']['id']"),
-    #                 "^{}\d{}$".format(re.escape(r"root['entry']['content']["), re.escape(r"]['data']['id']"))
-    #             ]
-    #         ), '''Match node responses except ignore_keys and entry.content.<id>.entry, entry.id,
-    #               entry.content.<id>.data.id'''
+        for source_node, target_node in zip(pre_source_node_resp, post_target_node_resp):
+            diff = test_utils.equal_models(
+                source_node, target_node,
+                return_diff=True,
+                ignore_keys=['jID', 'nID', 'creation_date', 'last_edited', 'download_url'],
+                exclude_regex_paths=[
+                    # Ignores ids entry.content.<id>.entry, entry.<id>, entry.content.<id>.data.id
+                    "^{}\d{}$".format(re.escape(r"root['entry']['content']["), re.escape(r"]['entry']")),  # noqa: W605
+                    re.escape(r"root['entry']['id']"),
+                    "^{}\d{}$".format(re.escape(r"root['entry']['content']["), re.escape(r"]['data']['id']")),  # noqa: W605 E501
+                ]
+            )
 
-    #     assert test_utils.equal_models(pre_target_journal_resp, post_target_journal_resp), \
-    #         'Target journal should have NO new entries to mark as the import action was approve including grades'
+            # The only remaining allowed difference would be RichText content of which the download url should
+            # be updated to match the new (copied) file context, or content for a FILE field of which the data
+            # updated to match the new pk.
+            if diff:
+                values_changed = diff.pop('values_changed', None)
+                assert not diff and values_changed, \
+                    'Node diff consists of something else than just changed values, e.g. added or removed keys'
+
+                r = "^{}\d{}$".format(re.escape(r"root['entry']['content']["), re.escape(r"]['data']"))  # noqa: W605
+                is_content_data = re.compile(r)
+
+                for path, change in values_changed.items():
+                    assert is_content_data.match(path), 'A node value other than the content data is different'
+
+                    # Assume working with a Field.FILE
+                    if change['new_value'].isdigit():
+                        source_fc = FileContext.objects.get(pk=int(change['old_value']))
+                        imported_fc = FileContext.objects.get(pk=int(change['new_value']))
+
+                        test_utils.check_equality_of_imported_file_context(source_fc, imported_fc)
+                        test_utils.check_equality_of_imported_file_context(
+                            source_fc, imported_fc,
+                            ignore_keys=['last_edited', 'creation_date', 'update_date', 'id', 'access_id', 'content',
+                                         'journal']
+                        )
+                        assert imported_fc.journal.pk == jir.target.pk, 'FC is linked to the target journal'
+                    # Assume working with Field.RICH_TEXT
+                    else:
+                        test_utils.check_equality_of_imported_rich_text(
+                            change['old_value'], change['new_value'], Content)
+
+    def test_jir_import_action_approve_including_grade(self):
+        pass
+
+    def test_jir_import_action_approve_excluding_grade(self):
+        pass
+        # TODO grade variants
+        # assert test_utils.equal_models(pre_target_journal_resp, post_target_journal_resp), \
+        #     'Target journal should have NO new entries to mark as the import action was approve including grades'
