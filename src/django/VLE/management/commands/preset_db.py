@@ -251,41 +251,6 @@ class Command(BaseCommand):
                         factory.PresetEntry(
                             node__preset=deadline_node.preset, node__journal=j, gen_content__from_file=True)
 
-    # def gen_content(self):
-    #     """Generate content for an entry."""
-    #     for journal in self.journals:
-    #         for node in journal.node_set.all():
-    #             if node.type == Node.ENTRY or node.type == Node.ENTRYDEADLINE:
-    #                 if node.entry is None:
-    #                     continue
-
-    #                 template = node.entry.template
-    #                 for field in template.field_set.all():
-    #                     if field.type in [Field.TEXT, Field.RICH_TEXT]:  # Files requires the actual file...
-    #                         if "Requested Points" in field.title:
-    #                             factory.make_content(node.entry, str(random.randint(1, 3)), field)
-    #                         else:
-    #                             factory.make_content(node.entry, faker.catch_phrase(), field)
-
-    #                     try:
-    #                         if field.type == Field.FILE and (not field.options or 'png' in field.options):
-    #                             with open('../vue/public/journal-view.png', 'rb') as file:
-    #                                 image = SimpleUploadedFile('test-image.png', file.read(), content_type='image/png')
-    #                                 fc = FileContext.objects.create(
-    #                                     file=image, author=journal.authors.first().user, file_name=image.name)
-    #                                 content = factory.make_content(node.entry, str(fc.pk), field)
-    #                                 file_handling.establish_file(journal.authors.first().user, fc.pk, content=content)
-    #                         elif field.type == Field.FILE:
-    #                             with open('./VLE/management/commands/dummy.pdf', 'rb') as file:
-    #                                 pdf = SimpleUploadedFile(
-    #                                     'dummy.pdf', file.read(), content_type='application/pdf')
-    #                                 fc = FileContext.objects.create(
-    #                                     file=pdf, author=journal.authors.first().user, file_name=pdf.name)
-    #                                 content = factory.make_content(node.entry, str(fc.pk), field)
-    #                                 file_handling.establish_file(journal.authors.first().user, fc.pk, content=content)
-    #                     except FileNotFoundError:
-    #                         continue
-
     def gen_journal_import_requests(self):
         """
         Generates a JIR for each logboek student (who is also a colloquium student) from colloquium into logboek
