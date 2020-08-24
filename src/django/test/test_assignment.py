@@ -495,7 +495,6 @@ class AssignmentAPITest(TestCase):
         factory.Participation(user=student, course=course, role=Role.objects.get(course=course, name='Student'))
         assert Participation.objects.filter(course=course).count() == 2
         source_student_journal = Journal.objects.get(authors__user=student, assignment=source_assignment)
-        VLE.factory.make_journal(author=teacher, assignment=source_assignment)
         assert Journal.objects.filter(assignment=source_assignment).count() == 1, \
             'Teacher assignment should not show up in count'
         source_entries = []

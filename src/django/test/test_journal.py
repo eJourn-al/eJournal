@@ -316,17 +316,6 @@ class JournalAPITest(TestCase):
         assert non_group_journal.name == non_group_journal.authors.first().user.full_name, \
             'Non group journals name should get updated when author name changes'
 
-    def test_make_journal(self):
-        self.assertRaises(VLEBadRequest, VLE.factory.make_journal, self.group_assignment, author=self.student)
-        self.assertRaises(VLEBadRequest, VLE.factory.make_journal, self.assignment, author_limit=4)
-        other_student = factory.Student()
-        VLE.factory.make_journal(self.assignment, author=other_student)
-        assert Journal.all_objects.filter(assignment=self.assignment, authors__user=other_student).exists(), \
-            'make_journal should create a journal and AP if they do not exist yet'
-        VLE.factory.make_journal(self.assignment, author=other_student)
-        assert Journal.all_objects.filter(assignment=self.assignment, authors__user=other_student).count() == 1, \
-            'make_journal should not create a journal and AP if they already exist'
-
     def test_list_journal(self):
         assignment = factory.Assignment()
         course1 = assignment.courses.first()

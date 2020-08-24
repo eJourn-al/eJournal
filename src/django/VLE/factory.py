@@ -220,37 +220,6 @@ def make_node(journal, entry=None, type=Node.ENTRY, preset=None):
     return Node.objects.get_or_create(type=type, entry=entry, preset=preset, journal=journal)[0]
 
 
-# TODO JIR: Only used in tests, replace with factory
-def make_journal(assignment, author=None, author_limit=None):
-    """Make a new journal.
-
-    First creates all nodes defined by the format.
-    The deadlines and templates are the same object
-    as those in the format, so any changes should
-    be reflected in the Nodes as well.
-    """
-    if assignment.is_group_assignment:
-        if author is not None:
-            raise VLEBadRequest('Group journals should not be initialized with an author')
-        journal = Journal.objects.create(assignment=assignment, author_limit=author_limit)
-
-    else:
-        if author_limit is not None:
-            raise VLEBadRequest('Non group-journals should not be initialized with an author_limit')
-        if Journal.all_objects.filter(assignment=assignment, authors__user=author).exists():
-            return Journal.all_objects.get(assignment=assignment, authors__user=author)
-
-        ap = AssignmentParticipation.objects.filter(assignment=assignment, user=author).first()
-        if ap is None:
-            ap = AssignmentParticipation.objects.create(assignment=assignment, user=author)
-            journal = Journal.all_objects.get(assignment=assignment, authors__in=[ap])
-        else:
-            journal = Journal.objects.create(assignment=assignment)
-            journal.add_author(ap)
-
-    return journal
-
-
 def make_assignment_participation(assignment, author):
     """Make a new assignment participation."""
     return AssignmentParticipation.objects.create(assignment=assignment, user=author)
