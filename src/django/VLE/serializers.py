@@ -726,7 +726,7 @@ class JournalImportRequestSerializer(serializers.ModelSerializer):
         return UserSerializer(jir.processor, context=self.context).data
 
     def get_source(self, jir):
-        if self.source is None:
+        if jir.source is None:
             return 'Source journal no longer exists.'
 
         return {

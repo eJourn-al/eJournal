@@ -122,8 +122,6 @@ class JournalImportRequestTest(TestCase):
         assert resp[0]['target']['journal']['import_requests'] == 2
 
     def test_create_jir(self):
-        # TODO JIR, test group journals, can a member of target import? source? both required?
-        # it only makes sense if a student creates an import request of which he/she is both member, which is tested
         source_journal = factory.Journal()
         student = source_journal.authors.first().user
 
@@ -182,14 +180,20 @@ class JournalImportRequestTest(TestCase):
         assert jir.processor is None, 'Processor is empty on JIR initialization'
         assert jir.state == JournalImportRequest.PENDING, 'JIR is awaiting processing'
 
+    def test_create_jir_for_group_journal(self):
+        student2 = factory.Student()
+        source_journal = factory.GroupJournal(add_users=[student2])
+        target_journal = factory.GroupJournal(add_users=[student2])
+
+        data = {'assignment_source_id': source_journal.assignment.pk,
+                'assignment_target_id': target_journal.assignment.pk}
+        api.create(self, 'journal_import_request', params=data, user=student2, status=201)
+
     def test_patch_jir_permissions_and_actions(self):
-        # TODO JIR, test group journals, can a member of target import? source? both required?
         course = factory.Course()
         teacher = course.author
-        # TODO JIR fix source init once possible
         source = factory.Journal(assignment__courses=[course])
         jir = factory.JournalImportRequest(source=source, target__assignment__courses=[course])
-        # jir = factory.JournalImportRequest(source=source_journal, target=target_journal)
         unrelated_teacher = factory.Teacher()
 
         # Only valid actions are processed
@@ -270,7 +274,6 @@ class JournalImportRequestTest(TestCase):
         jir.target.needs_marking == pre_import_needs_marking, \
             'Approving excluding grades should increase needs marking'
 
-    # TODO JIR: Reenable once tests are fixed
     def test_jir_import_result_via_serialization(self):
         course = factory.Course()
         source_assignment = factory.Assignment(courses=[course])
@@ -292,7 +295,6 @@ class JournalImportRequestTest(TestCase):
 
         pre_source_journal_resp = api.get(self, 'journals', params={'pk': jir.source.pk}, user=course.author)['journal']
         pre_source_node_resp = api.get(self, 'nodes', params={'journal_id': jir.source.pk}, user=course.author)['nodes']
-        pre_target_journal_resp = api.get(self, 'journals', params={'pk': jir.target.pk}, user=course.author)['journal']
 
         data = {'pk': jir.pk, 'jir_action': JournalImportRequest.APPROVED_INC_GRADES}
         api.update(self, 'journal_import_request', params=data, user=course.author, status=200)
@@ -302,8 +304,6 @@ class JournalImportRequestTest(TestCase):
         post_source_node_resp = api.get(
             self, 'nodes', params={'journal_id': jir.source.pk}, user=course.author)['nodes']
 
-        post_target_journal_resp = api.get(
-            self, 'journals', params={'pk': jir.target.pk}, user=course.author)['journal']
         post_target_node_resp = api.get(
             self, 'nodes', params={'journal_id': jir.target.pk}, user=course.author)['nodes']
 
