@@ -1632,18 +1632,20 @@ class JournalImportRequest(CreateUpdateModel):
     DECLINED = 'DEC'
     APPROVED_INC_GRADES = 'AIG'
     APPROVED_EXC_GRADES = 'AEG'
+    APPROVED_WITH_GRADES_ZEROED = 'AWGZ'
     EMPTY_WHEN_PROCESSED = 'EWP'
-    APPROVED_STATES = [APPROVED_INC_GRADES, APPROVED_EXC_GRADES]
+    APPROVED_STATES = [APPROVED_INC_GRADES, APPROVED_EXC_GRADES, APPROVED_WITH_GRADES_ZEROED]
     STATES = (
         (PENDING, 'Pending'),
         (DECLINED, 'Declined'),
         (APPROVED_INC_GRADES, 'Approved including grades'),
         (APPROVED_EXC_GRADES, 'Approved excluding grades'),
+        (APPROVED_WITH_GRADES_ZEROED, 'Approved with all grades set to zero'),
         (EMPTY_WHEN_PROCESSED, 'Empty when processed')
     )
 
     state = models.CharField(
-        max_length=3,
+        max_length=4,
         choices=STATES,
         default=PENDING,
     )

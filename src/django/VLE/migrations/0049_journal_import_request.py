@@ -16,7 +16,7 @@ class Migration(migrations.Migration):
                 ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
                 ('creation_date', models.DateTimeField(auto_now_add=True)),
                 ('update_date', models.DateTimeField(auto_now=True)),
-                ('state', models.CharField(choices=[('PEN', 'Pending'), ('DEC', 'Declined'), ('AIG', 'Approved including grades'), ('AEG', 'Approved excluding grades'), ('EWP', 'Empty when processed')], default='PEN', max_length=3)),
+                ('state', models.CharField(choices=[('PEN', 'Pending'), ('DEC', 'Declined'), ('AIG', 'Approved including grades'), ('AEG', 'Approved excluding grades'), ('AWGZ', 'Approved with all grades set to zero'), ('EWP', 'Empty when processed')], default='PEN', max_length=4)),
                 ('author', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='jir_author', to=settings.AUTH_USER_MODEL)),
                 ('processor', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='jir_processor', to=settings.AUTH_USER_MODEL)),
                 ('source', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='import_request_sources', to='VLE.Journal')),

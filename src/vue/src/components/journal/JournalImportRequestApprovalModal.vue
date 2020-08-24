@@ -78,6 +78,11 @@
                                 icon: 'paper-plane',
                                 class: 'add-button',
                             },
+                            AWGZ: {
+                                text: 'Approve and lock grades as zero',
+                                icon: 'paper-plane',
+                                class: 'change-button',
+                            },
                             DEC: {
                                 text: 'Decline',
                                 icon: 'ban',
