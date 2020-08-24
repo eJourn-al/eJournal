@@ -48,7 +48,11 @@ class UnlimitedEntryFactory(factory.django.DjangoModelFactory):
         model = 'VLE.Entry'
 
     node = factory.RelatedFactory(
-        'test.factory.node.NodeFactory', factory_related_name='entry', type=VLE.models.Node.ENTRY)
+        'test.factory.node.NodeFactory',
+        factory_related_name='entry',
+        type=VLE.models.Node.ENTRY,
+        journal__entries__n=0,
+    )
     last_edited = factory.LazyFunction(timezone.now)
     template = None
 
