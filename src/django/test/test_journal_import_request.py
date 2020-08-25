@@ -9,7 +9,7 @@ from django.test import TestCase
 from django.utils import timezone
 
 from VLE.models import (AssignmentParticipation, Comment, Content, Entry, Field, FileContext, JournalImportRequest,
-                        Node, PresetNode)
+                        Node, PresetNode, Journal)
 
 
 class JournalImportRequestTest(TestCase):
@@ -86,6 +86,17 @@ class JournalImportRequestTest(TestCase):
             'The pending JIR should have been removed'
         assert g_journal.import_request_targets.filter(~Q(state=JournalImportRequest.PENDING)).exists(), \
             'Non JIRs should remain untouched'
+
+    def test_delete_pending_jir_on_source_deletion(self):
+        j = factory.Journal()
+        jir = factory.JournalImportRequest(source=j, state=JournalImportRequest.PENDING)
+        j.delete()
+        assert not JournalImportRequest.objects.filter(pk=jir.pk).exists()
+
+        j = factory.Journal()
+        jir = factory.JournalImportRequest(source=j, state=JournalImportRequest.DECLINED)
+        j.delete()
+        assert JournalImportRequest.objects.filter(pk=jir.pk).exists()
 
     def test_list_jir(self):
         jir = factory.JournalImportRequest()

@@ -1366,7 +1366,6 @@ class Entry(CreateUpdateModel):
         choices=TYPES,
     )
 
-    # TODO JIR, finish test, serialize use front end
     jir = models.ForeignKey(
         'JournalImportRequest',
         on_delete=models.SET_NULL,
@@ -1717,6 +1716,10 @@ class JournalImportRequest(CreateUpdateModel):
             if self.pk:
                 existing_import_qry = existing_import_qry.exclude(pk=self.pk)
             if existing_import_qry.exists():
-                raise ValidationError('You cannot import the same journal multiple times')
+                raise ValidationError('You cannot import the same journal multiple times.')
 
         return super(JournalImportRequest, self).save(*args, **kwargs)
+
+    @receiver(models.signals.pre_delete, sender=Journal)
+    def delete_pending_jirs_on_source_deletion(sender, instance, **kwargs):
+        JournalImportRequest.objects.filter(source=instance, state=JournalImportRequest.PENDING).delete()
