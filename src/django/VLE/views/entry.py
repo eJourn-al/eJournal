@@ -182,7 +182,8 @@ class EntryView(viewsets.ViewSet):
 
                 changed = old_content.data != data
                 if changed:
-                    entry_utils.patch_entry_content(request.user, entry, old_content, field, data, assignment)
+                    old_content.data = data
+                    old_content.save()
             # If there was no content in this field before, create new content with the new data.
             # This can happen with non-required fields, or when the given data is deleted.
             else:
