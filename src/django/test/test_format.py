@@ -64,6 +64,19 @@ class FormatAPITest(TestCase):
         assert j_c == Journal.objects.count(), 'No journals should be generated'
         assert t_c + 1 == Template.objects.count(), 'One template should be generated'
 
+    def test_template_delete_with_content(self):
+        format = factory.Assignment(format__templates=[]).format
+        template = factory.MentorgesprekTemplate(format=format)
+
+        # It should be no issue to delete a template without content
+        template.delete()
+
+        template = factory.MentorgesprekTemplate(format=format)
+        factory.Journal(assignment=format.assignment, entries__n=1)
+
+        # If any content relies on a template, it should not be possible to delete the template
+        self.assertRaises(VLEProgrammingError, template.delete)
+
     def test_update_assign_to(self):
         def check_groups(groups, status=200):
             api.update(

@@ -1461,9 +1461,11 @@ class Template(CreateUpdateModel):
     def to_string(self, user=None):
         return "Template"
 
-    # TODO JIR: On delete check if any Content exists which fields are liked to this template, ERROR IF SO
-    # This can also happen for imported entries, of which the template belongs to a different assignment format
-    # than the journal
+
+@receiver(models.signals.pre_delete, sender=Template)
+def delete_pending_jirs_on_source_deletion(sender, instance, **kwargs):
+    if Content.objects.filter(field__template=instance).exists():
+        raise VLEProgrammingError('Content still exists which depends on a template being deleted')
 
 
 class Field(CreateUpdateModel):
@@ -1646,7 +1648,6 @@ class JournalImportRequest(CreateUpdateModel):
         choices=STATES,
         default=PENDING,
     )
-    # TODO JIR: Case or set null, if JIR is pending and source is deleted, delted JIr as well.
     source = models.ForeignKey(
         'journal',
         related_name='import_request_sources',
