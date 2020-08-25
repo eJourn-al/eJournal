@@ -85,7 +85,7 @@ class GradeView(viewsets.ViewSet):
 
         if published:
             Comment.objects.filter(entry=entry).update(published=True)
-            grading.task_journal_status_to_LMS.delay(journal.pk)
+        grading.task_journal_status_to_LMS.delay(journal.pk)
 
         return response.created({
             'entry': EntrySerializer(entry, context={'user': request.user}).data,

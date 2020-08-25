@@ -127,11 +127,22 @@
             v-if="assignmentDetails.is_group_assignment || !assignmentDetails.id || assignmentDetails.can_change_type"
             class="no-hover"
         >
-            <toggle-switch
-                :isActive="assignmentDetails.is_group_assignment"
+            <radio-button
+                v-model="assignmentDetails.is_group_assignment"
                 :class="{ 'input-disabled': assignmentDetails.id && !assignmentDetails.can_change_type }"
-                class="float-right"
-                @parentActive="(isActive) => { assignmentDetails.is_group_assignment = isActive }"
+                :options="[
+                    {
+                        value: true,
+                        icon: 'check',
+                        class: 'add-button',
+                    },
+                    {
+                        value: false,
+                        icon: 'times',
+                        class: 'delete-button',
+                    },
+                ]"
+                class="float-right mb-2 ml-2"
             />
             <h2 class="theme-h2 field-heading multi-form">
                 Group assignment
@@ -140,10 +151,21 @@
             Selecting this option requires you to create journals on the assignment page for students to join.
             <template v-if="assignmentDetails.is_group_assignment">
                 <hr/>
-                <toggle-switch
-                    :isActive="assignmentDetails.can_lock_journal"
-                    class="float-right"
-                    @parentActive="(isActive) => { assignmentDetails.can_lock_journal = isActive }"
+                <radio-button
+                    v-model="assignmentDetails.can_lock_journal"
+                    :options="[
+                        {
+                            value: true,
+                            icon: 'check',
+                            class: 'add-button',
+                        },
+                        {
+                            value: false,
+                            icon: 'times',
+                            class: 'delete-button',
+                        },
+                    ]"
+                    class="float-right mb-2 ml-2"
                 />
                 <h2 class="theme-h2 field-heading multi-form">
                     Allow locking for journal members
@@ -151,30 +173,63 @@
                 Once the members of a journal are locked, it cannot be joined by other students.
                 Teachers can still manually add students to a journal.
                 <hr/>
-                <toggle-switch
-                    :isActive="assignmentDetails.can_set_journal_name"
-                    class="float-right"
-                    @parentActive="(isActive) => { assignmentDetails.can_set_journal_name = isActive }"
+                <radio-button
+                    v-model="assignmentDetails.can_set_journal_name"
+                    :options="[
+                        {
+                            value: true,
+                            icon: 'check',
+                            class: 'add-button',
+                        },
+                        {
+                            value: false,
+                            icon: 'times',
+                            class: 'delete-button',
+                        },
+                    ]"
+                    class="float-right mb-2 ml-2"
                 />
                 <h2 class="theme-h2 field-heading">
                     Allow custom journal name
                 </h2>
                 Allow members of a journal to override its given name.
                 <hr/>
-                <toggle-switch
-                    :isActive="assignmentDetails.can_set_journal_image"
-                    class="float-right"
-                    @parentActive="(isActive) => { assignmentDetails.can_set_journal_image = isActive }"
+                <radio-button
+                    v-model="assignmentDetails.can_set_journal_image"
+                    :options="[
+                        {
+                            value: true,
+                            icon: 'check',
+                            class: 'add-button',
+                        },
+                        {
+                            value: false,
+                            icon: 'times',
+                            class: 'delete-button',
+                        },
+                    ]"
+                    class="float-right mb-2 ml-2"
                 />
                 <h2 class="theme-h2 field-heading">
                     Allow custom display picture
                 </h2>
                 Allow members of a journal to override its display picture.
                 <hr/>
-                <toggle-switch
-                    :isActive="assignmentDetails.remove_grade_upon_leaving_group"
-                    class="float-right"
-                    @parentActive="(isActive) => { assignmentDetails.remove_grade_upon_leaving_group = isActive }"
+                <radio-button
+                    v-model="assignmentDetails.remove_grade_upon_leaving_group"
+                    :options="[
+                        {
+                            value: true,
+                            icon: 'check',
+                            class: 'add-button',
+                        },
+                        {
+                            value: false,
+                            icon: 'times',
+                            class: 'delete-button',
+                        },
+                    ]"
+                    class="float-right mb-2 ml-2"
                 />
                 <h2 class="theme-h2 field-heading multi-form">
                     Reset grade when leaving journal
@@ -188,14 +243,14 @@
 <script>
 import textEditor from '@/components/assets/TextEditor.vue'
 import tooltip from '@/components/assets/Tooltip.vue'
-import toggleSwitch from '@/components/assets/ToggleSwitch.vue'
+import RadioButton from '@/components/assets/RadioButton.vue'
 
 export default {
     name: 'AssignmentDetails',
     components: {
         textEditor,
         tooltip,
-        toggleSwitch,
+        RadioButton,
     },
     props: {
         assignmentDetails: {

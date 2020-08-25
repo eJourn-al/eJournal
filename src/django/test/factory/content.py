@@ -1,5 +1,6 @@
 import io
 import json
+import os
 import random
 from test.factory.file_context import FileContentFileContextFactory, RichTextContentFileContextFactory
 
@@ -9,8 +10,12 @@ from django.core.exceptions import ValidationError
 from VLE.models import Field
 from VLE.utils.error_handling import VLEProgrammingError
 
-IMG_FILE_PATH = '/home/maarten/Repos/eJournal/src/vue/public/journal-view.png'
-PDF_FILE_PATH = '/home/maarten/Repos/eJournal/src/django/VLE/management/commands/dummy.pdf'
+IMG_FILE_PATH = '../vue/public/journal-view.png'
+PDF_FILE_PATH = './VLE/management/commands/dummy.pdf'
+
+if not (os.path.exists(IMG_FILE_PATH)):
+    IMG_FILE_PATH = './src/vue/public/journal-view.png'
+    PDF_FILE_PATH = './src/django/VLE/management/commands/dummy.pdf'
 
 
 def _from_file_to_file(from_file):

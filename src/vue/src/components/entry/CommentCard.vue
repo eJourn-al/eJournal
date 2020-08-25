@@ -116,7 +116,7 @@
                     <dropdown-button
                         v-if="$hasPermission('can_grade')"
                         :up="true"
-                        :selectedOption="$store.getters['preferences/commentButtonSetting']"
+                        :selectedOption="$store.getters['preferences/saved'].comment_button_setting"
                         :options="{
                             p: {
                                 text: 'Send',

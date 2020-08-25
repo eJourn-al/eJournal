@@ -83,16 +83,16 @@ def import_entry(entry, journal, jir=None, grade_author=None,
     grade_author = grade_author if grade_author else jir.processor
     grade_action = jir.state if jir else grade_action
 
+    copied_node = copy_node(entry.node, journal)
     copied_entry = copy_entry(
         entry,
+        node=copied_node,
         grade=_copy_grade_based_on_jir_action(entry, grade_author, grade_action),
         vle_coupling=_select_vle_couplting_based_on_jir_action(grade_action, entry)
     )
 
     copied_entry.jir = jir
     copied_entry.save()
-
-    copy_node(entry.node, copied_entry, journal)
 
     for comment in Comment.objects.filter(entry=entry, published=True):
         import_comment(comment, copied_entry)
@@ -209,20 +209,26 @@ def import_template(template, assignment, archived=None):
     return template
 
 
-def copy_entry(entry, grade=None, vle_coupling=None):
+def copy_entry(entry, node=None, grade=None, vle_coupling=None):
     '''
     Create a copy of an entry instance
     '''
-    return Entry.objects.create(
+    entry = Entry.objects.create(
+        node=node,
         template=entry.template,
         grade=grade,
         author=entry.author,
         last_edited_by=entry.last_edited_by,
         vle_coupling=vle_coupling if vle_coupling else entry.vle_coupling
     )
+    if node is not None:
+        node.entry = entry
+        node.save()
+
+    return entry
 
 
-def copy_node(node, entry, journal):
+def copy_node(node, journal, entry=None):
     '''
     Create a copy of a node instance
 

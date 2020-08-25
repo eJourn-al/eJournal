@@ -4,7 +4,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('VLE', '0050_content_field_cascade'),
+        ('VLE', '0052_content_field_cascade'),
     ]
 
     operations = [

@@ -6,7 +6,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('VLE', '0048_no_submission_field'),
+        ('VLE', '0050_no_submission_field'),
     ]
 
     operations = [

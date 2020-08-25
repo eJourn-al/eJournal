@@ -8,7 +8,7 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
 
 import VLE.factory as nfac
-from VLE.models import Comment, FileContext, Participation, User
+from VLE.models import Comment, FileContext, Notification, Participation, User
 
 
 def set_entry_comment_counts(obj):
@@ -60,6 +60,7 @@ class CommentAPITest(TestCase):
         assert comment.author.pk == entry.author.pk, 'Student comment author is equal to the attached entry by default'
         assert entry.node.journal.authors.filter(user=comment.author).exists(), \
             'Student comment author is among the participants of the attached journal when instantiated via entry'
+        assert Notification.objects.filter(comment=comment).exists(), 'Creating a comment also creates notifaction(s)'
 
         comment = factory.StudentComment(entry__node__journal=journal)
         assert entry.node.journal.authors.filter(user=comment.author).exists(), \

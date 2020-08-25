@@ -578,8 +578,8 @@ class AssignmentAPITest(TestCase):
             assert equal_models(before_n, after_n), 'Import target preset nodes should remain unchanged'
         for before_t, after_t in zip(before_source_templates, after_source_templates):
             assert equal_models(before_t, after_t), 'Import target templates should remain unchanged'
-        assert len(utils.get_journal_entries(source_student_journal)) == number_of_source_student_journal_entries, \
-            'Old entries should not be removed'
+        assert len(Entry.objects.filter(node__journal=source_student_journal)) == \
+            number_of_source_student_journal_entries, 'Old entries should not be removed'
 
         assert created_format.pk == created_format_resp['format']['id'], \
             'The most recently created (fresh import) format, should be returned.'

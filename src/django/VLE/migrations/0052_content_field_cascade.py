@@ -5,7 +5,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('VLE', '0049_journal_import_request'),
+        ('VLE', '0051_journal_import_request'),
     ]
 
     operations = [

@@ -161,6 +161,8 @@ postgres-reset:
 	-c \"DROP DATABASE IF EXISTS test_$(postgres_db)\" \
 	-c \"DROP USER IF EXISTS $(postgres_dev_user)\" \
 	" postgres
+	make postgres-init-development
+	make migrate-back
 
 postgres-drop-development-db:
 	@sudo su -c "psql -c \"DROP DATABASE IF EXISTS $(postgres_db)\"" postgres
@@ -184,8 +186,6 @@ preset-db:
 preset-db-no-input:
 	rm -rf src/django/media/*
 	make postgres-reset
-	make postgres-init-development
-	make migrate-back
 	bash -c 'source ./venv/bin/activate && cd ./src/django && python manage.py preset_db && deactivate'
 
 migrate-back:

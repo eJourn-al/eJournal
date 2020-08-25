@@ -1,18 +1,13 @@
+import preferencesAPI from '@/api/preferences.js'
+import store from '@/store'
 import * as types from '../constants/mutation-types.js'
 import * as preferenceOptions from '../constants/preference-types.js'
 
 const getters = {
     // Stored user preferences.
-    gradeNotifications: state => state.gradeNotifications,
-    commentNotifications: state => state.commentNotifications,
-    upcomingDeadlineNotifications: state => state.upcomingDeadlineNotifications,
-    showFormatTutorial: state => state.showFormatTutorial,
-    hideVersionAlert: state => state.hideVersionAlert,
-    gradeButtonSetting: state => state.gradeButtonSetting,
-    commentButtonSetting: state => state.commentButtonSetting,
+    saved: state => state.saved,
+
     journalImportRequestButtonSetting: state => state.journalImportRequestButtonSetting,
-    autoSelectUngradedEntry: state => state.autoSelectUngradedEntry,
-    autoProceedNextJournal: state => state.autoProceedNextJournal,
     dismissedJIRs: state => state.dismissedJIRs,
 
     // Search filters.
@@ -36,48 +31,26 @@ const getters = {
 }
 
 const mutations = {
-    [types.HYDRATE_PREFERENCES] (state, data) {
-        const preferences = data.preferences
-
-        state.gradeNotifications = preferences.grade_notifications
-        state.commentNotifications = preferences.comment_notifications
-        state.upcomingDeadlineNotifications = preferences.upcoming_deadline_notifications
-        state.showFormatTutorial = preferences.show_format_tutorial
-        state.hideVersionAlert = preferences.hide_version_alert
-        state.gradeButtonSetting = preferences.grade_button_setting
-        state.commentButtonSetting = preferences.comment_button_setting
-        state.autoSelectUngradedEntry = preferences.auto_select_ungraded_entry
-        state.autoProceedNextJournal = preferences.auto_proceed_next_journal
+    [types.HYDRATE_PREFERENCES] (state, preferences) {
+        state.saved = preferences
     },
-    [types.SET_GRADE_NOTIFICATION] (state, val) {
-        state.gradeNotifications = val
-    },
-    [types.SET_COMMENT_NOTIFICATION] (state, val) {
-        state.commentNotifications = val
-    },
-    [types.SET_UPCOMING_DEADLINE_NOTIFICATION] (state, val) {
-        state.upcomingDeadlineNotifications = val
-    },
-    [types.SET_FORMAT_TUTORIAL] (state, val) {
-        state.showFormatTutorial = val
-    },
-    [types.SET_HIDE_VERSION_ALERT] (state, val) {
-        state.hideVersionAlert = val
-    },
-    [types.SET_GRADE_BUTTON_SETTING] (state, val) {
-        state.gradeButtonSetting = val
-    },
-    [types.SET_COMMENT_BUTTON_SETTING] (state, val) {
-        state.commentButtonSetting = val
-    },
-    [types.SET_JOURNAL_IMPORT_REQUEST_BUTTON_SETTING] (state, val) {
-        state.journalImportRequestButtonSetting = val
-    },
-    [types.SET_AUTO_SELECT_UNGRADED_ENTRY] (state, val) {
-        state.autoSelectUngradedEntry = val
-    },
-    [types.SET_AUTO_PROCEED_NEXT_JOURNAL] (state, val) {
-        state.autoProceedNextJournal = val
+    [types.CHANGE_PREFERENCES] (state, preferences) {
+        const responseSuccessToast = !Object.keys(preferences).some(key => [
+            'hide_version_alert',
+            'grade_button_setting',
+            'comment_button_setting',
+        ].includes(key))
+        preferencesAPI.update(
+            store.getters['user/uID'],
+            preferences,
+            { responseSuccessToast },
+        ).then(
+            Object.keys(preferences).forEach((key) => {
+                if (key in state.saved) {
+                    state.saved[key] = preferences[key]
+                }
+            }),
+        )
     },
     [types.SET_TODO_SORT_BY] (state, sortByOption) {
         if (!preferenceOptions.TODO_SORT_OPTIONS.has(sortByOption)) { throw new Error('Invalid TODO sorting option.') }
@@ -147,20 +120,14 @@ const mutations = {
     [types.SET_ASSIGNMENT_OVERVIEW_FILTER_OWN_GROUPS] (state, filterOwnGroups) {
         state.assignmentOverview.filterOwnGroups = filterOwnGroups
     },
+    [types.SET_JOURNAL_IMPORT_REQUEST_BUTTON_SETTING] (state, val) {
+        state.journalImportRequestButtonSetting = val
+    },
     [types.ADD_DISMISSED_JIRS_TO_JOURNAL] (state, data) {
         state.dismissedJIRs = [...state.dismissedJIRs, ...data]
     },
     [types.RESET_PREFERENCES] (state) {
-        state.gradeNotifications = null
-        state.commentNotifications = null
-        state.upcomingDeadlineNotifications = null
-        state.showFormatTutorial = null
-        state.hideVersionAlert = null
-        state.gradeButtonSetting = 'p'
-        state.commentButtonSetting = 'p'
-        state.journalImportRequestButtonSetting = 'AIG'
-        state.autoSelectUngradedEntry = null
-        state.autoProceedNextJournal = null
+        state.saved = {}
         state.todo.sortBy = 'date'
         state.todo.filterOwnGroups = true
         state.journal.aID = null
@@ -178,6 +145,7 @@ const mutations = {
         state.assignmentOverview.searchValue = ''
         state.assignmentOverview.sortBy = 'name'
         state.assignmentOverview.filterOwnGroups = true
+        state.journalImportRequestButtonSetting = 'AIG'
         state.dismissedJIRs = []
     },
 }
@@ -185,16 +153,7 @@ const mutations = {
 export default {
     namespaced: true,
     state: {
-        gradeNotifications: null,
-        commentNotifications: null,
-        upcomingDeadlineNotifications: null,
-        showFormatTutorial: null,
-        hideVersionAlert: null,
-        autoSelectUngradedEntry: null,
-        autoProceedNextJournal: null,
-        gradeButtonSetting: 'p',
-        commentButtonSetting: 'p',
-        journalImportRequestButtonSetting: 'AIG',
+        saved: {},
         todo: {
             sortBy: 'date',
             filterOwnGroups: true,
@@ -220,6 +179,7 @@ export default {
             sortBy: 'name',
             filterOwnGroups: true,
         },
+        journalImportRequestButtonSetting: 'AIG',
         dismissedJIRs: [],
     },
     getters,

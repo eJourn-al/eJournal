@@ -20,7 +20,7 @@ class ImportTest(TestCase):
         assert test_utils.equal_models(a, b)
 
         c1 = factory.Course()
-        c2 = factory.Course(author=c1.author, startdate=c1.startdate, enddate=c1.enddate)
+        c2 = factory.Course(author=c1.author, startdate=c1.startdate, enddate=c1.enddate, name=c1.name)
 
         assert test_utils.equal_models(c1, c2, ignore_keys=['id', 'creation_date', 'update_date'])
 
@@ -92,12 +92,7 @@ class ImportTest(TestCase):
         source_entry = factory.UnlimitedEntry()
         target_journal = factory.Journal(entries__n=0)
 
-        copied_entry_instance = import_utils.copy_entry(source_entry)
-        assert copied_entry_instance.pk != source_entry
-        assert equal_models(
-            source_entry, copied_entry_instance, ignore_keys=['last_edited', 'update_date', 'id', 'creation_date'])
-
-        copied_node_instance = import_utils.copy_node(source_entry.node, copied_entry_instance, target_journal)
+        copied_node_instance = import_utils.copy_node(source_entry.node, target_journal)
         assert copied_node_instance.pk != source_entry.node.pk
         assert equal_models(
             source_entry.node,
@@ -106,7 +101,13 @@ class ImportTest(TestCase):
         ), 'Copied node is equal to the source node apart from the journal and entry'
         assert copied_node_instance.journal.pk == target_journal.pk, \
             'Node should be linked to the provided target journal'
-        assert copied_node_instance.entry.pk == copied_entry_instance.pk, 'Copied node is linked to the provided entry'
+
+        copied_entry_instance = import_utils.copy_entry(source_entry, node=copied_node_instance)
+        assert copied_entry_instance.pk != source_entry
+        assert equal_models(
+            source_entry, copied_entry_instance, ignore_keys=['last_edited', 'update_date', 'id', 'creation_date'])
+        assert copied_entry_instance.node.entry.pk == copied_entry_instance.pk, \
+            'Copied node is linked to the provided entry'
 
     def test_content_import(self):
         assignment = factory.Assignment(format__templates=[])
@@ -114,8 +115,8 @@ class ImportTest(TestCase):
         source_entry = factory.UnlimitedEntry(node__journal__assignment=assignment)
         target_journal = factory.Journal(assignment=assignment, entries__n=0)
 
-        copied_entry = import_utils.copy_entry(source_entry)
-        import_utils.copy_node(source_entry.node, copied_entry, target_journal)
+        copied_node = import_utils.copy_node(source_entry.node, target_journal)
+        copied_entry = import_utils.copy_entry(source_entry, node=copied_node)
         ignore_keys = ['id', 'entry', 'update_date', 'creation_date']
 
         for source_content in source_entry.content_set.all():

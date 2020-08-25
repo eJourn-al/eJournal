@@ -16,10 +16,6 @@ from VLE.models import Entry, Journal, Node, Role
 faker = Faker()
 
 
-IMG_FILE_PATH = '/home/maarten/Repos/eJournal/src/vue/public/journal-view.png'
-PDF_FILE_PATH = '/home/maarten/Repos/eJournal/src/django/VLE/management/commands/dummy.pdf'
-
-
 class Command(BaseCommand):
     """Generate preset data and save it to the database."""
 

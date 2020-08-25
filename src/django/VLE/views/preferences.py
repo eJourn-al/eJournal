@@ -63,4 +63,4 @@ class PreferencesView(viewsets.ViewSet):
 
         serializer.save()
 
-        return response.success({'preferences': serializer.data})
+        return response.success({'preferences': serializer.data}, description="Updated preferences.")

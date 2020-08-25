@@ -31,7 +31,7 @@ class AssignmentFactory(factory.django.DjangoModelFactory):
             can_lock_journal=True
         )
 
-    name = factory.Sequence(lambda x: "Assignment_{}".format(x))
+    name = factory.Sequence(lambda x: "Assignment {}".format(x))
     description = 'Logboek for all your logging purposes'
     is_published = True
     unlock_date = timezone.now()

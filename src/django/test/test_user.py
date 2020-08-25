@@ -12,7 +12,7 @@ from rest_framework.settings import api_settings
 import VLE.factory as creation_factory
 import VLE.permissions as permissions
 import VLE.validators as validators
-from VLE.models import Instance, User
+from VLE.models import Instance, Preferences, User
 
 
 class UserAPITest(TestCase):
@@ -30,10 +30,12 @@ class UserAPITest(TestCase):
 
     def test_user_factory(self):
         user = factory.Student()
-        assert user.preferences.grade_notifications, 'Generating a user also generates preferences, set to default'
+        assert user.preferences.new_grade_notifications == Preferences.PUSH, \
+            'Generating a user also generates preferences, set to default'
 
-        user = factory.Student(preferences__grade_notifications=False)
-        assert not user.preferences.grade_notifications, 'User factory supports deep syntax for preferences'
+        user = factory.Student(preferences__new_grade_notifications=Preferences.OFF)
+        assert user.preferences.new_grade_notifications == Preferences.OFF, \
+            'User factory supports deep syntax for preferences'
 
     def test_rest(self):
         api.test_rest(self, 'users',

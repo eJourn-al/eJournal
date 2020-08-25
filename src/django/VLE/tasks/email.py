@@ -7,16 +7,69 @@ from django.core.mail import EmailMultiAlternatives
 from django.template.loader import render_to_string
 from django.utils.html import strip_tags
 
-from VLE.models import Role, User
+import VLE.models
 
 # QUESTION: What action should be taken if sending the email goes wrong? E.g. SMTP auth exception
 # Idempotent tasks and retry? Will still require handling for when the retries ultimately fail
 
 
 @shared_task
+def send_push_notification(notification_pk):
+    """Send a notification with corresponding pk to the user.
+
+    Note: does not send the notification if it is not already sent.
+    """
+    notification = VLE.models.Notification.objects.get(pk=notification_pk)
+    if notification.sent:
+        return {
+            'description': 'Notification nr {} was already sent'.format(notification_pk),
+            'successful': False,
+        }
+    if not notification.user.verified_email:
+        return {
+            'description': 'Notification nr {} has unverified email adress'.format(notification_pk),
+            'successful': False,
+        }
+
+    email_data = {
+        'heading': notification.title,
+        'main_content': notification.content,
+        'button_text': notification.button_text,
+        'full_name': notification.user.full_name,
+        'button_url': notification.url,
+        'profile_url': '{}/Profile'.format(settings.BASELINK)
+    }
+
+    html_content = render_to_string('call_to_action.html', {'email_data': email_data})
+    text_content = strip_tags(html_content)
+    if notification.assignment:
+        context = '{}, {}'.format(notification.assignment.name, notification.course.name)
+    else:
+        context = notification.course
+
+    email = EmailMultiAlternatives(
+        subject='{} in {} - eJournal'.format(notification.title, context),
+        body=text_content,
+        from_email='eJournal | Noreply<noreply@{}>'.format(settings.EMAIL_SENDER_DOMAIN),
+        headers={'Content-Type': 'text/plain'},
+        to=[notification.user.email]
+    )
+
+    email.attach_alternative(html_content, 'text/html')
+    email.send()
+    notification.sent = True
+    notification.save()
+
+    return {
+        'description': 'Sent notification nr {}'.format(notification_pk),
+        'successful': True,
+    }
+
+
+@shared_task
 def send_email_verification_link(user_pk):
     """Sends an email verification link to the users email adress."""
-    user = User.objects.get(pk=user_pk)
+    user = VLE.models.User.objects.get(pk=user_pk)
 
     email_data = {}
     email_data['heading'] = 'Email verification'
@@ -49,7 +102,7 @@ def send_email_verification_link(user_pk):
 
 @shared_task
 def send_password_recovery_link(user_pk):
-    user = User.objects.get(pk=user_pk)
+    user = VLE.models.User.objects.get(pk=user_pk)
 
     email_data = {}
     email_data['heading'] = 'Password recovery'
@@ -83,13 +136,13 @@ def send_password_recovery_link(user_pk):
 @shared_task
 def send_email_feedback(user_pk, topic, ftype, feedback, user_agent, url, file_content_type=None):
     """Sends the feedback of an user to the developers."""
-    user = User.objects.get(pk=user_pk)
+    user = VLE.models.User.objects.get(pk=user_pk)
 
     f_body = 'TYPE: {}\n\n'.format(ftype)
     f_body += 'FEEDBACK BY: {}\n'.format(user.username)
     f_body += 'EMAIL: {}\n'.format(user.email)
     f_body += 'TEACHER: {}\n'.format(user.is_teacher)
-    f_body += 'ROLES: {}\n'.format(Role.objects.filter(role__user=user).values('name'))
+    f_body += 'ROLES: {}\n'.format(VLE.models.Role.objects.filter(role__user=user).values('name'))
     f_body += 'USER-AGENT: {}\n'.format(user_agent)
     f_body += 'URL: {}\n\n'.format(url)
     f_body += 'THE FEEDBACK:\n{}'.format(feedback)

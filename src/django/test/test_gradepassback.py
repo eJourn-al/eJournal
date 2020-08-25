@@ -103,7 +103,7 @@ class GradePassBackRequestXMLTest(TestCase):
         result = b'<imsx_POXEnvelopeRequest xmlns="http://www.imsglobal.org/services/ltiv1p1/xsd/imsoms_v1p0">\
 <imsx_POXHeader><imsx_POXRequestHeaderInfo><imsx_version>V1.0</imsx_version><imsx_messageIdentifier>0\
 </imsx_messageIdentifier></imsx_POXRequestHeaderInfo></imsx_POXHeader><imsx_POXBody><replaceResultRequest>\
-<submissionDetails><submittedAT>2017-04-16T18:54:36.736+00:00</submittedAT></submissionDetails>\
+<submissionDetails><submittedAt>2017-04-16T18:54:36.736+00:00</submittedAt></submissionDetails>\
 <resultRecord><sourcedGUID><sourcedId>f6d552</sourcedId></sourcedGUID><result><resultData>\
 <url>http://127.0.0.1:8000/grade_passback</url></resultData></result></resultRecord></replaceResultRequest>\
 </imsx_POXBody></imsx_POXEnvelopeRequest>'

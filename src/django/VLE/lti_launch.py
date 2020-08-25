@@ -119,8 +119,10 @@ def _make_lti_participation(user, course, lti_role):
     """
     for role in settings.ROLES:
         if role in lti_role:
-            return factory.make_participation(user, course, Role.objects.get(name=role, course=course))
-    return factory.make_participation(user, course, Role.objects.get(name='Student', course=course))
+            return factory.make_participation(
+                user, course, Role.objects.get(name=role, course=course), notify_user=False)
+    return factory.make_participation(
+        user, course, Role.objects.get(name='Student', course=course), notify_user=False)
 
 
 def update_lti_course_if_exists(request, user, role):

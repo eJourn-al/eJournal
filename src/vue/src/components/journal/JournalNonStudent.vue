@@ -318,9 +318,9 @@ export default {
                 }
             }
 
-            if (min < this.nodes.length && this.$store.getters['preferences/autoSelectUngradedEntry']) {
+            if (min < this.nodes.length && this.$store.getters['preferences/saved'].auto_select_ungraded_entry) {
                 this.currentNode = min
-            } else if (min === this.nodes.length && this.$store.getters['preferences/autoProceedNextJournal']
+            } else if (min === this.nodes.length && this.$store.getters['preferences/saved'].auto_proceed_next_journal
                 && gradeUpdated && this.filteredJournals.length > 1) {
                 this.$router.push({
                     name: 'Journal',

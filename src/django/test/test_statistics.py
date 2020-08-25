@@ -10,7 +10,6 @@ from test.utils import api
 from django.test import TestCase
 
 import VLE.models
-import VLE.utils.generic_utils as utils
 
 
 class StatisticsTests(TestCase):
@@ -34,5 +33,5 @@ class StatisticsTests(TestCase):
         self.journal.save()
         self.journal.refresh_from_db()
         assert self.journal.grade == n_graded_entries + bonus_points
-        assert utils.get_submitted_count(entries) == self.n_entries
-        assert utils.get_graded_count(entries) == n_graded_entries
+        assert entries.count() == self.n_entries
+        assert entries.exclude(grade=None).exclude(grade__grade=None).count() == n_graded_entries

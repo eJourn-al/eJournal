@@ -327,9 +327,9 @@ class JournalImportRequestTest(TestCase):
                 ignore_keys=['jID', 'nID', 'creation_date', 'last_edited', 'download_url', 'jir'],
                 exclude_regex_paths=[
                     # Ignores ids entry.content.<id>.entry, entry.<id>, entry.content.<id>.data.id
-                    "^{}\d{}$".format(re.escape(r"root['entry']['content']["), re.escape(r"]['entry']")),  # noqa: W605
+                    r"^{}\d{}$".format(re.escape(r"root['entry']['content']["), re.escape(r"]['entry']")),
                     re.escape(r"root['entry']['id']"),
-                    "^{}\d{}$".format(re.escape(r"root['entry']['content']["), re.escape(r"]['data']['id']")),  # noqa: W605 E501
+                    r"^{}\d{}$".format(re.escape(r"root['entry']['content']["), re.escape(r"]['data']['id']")),
                 ]
             )
 
@@ -343,7 +343,7 @@ class JournalImportRequestTest(TestCase):
                 assert not diff and values_changed, \
                     'Node diff consists of something else than just changed values, e.g. added or removed keys'
 
-                r = "^{}\d{}$".format(re.escape(r"root['entry']['content']["), re.escape(r"]['data']"))  # noqa: W605
+                r = r"^{}\d{}$".format(re.escape(r"root['entry']['content']["), re.escape(r"]['data']"))
                 is_content_data = re.compile(r)
 
                 for path, change in values_changed.items():

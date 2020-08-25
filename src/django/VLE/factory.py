@@ -44,7 +44,7 @@ def make_user(username, password=None, email=None, lti_id=None, profile_picture=
     return user
 
 
-def make_participation(user=None, course=None, role=None, groups=None):
+def make_participation(user=None, course=None, role=None, groups=None, notify_user=True):
     """Create a participation.
 
     Arguments:
@@ -53,7 +53,8 @@ def make_participation(user=None, course=None, role=None, groups=None):
     role -- role the user has on the course
     groups -- groups the user belongs to
     """
-    participation = Participation.objects.create(user=user, course=course, role=role)
+    participation = Participation(user=user, course=course, role=role)
+    participation.save(notify_user=notify_user)
     if groups:
         participation.groups.set(groups)
         participation.save()
@@ -208,9 +209,10 @@ def make_assignment_participation(assignment, author):
     return AssignmentParticipation.objects.create(assignment=assignment, user=author)
 
 
-def make_entry(template, author):
-    entry = Entry(template=template, author=author)
-    entry.save()
+def make_entry(template, author, node):
+    entry = Entry.objects.create(template=template, author=author, node=node)
+    entry.node.entry = entry
+    entry.node.save()
     return entry
 
 
