@@ -16,6 +16,7 @@
 <script>
 /* eslint-disable import/extensions */
 import tinymce from 'tinymce/tinymce'
+import 'tinymce/icons/default'
 import 'tinymce/themes/silver'
 
 /* Only works with basic lists enabled. */

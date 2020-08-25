@@ -19,3 +19,4 @@ pytest-cov==2.7.1 # Pytest
 pytest-django==3.5.1 # Pytest
 pytest-xdist==1.30.0 # Run Pytest in parallel
 django-silk==4.0.1 # Profiling / Optimisation
+django-test-migrations==0.3.0
