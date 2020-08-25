@@ -1545,8 +1545,6 @@ class Content(CreateUpdateModel):
     def save(self, *args, **kwargs):
         if Content.objects.filter(field=self.field, entry=self.entry).count() > 1:
             raise VLEProgrammingError('Multiple content instances for the same field and entry')
-        if self.field.template.pk != self.entry.template.pk:
-            raise VLEProgrammingError('Content field has no connection to the entries template. Set field__template.')
 
         self.data = sanitization.strip_script_tags(self.data)
 

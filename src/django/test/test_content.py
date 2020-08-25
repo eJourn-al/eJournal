@@ -1,6 +1,7 @@
 import os
 import test.factory as factory
 
+from django.core.exceptions import ValidationError
 from django.test import TestCase
 
 import VLE.validators
@@ -51,7 +52,7 @@ class ContentTest(TestCase):
             factory.Content(entry=content.entry, field__type=Field.NO_SUBMISSION)
 
         # It should not be possible to create content for the same field of the same entry
-        with self.assertRaises(VLEProgrammingError):
+        with self.assertRaises(ValidationError):
             factory.Content(entry=entry, field__type=Field.TEXT, field=content.field)
 
     def test_file_content_factory(self):

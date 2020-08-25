@@ -65,6 +65,7 @@ export default {
                 return 'calendar'
             }
         },
+        /* TODO JIR: Meaningfull way to display show that the entry was imported */
         nodeTitle () {
             switch (this.nodeState()) {
             case 'graded':
