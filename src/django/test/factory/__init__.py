@@ -5,7 +5,7 @@
 # This means traits cannot be combined with post generation methods and related factories, if the related factories
 # set values required in the post generation methods.
 
-# TODO JIR: CHeck if save in post generation methods is actually unneeded (and duplicate) cause
+# TODO JIR: Check if save in post generation methods is actually unneeded (and duplicate) because
 # save is called anyway in post generation hook when looking at factory base
 
 

@@ -136,7 +136,7 @@ export default {
     },
     computed: {
         // QUESTION:
-        // Can I make the multi select simply provide jirs as options with a display for jir.source.assignment.name?
+        // How to simply provide jirs as options to the multiselect with a display for jir.source.assignment.name?
         assignments () {
             const arr = []
             this.jirs.forEach(jir => arr.push({ name: jir.source.assignment.name, id: jir.id, jir }))

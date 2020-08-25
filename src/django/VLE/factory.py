@@ -12,8 +12,7 @@ from django.utils import timezone
 
 import VLE.validators as validators
 from VLE.models import (Assignment, AssignmentParticipation, Comment, Content, Course, Entry, Field, Format, Grade,
-                        Group, Journal, Node, Participation, PresetNode, Role, Template, User)
-from VLE.utils.error_handling import VLEBadRequest
+                        Group, Node, Participation, PresetNode, Role, Template, User)
 
 
 def make_user(username, password=None, email=None, lti_id=None, profile_picture=settings.DEFAULT_PROFILE_PICTURE,

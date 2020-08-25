@@ -2,12 +2,9 @@
 Model import helper functionality
 '''
 
-import os
-
 from django.core.files.base import ContentFile
 
-from VLE.models import (Assignment, AssignmentParticipation, Comment, Content, Course, Entry, Field, FileContext, Grade,
-                        Journal, JournalImportRequest, Node, PresetNode, Template)
+from VLE.models import Comment, Content, Entry, Field, FileContext, Grade, JournalImportRequest, Node
 from VLE.utils.error_handling import VLEProgrammingError
 
 
@@ -80,8 +77,6 @@ def import_entry(entry, journal, jir=None, grade_author=None,
     Returns:
         The copied entry.
     '''
-    # TODO JIR: A new grade object is created, as the start of a fresh grading history for the entry.
-
     if jir is None and grade_author is None:
         raise VLEProgrammingError('A grade author needs to be specified either via a JIR or directly.')
 
@@ -91,14 +86,12 @@ def import_entry(entry, journal, jir=None, grade_author=None,
     copied_entry = copy_entry(
         entry,
         grade=_copy_grade_based_on_jir_action(entry, grade_author, grade_action),
-        # QUESTION JIR: Double check if this correct, needs submission not often used
         vle_coupling=_select_vle_couplting_based_on_jir_action(grade_action, entry)
     )
 
     copied_entry.jir = jir
     copied_entry.save()
 
-    # TODO JIR: If a link to presetnode exists can this be maintained? node.preset.format.assignment will diff
     copy_node(entry.node, copied_entry, journal)
 
     for comment in Comment.objects.filter(entry=entry, published=True):

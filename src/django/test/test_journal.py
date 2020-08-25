@@ -6,10 +6,8 @@ from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.test import TestCase
 
-import VLE.factory
 from VLE.models import (Assignment, AssignmentParticipation, Course, Journal, JournalImportRequest, Participation, Role,
                         User)
-from VLE.utils.error_handling import VLEBadRequest
 
 
 class JournalAPITest(TestCase):

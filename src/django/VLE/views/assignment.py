@@ -17,7 +17,7 @@ import VLE.utils.generic_utils as utils
 import VLE.utils.import_utils as import_utils
 import VLE.utils.responses as response
 import VLE.validators as validators
-from VLE.models import Assignment, Course, Field, Journal, PresetNode, Template, User
+from VLE.models import Assignment, Course, Journal, PresetNode, Template, User
 from VLE.serializers import AssignmentSerializer, CourseSerializer, SmallAssignmentSerializer, TemplateSerializer
 from VLE.utils import file_handling, grading
 from VLE.utils.error_handling import VLEMissingRequiredKey, VLEParamWrongType
@@ -213,7 +213,6 @@ class AssignmentView(viewsets.ViewSet):
         if not (request.user.is_superuser or request.user == assignment.author):
             req_data.pop('author', None)
 
-        # TODO JIR: Can only go to not published when there are no outstanding JIRS with the assignment as target
         is_published, can_set_journal_name, can_set_journal_image, can_lock_journal = \
             utils.optional_typed_params(
                 request.data, (bool, 'is_published'),

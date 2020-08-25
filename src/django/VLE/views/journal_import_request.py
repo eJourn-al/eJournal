@@ -86,7 +86,6 @@ class JournalImportRequestView(viewsets.ViewSet):
         for source_entry in source_entries:
             import_utils.import_entry(source_entry, jir.target, jir=jir)
 
-        # TODO JIR: Grading update requires some tests
         if jir_action == jir.APPROVED_INC_GRADES:
             grading.task_journal_status_to_LMS.delay(jir.target.pk)
 

@@ -9,7 +9,7 @@ from django.test import TestCase
 from django.utils import timezone
 
 from VLE.models import (AssignmentParticipation, Comment, Content, Entry, Field, FileContext, JournalImportRequest,
-                        Node, PresetNode, Journal)
+                        Node, PresetNode)
 
 
 class JournalImportRequestTest(TestCase):

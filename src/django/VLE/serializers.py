@@ -636,7 +636,6 @@ class EntrySerializer(serializers.ModelSerializer):
             return None
         return CommentSerializer(Comment.objects.filter(entry=entry), many=True).data
 
-    # TODO JIR: Test and use front end
     def get_jir(self, entry):
         if entry.jir:
             return {
@@ -719,8 +718,6 @@ class FieldSerializer(serializers.ModelSerializer):
 
 
 class JournalImportRequestSerializer(serializers.ModelSerializer):
-    # TODO JIR: Reduce information fetched
-
     author = serializers.SerializerMethodField()
     source = serializers.SerializerMethodField()
     target = serializers.SerializerMethodField()
@@ -729,7 +726,7 @@ class JournalImportRequestSerializer(serializers.ModelSerializer):
     class Meta:
         model = JournalImportRequest
         fields = ('id', 'source', 'target', 'author', 'processor')
-        read_only_fields = ('id', 'source', 'target', 'author')
+        read_only_fields = ('id', 'source', 'target', 'author', 'processor')
 
     def get_author(self, jir):
         return UserSerializer(jir.author, context=self.context).data

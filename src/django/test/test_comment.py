@@ -66,7 +66,6 @@ class CommentAPITest(TestCase):
             'Student comment author is among the participants of the attached journal when instantiated via journal'
 
         comment = factory.TeacherComment(entry=entry)
-        # QUESTION JIR: Why can course__in=journal.assignment.courses.all() not be added to the below query?
         participations = Participation.objects.filter(role__name='Teacher', user=comment.author)
         assert any([journal.assignment.courses.filter(pk=p.course.pk).exists() for p in participations]), \
             'Teacher comment author has Teacher role for the entry used for initialization'

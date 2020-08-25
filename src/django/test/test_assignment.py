@@ -14,7 +14,6 @@ from django.test import TestCase
 from django.test.utils import override_settings
 from django.utils import timezone
 
-import VLE.factory
 import VLE.utils.generic_utils as utils
 from VLE.models import (Assignment, AssignmentParticipation, Course, Entry, Field, Format, Journal,
                         JournalImportRequest, Node, Participation, PresetNode, Role, Template)
