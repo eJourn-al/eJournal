@@ -314,7 +314,7 @@ class CommentAPITest(TestCase):
         api.delete(self, 'comments', params={'pk': comment.pk}, user=user, status=200 if should_succeed else 403)
 
         if should_succeed:
-            assert not Comment.objects.filter(pk=comment.pk).exists(), 'Comment was not succesfully deleted'
+            assert not Comment.objects.filter(pk=comment.pk).exists(), 'Comment was not successfully deleted'
             comment_before_op.save()
         else:
             comment_after_op = Comment.objects.get(pk=comment.pk)

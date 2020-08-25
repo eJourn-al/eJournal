@@ -411,7 +411,7 @@ export default {
                 journalAPI.update(
                     this.journal.id,
                     { bonus_points: this.bonusPointsTemp },
-                    { customSuccessToast: 'Bonus succesfully added.' },
+                    { customSuccessToast: 'Bonus successfully added.' },
                 )
                     .then((journal) => { this.journal = journal })
             }

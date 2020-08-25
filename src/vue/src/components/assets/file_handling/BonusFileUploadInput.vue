@@ -156,7 +156,7 @@ export default {
                 customErrorToast: 'Something is wrong with the uploaded file.',
             })
                 .then(() => {
-                    this.$emit('bonusPointsSuccesfullyUpdated', this.file.name)
+                    this.$emit('bonusPointssuccessfullyUpdated', this.file.name)
                     this.file = null
                     this.$refs.bonusInput.reset()
                 })

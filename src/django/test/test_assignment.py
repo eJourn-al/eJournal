@@ -93,7 +93,7 @@ class AssignmentAPITest(TestCase):
         assignment = factory.Assignment(courses=[course])
         teacher_role = Role.objects.get(name='Teacher', course=course)
 
-        assert assignment.courses.filter(pk=course.pk).exists(), 'Assignment is succesfully linked to the course'
+        assert assignment.courses.filter(pk=course.pk).exists(), 'Assignment is successfully linked to the course'
         assert course.author.pk == assignment.author.pk, 'Course author is reused for the assignment by default'
         assert Participation.objects.filter(role=teacher_role, user=assignment.author, course=course).exists(), \
             'Assignment author is an actual teacher in the associated course'

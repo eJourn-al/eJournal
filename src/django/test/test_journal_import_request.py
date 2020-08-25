@@ -169,7 +169,7 @@ class JournalImportRequestTest(TestCase):
         # So we create an entry in source_journal
         factory.UnlimitedEntry(node__journal=source_journal)
 
-        # Succesfully create a JournalImportRequest
+        # successfully create a JournalImportRequest
         resp = api.create(
             self, 'journal_import_request', params=data, user=student, status=201)['journal_import_request']
 

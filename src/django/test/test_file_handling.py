@@ -119,7 +119,7 @@ class FileHandlingTest(TestCase):
         file = FileContext.objects.create(file=self.video, author=self.student, file_name=self.video.name)
 
         file_get = FileContext.objects.filter(author=self.student.pk, file_name=self.video.name).first()
-        assert file, "The student should have succesfully created a temp user file."
+        assert file, "The student should have successfully created a temp user file."
         assert file == file_get, "The created user file should be equal to the gotten user file from db."
         path = file.file.path
         actual_file_name = Path(path).name
@@ -346,7 +346,7 @@ class FileHandlingTest(TestCase):
         api.post(
             self, 'files', params={'file': self.image}, user=self.teacher, content_type=MULTIPART_CONTENT, status=201)
         file = FileContext.objects.get(author=self.teacher.pk, file_name=self.image.name)
-        assert file, 'The student should have succesfully created a temp user file.'
+        assert file, 'The student should have successfully created a temp user file.'
 
     def test_establish(self):
         to_establish = api.post(

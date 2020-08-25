@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Switch to postgres user before runnig this script.
-# Was unsuccesfully integrated in the MakeFile because of the difficulties running a loop for a different user
+# Was unsuccessfully integrated in the MakeFile because of the difficulties running a loop for a different user
 
 dbPattern="test_ejournal%" # Matches anything starting with test_ejournal
 sql="select datname from pg_database where datname like '${dbPattern}'"

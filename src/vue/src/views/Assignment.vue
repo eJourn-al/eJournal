@@ -109,7 +109,7 @@
                         :endpoint="'assignments/' + $route.params.aID + '/add_bonus_points'"
                         :aID="$route.params.aID"
                         class="mt-2"
-                        @bonusPointsSuccesfullyUpdated="hideModal('bonusPointsModal'); init()"
+                        @bonusPointssuccessfullyUpdated="hideModal('bonusPointsModal'); init()"
                     />
                 </b-card>
             </b-modal>

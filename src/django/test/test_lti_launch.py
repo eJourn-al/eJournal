@@ -260,7 +260,7 @@ class LtiLaunchTest(TestCase):
         resp = lti_launch(
             request_body=test_user_params,
             response_value=lti_view.LTI_STATES.LOGGED_IN.value,
-            assert_msg='A reused test user can launch succesfully after being created.',
+            assert_msg='A reused test user can launch successfully after being created.',
         )
 
         get_jwt(
@@ -357,7 +357,7 @@ class LtiLaunchTest(TestCase):
                 'custom_course_id': course.active_lti_id,
                 'custom_assignment_id': assignment.active_lti_id},
             response_msg='',
-            assert_msg='With valid params it should response succesfully')
+            assert_msg='With valid params it should response successfully')
         assert group_count == Group.objects.filter(course=course).count(), \
             'No new groups should be created, if no supplied'
         get_jwt(
@@ -369,7 +369,7 @@ class LtiLaunchTest(TestCase):
                 'custom_course_id': course.active_lti_id,
                 'custom_assignment_id': assignment.active_lti_id},
             response_msg='',
-            assert_msg='With valid params it should response succesfully')
+            assert_msg='With valid params it should response successfully')
         assert group_count + 2 == Group.objects.filter(course=course).count() and \
             Group.objects.filter(course=course, lti_id='new_group2').exists(), \
             'New groups should be created'
