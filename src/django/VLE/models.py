@@ -1207,19 +1207,6 @@ class Assignment(CreateUpdateModel):
 
         return "{} ({})".format(self.name, self.pk)
 
-# @receiver(models.signals.pre_save, sender=Assignment)
-# def model_pre_save(sender, instance, **kwargs):
-#     try:
-#         instance._pre_save_instance = Assignment.objects.get(pk=instance.pk)
-#     except Assignment.DoesNotExist:
-#         instance._pre_save_instance = instance
-
-
-# @receiver(signal=models.signals.post_save, sender=Assignment)
-# def model_post_save(sender, instance, created, **kwargs):
-#     pre_save_instance = instance._pre_save_instance
-#     post_save_instance = instance
-
 
 class AssignmentParticipation(CreateUpdateModel):
     """AssignmentParticipation
