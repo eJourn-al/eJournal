@@ -80,9 +80,17 @@
                 </span>
                 <b-badge
                     v-if="entryNode.due_date && new Date(entryNode.due_date) < new Date(entryNode.entry.last_edited)"
+                    v-b-tooltip:hover="'This entry was submitted after the due date'"
                     class="late-submission-badge"
                 >
                     LATE
+                </b-badge>
+                <b-badge
+                    v-if="!entryNode.jir"
+                    v-b-tooltip:hover="'This entry was imported from another journal'"
+                    class="imported-entry-badge"
+                >
+                    IMPORTED
                 </b-badge>
             </div>
         </b-card>
