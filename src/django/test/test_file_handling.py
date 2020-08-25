@@ -31,7 +31,7 @@ class FileHandlingTest(TestCase):
         self.create_params = {
             'journal_id': self.journal.pk,
             'template_id': self.template.pk,
-            'content': []
+            'content': {},
         }
 
     def tearDown(self):
@@ -166,7 +166,7 @@ class FileHandlingTest(TestCase):
         content_real = api.post(
             self, 'files', params={'file': self.image}, user=self.student, content_type=MULTIPART_CONTENT, status=201)
         post = self.create_params
-        post['content'] = [{'data': content_real, 'id': self.img_field.pk}]
+        post['content'] = {self.img_field.pk: content_real}
         api.post(self, 'entries', params=post, user=self.student, status=201)
         assert self.student.filecontext_set.filter(pk=content_real['id']).exists(), 'real file should stay'
         assert not self.student.filecontext_set.filter(pk=content_fake['id']).exists(), 'fake file should be removed'
@@ -182,10 +182,10 @@ class FileHandlingTest(TestCase):
             self, 'files', params={'file': self.image, 'in_rich_text': True},
             user=self.student, content_type=MULTIPART_CONTENT, status=201)
         post = self.create_params
-        post['content'] = [
-            {'data': content_real, 'id': self.img_field.pk},
-            {'data': "<p>hello!<img src='{}' /></p>".format(content_rt['download_url']), 'id': self.rt_field.pk}
-        ]
+        post['content'] = {
+            self.img_field.pk: content_real,
+            self.rt_field.pk: "<p>hello!<img src='{}'/></p>".format(content_rt['download_url']),
+        }
         entry_with_rt = api.post(self, 'entries', params=post, user=self.student, status=201)['entry']
         assert self.student.filecontext_set.filter(pk=content_real['id']).exists(), 'real file should stay'
         assert self.student.filecontext_set.filter(pk=content_rt['id']).exists(), 'rich text shoud stay'
@@ -197,9 +197,9 @@ class FileHandlingTest(TestCase):
             self, 'files', params={'file': self.image}, user=self.student, content_type=MULTIPART_CONTENT, status=201)
         patch = {
             'pk': entry_with_rt['id'],
-            'content': post['content']
+            'content': post['content'],
         }
-        patch['content'][0]['data'] = content_new
+        patch['content'][list(patch['content'].keys())[0]] = content_new
         api.update(self, 'entries', params=patch, user=self.student)
         assert self.student.filecontext_set.filter(pk=content_new['id']).exists(), 'new file should exist'
         assert not self.student.filecontext_set.filter(pk=content_old['id']).exists(), 'old file should be removed'
@@ -212,7 +212,8 @@ class FileHandlingTest(TestCase):
         content_new_rt2 = api.post(
             self, 'files', params={'file': self.image, 'in_rich_text': True},
             user=self.student, content_type=MULTIPART_CONTENT, status=201)
-        patch['content'][1]['data'] = "<p>hello!<img src='{}' /><img src='{}' /></p>".format(
+        rt_field_id = next(field for field in self.template.field_set.all() if field.type == 'rt').id
+        patch['content'][rt_field_id] = "<p>hello!<img src='{}' /><img src='{}' /></p>".format(
             content_new_rt['download_url'], content_new_rt2['download_url'])
         api.update(self, 'entries', params=patch, user=self.student)
         assert self.student.filecontext_set.filter(pk=content_new_rt['id']).exists(), 'new file should exist'
@@ -392,13 +393,12 @@ class FileHandlingTest(TestCase):
         resp = api.post(
             self, 'files', params={'file': long_name, 'in_rich_text': False},
             user=author, content_type=MULTIPART_CONTENT, status=201)
+        content = {f.pk: 'abcd' for f in node.preset.forced_template.field_set.exclude(pk=field.pk)}
+        content[field.pk] = resp.copy()
         entry = api.create(
             self, 'entries', params={
                 'journal_id': node.journal.pk, 'node_id': node.pk, 'template_id': node.preset.forced_template.pk,
-                'content': [{
-                    'id': field.pk,
-                    'data': resp.copy()
-                }] + [{'id': f.pk, 'data': 'asdf'} for f in node.preset.forced_template.field_set.exclude(pk=field.pk)]
+                'content': content
             },
             user=author)['entry']
         Entry.objects.get(pk=entry['id']).delete()

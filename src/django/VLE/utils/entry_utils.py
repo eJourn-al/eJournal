@@ -7,7 +7,6 @@ import VLE.timeline as timeline
 import VLE.validators as validators
 from VLE import factory
 from VLE.models import Field, Node
-from VLE.utils import generic_utils as utils
 from VLE.utils.error_handling import VLEBadRequest, VLEMissingRequiredField
 
 
@@ -17,20 +16,20 @@ def get_node_index(journal, node, user):
             return i
 
 
-def check_fields(template, content_list):
+def check_fields(template, content_dict):
     """Check if the supplied content list is a valid for the given template"""
     received_ids = []
 
     # Check if all the content is valid
-    for content in content_list:
-        data, field_id = utils.required_params(content, 'data', 'id')
-        if data is not None and data != '':
-            received_ids.append(field_id)
+    for field_id, content in content_dict.items():
+        if content is not None and content != '':
+            # Content dict comes from JS object (which has only string accessors), but field IDs are ints.
+            received_ids.append(int(field_id))
             try:
                 field = Field.objects.get(pk=field_id, template=template)
             except Field.DoesNotExist:
                 raise VLEBadRequest('Passed field is not from template.')
-            validators.validate_entry_content(data, field)
+            validators.validate_entry_content(content, field)
 
     # Check for missing required fields
     required_fields = Field.objects.filter(template=template, required=True)

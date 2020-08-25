@@ -326,13 +326,12 @@ class JournalImportRequestTest(TestCase):
                 return_diff=True,
                 ignore_keys=['jID', 'nID', 'creation_date', 'last_edited', 'download_url', 'jir'],
                 exclude_regex_paths=[
-                    # Ignores ids entry.content.<id>.entry, entry.<id>, entry.content.<id>.data.id
-                    r"^{}\d{}$".format(re.escape(r"root['entry']['content']["), re.escape(r"]['entry']")),
-                    re.escape(r"root['entry']['id']"),
-                    r"^{}\d{}$".format(re.escape(r"root['entry']['content']["), re.escape(r"]['data']['id']")),
+                    # Match exactly root['entry']['content']['<index>']['id']
+                    r"^{}\d+{}$".format(re.escape(r"root['entry']['content']['"), re.escape(r"']['id']")),
+                    # Match exactly root['entry']['id']
+                    r"^{}$".format(re.escape(r"root['entry']['id']")),
                 ]
             )
-
             assert target_node['entry']['jir']['source']['assignment']['name'] == source_assignment.name
 
             # The only remaining allowed difference would be RichText content of which the download url should
@@ -343,11 +342,13 @@ class JournalImportRequestTest(TestCase):
                 assert not diff and values_changed, \
                     'Node diff consists of something else than just changed values, e.g. added or removed keys'
 
-                r = r"^{}\d{}$".format(re.escape(r"root['entry']['content']["), re.escape(r"]['data']"))
+                # Check if the difference is indeed the path of content data (entry.content.id)
+                r = r"^{}\d+{}$".format(re.escape(r"root['entry']['content']['"), re.escape(r"']"))
                 is_content_data = re.compile(r)
 
                 for path, change in values_changed.items():
-                    assert is_content_data.match(path), 'A node value other than the content data is different'
+                    assert is_content_data.match(path) is not None, \
+                        'A node value other than the content data is different'
 
                     # Assume working with a Field.FILE
                     if change['new_value'].isdigit():

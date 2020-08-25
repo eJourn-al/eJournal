@@ -107,7 +107,7 @@
                         :autoUpload="true"
                         :plain="true"
                         hidden
-                        @uploadingFile="uploadingFiles ++"
+                        @uploading-file="uploadingFiles ++"
                         @fileUploadSuccess="comment.files.push($event) && uploadingFiles --"
                         @fileUploadFailed="uploadingFiles --"
                     />

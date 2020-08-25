@@ -59,7 +59,7 @@
                 <load-wrapper :loading="loadingNodes">
                     <div v-if="nodes.length > currentNode && currentNode !== -1">
                         <div v-if="nodes[currentNode].type == 'e' || nodes[currentNode].type == 'd'">
-                            <entry-non-student-preview
+                            <entry-non-student
                                 ref="entry-template-card"
                                 :journal="journal"
                                 :entryNode="nodes[currentNode]"
@@ -200,15 +200,15 @@
 </template>
 
 <script>
-import entryNonStudentPreview from '@/components/entry/EntryNonStudentPreview.vue'
-import timeline from '@/components/timeline/Timeline.vue'
-import journalDetails from '@/components/journal/JournalDetails.vue'
-import breadCrumb from '@/components/assets/BreadCrumb.vue'
-import loadWrapper from '@/components/loading/LoadWrapper.vue'
-import journalStartCard from '@/components/journal/JournalStartCard.vue'
-import journalEndCard from '@/components/journal/JournalEndCard.vue'
+import EntryNonStudent from '@/components/entry/EntryNonStudent.vue'
+import Timeline from '@/components/timeline/Timeline.vue'
+import JournalDetails from '@/components/journal/JournalDetails.vue'
+import BreadCrumb from '@/components/assets/BreadCrumb.vue'
+import LoadWrapper from '@/components/loading/LoadWrapper.vue'
+import JournalStartCard from '@/components/journal/JournalStartCard.vue'
+import JournalEndCard from '@/components/journal/JournalEndCard.vue'
+import ProgressNode from '@/components/entry/ProgressNode.vue'
 import journalImportRequestApprovalModal from '@/components/journal/JournalImportRequestApprovalModal.vue'
-import progressNode from '@/components/entry/ProgressNode.vue'
 
 import store from '@/Store.vue'
 import journalAPI from '@/api/journal.js'
@@ -217,14 +217,14 @@ import { mapGetters, mapMutations } from 'vuex'
 
 export default {
     components: {
-        entryNonStudentPreview,
-        breadCrumb,
-        loadWrapper,
-        timeline,
-        journalDetails,
-        journalStartCard,
-        journalEndCard,
-        progressNode,
+        EntryNonStudent,
+        BreadCrumb,
+        LoadWrapper,
+        Timeline,
+        JournalDetails,
+        JournalStartCard,
+        JournalEndCard,
+        ProgressNode,
         journalImportRequestApprovalModal,
     },
     props: ['cID', 'aID', 'jID'],
@@ -331,22 +331,22 @@ export default {
         adaptData (editedData) {
             this.nodes[this.currentNode] = editedData
         },
-        selectNode ($event) {
+        selectNode (newNode) {
             /* Function that prevents you from instant leaving an EntryNode
              * or a DeadlineNode when clicking on a different node in the
              * timeline. */
-            if ($event === this.currentNode) {
+            if (newNode === this.currentNode) {
                 /* TODO fix mess */
-            } else if (!this.discardChanges()) {
+            } else if (!this.safeToLeave()) {
                 /* pass */
             } else if (this.currentNode === -1 || this.currentNode >= this.nodes.length
                 || this.nodes[this.currentNode].type !== 'e'
                 || this.nodes[this.currentNode].type !== 'd') {
-                this.currentNode = $event
+                this.currentNode = newNode
             } else if (this.$refs['entry-template-card'].saveEditMode === 'Save') {
                 window.confirm('Progress will not be saved if you leave. Do you wish to continue?')
             } else {
-                this.currentNode = $event
+                this.currentNode = newNode
             }
         },
         publishGradesJournal () {
@@ -383,16 +383,15 @@ export default {
 
             return false
         },
-        discardChanges () {
+        safeToLeave () {
             if (this.currentNode !== -1
                 && this.currentNode < this.nodes.length
                 && (this.nodes[this.currentNode].type === 'e'
                 || (this.nodes[this.currentNode].type === 'd' && this.nodes[this.currentNode].entry !== null))) {
                 if (this.nodes[this.currentNode].entry.grade === null) {
-                    if (this.$refs['entry-template-card'].grade.grade > 0) {
-                        if (!window.confirm('Progress will not be saved if you leave. Do you wish to continue?')) {
-                            return false
-                        }
+                    if (this.$refs['entry-template-card'].grade.grade > 0
+                        && !window.confirm('Progress will not be saved if you leave. Do you wish to continue?')) {
+                        return false
                     }
                 } else if (this.$refs['entry-template-card'].grade.grade
                            !== this.nodes[this.currentNode].entry.grade.grade
@@ -422,8 +421,10 @@ export default {
 
 <style lang="sass">
 @import '~sass/modules/colors.sass'
+@import '~sass/partials/shadows.sass'
 
 .grade-section.bonus-section
+    @extend .theme-shadow
     .btn
         display: block
         width: 100%

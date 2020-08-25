@@ -50,16 +50,16 @@ def validate_password(password):
         raise ValidationError("Password needs to contain a special character.")
 
 
-def validate_entry_content(data, field):
+def validate_entry_content(content, field):
     """Validates the given data based on its field type, any validation error will be thrown."""
-    if field.required and not (data or data == ''):
+    if field.required and not (content or content == ''):
         raise VLEMissingRequiredField(field)
     # QUESTION: Is '' really valid data for all fields?
-    if not data:
+    if not content:
         return
 
     if field.type == Field.RICH_TEXT:
-        for access_id in file_handling.get_access_ids_from_rich_text(data):
+        for access_id in file_handling.get_access_ids_from_rich_text(content):
             fc = FileContext.objects.filter(access_id=access_id)
             if not fc.exists():
                 raise ValidationError('Rich text contains reference to non existing file')
@@ -70,32 +70,32 @@ def validate_entry_content(data, field):
     # TODO: improve VIDEO validator
     if field.type == Field.URL or field.type == Field.VIDEO:
         url_validate = URLValidator(schemes=Field.ALLOWED_URL_SCHEMES)
-        url_validate(data)
+        url_validate(content)
 
     if field.type == Field.SELECTION:
-        if data not in json.loads(field.options):
+        if content not in json.loads(field.options):
             raise ValidationError("Selected option is not in the given options.")
 
     if field.type == Field.DATE:
         try:
-            datetime.strptime(data, Field.ALLOWED_DATE_FORMAT)
+            datetime.strptime(content, Field.ALLOWED_DATE_FORMAT)
         except (ValueError, TypeError) as e:
             raise ValidationError(str(e))
 
     if field.type == Field.DATETIME:
         try:
-            datetime.strptime(data, Field.ALLOWED_DATETIME_FORMAT)
+            datetime.strptime(content, Field.ALLOWED_DATETIME_FORMAT)
         except (ValueError, TypeError) as e:
             raise ValidationError(str(e))
 
     if field.type == Field.FILE:
         try:
-            int(data['id'])
+            int(content['id'])
         except (ValueError, KeyError):
-            raise ValidationError("The data['id'] of a field file should contain the pk of the related file")
+            raise ValidationError("The content['id'] of a field file should contain the pk of the related file")
 
         # Ensures the FC still exists
-        fc = FileContext.objects.get(pk=int(data['id']))
+        fc = FileContext.objects.get(pk=int(content['id']))
         if not os.path.isfile(fc.file.path):
             raise ValidationError("Entry references non existing file")
 
