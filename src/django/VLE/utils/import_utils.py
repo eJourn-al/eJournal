@@ -6,12 +6,63 @@ import os
 
 from django.core.files.base import ContentFile
 
-from VLE.models import (Assignment, AssignmentParticipation, Comment, Content, Course, Entry, Field, FileContext,
+from VLE.models import (Assignment, AssignmentParticipation, Comment, Content, Course, Entry, Field, FileContext, Grade,
                         Journal, JournalImportRequest, Node, PresetNode, Template)
 from VLE.utils.error_handling import VLEProgrammingError
 
 
-def import_entry(entry, journal, copy_grade, jir=None):
+def _copy_grade_based_on_jir_action(entry, author, action=JournalImportRequest.APPROVED_WITH_GRADES_ZEROED):
+    '''
+    Create a new grade instance with a fresh history. Could be ungraded, zeroed or none based on the action.
+
+    If the Entry's grade was unpublished, the new grade WILL be published.
+
+    Args:
+        entry (:model:`VLE.entry`): Entry the copied grade should be attached to.
+        author (:model:`VLE.user`): Author of the new grade
+        action (str): Choice of (:model:`VLE.JournalImportRequest`).APPROVED_STATES
+    '''
+    if action not in JournalImportRequest.APPROVED_STATES:
+        raise VLEProgrammingError('Copy grade request based on unrecognized action')
+
+    if action == JournalImportRequest.APPROVED_INC_GRADES:
+        if entry.grade is None:
+            return None
+        points = entry.grade.grade
+    if action == JournalImportRequest.APPROVED_EXC_GRADES:
+        return None
+    if action == JournalImportRequest.APPROVED_WITH_GRADES_ZEROED:
+        points = 0
+
+    return Grade.objects.create(
+        entry=entry,
+        grade=points,
+        published=True,
+        author=author,
+    )
+
+
+def _select_vle_couplting_based_on_jir_action(action, entry):
+    '''
+    Args:
+        action (str): Choice of (:model:`VLE.JournalImportRequest`).APPROVED_STATES
+        entry (:model:`VLE.entry`): The original entry.
+    '''
+    if action not in JournalImportRequest.APPROVED_STATES:
+        raise VLEProgrammingError('Copy grade request based on unrecognized action')
+
+    if action == JournalImportRequest.APPROVED_INC_GRADES:
+        if entry.grade is None:
+            return Entry.NEEDS_SUBMISSION
+        return Entry.NEEDS_GRADE_PASSBACK
+    if action == JournalImportRequest.APPROVED_EXC_GRADES:
+        return Entry.NEEDS_SUBMISSION
+    if action == JournalImportRequest.APPROVED_WITH_GRADES_ZEROED:
+        return Entry.NEEDS_GRADE_PASSBACK
+
+
+def import_entry(entry, journal, jir=None, grade_author=None,
+                 grade_action=JournalImportRequest.APPROVED_WITH_GRADES_ZEROED):
     '''
     Creates a new entry object attached to the given journal.
 
@@ -20,36 +71,32 @@ def import_entry(entry, journal, copy_grade, jir=None):
     A new grade object is created, as the start of a fresh grading history for the entry.
 
     Args:
-        entry (:model:`VLE.entry`): Entry to copy.
-        journal (:model:`VLE.journal`): Journal which the entry should be copied into.
-        copy_grade (bool): Flag indicating whether the entry grade should be copied, if not grade is set to None.
-        jir (:model:`VLE.JournalImportRequest`): JIR instance triggering the import action
+        - entry (:model:`VLE.entry`): Entry to copy.
+        - journal (:model:`VLE.journal`): Journal which the entry should be copied into.
+        - grade_action: Action selection from (:model:`VLE.JournalImportRequest`), determines how the new entry's
+          grade should be set.
+        - jir (:model:`VLE.JournalImportRequest`): JIR instance triggering the import action.
 
     Returns:
         The copied entry.
     '''
     # TODO JIR: A new grade object is created, as the start of a fresh grading history for the entry.
 
-    # TODO JIR: Create differentiating labels indicating the entry was imported (update docstring once decided)
+    if jir is None and grade_author is None:
+        raise VLEProgrammingError('A grade author needs to be specified either via a JIR or directly.')
+
+    grade_author = grade_author if grade_author else jir.processor
+    grade_action = jir.state if jir else grade_action
 
     copied_entry = copy_entry(
         entry,
-        grade=None,
+        grade=_copy_grade_based_on_jir_action(entry, grade_author, grade_action),
         # QUESTION JIR: Double check if this correct, needs submission not often used
-        vle_coupling=Entry.NEEDS_GRADE_PASSBACK if copy_grade else Entry.NEEDS_SUBMISSION
+        vle_coupling=_select_vle_couplting_based_on_jir_action(grade_action, entry)
     )
+
     copied_entry.jir = jir
     copied_entry.save()
-
-    # Copied entry niet kunnen editen
-    # Als geen grade, moet de docent dan normaal "Need grading" krijgen
-
-    # Alle cijfers op 0 zetten
-    # Alle cijfers op None zetten (docent kan andere cijfers geven)
-    # ALle cijfers overnemen, sommige cijfers kunnen nog steeds None (als dat zo in source). Voor deze entries,
-    # mogen deze een nieuw cijfer krijgen? geedit worden?
-    # TODO JIR: Create grade object with grade 0, if not copy grade
-    # use old factory to immediately set the entry fk factory.make_grade
 
     # TODO JIR: If a link to presetnode exists can this be maintained? node.preset.format.assignment will diff
     copy_node(entry.node, copied_entry, journal)

@@ -8,8 +8,8 @@ from django.db.models import Q
 from django.test import TestCase
 from django.utils import timezone
 
-from VLE.models import (AssignmentParticipation, Comment, Content, Entry, FileContext, JournalImportRequest, Node,
-                        PresetNode)
+from VLE.models import (AssignmentParticipation, Comment, Content, Entry, Field, FileContext, JournalImportRequest,
+                        Node, PresetNode)
 
 
 class JournalImportRequestTest(TestCase):
@@ -217,7 +217,6 @@ class JournalImportRequestTest(TestCase):
         assert jir.processor.pk == teacher.pk, 'The jir processor is updated'
 
     def test_jir_import(self):
-        # TODO JIR: Test jir_action variant impact on entry grade and vle coupling states
         course = factory.Course()
         source_assignment = factory.Assignment(format__templates=False, courses=[course])
         factory.TemplateAllTypes(format=source_assignment.format)
@@ -276,7 +275,7 @@ class JournalImportRequestTest(TestCase):
 
     def test_jir_import_result_via_serialization(self):
         course = factory.Course()
-        source_assignment = factory.Assignment(courses=[course])
+        source_assignment = factory.Assignment(format__templates=False, courses=[course])
         factory.TemplateAllTypes(format=source_assignment.format)
         source_journal = factory.Journal(assignment=source_assignment, entries__n=1)
         jir = factory.JournalImportRequest(
@@ -356,12 +355,89 @@ class JournalImportRequestTest(TestCase):
                         test_utils.check_equality_of_imported_rich_text(
                             change['old_value'], change['new_value'], Content)
 
-
     def test_jir_import_action_approve_including_grade(self):
-        pass
+        course = factory.Course()
+        source_assignment = factory.Assignment(format__templates=[{'type': Field.TEXT}], courses=[course])
+        source_journal = factory.Journal(assignment=source_assignment, entries__n=0)
+        target_journal = factory.Journal(assignment__courses=[course], entries__n=0)
+        source_grade = 2
+        target_grade = 1
+        source_entry = factory.UnlimitedEntry(
+            node__journal=source_journal, grade__published=True, grade__grade=source_grade)
+        target_entry = factory.UnlimitedEntry(
+            node__journal=target_journal, grade__published=True, grade__grade=target_grade)
+        jir = factory.JournalImportRequest(source=source_journal, target=target_journal)
+
+        # Fetch journal stats via API before the import approval
+        pre_source_journal_resp = api.get(self, 'journals', params={'pk': jir.source.pk}, user=course.author)['journal']
+        pre_target_journal_resp = api.get(self, 'journals', params={'pk': jir.target.pk}, user=course.author)['journal']
+        assert pre_source_journal_resp['grade'] == source_grade
+        assert pre_target_journal_resp['grade'] == target_grade
+
+        data = {'pk': jir.pk, 'jir_action': JournalImportRequest.APPROVED_INC_GRADES}
+        api.update(self, 'journal_import_request', params=data, user=course.author, status=200)
+
+        # Fetch journal stats via API after the import approval
+        post_target_journal_resp = api.get(
+            self, 'journals', params={'pk': jir.target.pk}, user=course.author)['journal']
+
+        assert pre_source_journal_resp['grade'] + pre_target_journal_resp['grade'] == post_target_journal_resp['grade']
+
+        created_entry = Entry.objects.filter(node__journal=jir.target).exclude(pk=target_entry.pk).first()
+        assert created_entry.grade.pk != source_entry.grade.pk, \
+            'A new grade object is created as start of a new grade history'
 
     def test_jir_import_action_approve_excluding_grade(self):
-        pass
-        # TODO grade variants
-        # assert test_utils.equal_models(pre_target_journal_resp, post_target_journal_resp), \
-        #     'Target journal should have NO new entries to mark as the import action was approve including grades'
+        course = factory.Course()
+        source_assignment = factory.Assignment(format__templates=[{'type': Field.TEXT}], courses=[course])
+        source_journal = factory.Journal(assignment=source_assignment, entries__n=0)
+        target_journal = factory.Journal(assignment__courses=[course], entries__n=0)
+        source_grade = 2
+        target_grade = 1
+        factory.UnlimitedEntry(node__journal=source_journal, grade__published=True, grade__grade=source_grade)
+        target_entry = factory.UnlimitedEntry(
+            node__journal=target_journal, grade__published=True, grade__grade=target_grade)
+        jir = factory.JournalImportRequest(source=source_journal, target=target_journal)
+
+        # Fetch journal stats via API before the import approval
+        pre_target_journal_resp = api.get(self, 'journals', params={'pk': jir.target.pk}, user=course.author)['journal']
+        assert pre_target_journal_resp['grade'] == target_grade
+
+        data = {'pk': jir.pk, 'jir_action': JournalImportRequest.APPROVED_EXC_GRADES}
+        api.update(self, 'journal_import_request', params=data, user=course.author, status=200)
+
+        # Fetch journal stats via API after the import approval
+        post_target_journal_resp = api.get(
+            self, 'journals', params={'pk': jir.target.pk}, user=course.author)['journal']
+
+        assert pre_target_journal_resp['grade'] == post_target_journal_resp['grade'] == target_grade
+        created_entry = Entry.objects.filter(node__journal=jir.target).exclude(pk=target_entry.pk).first()
+        assert created_entry.grade is None, 'No grade should be set for the created entry when approving without grades'
+
+    def test_jir_import_action_approve_with_grades_zeroed(self):
+        course = factory.Course()
+        source_assignment = factory.Assignment(format__templates=[{'type': Field.TEXT}], courses=[course])
+        source_journal = factory.Journal(assignment=source_assignment, entries__n=0)
+        target_journal = factory.Journal(assignment__courses=[course], entries__n=0)
+        source_grade = 2
+        target_grade = 1
+        factory.UnlimitedEntry(node__journal=source_journal, grade__published=True, grade__grade=source_grade)
+        target_entry = factory.UnlimitedEntry(
+            node__journal=target_journal, grade__published=True, grade__grade=target_grade)
+        jir = factory.JournalImportRequest(source=source_journal, target=target_journal)
+
+        # Fetch journal stats via API before the import approval
+        pre_target_journal_resp = api.get(self, 'journals', params={'pk': jir.target.pk}, user=course.author)['journal']
+        assert pre_target_journal_resp['grade'] == target_grade
+
+        data = {'pk': jir.pk, 'jir_action': JournalImportRequest.APPROVED_WITH_GRADES_ZEROED}
+        api.update(self, 'journal_import_request', params=data, user=course.author, status=200)
+
+        # Fetch journal stats via API after the import approval
+        post_target_journal_resp = api.get(
+            self, 'journals', params={'pk': jir.target.pk}, user=course.author)['journal']
+
+        assert pre_target_journal_resp['grade'] == post_target_journal_resp['grade'] == target_grade, \
+            'Total grade should not be increased as all new grades should be set to zero'
+        created_entry = Entry.objects.filter(node__journal=jir.target).exclude(pk=target_entry.pk).first()
+        assert created_entry.grade.grade == 0, 'Created grades should be set to zero'

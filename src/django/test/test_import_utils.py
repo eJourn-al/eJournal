@@ -6,7 +6,7 @@ from test.utils.generic_utils import (check_equality_of_imported_file_context, c
 from django.test import TestCase
 
 import VLE.utils.import_utils as import_utils
-from VLE.models import Comment, Content, Field, FileContext
+from VLE.models import Comment, Content, Entry, Field, FileContext, JournalImportRequest
 from VLE.utils.error_handling import VLEProgrammingError
 
 
@@ -153,3 +153,55 @@ class ImportTest(TestCase):
 
             assert imported_content.field.template.pk == source_content.field.template.pk, \
                 'The template of the original content is used for the imported content'
+
+    def test__copy_grade_based_on_jir_action(self):
+        journal = factory.Journal()
+        teacher2 = factory.Teacher()
+
+        entry = factory.UnlimitedEntry(node__journal=journal, grade__grade=1, grade__published=False)
+        grade = import_utils._copy_grade_based_on_jir_action(entry, teacher2, JournalImportRequest.APPROVED_INC_GRADES)
+
+        self.assertRaises(
+            VLEProgrammingError,
+            import_utils._copy_grade_based_on_jir_action,
+            entry, teacher2, JournalImportRequest.PENDING
+        )
+        assert grade.pk != entry.grade.pk, 'A new grade object is created'
+        assert grade.grade == entry.grade.grade, \
+            'When approving including grades, the entry\'s grade\'s points is copied'
+        assert grade.author.pk == teacher2.pk, 'The passed author is set as author of the grade'
+        assert grade.published, 'The grade is always published'
+        assert grade.entry.pk == entry.pk, 'The copied grade is linked to the passed entry'
+
+        entry = factory.UnlimitedEntry(node__journal=journal, grade=None)
+        grade = import_utils._copy_grade_based_on_jir_action(entry, teacher2, JournalImportRequest.APPROVED_INC_GRADES)
+        assert grade is None, 'Approvied including grades with a previous grade of None creates no new grade object'
+
+        grade = import_utils._copy_grade_based_on_jir_action(entry, teacher2, JournalImportRequest.APPROVED_EXC_GRADES)
+        assert grade is None, 'Approved excluding grades creats no new grade object'
+
+        grade = import_utils._copy_grade_based_on_jir_action(
+            entry, teacher2, JournalImportRequest.APPROVED_WITH_GRADES_ZEROED)
+        assert grade.grade == 0, 'Aproved with grades zeroed creates a new grade object set to zero.'
+
+    def test__select_vle_couplting_based_on_jir_action(self):
+        f = import_utils._select_vle_couplting_based_on_jir_action
+        journal = factory.Journal()
+        entry = factory.UnlimitedEntry(node__journal=journal, grade__grade=1, grade__published=False)
+
+        self.assertRaises(VLEProgrammingError, f, JournalImportRequest.DECLINED, entry)
+
+        vle_coupling = f(JournalImportRequest.APPROVED_INC_GRADES, entry)
+        assert vle_coupling == Entry.NEEDS_GRADE_PASSBACK, 'When grades are approved they need to be sent to the VLE'
+
+        entry = factory.UnlimitedEntry(node__journal=journal, grade=None)
+        vle_coupling = f(JournalImportRequest.APPROVED_INC_GRADES, entry)
+        assert vle_coupling == Entry.NEEDS_SUBMISSION, \
+            'When grades are approved but the entry has no grade, the entry requires a new grade'
+
+        vle_coupling = f(JournalImportRequest.APPROVED_EXC_GRADES, entry)
+        assert vle_coupling == Entry.NEEDS_SUBMISSION, 'WHen grades are excluded, the entries need a new grade'
+
+        vle_coupling = f(JournalImportRequest.APPROVED_WITH_GRADES_ZEROED, entry)
+        assert vle_coupling == Entry.NEEDS_GRADE_PASSBACK, \
+            'When grades are zeroed, those grade need to be sent to the VLE'

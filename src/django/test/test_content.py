@@ -96,7 +96,7 @@ class ContentTest(TestCase):
 
     def test_content_factory_with_deep_field_syntax(self):
         # TODO JIR: Why does a content generation with deep syntax for its field, or setting the field,
-        # yield FileContexts without a file?
+        # yield FileContexts without a file? (Will trigger validation error)
 
         entry = factory.UnlimitedEntry()
 

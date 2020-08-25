@@ -100,6 +100,17 @@ class EntryAPITest(TestCase):
         assert assignment.format.template_set.filter(pk=entry.template.pk).exists(), \
             'The selected template is chosen from the assignment format'
 
+    def test_entry_grade(self):
+        entry = factory.UnlimitedEntry()
+        journal = entry.node.journal
+
+        assert entry.grade is None, 'Entry grade is None by default'
+
+        entry = factory.UnlimitedEntry(grade__grade=2, node__journal=journal)
+        assert entry.grade.grade == 2, 'Deep syntax works for an entries grade.'
+        assert journal.assignment.author.pk == entry.grade.author.pk, \
+            'An entry\'s grade author defaults to the entry\'s assignment\'s teacher'
+
     def test_preset_entry_factory(self):
         course_c = Course.objects.count()
         a_c = Assignment.objects.count()
