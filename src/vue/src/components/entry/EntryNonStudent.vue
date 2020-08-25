@@ -1,78 +1,69 @@
-<!--
-    Loads a filled in template of an entry and the corresponding
-    comments. The teacher tools will also be loaded if the user has the
-    right permissions.
--->
 <template>
     <div v-if="entryNode.entry !== null">
         <b-card
-            class="no-hover entry-card-teacher"
+            class="no-hover"
             :class="$root.getBorderClass($route.params.cID)"
         >
-            <div>
-                <div
-                    v-if="$hasPermission('can_grade')"
-                    class="grade-section sticky"
+            <div
+                v-if="$hasPermission('can_grade')"
+                class="grade-section sticky"
+            >
+                <b-form-input
+                    v-model="grade.grade"
+                    type="number"
+                    class="theme-input"
+                    size="2"
+                    autofocus
+                    placeholder="0"
+                    min="0.0"
+                />
+                <b-button
+                    v-if="$hasPermission('can_view_grade_history')"
+                    class="grade-history-button float-right"
+                    @click="showGradeHistory"
                 >
-                    <b-form-input
-                        v-model="grade.grade"
-                        type="number"
-                        class="theme-input"
-                        size="2"
-                        autofocus
-                        placeholder="0"
-                        min="0.0"
-                    />
-                    <b-button
-                        v-if="$hasPermission('can_view_grade_history')"
-                        class="grade-history-button float-right"
-                        @click="showGradeHistory"
-                    >
-                        <icon name="history"/>
-                    </b-button>
-                    <dropdown-button
-                        :selectedOption="this.$store.getters['preferences/saved'].grade_button_setting"
-                        :options="{
-                            s: {
-                                text: 'Save grade',
-                                icon: 'save',
-                                class: 'add-button',
-                            },
-                            p: {
-                                text: 'Save & publish grade',
-                                icon: 'save',
-                                class: 'add-button',
-                            },
-                        }"
-                        @click="commitGrade"
-                        @change-option="changeButtonOption"
-                    />
-                </div>
-                <div
-                    v-else-if="gradePublished"
-                    class="grade-section grade"
-                >
-                    {{ entryNode.entry.grade.grade }}
-                </div>
-                <div
-                    v-else
-                    class="grade-section grade"
-                >
-                    <icon name="hourglass-half"/>
-                </div>
-
-                <h2 class="theme-h2 mb-2">
-                    {{ entryNode.entry.template.name }}
-                </h2>
-                <entry-fields
-                    :nodeID="entryNode.nID"
-                    :template="entryNode.entry.template"
-                    :completeContent="completeContent"
-                    :displayMode="true"
-                    :journalID="journal.id"
-                    :entryID="entryNode.entry.id"
+                    <icon name="history"/>
+                </b-button>
+                <dropdown-button
+                    :selectedOption="this.$store.getters['preferences/saved'].grade_button_setting"
+                    :options="{
+                        s: {
+                            text: 'Save grade',
+                            icon: 'save',
+                            class: 'add-button',
+                        },
+                        p: {
+                            text: 'Save & publish grade',
+                            icon: 'save',
+                            class: 'add-button',
+                        },
+                    }"
+                    @click="commitGrade"
+                    @change-option="changeButtonOption"
                 />
             </div>
+            <div
+                v-else-if="gradePublished"
+                class="grade-section grade"
+            >
+                {{ entryNode.entry.grade.grade }}
+            </div>
+            <div
+                v-else
+                class="grade-section grade"
+            >
+                <icon name="hourglass-half"/>
+            </div>
+
+            <h2 class="theme-h2 mb-2">
+                {{ entryNode.entry.template.name }}
+            </h2>
+            <entry-fields
+                :nodeID="entryNode.nID"
+                :template="entryNode.entry.template"
+                :content="entryNode.entry.content"
+                :edit="false"
+            />
             <hr class="full-width"/>
             <div class="timestamp">
                 <span v-if="entryNode.entry.last_edited_by == null">
@@ -180,7 +171,6 @@ export default {
     props: ['entryNode', 'journal', 'assignment'],
     data () {
         return {
-            completeContent: [],
             gradeHistory: [],
             grade: {
                 grade: '',
@@ -195,9 +185,6 @@ export default {
     },
     watch: {
         entryNode () {
-            this.completeContent = []
-            this.setContent()
-
             if (this.entryNode.entry && this.entryNode.entry.grade) {
                 this.grade = this.entryNode.entry.grade
             } else {
@@ -209,8 +196,6 @@ export default {
         },
     },
     created () {
-        this.setContent()
-
         if (this.entryNode.entry && this.entryNode.entry.grade) {
             this.grade = this.entryNode.entry.grade
         } else {
@@ -221,39 +206,6 @@ export default {
         }
     },
     methods: {
-        setContent () {
-            /* Loads in the data of an entry in the right order by matching
-             * the different data-fields with the corresponding template-IDs. */
-            let matchFound
-
-            if (this.entryNode.entry) {
-                this.entryNode.entry.template.field_set.sort((a, b) => a.location - b.location)
-                    .forEach((templateField) => {
-                        matchFound = false
-
-                        matchFound = this.entryNode.entry.content.some((content) => {
-                            if (content.field === templateField.id) {
-                                this.completeContent.push({
-                                    data: content.data,
-                                    id: content.field,
-                                    contentID: content.id,
-                                })
-
-                                return true
-                            }
-
-                            return false
-                        })
-
-                        if (!matchFound) {
-                            this.completeContent.push({
-                                data: null,
-                                id: templateField.id,
-                            })
-                        }
-                    })
-            }
-        },
         changeButtonOption (option) {
             this.$store.commit('preferences/CHANGE_PREFERENCES', { grade_button_setting: option })
         },

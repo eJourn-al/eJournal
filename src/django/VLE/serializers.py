@@ -11,9 +11,8 @@ from django.utils import timezone
 from rest_framework import serializers
 
 import VLE.permissions as permissions
-from VLE.models import (Assignment, AssignmentParticipation, Comment, Content, Course, Entry, Field, FileContext,
-                        Format, Grade, Group, Instance, Journal, Node, Participation, Preferences, PresetNode, Role,
-                        Template, User)
+from VLE.models import (Assignment, AssignmentParticipation, Comment, Course, Entry, Field, FileContext, Format, Grade,
+                        Group, Instance, Journal, Node, Participation, Preferences, PresetNode, Role, Template, User)
 from VLE.utils import generic_utils as utils
 from VLE.utils.error_handling import VLEParticipationError, VLEProgrammingError
 
@@ -607,13 +606,25 @@ class EntrySerializer(serializers.ModelSerializer):
         return entry.author.full_name
 
     def get_last_edited_by(self, entry):
-        return None if entry.last_edited_by is None else entry.last_edited_by.full_name
+        return entry.last_edited_by.full_name if entry.last_edited_by else None
 
     def get_template(self, entry):
         return TemplateSerializer(entry.template).data
 
     def get_content(self, entry):
-        return ContentSerializer(entry.content_set.all(), many=True).data
+        content_dict = {}
+
+        for content in entry.content_set.all():
+            # Only include the actual content (so e.g. text).
+            if content.field.type == Field.FILE:
+                try:
+                    content_dict[content.field.id] = FileSerializer(FileContext.objects.get(pk=content.data)).data
+                except FileContext.DoesNotExist:
+                    return None
+            else:
+                content_dict[content.field.id] = content.data
+
+        return content_dict
 
     def get_editable(self, entry):
         return entry.is_editable()
@@ -666,24 +677,6 @@ class TemplateSerializer(serializers.ModelSerializer):
 
     def get_field_set(self, template):
         return FieldSerializer(template.field_set.all().order_by('location'), many=True).data
-
-
-class ContentSerializer(serializers.ModelSerializer):
-    data = serializers.SerializerMethodField()
-
-    class Meta:
-        model = Content
-        fields = ('entry', 'field', 'data', )
-        read_only_fields = ('id', )
-
-    def get_data(self, content):
-        if content.field.type == Field.FILE:
-            try:
-                return FileSerializer(FileContext.objects.get(pk=content.data)).data
-            except FileContext.DoesNotExist:
-                return None
-
-        return content.data
 
 
 class FileSerializer(serializers.ModelSerializer):

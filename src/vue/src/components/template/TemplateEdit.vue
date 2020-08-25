@@ -70,7 +70,7 @@
                 @end="endDrag"
                 @update="onUpdate"
             >
-                <field
+                <template-field
                     v-for="field in template.field_set"
                     :key="field.location"
                     :field="field"
@@ -87,23 +87,27 @@
                 Add field
             </b-button>
         </div>
-        <template-preview
+        <entry-fields
             v-if="mode !== 'edit'"
             :template="template"
+            :content="() => Object()"
+            :edit="true"
+            :readOnly="true"
         />
     </b-card>
 </template>
 
 <script>
-import templatePreview from '@/components/template/TemplatePreview.vue'
-import field from '@/components/template/Field.vue'
+import EntryFields from '@/components/entry/EntryFields.vue'
+// Try changing below import (and filename in tree) to TemplateField.vue: why is it specifically unresolved?
+import TemplateField from '@/components/template/Field.vue'
 import draggable from 'vuedraggable'
 
 export default {
     components: {
         draggable,
-        templatePreview,
-        field,
+        EntryFields,
+        TemplateField,
     },
     props: {
         template: {

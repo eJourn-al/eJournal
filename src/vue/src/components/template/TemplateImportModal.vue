@@ -70,7 +70,12 @@
                     v-if="previewTemplate"
                     class="no-hover multi-form"
                 >
-                    <template-preview :template="previewTemplate"/>
+                    <entry-fields
+                        :template="previewTemplate"
+                        :content="() => Object()"
+                        :edit="true"
+                        :readOnly="true"
+                    />
                 </b-card>
 
                 <b-button
@@ -113,14 +118,9 @@
 </template>
 
 <script>
-import templatePreview from '@/components/template/TemplatePreview.vue'
-
 import assignmentAPI from '@/api/assignment.js'
 
 export default {
-    components: {
-        templatePreview,
-    },
     props: {
         modalID: {
             required: true,

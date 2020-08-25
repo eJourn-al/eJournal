@@ -27,12 +27,12 @@ export default {
     },
     props: ['cID', 'aID', 'jID'],
     beforeRouteLeave (to, from, next) {
-        if (this.$hasPermission('can_have_journal') && !this.$refs['journal-student-ref'].discardChanges()) {
+        if (this.$hasPermission('can_have_journal') && !this.$refs['journal-student-ref'].safeToLeave()) {
             next(false)
             return
         }
 
-        if (this.$hasPermission('can_grade') && !this.$refs['journal-non-student-ref'].discardChanges()) {
+        if (this.$hasPermission('can_grade') && !this.$refs['journal-non-student-ref'].safeToLeave()) {
             next(false)
             return
         }

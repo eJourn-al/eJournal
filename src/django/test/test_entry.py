@@ -31,10 +31,10 @@ class EntryAPITest(TestCase):
         self.valid_create_params = {
             'journal_id': self.journal.pk,
             'template_id': self.template.pk,
-            'content': []
+            'content': {}
         }
         fields = Field.objects.filter(template=self.template)
-        self.valid_create_params['content'] = [{'data': 'test data', 'id': field.id} for field in fields]
+        self.valid_create_params['content'] = {field.id: 'test data' for field in fields}
 
     def test_create_entry(self):
         # Check valid entry creation
@@ -47,10 +47,9 @@ class EntryAPITest(TestCase):
 
         # Check if students cannot update journals without required parts filled in
         create_params = self.valid_create_params.copy()
-        create_params['content'] = [{
-            'data': 'test title',
-            'id': self.valid_create_params['content'][0]['id']
-        }]
+        create_params['content'] = {
+            list(self.valid_create_params['content'])[0]: 'only one field filled',
+        }
         api.create(self, 'entries', params=create_params, user=self.student, status=400)
 
         # Check for assignment locked
@@ -131,22 +130,17 @@ class EntryAPITest(TestCase):
             create_params = {
                 'journal_id': self.journal.pk,
                 'template_id': template.pk,
+                'content': {},
             }
 
             # If valid input is defined for this field type, creating an entry should be succesful.
             if field.type in valid_content:
-                create_params['content'] = [{
-                    'id': field.pk,
-                    'data': valid_content[field.type]
-                }]
+                create_params['content'][field.pk] = valid_content[field.type]
                 api.create(self, 'entries', params=create_params, user=self.student)
 
             # If invalid input is defined for this field type, creating an entry should fail.
             if field.type in invalid_content:
-                create_params['content'] = [{
-                    'id': field.pk,
-                    'data': invalid_content[field.type]
-                }]
+                create_params['content'][field.pk] = invalid_content[field.type]
                 api.create(self, 'entries', params=create_params, user=self.student, status=400)
 
     def test_required_and_optional(self):
@@ -154,20 +148,16 @@ class EntryAPITest(TestCase):
         required_only_creation = {
             'journal_id': self.journal.pk,
             'template_id': self.template.pk,
-            'content': []
+            'content': {},
         }
         fields = Field.objects.filter(template=self.template)
-        required_only_creation['content'] = [{'data': 'test data', 'id': field.id}
-                                             for field in fields if field.required]
+        required_only_creation['content'] = {field.id: 'test_data' for field in fields if field.required}
         api.create(self, 'entries', params=required_only_creation, user=self.student)
 
         entry = api.create(self, 'entries', params=self.valid_create_params, user=self.student)['entry']
         params = {
             'pk': entry['id'],
-            'content': [{
-                'id': field['field'],
-                'data': ''
-            } for field in entry['content']]
+            'content': {field.id: '' for field in fields}
         }
         # Student should always provide required parameters
         api.update(self, 'entries', params=params.copy(), user=self.student, status=400)
@@ -177,25 +167,19 @@ class EntryAPITest(TestCase):
         for empty_value in [None, '']:
             params = {
                 'pk': entry['id'],
-                'content': [{
-                    'id': field.pk,
-                    'data': 'filled' if field.required else empty_value
-                } for field in fields]
+                'content': {field.pk: 'filled' if field.required else empty_value for field in fields}
             }
             resp = api.update(self, 'entries', params=params.copy(), user=self.student)['entry']
             assert len(resp['content']) == 3, 'Response should have emptied the optional fields, not deleted'
-            assert any([c['data'] is None for c in resp['content']]), \
+            assert any([val is None for val in resp['content'].values()]), \
                 'Response should have emptied the optional fields, not deleted'
         # Student should be able to edit an optinal field
         params = {
             'pk': entry['id'],
-            'content': [{
-                'id': field.pk,
-                'data': 'filled'
-            } for field in fields]
+            'content': {field.pk: 'filled' for field in fields}
         }
         resp = api.update(self, 'entries', params=params.copy(), user=self.student)['entry']
-        assert len(resp['content']) == 3 and resp['content'][2]['data'] == 'filled', \
+        assert len(resp['content']) == 3 and resp['content'][list(resp['content'])[0]] == 'filled', \
             'Response should have filled the optional fields'
 
     def test_optional_fields_are_none(self):
@@ -206,9 +190,9 @@ class EntryAPITest(TestCase):
         empty_create_params = {
             'journal_id': self.journal.pk,
             'template_id': all_types.pk,
-            'content': []
+            'content': {}
         }
-        empty_create_params['content'] = [{'data': None, 'id': field.id} for field in fields]
+        empty_create_params['content'] = {field.id: None for field in fields}
         resp = api.create(self, 'entries', params=empty_create_params, user=self.student)['entry']
         api.update(self, 'entries', params={**empty_create_params, 'pk': resp['id']}, user=self.student)
 
@@ -217,10 +201,7 @@ class EntryAPITest(TestCase):
 
         params = {
             'pk': entry['id'],
-            'content': [{
-                'id': field['field'],
-                'data': field['data']
-            } for field in entry['content']]
+            'content': entry['content'].copy()
         }
 
         api.update(self, 'entries', params=params.copy(), user=self.student)
@@ -346,12 +327,12 @@ class EntryAPITest(TestCase):
         create_params = {
             'journal_id': self.journal.pk,
             'template_id': entrydeadline.forced_template.pk,
-            'content': [],
+            'content': {},
             'node_id': node.pk
         }
 
         fields = Field.objects.filter(template=entrydeadline.forced_template)
-        create_params['content'] = [{'data': 'test data', 'id': field.pk} for field in fields]
+        create_params['content'] = {field.pk: 'test data' for field in fields}
         entry = api.create(self, 'entries', params=create_params, user=self.student)['entry']
 
         assert Entry.objects.filter(pk=entry['id']).exists(), \

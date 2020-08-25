@@ -27,6 +27,6 @@
 
 <script>
 export default {
-    props: ['assignment', 'student'],
+    props: ['assignment'],
 }
 </script>

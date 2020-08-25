@@ -136,9 +136,12 @@
             </div>
             <div v-if="showTemplatePreview">
                 <b-card class="no-hover">
-                    <template-preview
+                    <entry-fields
                         v-if="currentPreset.template"
                         :template="currentPreset.template"
+                        :content="() => Object()"
+                        :edit="true"
+                        :readOnly="true"
                     />
                     <span v-else>
                         Select a template to preview
@@ -176,12 +179,10 @@
 
 <script>
 import textEditor from '@/components/assets/TextEditor.vue'
-import templatePreview from '@/components/template/TemplatePreview.vue'
 import tooltip from '@/components/assets/Tooltip.vue'
 
 export default {
     components: {
-        templatePreview,
         tooltip,
         textEditor,
     },
