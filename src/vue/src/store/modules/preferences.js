@@ -179,6 +179,7 @@ export default {
             sortBy: 'name',
             filterOwnGroups: true,
         },
+        // TODO JIR move to DB preferences
         journalImportRequestButtonSetting: 'AIG',
         dismissedJIRs: [],
     },
