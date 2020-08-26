@@ -1,13 +1,13 @@
 import filecmp
 import re
 
-from deepdiff import DeepDiff
 from django.conf import settings
 from django.db import models
 from django.db.models.fields.related import ManyToManyField
 
 import VLE.models
 import VLE.utils.file_handling as file_handling
+from deepdiff import DeepDiff
 from VLE.utils.error_handling import VLEProgrammingError
 
 

@@ -79,7 +79,7 @@
                                 class: 'add-button',
                             },
                             AWGZ: {
-                                text: 'Approve and lock grades as zero',
+                                text: 'Approve with grades zeroed',
                                 icon: 'paper-plane',
                                 class: 'change-button',
                             },
