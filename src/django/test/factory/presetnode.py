@@ -21,7 +21,10 @@ class PresetNodeFactory(factory.django.DjangoModelFactory):
         journals = VLE.models.Journal.all_objects.filter(assignment__format=self.format)
         if 'exclude' in kwargs:
             journals = journals.exclude(pk__in=[j.pk for j in kwargs['exclude']])
-        utils.update_journals(journals, self)
+
+        for j in journals:
+            if not j.node_set.filter(preset=self).exists():
+                utils.update_journals([j], self)
 
 
 class ProgressPresetNodeFactory(PresetNodeFactory):

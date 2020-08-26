@@ -77,6 +77,7 @@ from test.factory.journal import GroupJournalFactory as GroupJournal  # noqa: F4
 from test.factory.journal import JournalFactory as Journal  # noqa: F401
 from test.factory.journal import JournalImportRequestFactory as JournalImportRequest  # noqa: F401
 from test.factory.journal import LtiJournalFactory as LtiJournal  # noqa: F401
+from test.factory.node import NodeFactory as Node  # noqa: F401
 from test.factory.params import JWTParamsFactory as JWTParams  # noqa: F401
 from test.factory.params import JWTTestUserParamsFactory as JWTTestUserParams  # noqa: F401
 from test.factory.params import UserParamsFactory as UserParams  # noqa: F401

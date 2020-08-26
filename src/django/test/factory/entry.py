@@ -12,13 +12,17 @@ def _set_template(self, create, extracted, **kwargs):
     '''
     Defaults to the first available template of the assignment, else generates a TextTemplate
 
+    If the template is already determined, e.g. by the preset node of a DeadlineEntry, use that template.
+
     kwargs allow the format to be set to a different format than the assignment, as this is the case for imported
     entries.
     '''
     if not create:
         return
 
-    if isinstance(extracted, VLE.models.Template):
+    if self.node.preset:
+        self.template = self.node.preset.forced_template
+    elif isinstance(extracted, VLE.models.Template):
         self.template = extracted
     elif kwargs:
         self.template = test.factory.TextTemplate(
@@ -31,7 +35,53 @@ def _set_template(self, create, extracted, **kwargs):
     self.save()
 
 
-class UnlimitedEntryFactory(factory.django.DjangoModelFactory):
+def _author(self, create, extracted, **kwargs):
+    default = self.node.journal.authors.first().user
+    if self.node.journal.assignment.is_group_assignment:
+        default = random.choice(self.node.journal.authors.all()).user
+    test.factory.rel_factory(self, create, extracted, 'author', VLE.models.User, factory=None,
+                             default=default)
+
+
+def _grade(self, create, extracted, **kwargs):
+    '''
+    Defaults to no grade unless passed or mentioned via deep syntax,
+    e.g. factory.UnlimitedEntry(grade__published=True)
+    '''
+    if not create:
+        return
+
+    if isinstance(extracted, VLE.models.Grade) or extracted is None and not kwargs:
+        self.grade = extracted
+    else:
+        self.grade = test.factory.Grade(**{**kwargs, 'entry': self})
+
+    self.save()
+
+
+def _gen_content(self, create, extracted, **kwargs):
+    if not create or extracted is False:
+        return
+
+    for field in self.template.field_set.all():
+        if field.type == VLE.models.Field.NO_SUBMISSION:
+            continue
+
+        test.factory.Content(field=field, entry=self, data__from_file=kwargs.get('from_file', ''))
+
+
+class BaseEntryFactory(factory.django.DjangoModelFactory):
+    '''
+    Do not initialize on its own.
+    '''
+    class Meta:
+        model = 'VLE.Entry'
+
+    last_edited = factory.LazyFunction(timezone.now)
+    template = None
+
+
+class UnlimitedEntryFactory(BaseEntryFactory):
     '''
     Creates an 'unlimited' template entry.
 
@@ -44,17 +94,12 @@ class UnlimitedEntryFactory(factory.django.DjangoModelFactory):
         - Content: Will generate content for all allowed fields of its template.
         - Node: A node attached to a journal of type Entry, chains via journal to an assignment and a course.
     '''
-    class Meta:
-        model = 'VLE.Entry'
-
     node = factory.SubFactory(
         'test.factory.node.NodeFactory',
         type=VLE.models.Node.ENTRY,
         journal__entries__n=0,
         entry=None,
     )
-    last_edited = factory.LazyFunction(timezone.now)
-    template = None
 
     @factory.post_generation
     def fix_node(self, create, extracted, **kwargs):
@@ -66,11 +111,7 @@ class UnlimitedEntryFactory(factory.django.DjangoModelFactory):
 
     @factory.post_generation
     def author(self, create, extracted, **kwargs):
-        default = self.node.journal.authors.first().user
-        if self.node.journal.assignment.is_group_assignment:
-            default = random.choice(self.node.journal.authors.all()).user
-        test.factory.rel_factory(self, create, extracted, 'author', VLE.models.User, factory=None,
-                                 default=default)
+        _author(self, create, extracted, **kwargs)
 
     @factory.post_generation
     def template(self, create, extracted, **kwargs):
@@ -78,87 +119,87 @@ class UnlimitedEntryFactory(factory.django.DjangoModelFactory):
 
     @factory.post_generation
     def grade(self, create, extracted, **kwargs):
-        '''
-        Defaults to no grade unless passed or mentioned via deep syntax,
-        e.g. factory.UnlimitedEntry(grade__published=True)
-        '''
-        if not create:
-            return
-
-        if isinstance(extracted, VLE.models.Grade) or extracted is None and not kwargs:
-            self.grade = extracted
-        else:
-            self.grade = test.factory.Grade(**{**kwargs, 'entry': self})
-
-        self.save()
+        _grade(self, create, extracted, **kwargs)
 
     @factory.post_generation
     def gen_content(self, create, extracted, **kwargs):
-        if not create or extracted is False:
-            return
-
-        for field in self.template.field_set.all():
-            if field.type == VLE.models.Field.NO_SUBMISSION:
-                continue
-
-            test.factory.Content(field=field, entry=self, data__from_file=kwargs.get('from_file', ''))
-
-    @factory.post_generation
-    def validate(self, create, extracted):
-        if not create:
-            return
-
-        # TODO JIR: Move to model validators
-        if not self.node:
-            raise ValidationError('Entry created without node')
-        if not self.node.journal.authors.filter(user=self.author).exists():
-            raise ValidationError('Entry created by user not part of journal.')
+        _gen_content(self, create, extracted, **kwargs)
 
 
-class PresetEntryFactory(UnlimitedEntryFactory):
+# We build because we can't create. Save would trigger a validation error when working with no node.
+# We can't work with a node, as the node can already be created by a Preset for the journal.
+@factory.use_strategy(factory.BUILD_STRATEGY)
+class PresetEntryFactory(BaseEntryFactory):
     '''
-    Creates a Deadline entry for a ENTRYDEADLINE preset node. Cannot provide the node directly.
+    Creates a Deadline entry for a ENTRYDEADLINE preset node.
 
     Yields:
-        - If the entry is not attached to a Node linked to a ENTRYDEADLINE preset, it will create an ENTRYDEADLINE
-          preset node for the entire assignment (and so in turn a ENTRYDEADLINE node for each journal in the
-          assignment). In order to support deep syntax, e.g. factory.PresetEntry(node__journal=journal), the
-          entry will always be initiated with a node of type Entry. Its type is later corrected.
+        - Equal fields as an UnlimitedEntry
+        - If no preset if provided for its node, a PresetNode is created .
     '''
-    # TODO Cleanly link to preexisting node generated by already instantiated DeadlinePreset
     @factory.post_generation
-    def fix_node(self, create, extracted, **kwargs):
-        if not create:
-            return
-
-        if self.node.preset:
-            # We have an additional node which was added to the journal by the PresetNodeFactory
-            correct_node = self.node.preset.node_set.filter(journal=self.node.journal).first()
-            assert correct_node.pk != self.node
-            related_factory_generated_node = self.node
-            self.node = correct_node
-            related_factory_generated_node.delete()  # TODO: Removes notifactions
-            # PresetNode template should match entry template, initialisation conflict, default to forced_template
-            self.template = self.node.preset.forced_template
+    def node(self, create, extracted, **kwargs):
+        if isinstance(extracted, VLE.models.Node):
+            if extracted.entry:
+                raise ValidationError('PresetEntry initiated with a node already linked to an entry.')
+            self.node = extracted
+        elif 'preset' in kwargs:
+            preset = kwargs['preset']
+            if 'journal' not in kwargs:
+                # Strip journal__ prefixes since we catch the node one step higher in the build chain
+                journal_kwargs = {k.replace('journal__', ''): v for k, v in kwargs.items() if 'journal__' in k}
+                # Ensure the created journal belongs to the same assignment as the PresetNode
+                journal = test.factory.Journal.create(
+                    **{'entries__n': 0, **journal_kwargs, 'assignment': preset.format.assignment})
+                journal.save()
+            else:
+                journal = kwargs['journal']
+            # This node is created by the preset
+            self.node = VLE.models.Node.objects.get(preset=kwargs['preset'], journal=journal)
         else:
-            # No DeadlinePreset has been created yet, so we iniate one
-            # Because we already have a node link (used for deep syntax), we exclude the entries journal, otherwise
-            # the PresetNode factory would create an additional node for this entry, and instead reuse the existing
-            # node link.
+            self.node = test.factory.Node.create(**{
+                'journal__entries__n': 0,
+                **kwargs,
+                **{
+                    'type': VLE.models.Node.ENTRYDEADLINE,
+                    'entry': None  # This can not be set as the presetentry (self) is not yet saved
+                }
+            })
+
+        self.save()  # We can now save as the node is created and set, and we cannot set node to an unsaved entry
+        self.node.entry = self
+        self.node.save()
+
+    @factory.post_generation
+    def template(self, create, extracted, **kwargs):
+        _set_template(self, True, extracted, **kwargs)
+
+    @factory.post_generation
+    def create_preset_if_missing(self, true, extracted, **kwargs):
+        if not self.node.preset:
             self.node.preset = test.factory.DeadlinePresetNode(
                 format=self.node.journal.assignment.format,
                 forced_template=self.template,
                 add_node_to_journals__exclude=[self.node.journal],
             )
-            # All thats left now is to set the node to the correct type.
-            self.node.type = VLE.models.Node.ENTRYDEADLINE
-
-        self.node.save()
+            self.node.save()
 
     @factory.post_generation
-    def validate(self, create, extracted):
-        if not create:
-            return
+    def author(self, create, extracted, **kwargs):
+        _author(self, True, extracted, **kwargs)
+
+    @factory.post_generation
+    def grade(self, create, extracted, **kwargs):
+        _grade(self, True, extracted, **kwargs)
+
+    @factory.post_generation
+    def gen_content(self, create, extracted, **kwargs):
+        _gen_content(self, True, extracted, **kwargs)
+
+    @factory.post_generation
+    def save_and_validate(self, create, extracted):
+        # Save since our default strategy is build
+        self.save()
 
         if self.node is None:
             raise ValidationError('Dangling preset entry (node = None)')

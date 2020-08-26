@@ -1436,7 +1436,8 @@ class Journal(CreateUpdateModel, ComputedFieldsModel):
         if is_new:
             preset_nodes = self.assignment.format.presetnode_set.all()
             for preset_node in preset_nodes:
-                Node.objects.create(type=preset_node.type, journal=self, preset=preset_node)
+                if not self.node_set.filter(preset=preset_node).exists():
+                    Node.objects.create(type=preset_node.type, journal=self, preset=preset_node)
 
     @property
     def published_nodes(self):
@@ -1455,8 +1456,6 @@ class Journal(CreateUpdateModel, ComputedFieldsModel):
         return self.get_name()
 
 
-# You can only have node of a PresetNode for the same journal
-# TODO JIR: Unique together (journal, preset)
 class Node(CreateUpdateModel):
     """Node.
 
@@ -1524,6 +1523,9 @@ class Node(CreateUpdateModel):
 
     def to_string(self, user=None):
         return "Node"
+
+    class Meta:
+        unique_together = ('preset', 'journal')
 
 
 class Format(CreateUpdateModel):

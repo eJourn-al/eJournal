@@ -1,6 +1,8 @@
 import test.factory as factory
 from test.utils import api
 
+from django.core.exceptions import ValidationError
+from django.db import IntegrityError
 from django.test import TestCase
 
 import VLE.models
@@ -34,6 +36,15 @@ class NodeTest(TestCase):
             'An entry deadline node has been added to the journal'
         assert journal.node_set.filter(preset=progress_preset_node, type=VLE.models.Node.PROGRESS).exists(), \
             'A progress node has been added to the journal'
+
+    def test_node_validation(self):
+        journal = factory.Journal(entries__n=0)
+        assignment = journal.assignment
+        deadline = factory.DeadlinePresetNode(format=assignment.format)
+
+        entry = factory.PresetEntry(node__preset=deadline, node__journal=journal)
+        self.assertRaises(ValidationError, factory.PresetEntry, node=entry.node)
+        self.assertRaises(IntegrityError, VLE.models.Node.objects.create, preset=deadline, journal=journal)
 
     def test_get(self):
         # TODO: Some meaningful tests on what is returned?

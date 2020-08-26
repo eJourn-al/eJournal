@@ -132,10 +132,10 @@ class EntryAPITest(TestCase):
         cont_c = Content.objects.count()
 
         assignment = factory.Assignment(format__templates=[{'type': Field.URL}])
-        n_c = Node.objects.filter(journal__assignment=assignment).count()
         template = assignment.format.template_set.first()
-        entry = factory.PresetEntry(node__journal__assignment=assignment, node__journal__entries__n=0)
-        journal = entry.node.journal
+        journal = factory.Journal(assignment=assignment, entries__n=0)
+        n_c = Node.objects.filter(journal=journal).count()
+        entry = factory.PresetEntry(node__journal=journal)
 
         assert course_c + 1 == Course.objects.count(), 'A single course is created'
         assert a_c + 1 == Assignment.objects.count(), 'A single course and assignment is created'
@@ -162,15 +162,13 @@ class EntryAPITest(TestCase):
         # Now we create the preset deadline in advance, and attempt to create an entry for it
         # Note that the deadline template is specified, we would expect the entry to also be of that template
         assignment = factory.Assignment(format__templates=[{'type': Field.TEXT}])
-        template = factory.Template(format=assignment.format)
-        deadline_preset_node = factory.DeadlinePresetNode(forced_template=template, format=assignment.format)
-        n_c = Node.objects.filter(journal__assignment=assignment).count()
-        entry = factory.PresetEntry(node__journal__assignment=template.format.assignment, node__journal__entries__n=0,
-                                    node__preset=deadline_preset_node)
-        journal = entry.node.journal
+        template = assignment.format.template_set.first()
 
-        assert n_c == Node.objects.filter(journal=journal).count(), \
-            'No additional node is created, as the entry should be attached to the existing node'
+        deadline_preset_node = factory.DeadlinePresetNode(forced_template=template, format=assignment.format)
+        journal = factory.Journal(assignment=assignment, entries__n=0)
+        entry = factory.PresetEntry(node__journal=journal, node__preset=deadline_preset_node)
+        journal = entry.node.journal
+        assert journal.node_set.count() == 1, 'Only a single node should be added to the journal'
         assert Node.objects.get(
             type=Node.ENTRYDEADLINE, journal=journal, preset__forced_template=template, preset=deadline_preset_node), \
             'Correct node type is created, attached to the journal, whose PresetNode links to the correct template'
