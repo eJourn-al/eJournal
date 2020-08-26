@@ -96,18 +96,24 @@ class ContentTest(TestCase):
         assert not entry.content_set.exists(), 'Content generation can be toggled off'
 
     def test_content_factory_with_deep_field_syntax(self):
-        # TODO JIR: Why does a content generation with deep syntax for its field, or setting the field,
-        # yield FileContexts without a file? (Will trigger validation error)
+        assignment = factory.Assignment()
+        default_template = assignment.format.template_set.first()
+        template2 = factory.MentorgesprekTemplate(format=assignment.format)
 
-        entry = factory.UnlimitedEntry()
+        journal = factory.Journal(entries__n=0)
+        entry = factory.UnlimitedEntry(template=default_template, gen_content=False, node__journal=journal)
+        content = factory.Content(entry=entry, field__template=entry.template)
+        assert content.field.template == default_template, 'Directly setting the field via content factory works'
 
-        factory.Content(
-            entry=entry,
-            # field=field,
-            # field__template=entry.template,
-            # field__type=Field.RICH_TEXT,
-            data__n_files=2
-        )
+        content = factory.Content(entry=entry, field__type=Field.URL)
+        assert content.field.type == Field.URL, 'Deep syntax works for the field type'
+
+        # Content will cause entry to be generated upwards, but that entry does not know which template to select
+        # since the content itself is not generated. A problem in our DB layer.
+        self.assertRaises(ValidationError, factory.Content, entry__node__journal=journal, field__template=template2)
+
+        assert factory.Content(entry__node__journal=journal, field__template=template2, entry__template=template2), \
+            'Deep syntax works for the template of the content'
 
     def test_entry_file_content_from_file_factory(self):
         assignment = factory.Assignment(format__templates=[{'type': Field.FILE}])

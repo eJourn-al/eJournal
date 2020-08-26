@@ -164,11 +164,11 @@ class AssignmentParticipationSerializer(serializers.ModelSerializer):
         fields = ('id', 'journal', 'assignment', 'user', 'needs_lti_link')
         read_only_fields = ('id', 'journal', 'assignment')
 
-    def get_user(self, participation):
-        return UserSerializer(participation.user, context=self.context).data
+    def get_user(self, ap):
+        return UserSerializer(ap.user, context=self.context).data
 
-    def get_needs_lti_link(self, participation):
-        return participation.needs_lti_link()
+    def get_needs_lti_link(self, ap):
+        return ap.needs_lti_link()
 
 
 class ParticipationSerializer(serializers.ModelSerializer):
@@ -464,7 +464,8 @@ class SmallAssignmentSerializer(AssignmentSerializer):
         read_only_fields = ('id', )
 
     def get_journal_import_requests(self, assignment):
-        return JournalImportRequest.objects.filter(target__assignment=assignment).count()
+        return JournalImportRequest.objects.filter(
+            target__assignment=assignment, state=JournalImportRequest.PENDING).count()
 
 
 class NodeSerializer(serializers.ModelSerializer):
@@ -746,11 +747,11 @@ class JournalImportRequestSerializer(serializers.ModelSerializer):
 
         return {
             'journal': JournalSerializer(jir.source, context=self.context).data,
-            'assignment': AssignmentSerializer(jir.source.assignment, context=self.context).data,
+            'assignment': SmallAssignmentSerializer(jir.source.assignment, context=self.context).data,
         }
 
     def get_target(self, jir):
         return {
             'journal': JournalSerializer(jir.target, context=self.context).data,
-            'assignment': AssignmentSerializer(jir.target.assignment, context=self.context).data,
+            'assignment': SmallAssignmentSerializer(jir.target.assignment, context=self.context).data,
         }

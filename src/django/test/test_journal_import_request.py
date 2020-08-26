@@ -4,10 +4,10 @@ import test.utils.generic_utils as test_utils
 from test.utils import api
 
 from dateutil.relativedelta import relativedelta
-from django.db.models import Q
 from django.test import TestCase
 from django.utils import timezone
 
+import VLE.utils.generic_utils as utils
 from VLE.models import (AssignmentParticipation, Comment, Content, Entry, Field, FileContext, JournalImportRequest,
                         Node, PresetNode)
 
@@ -39,13 +39,6 @@ class JournalImportRequestTest(TestCase):
         jir = factory.JournalImportRequest(source__assignment__courses=[course])
         assert jir.source.assignment.courses.first().pk == course.pk
 
-        # # TODO JIR: Triggers unique constraint of AP (assignment, user) but why..
-        # factory.JournalImportRequest(target__assignment__courses=[course], source__assignment__courses=[course])
-        # # Despite the following being possible
-        # j1 = factory.Journal(assignment__courses=[course])
-        # j2 = factory.Journal(assignment__courses=[course])
-        # factory.JournalImportRequest(source=j1, target=j2)
-
     def test_unpublish_assignment_with_outstanding_jirs(self):
         source_ass = factory.Assignment()
         target_ass = factory.Assignment()
@@ -76,16 +69,112 @@ class JournalImportRequestTest(TestCase):
         api.update(self, 'assignments', params={'pk': target_ass.pk, 'is_published': False}, user=target_ass.author)
 
     def test_pending_jir_delete_on_leave_group_journal(self):
-        g_journal = factory.GroupJournal()
-        factory.JournalImportRequest(target=g_journal)
-        factory.JournalImportRequest(target=g_journal, state=JournalImportRequest.APPROVED_EXC_GRADES)
+        student = factory.Student()
+        student2 = factory.Student()
+        student3 = factory.Student()
 
-        assert g_journal.import_request_targets.count() == 2, 'Both a pending and approved JIR should exist'
-        api.update(self, 'journals/leave', params={'pk': g_journal.pk}, user=g_journal.authors.first().user)
-        assert not g_journal.import_request_targets.filter(state=JournalImportRequest.PENDING).exists(), \
-            'The pending JIR should have been removed'
-        assert g_journal.import_request_targets.filter(~Q(state=JournalImportRequest.PENDING)).exists(), \
-            'Non JIRs should remain untouched'
+        g_journal = factory.GroupJournal(ap__user=student, add_users=[student2, student3])
+
+        factory.JournalImportRequest(target=g_journal, author=student2, state=JournalImportRequest.PENDING)
+        approved_jir = factory.JournalImportRequest(
+            target=g_journal, author=student2, state=JournalImportRequest.APPROVED_EXC_GRADES)
+
+        api.update(self, 'journals/leave', params={'pk': g_journal.pk}, user=student)
+        assert g_journal.import_request_targets.count() == 2, \
+            'Kicking a group journal student who did not author a PENDING JIR, should not affect the JIR'
+
+        api.update(self, 'journals/leave', params={'pk': g_journal.pk}, user=student2)
+        remaining_jir = JournalImportRequest.objects.get(pk__in=g_journal.import_request_targets.all().values('pk'))
+        assert remaining_jir == approved_jir, 'The pending JIR is removed, and the approved JIR is unaffected'
+
+        factory.JournalImportRequest(author=student, source=g_journal, state=JournalImportRequest.PENDING)
+        source_approved_jir = factory.JournalImportRequest(
+            author=student, source=g_journal, state=JournalImportRequest.APPROVED_EXC_GRADES)
+
+        api.update(self, 'journals/leave', params={'pk': g_journal.pk}, user=student3)
+        remaining_jir_ids = g_journal.import_request_targets.all().values('pk') \
+            | g_journal.import_request_sources.all().values('pk')
+        remaining_jir = JournalImportRequest.objects.get(pk__in=remaining_jir_ids)
+        assert remaining_jir == source_approved_jir, \
+            '''When the final group member is removed, the journal reset is triggered. This should remove all
+            jirs apart from those approved with the journal as source. These imported entries should remain flagged
+            as imported.'''
+
+    def test_pending_jir_delete_on_kick_group_journal(self):
+        student = factory.Student()
+        student2 = factory.Student()
+        student3 = factory.Student()
+
+        g_journal = factory.GroupJournal(ap__user=student, add_users=[student2, student3])
+
+        factory.JournalImportRequest(target=g_journal, author=student2, state=JournalImportRequest.PENDING)
+        approved_jir = factory.JournalImportRequest(
+            target=g_journal, author=student2, state=JournalImportRequest.APPROVED_EXC_GRADES)
+
+        api.update(self, 'journals/kick',
+                   params={'pk': g_journal.pk, 'user_id': student.pk}, user=g_journal.assignment.author)
+        assert g_journal.import_request_targets.count() == 2, \
+            'Kicking a group journal student who did not author a PENDING JIR, should not affect the JIR'
+
+        api.update(self, 'journals/kick',
+                   params={'pk': g_journal.pk, 'user_id': student2.pk}, user=g_journal.assignment.author)
+        remaining_jir = JournalImportRequest.objects.get(pk__in=g_journal.import_request_targets.all().values('pk'))
+        assert remaining_jir == approved_jir, 'The pending JIR is removed, and the approved JIR is unaffected'
+
+        factory.JournalImportRequest(author=student, source=g_journal, state=JournalImportRequest.PENDING)
+        source_approved_jir = factory.JournalImportRequest(
+            author=student, source=g_journal, state=JournalImportRequest.APPROVED_EXC_GRADES)
+
+        api.update(self, 'journals/kick',
+                   params={'pk': g_journal.pk, 'user_id': student3.pk}, user=g_journal.assignment.author)
+        remaining_jir_ids = g_journal.import_request_targets.all().values('pk') \
+            | g_journal.import_request_sources.all().values('pk')
+        remaining_jir = JournalImportRequest.objects.get(pk__in=remaining_jir_ids)
+        assert remaining_jir == source_approved_jir, \
+            '''When the final group member is removed, the journal reset is triggered. This should remove all
+            jirs apart from those approved with the journal as source. These imported entries should remain flagged
+            as imported.'''
+
+    def test_remove_jirs_on_user_remove_from_jounal(self):
+        student = factory.Student()
+        student2 = factory.Student()
+
+        print(student.pk, student2.pk)
+
+        team_a_assign_a = factory.GroupJournal(ap__user=student, add_users=[student2])
+        team_a_assign_b = factory.GroupJournal(ap__user=student, add_users=[student2])
+
+        shared_pending_jir = factory.JournalImportRequest(
+            author=student, source=team_a_assign_a, target=team_a_assign_b, state=JournalImportRequest.PENDING)
+        shared_approved_jir = factory.JournalImportRequest(
+            author=student,
+            source=team_a_assign_a,
+            target=team_a_assign_b,
+            state=JournalImportRequest.APPROVED_INC_GRADES
+        )
+        unshared_source_pending_jir = factory.JournalImportRequest(
+            author=student, target=team_a_assign_b, state=JournalImportRequest.PENDING)
+        unshared_source_approved_jir = factory.JournalImportRequest(
+            author=student, target=team_a_assign_b, state=JournalImportRequest.APPROVED_INC_GRADES)
+        unrelated_pending_jir = factory.JournalImportRequest(
+            author=student, state=JournalImportRequest.PENDING)
+        unrelated_approved_jir = factory.JournalImportRequest(
+            author=student, state=JournalImportRequest.APPROVED_INC_GRADES)
+
+        utils.remove_jirs_on_user_remove_from_jounal(student, team_a_assign_b)
+
+        assert JournalImportRequest.objects.filter(pk=shared_pending_jir.pk).exists(), \
+            'If a group member leaves and made an import requests from a shared assignment, the JIR should persist'
+        assert JournalImportRequest.objects.filter(pk=shared_approved_jir.pk).exists(), \
+            'Approved JIR should be unafeccted'
+        assert not JournalImportRequest.objects.filter(pk=unshared_source_pending_jir.pk).exists(), \
+            'If a group member leaves and made an import request from an unshared assignment, the JIR should be removed'
+        assert JournalImportRequest.objects.filter(pk=unshared_source_approved_jir.pk).exists(), \
+            'Approved JIR should be unafeccted'
+        assert JournalImportRequest.objects.filter(pk=unrelated_pending_jir.pk).exists(), \
+            'Pending unrelated JIRs should be unaffected'
+        assert JournalImportRequest.objects.filter(pk=unrelated_approved_jir.pk).exists(), \
+            'Approved unrelated JIRs should be unaffected'
 
     def test_delete_pending_jir_on_source_deletion(self):
         j = factory.Journal()
@@ -227,12 +316,14 @@ class JournalImportRequestTest(TestCase):
         assert jir.state == JournalImportRequest.DECLINED, 'The jir action is updated'
         assert jir.processor.pk == teacher.pk, 'The jir processor is updated'
 
-    def test_jir_import(self):
+    def test_jir_import_standalone(self):
         course = factory.Course()
         source_assignment = factory.Assignment(format__templates=False, courses=[course])
         factory.TemplateAllTypes(format=source_assignment.format)
         source_journal = factory.Journal(assignment=source_assignment)
-        target_journal = factory.Journal(assignment__courses=[course])
+        student = source_journal.authors.first().user
+        assignment2 = factory.Assignment(courses=[course])
+        target_journal = factory.Journal(assignment=assignment2, ap__user=student)
         jir = factory.JournalImportRequest(source=source_journal, target=target_journal)
 
         entry1 = factory.UnlimitedEntry(node__journal=source_journal)
@@ -275,15 +366,6 @@ class JournalImportRequestTest(TestCase):
         target_journal.needs_marking == pre_import_needs_marking, \
             'Approving including grades should not increase needs marking'
 
-        jir = factory.JournalImportRequest(source=source_journal, target=factory.Journal(assignment__courses=[course]))
-        pre_import_needs_marking = jir.target.needs_marking
-        data = {'pk': jir.pk, 'jir_action': JournalImportRequest.APPROVED_EXC_GRADES}
-        api.update(self, 'journal_import_request', params=data, user=course.author, status=200)
-        jir.target.refresh_from_db()
-
-        jir.target.needs_marking == pre_import_needs_marking, \
-            'Approving excluding grades should increase needs marking'
-
     def test_jir_import_result_via_serialization(self):
         course = factory.Course()
         source_assignment = factory.Assignment(format__templates=False, courses=[course])
@@ -291,7 +373,8 @@ class JournalImportRequestTest(TestCase):
         source_journal = factory.Journal(assignment=source_assignment, entries__n=1)
         jir = factory.JournalImportRequest(
             source=source_journal,
-            target=factory.Journal(assignment__courses=[course], entries__n=0)
+            target=factory.Journal(
+                assignment__courses=[course], entries__n=0, ap__user=source_journal.authors.first().user)
         )
 
         assert not jir.target.node_set.exists() and not jir.target.assignment.format.presetnode_set.exists(), \
@@ -371,7 +454,8 @@ class JournalImportRequestTest(TestCase):
         course = factory.Course()
         source_assignment = factory.Assignment(format__templates=[{'type': Field.TEXT}], courses=[course])
         source_journal = factory.Journal(assignment=source_assignment, entries__n=0)
-        target_journal = factory.Journal(assignment__courses=[course], entries__n=0)
+        target_journal = factory.Journal(
+            assignment__courses=[course], entries__n=0, ap__user=source_journal.authors.first().user)
         source_grade = 2
         target_grade = 1
         source_entry = factory.UnlimitedEntry(
@@ -403,7 +487,8 @@ class JournalImportRequestTest(TestCase):
         course = factory.Course()
         source_assignment = factory.Assignment(format__templates=[{'type': Field.TEXT}], courses=[course])
         source_journal = factory.Journal(assignment=source_assignment, entries__n=0)
-        target_journal = factory.Journal(assignment__courses=[course], entries__n=0)
+        target_journal = factory.Journal(
+            assignment__courses=[course], entries__n=0, ap__user=source_journal.authors.first().user)
         source_grade = 2
         target_grade = 1
         factory.UnlimitedEntry(node__journal=source_journal, grade__published=True, grade__grade=source_grade)
@@ -430,7 +515,8 @@ class JournalImportRequestTest(TestCase):
         course = factory.Course()
         source_assignment = factory.Assignment(format__templates=[{'type': Field.TEXT}], courses=[course])
         source_journal = factory.Journal(assignment=source_assignment, entries__n=0)
-        target_journal = factory.Journal(assignment__courses=[course], entries__n=0)
+        target_journal = factory.Journal(
+            assignment__courses=[course], entries__n=0, ap__user=source_journal.authors.first().user)
         source_grade = 2
         target_grade = 1
         factory.UnlimitedEntry(node__journal=source_journal, grade__published=True, grade__grade=source_grade)

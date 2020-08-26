@@ -6,8 +6,8 @@ from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.test import TestCase
 
-from VLE.models import (Assignment, AssignmentParticipation, Course, Journal, JournalImportRequest, Participation, Role,
-                        User)
+from VLE.models import (Assignment, AssignmentParticipation, Course, Entry, Journal, JournalImportRequest,
+                        Participation, Role, User)
 
 
 class JournalAPITest(TestCase):
@@ -125,6 +125,38 @@ class JournalAPITest(TestCase):
 
         users.append(factory.Student())
         self.assertRaises(ValidationError, factory.GroupJournal, add_users=users, author_limit=3)
+
+    def test_journal_reset(self):
+        assignment = factory.Assignment(format__templates=[])
+        factory.TemplateAllTypes(format=assignment.format)
+        g_journal = factory.GroupJournal()
+        entry = Entry.objects.get(node__journal=g_journal)
+        student = entry.author
+
+        factory.JournalImportRequest(target=g_journal, author=student, state=JournalImportRequest.PENDING)
+        factory.JournalImportRequest(target=g_journal, author=student, state=JournalImportRequest.APPROVED_EXC_GRADES)
+        factory.JournalImportRequest(source=g_journal, author=student, state=JournalImportRequest.PENDING)
+        source_approved_jir = factory.JournalImportRequest(
+            source=g_journal, author=student, state=JournalImportRequest.APPROVED_EXC_GRADES)
+
+        g_journal.authors.remove(g_journal.authors.first())
+        g_journal.reset()
+
+        # TODO: Enable once fixed?
+        # assert not g_journal.node_set.exists()
+        # assert not Entry.objects.filter(pk=entry.pk).exists()
+        # assert not Content.objects.filter(entry=entry).exists()
+        # assert not FileContext.objects.filter(journal=g_journal).exists()
+        # assert not FileContext.objects.filter(content__in=entry.content_set.all()).exists()
+        # assert not Comment.objects.filter(entry=entry).exists()
+
+        remaining_jir_ids = g_journal.import_request_targets.all().values('pk') \
+            | g_journal.import_request_sources.all().values('pk')
+        remaining_jir = JournalImportRequest.objects.get(pk__in=remaining_jir_ids)
+        assert remaining_jir == source_approved_jir, \
+            '''When a group journal is reset all jirs apart from those approved with the journal as source should be
+            removed. Approved JIRs with the journal as source should persists as this is how entries are flagged as
+            imported.'''
 
     def test_computed_name(self):
         # A short name which will not be truncated with two users in a journal
@@ -461,33 +493,40 @@ class JournalAPITest(TestCase):
         api.update(self, 'journals/join', params={'pk': self.group_journal.pk}, user=self.g_student, status=400)
 
     def test_get_members(self):
+        student1_group = factory.Student()
+        group_journal = factory.GroupJournal(ap__user=student1_group)
+        assignment = group_journal.assignment
+        teacher = assignment.author
+        unadded_student = factory.AssignmentParticipation(user=factory.Student(), assignment=assignment).user
+        unrelated_student = factory.Student()
+
         # Test students that are not added to the journal are NOT allowed to view other members
-        api.get(
-            self, 'journals/get_members', params={'pk': self.group_journal.pk},
-            user=self.g_student, status=403)
-        api.get(
-            self, 'journals/get_members', params={'pk': self.group_journal.pk},
-            user=factory.Teacher(), status=403)
+        api.get(self, 'journals/get_members', params={'pk': group_journal.pk}, user=unadded_student, status=403)
+        api.get(self, 'journals/get_members', params={'pk': group_journal.pk}, user=factory.Teacher(), status=403)
 
         # Test before adding student, that student is not returned
-        members = api.get(
-            self, 'journals/get_members', params={'pk': self.group_journal.pk},
-            user=self.g_teacher)['authors']
-        assert self.g_student.pk not in [m['id'] for m in members]
-        api.update(
-            self, 'journals/add_members', params={'pk': self.group_journal.pk, 'user_ids': [self.g_student.pk]},
-            user=self.g_teacher)
+        members = api.get(self, 'journals/get_members', params={'pk': group_journal.pk}, user=teacher)['authors']
+        serialized_user_ids = [m['user']['id'] for m in members]
+        assert list(group_journal.authors.all().values_list('user__pk', flat=True)) == serialized_user_ids
+        assert student1_group.pk in serialized_user_ids
+        assert unadded_student.pk not in serialized_user_ids
 
-        # Test after adding student, that student is returned
-        members = api.get(
-            self, 'journals/get_members', params={'pk': self.group_journal.pk},
-            user=self.g_teacher)['authors']
-        assert self.g_student.pk not in [m['id'] for m in members]
+        # Only students related to the assignment can be added to a journal
+        api.update(self, 'journals/add_members', params={'pk': group_journal.pk, 'user_ids': [unrelated_student.pk]},
+                   user=teacher, status=403)
+
+        # Add the unadded student ot the journal
+        api.update(self, 'journals/add_members', params={'pk': group_journal.pk, 'user_ids': [unadded_student.pk]},
+                   user=teacher)
+        student2_group = unadded_student
+
+        members = api.get(self, 'journals/get_members', params={'pk': group_journal.pk}, user=teacher)['authors']
+        serialized_user_ids = [m['user']['id'] for m in members]
+        assert student2_group.pk in serialized_user_ids, \
+            'After adding the student to the group journal, the newly added student should be serialized'
 
         # Test students that are added to the journal ARE allowed to view other members
-        api.get(
-            self, 'journals/get_members', params={'pk': self.group_journal.pk},
-            user=self.g_student)
+        api.get(self, 'journals/get_members', params={'pk': group_journal.pk}, user=student2_group)
 
     def test_add_members(self):
         assert not Journal.objects.get(pk=self.group_journal.pk).authors.filter(user=self.g_student).exists(), \

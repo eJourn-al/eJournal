@@ -63,7 +63,7 @@
                         No importable journals available.
                     </h4>
                     <hr class="m-0 mb-1"/>
-                    You can only import journal you own journals, and you cannot import the same journal into itself.
+                    You can only import journal your own journals, and you cannot a journal into itself.
                 </div>
             </load-wrapper>
         </b-card>

@@ -5,6 +5,23 @@ import factory
 import VLE.models
 
 
+def _ap(self, create, extracted, lti=False, **kwargs):
+    if not create or extracted is False:
+        return
+
+    if isinstance(extracted, VLE.models.AssignmentParticipation):
+        extracted.journal = self
+        extracted.save()
+    # An assignment will create an AP for all of its courses users so we need to filter if one already exists.
+    elif 'user' in kwargs and VLE.models.AssignmentParticipation.objects.filter(
+            user=kwargs['user'], assignment=self.assignment).exists():
+        ap = VLE.models.AssignmentParticipation.objects.get(user=kwargs['user'], assignment=self.assignment)
+        ap.journal = self
+        ap.save()
+    else:
+        test.factory.AssignmentParticipation(**{**kwargs, 'journal': self, 'assignment': self.assignment, 'lti': lti})
+
+
 class BaseJournalFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = 'VLE.Journal'
@@ -22,19 +39,10 @@ class JournalFactory(BaseJournalFactory):
         - Assignment: generates a new one unless set.
         - Entry: will generate one unlimited entry by default, can be changed via entries__n=int
     '''
-    ap = factory.RelatedFactory(
-        'test.factory.participation.AssignmentParticipationFactory',
-        factory_related_name='journal',
-        assignment=factory.SelfAttribute('..assignment')
-    )
 
-    # NOTE: Can become be a RelatedFactoryList once size is passable as an initialisation arg
-    # entries = factory.RelatedFactoryList(
-    #     'test.factory.entry.UnlimitedEntryFactory',
-    #     factory_related_name='node__journal',
-    #     node__journal=factory.SelfAttribute('..'),
-    #     size=1
-    # )
+    @factory.post_generation
+    def ap(self, create, extracted, **kwargs):
+        _ap(self, create, extracted, lti=False, **kwargs)
 
     @factory.post_generation
     def entries(self, create, extracted, **kwargs):
@@ -51,12 +59,9 @@ class LtiJournalFactory(BaseJournalFactory):
     '''
     assignment = factory.SubFactory('test.factory.assignment.LtiAssignmentFactory')
 
-    ap = factory.RelatedFactory(
-        'test.factory.participation.AssignmentParticipationFactory',
-        factory_related_name='journal',
-        assignment=factory.SelfAttribute('..assignment'),
-        lti=True
-    )
+    @factory.post_generation
+    def ap(self, create, extracted, **kwargs):
+        _ap(self, create, extracted, lti=True, **kwargs)
 
     @factory.post_generation
     def entries(self, create, extracted, **kwargs):
@@ -77,11 +82,9 @@ class GroupJournalFactory(BaseJournalFactory):
     assignment = factory.SubFactory('test.factory.assignment.AssignmentFactory', group_assignment=True)
     author_limit = 3
 
-    ap = factory.RelatedFactory(
-        'test.factory.participation.AssignmentParticipationFactory',
-        factory_related_name='journal',
-        assignment=factory.SelfAttribute('..assignment')
-    )
+    @factory.post_generation
+    def ap(self, create, extracted, **kwargs):
+        _ap(self, create, extracted, lti=False, **kwargs)
 
     @factory.post_generation
     def entries(self, create, extracted, **kwargs):

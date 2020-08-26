@@ -100,6 +100,15 @@ class EntryAPITest(TestCase):
         assert assignment.format.template_set.filter(pk=entry.template.pk).exists(), \
             'The selected template is chosen from the assignment format'
 
+    def test_entry_validation(self):
+        # An entry cannot be instantiated without a node
+        self.assertRaises(ValidationError, factory.UnlimitedEntry, node=None)
+
+        entry = factory.UnlimitedEntry()
+        entry.author = factory.Student()
+        # The author of an entry should always be part of the entry's journal authors
+        self.assertRaises(ValidationError, entry.save)
+
     def test_entry_grade(self):
         entry = factory.UnlimitedEntry()
         journal = entry.node.journal

@@ -90,7 +90,7 @@ class ImportTest(TestCase):
 
     def test_copy_entry_and_node(self):
         source_entry = factory.UnlimitedEntry()
-        target_journal = factory.Journal(entries__n=0)
+        target_journal = factory.Journal(entries__n=0, ap__user=source_entry.node.journal.authors.first().user)
 
         copied_node_instance = import_utils.copy_node(source_entry.node, target_journal)
         assert copied_node_instance.pk != source_entry.node.pk
@@ -108,12 +108,13 @@ class ImportTest(TestCase):
             source_entry, copied_entry_instance, ignore_keys=['last_edited', 'update_date', 'id', 'creation_date'])
         assert copied_entry_instance.node.entry.pk == copied_entry_instance.pk, \
             'Copied node is linked to the provided entry'
+        assert copied_entry_instance.node.journal == target_journal, 'Entry is linked to the target journal'
 
     def test_content_import(self):
         assignment = factory.Assignment(format__templates=[])
         factory.TemplateAllTypes(format=assignment.format)
         source_entry = factory.UnlimitedEntry(node__journal__assignment=assignment)
-        target_journal = factory.Journal(assignment=assignment, entries__n=0)
+        target_journal = factory.Journal(assignment=assignment, entries__n=0, ap__user=source_entry.author)
 
         copied_node = import_utils.copy_node(source_entry.node, target_journal)
         copied_entry = import_utils.copy_entry(source_entry, node=copied_node)

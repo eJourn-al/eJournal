@@ -1346,7 +1346,7 @@ class Journal(CreateUpdateModel, ComputedFieldsModel):
         return self.node_set.filter(entry__grade__published=False).count()
 
     @computed(models.IntegerField(null=True), depends=[
-        ['import_request_targets', ['target']],
+        ['import_request_targets', ['target', 'state']],
     ])
     def import_requests(self):
         return self.import_request_targets.filter(state=JournalImportRequest.PENDING).count()
@@ -1413,6 +1413,8 @@ class Journal(CreateUpdateModel, ComputedFieldsModel):
 
     def reset(self):
         Node.objects.filter(journal=self).delete()
+        self.import_request_targets.all().delete()
+        self.import_request_sources.filter(state=JournalImportRequest.PENDING).delete()
 
         preset_nodes = self.assignment.format.presetnode_set.all()
         for preset_node in preset_nodes:
@@ -1664,6 +1666,19 @@ class Entry(CreateUpdateModel):
 
     def save(self, *args, **kwargs):
         is_new = not self.pk
+        author_id = self.__dict__.get('author_id', None)
+        node_id = self.__dict__.get('node_id', None)
+
+        try:
+            node = Node.objects.get(pk=node_id) if node_id else self.node
+        except Node.DoesNotExist:
+            raise ValidationError('Saving entry without corresponding node')
+
+        author = self.author if self.author else User.objects.get(pk=author_id) if author_id else None
+        if author:
+            if not node.journal.authors.filter(user=author).exists():
+                raise ValidationError('Saving entry created by user not part of journal.')
+
         super(Entry, self).save(*args, **kwargs)
 
         if is_new:

@@ -112,12 +112,7 @@ class UnlimitedEntryFactory(factory.django.DjangoModelFactory):
         if not self.node:
             raise ValidationError('Entry created without node')
         if not self.node.journal.authors.filter(user=self.author).exists():
-            if not VLE.models.Journal.all_objects.filter(pk=self.node.journal.pk, author=self.author).exists():
-                # Most likely teacher, allow this for now
-                # raise ValidationError('Entry created by user only found via all journal query.')
-                pass
-            else:
-                raise ValidationError('Entry created by user not part of journal.')
+            raise ValidationError('Entry created by user not part of journal.')
 
 
 class PresetEntryFactory(UnlimitedEntryFactory):

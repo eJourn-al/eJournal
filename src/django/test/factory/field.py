@@ -2,7 +2,7 @@ import random
 
 import factory
 
-from VLE.models import Field
+from VLE.models import Field, Template
 
 
 def _verbose_field_type(type):
@@ -12,12 +12,10 @@ def _verbose_field_type(type):
 
 
 def _select_location(g_field):
-    fields = g_field.template.field_set.all()
-
-    if not fields.exists():
+    assert isinstance(g_field.template, Template)
+    if not g_field.template.field_set.exists():
         return 0
-
-    return fields.order_by('-location')[0].location + 1
+    return g_field.template.field_set.all().order_by('-location')[0].location + 1
 
 
 def _gen_options(g_field):

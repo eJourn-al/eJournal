@@ -209,9 +209,11 @@ def import_template(template, assignment, archived=None):
     return template
 
 
-def copy_entry(entry, node=None, grade=None, vle_coupling=None):
+def copy_entry(entry, node, grade=None, vle_coupling=None):
     '''
     Create a copy of an entry instance
+
+    Does not copy the associated template into the journal's assignment format
     '''
     entry = Entry.objects.create(
         node=node,
@@ -221,9 +223,8 @@ def copy_entry(entry, node=None, grade=None, vle_coupling=None):
         last_edited_by=entry.last_edited_by,
         vle_coupling=vle_coupling if vle_coupling else entry.vle_coupling
     )
-    if node is not None:
-        node.entry = entry
-        node.save()
+    node.entry = entry
+    node.save()
 
     return entry
 

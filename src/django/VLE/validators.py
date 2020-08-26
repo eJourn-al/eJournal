@@ -74,7 +74,7 @@ def validate_entry_content(content, field):
 
     if field.type == Field.SELECTION:
         if content not in json.loads(field.options):
-            raise ValidationError("Selected option is not in the given options.")
+            raise ValidationError('Selected option is not in the given options.')
 
     if field.type == Field.DATE:
         try:
@@ -97,11 +97,11 @@ def validate_entry_content(content, field):
         # Ensures the FC still exists
         fc = FileContext.objects.get(pk=int(content['id']))
         if not os.path.isfile(fc.file.path):
-            raise ValidationError("Entry references non existing file")
+            raise ValidationError('Entry references non existing file')
 
         if field.options:
             validator = FileExtensionValidator(field.options.split(', '))
             validator(fc.file)
 
     if field.type == Field.NO_SUBMISSION:
-        raise ValidationError("No submission is allowed for this field.")
+        raise ValidationError('No submission is allowed for this field.')
