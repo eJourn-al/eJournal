@@ -492,13 +492,13 @@ class Preferences(CreateUpdateModel):
 
 
 class Notification(CreateUpdateModel):
-    NEW_COURSE = 1
-    NEW_ASSIGNMENT = 2
-    NEW_NODE = 3
-    NEW_ENTRY = 4
-    NEW_GRADE = 5
-    NEW_COMMENT = 6
-    UPCOMING_DEADLINE = 7
+    NEW_COURSE = 'COURSE'
+    NEW_ASSIGNMENT = 'ASSIGNMENT'
+    NEW_NODE = 'NODE'
+    NEW_ENTRY = 'ENTRY'
+    NEW_GRADE = 'GRADE'
+    NEW_COMMENT = 'COMMENT'
+    UPCOMING_DEADLINE = 'DEADLINE'
     TYPES = {
         NEW_COURSE: {
             'name': 'new_course_notifications',
@@ -567,9 +567,8 @@ class Notification(CreateUpdateModel):
         NEW_COMMENT: 'entry',
     }
 
-    # QUESTION: WHy is this an integer field? If one is to debug a Notifaction, we have to look at the integer
-    # tranlastion. It would help to see 'e' for entry or smimilar
-    type = models.IntegerField(
+    type = models.CharField(
+        max_length=10,
         choices=((type, dic['name']) for type, dic in TYPES.items()),
         null=False,
     )
@@ -1526,6 +1525,21 @@ class Node(CreateUpdateModel):
 
     class Meta:
         unique_together = ('preset', 'journal')
+
+    def save(self, *args, **kwargs):
+        is_new = self._state.adding
+
+        super(Node, self).save(*args, **kwargs)
+
+        # Create a Notifcation for deadline PresetNodes
+        if is_new and self.type in [self.ENTRYDEADLINE, self.PROGRESS]:
+            for author in self.journal.authors.all():
+                if author.user.can_view(self.journal):
+                    Notification.objects.create(
+                        type=Notification.NEW_NODE,
+                        user=author.user,
+                        node=self,
+                    )
 
 
 class Format(CreateUpdateModel):

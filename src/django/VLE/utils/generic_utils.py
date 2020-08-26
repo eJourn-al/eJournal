@@ -11,7 +11,7 @@ from django.core.files.base import ContentFile
 from django.db.models import Case, When
 
 import VLE.factory as factory
-from VLE.models import Entry, Journal, JournalImportRequest, Node, Notification, PresetNode, Template
+from VLE.models import Entry, Journal, JournalImportRequest, Node, PresetNode, Template
 from VLE.utils.error_handling import VLEBadRequest, VLEMissingRequiredKey, VLEParamWrongType
 
 
@@ -186,14 +186,7 @@ def update_journals(journals, preset):
     preset -- the preset node to add to the journals.
     """
     for journal in journals:
-        node = factory.make_node(journal, None, preset.type, preset)
-        for author in journal.authors.all():
-            if author.user.can_view(journal):
-                Notification.objects.create(
-                    type=Notification.NEW_NODE,
-                    user=author.user,
-                    node=node,
-                )
+        factory.make_node(journal, None, preset.type, preset)
 
 
 def update_presets(assignment, presets, new_ids):

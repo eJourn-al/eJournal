@@ -83,7 +83,7 @@ class NotificationTest(TestCase):
     @override_settings(CELERY_TASK_ALWAYS_EAGER=True, CELERY_TASK_EAGER_PROPAGATES=True)
     def test_comment_notification(self):
         entry = factory.UnlimitedEntry()
-        # journal = entry.node.journal
+        journal = entry.node.journal
 
         notifications_before = list(Notification.objects.all().values_list('pk', flat=True))
         factory.TeacherComment(published=True, entry=entry)
@@ -96,35 +96,37 @@ class NotificationTest(TestCase):
         assert new_comment_notifaction.user.pk == entry.author.pk
         assert not new_comment_notifaction.sent
 
-        # TODO JIR
-        # student_comment = factory.StudentComment(entry=entry)
-        # assert Notification.objects.filter(type=Notification.NEW_COMMENT).count() == len(notifications_before) + 2, \
-        #     '1 new comment notification is created'
-        # notification = Notification.objects.last()
-        # assert notification.user == student_comment.entry.node.journal.assignment.courses.first().author
-        # assert not notification.sent, \
-        #     'Student should not get comment notifications pushed by default'
+        notifications_before = list(Notification.objects.all().values_list('pk', flat=True))
+        student_comment = factory.StudentComment(entry=entry)
+        new_notifactions = Notification.objects.all().exclude(pk__in=notifications_before)
+        assert new_notifactions.get(type=Notification.NEW_COMMENT), '1 new comment notification is created'
+        notification = Notification.objects.last()
+        assert notification.user == student_comment.entry.node.journal.assignment.courses.first().author, \
+            'Notifaction target the teacher of the assignment'
+        assert not notification.sent, 'Student should not get comment notifications pushed by default'
 
-        # self.check_send_push_notification(notification)
+        self.check_send_push_notification(notification)
 
-        # factory.TeacherComment(published=False, entry=entry)
-        # assert Notification.objects.filter(type=Notification.NEW_COMMENT).count() == len(notifications_before) + 2, \
-        #     'No new notifications should be added'
+        notifications_before = list(Notification.objects.all().values_list('pk', flat=True))
+        factory.TeacherComment(published=False, entry=entry)
+        new_notifactions = Notification.objects.all().exclude(pk__in=notifications_before)
+        assert not new_notifactions.exists(), 'No new notifications should be added'
 
-        # journal.authors.add(factory.AssignmentParticipation(assignment=journal.assignment))
-        # factory.TeacherComment(entry=entry, published=True)
-        # assert Notification.objects.filter(type=Notification.NEW_COMMENT).count() == len(notifications_before) + 4, \
-        #     '2 new comment notifications should be added for both students'
+        notifications_before = list(Notification.objects.all().values_list('pk', flat=True))
+        journal.authors.add(factory.AssignmentParticipation(assignment=journal.assignment))
+        factory.TeacherComment(entry=entry, published=True)
+        new_notifactions = Notification.objects.all().exclude(pk__in=notifications_before)
+        assert new_notifactions.filter(type=Notification.NEW_COMMENT).count() == 2, \
+            '2 new comment notifications should be added for both students'
 
-        # factory.Participation(
-        #     course=journal.assignment.courses.first(),
-        #     role=journal.assignment.courses.first().role_set.filter(name='TA').first())
-        # # factory.AssignmentParticipation(assignment=journal.assignment, user=second_teacher)
-        # factory.StudentComment(entry=entry)
-        # assert Notification.objects.filter(type=Notification.NEW_COMMENT).count() == len(notifications_before) + 7, \
-        #     '3 new notifications should be added. One for each teacher, and one for the other student in the journal'
-
-        # TODO: work out how to test with delay
+        notifications_before = list(Notification.objects.all().values_list('pk', flat=True))
+        factory.Participation(
+            course=journal.assignment.courses.first(),
+            role=journal.assignment.courses.first().role_set.filter(name='TA').first())
+        factory.StudentComment(entry=entry)
+        new_notifactions = Notification.objects.all().exclude(pk__in=notifications_before)
+        assert new_notifactions.filter(type=Notification.NEW_COMMENT).count() == 3, \
+            '3 new notifications should be added. One for each teacher, and one for the other student in the journal'
 
     @override_settings(CELERY_TASK_ALWAYS_EAGER=True, CELERY_TASK_EAGER_PROPAGATES=True)
     def test_grade_notification(self):
@@ -143,18 +145,11 @@ class NotificationTest(TestCase):
         journal = factory.Journal(entries__n=0)
         notifications_before = list(Notification.objects.all().values_list('pk', flat=True))
 
-        # TODO JIR: Reenable when the PresetEntry factory no longer deletes the preexisting node
-        # deadline = factory.DeadlinePresetNode(format=journal.assignment.format)
-        # factory.PresetEntry(node__preset=deadline, node__journal=journal)
-        # new_notifactions = Notification.objects.all().exclude(pk__in=notifications_before)
-
-        # node = Node.objects.get(pk__in=journal.node_set.all().values('pk'))
-        # assert node.preset == deadline
-        # assert node.type == Node.ENTRYDEADLINE
-
-        # assert new_notifactions.count() == 2, '1 new notification is created for entry, and 1 for new deadline'
-        # assert new_notifactions.filter(type=Notification.NEW_ENTRY).exists()
-        # assert new_notifactions.filter(type=Notification.NEW_DEADLINE).exists()
+        factory.PresetEntry(node__journal=journal, node__journal__entries_n=0)
+        new_notifactions = Notification.objects.all().exclude(pk__in=notifications_before)
+        assert new_notifactions.count() == 2, '1 new notification is created for entry, and 1 for new deadline'
+        assert new_notifactions.filter(type=Notification.NEW_ENTRY).exists()
+        assert new_notifactions.filter(type=Notification.NEW_NODE).exists()
 
         journal = factory.Journal(entries__n=0)
         notifications_before = list(Notification.objects.all().values_list('pk', flat=True))

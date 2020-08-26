@@ -139,8 +139,6 @@ class JournalImportRequestTest(TestCase):
         student = factory.Student()
         student2 = factory.Student()
 
-        print(student.pk, student2.pk)
-
         team_a_assign_a = factory.GroupJournal(ap__user=student, add_users=[student2])
         team_a_assign_b = factory.GroupJournal(ap__user=student, add_users=[student2])
 
