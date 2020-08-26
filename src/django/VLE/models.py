@@ -1423,8 +1423,8 @@ class Journal(CreateUpdateModel, ComputedFieldsModel):
     def save(self, *args, **kwargs):
         if not self.author_limit == self.UNLIMITED and self.authors.count() > self.author_limit:
             raise ValidationError('Journal users exceed author limit.')
-        # QUESTION: Can a journal belong to a non group assignment with an author limit > 1?
-        # Otherwise this would form a reasonable validation rule
+        if not self.assignment.is_group_assignment and self.author_limit > 1:
+            raise ValidationError('Journal author limit of a non group assignment exceeds 1')
 
         is_new = self._state.adding
         if self.stored_name is None:

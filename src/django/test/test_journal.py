@@ -126,6 +126,16 @@ class JournalAPITest(TestCase):
         users.append(factory.Student())
         self.assertRaises(ValidationError, factory.GroupJournal, add_users=users, author_limit=3)
 
+    def test_journal_validation(self):
+        j = factory.GroupJournal(author_limit=1)
+        # NOTE: This already saves the journal, bulk updates bypass model save
+        j.authors.add(factory.AssignmentParticipation())
+        self.assertRaises(ValidationError, j.save)
+
+        j = factory.Journal()
+        j.author_limit = 2
+        self.assertRaises(ValidationError, j.save)
+
     def test_journal_reset(self):
         assignment = factory.Assignment(format__templates=[])
         factory.TemplateAllTypes(format=assignment.format)
