@@ -86,7 +86,7 @@
                     LATE
                 </b-badge>
                 <b-badge
-                    v-if="!entryNode.jir"
+                    v-if="entryNode.jir"
                     v-b-tooltip:hover="'This entry was imported from another journal'"
                     class="imported-entry-badge"
                 >
