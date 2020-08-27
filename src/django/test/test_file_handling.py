@@ -81,6 +81,26 @@ class FileHandlingTest(TestCase):
         assert u_count == User.objects.count(), 'No additional user is generated'
         assert entry.author.pk == fc.author.pk, 'The entries user should be used as the author of the fc'
 
+    def test_establish_files_entry_update(self):
+        assignment = factory.Assignment()
+        template = factory.FilesTemplate(format=assignment.format)
+        entry = factory.UnlimitedEntry(template=template, node__journal__assignment=assignment)
+        student = entry.node.journal.authors.first().user
+
+        image = SimpleUploadedFile('file.png', b'image_content', content_type='image/png')
+        new_image = api.post(
+            self, 'files', params={'file': image}, user=student, content_type=MULTIPART_CONTENT, status=201)
+
+        patch = {
+            'pk': entry.pk,
+            'template_id': template.pk,
+            'journal_id': entry.node.journal.pk,
+            'content': {
+                template.field_set.first().pk: new_image,
+            },
+        }
+        api.update(self, 'entries', params=patch, user=student)
+
     def test_file_retrieve(self):
         file = FileContext.objects.create(file=self.video, author=self.student, file_name=self.video.name)
 
