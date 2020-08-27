@@ -41,27 +41,7 @@
                         @click.native="openSelectedJirInNewWindow()"
                     />
 
-                    <div
-                        v-if="preview"
-                        class="resp-iframe-container multi-form"
-                    >
-                        <iframe
-                            class="resp-iframe"
-                            :src="jirToJournalUrl(selectedJir)"
-                            title="description"
-                        />
-                    </div>
-
                     <hr/>
-
-                    <b-button
-                        :class="{ 'input-enabled': selectedJir, 'input-disabled': !selectedJir,
-                                  'add-button': !preview, 'delete-button': preview }"
-                        @click="preview = !preview"
-                    >
-                        <icon name="eye"/>
-                        {{ (preview) ? 'Hide journal preview' : 'Show journal preview' }}
-                    </b-button>
 
                     <dropdown-button
                         v-if="$hasPermission('can_grade')"
@@ -129,7 +109,6 @@ export default {
         return {
             jirs: [],
             selectedAssignment: null,
-            preview: false,
             loading: true,
             jirAction: null,
         }
