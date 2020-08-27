@@ -18,26 +18,26 @@ class JournalImportRequestTest(TestCase):
         jir = factory.JournalImportRequest(author=factory.Student())
 
         assert JournalImportRequest.objects.count() == jir_c + 1, 'A single journal import request is created'
-        assert jir.target.pk != jir.source.pk, 'A unique journal is generated for both the source and target'
+        assert jir.target != jir.source, 'A unique journal is generated for both the source and target'
 
         # A jir generates only a single ap for both its source and target
         ap_source = AssignmentParticipation.objects.get(journal=jir.source)
         ap_target = AssignmentParticipation.objects.get(journal=jir.target)
 
-        assert jir.author.pk is ap_source.user.pk and jir.author.pk is ap_target.user.pk, \
+        assert jir.author == ap_source.user and jir.author == ap_target.user, \
             'A generated journal import request shares its author among the source and target journals'
 
         student = factory.Student()
         factory.AssignmentParticipation(user=student, assignment=jir.target.assignment)
         jir = factory.JournalImportRequest(author=factory.Student(), source__ap__user=student, target__ap__user=student)
-        assert jir.target.authors.get(user=student.pk), 'Deep syntax works for source/target logic'
+        assert jir.target.authors.get(user=student), 'Deep syntax works for source/target logic'
 
         jir2 = factory.JournalImportRequest(target=jir.target)
-        assert jir.target.pk == jir2.target.pk, 'Directly assigning journal works'
+        assert jir.target == jir2.target, 'Directly assigning journal works'
 
         course = factory.Course()
         jir = factory.JournalImportRequest(source__assignment__courses=[course])
-        assert jir.source.assignment.courses.first().pk == course.pk
+        assert jir.source.assignment.courses.first() == course
 
     def test_unpublish_assignment_with_outstanding_jirs(self):
         source_ass = factory.Assignment()
@@ -272,9 +272,9 @@ class JournalImportRequestTest(TestCase):
             self, 'journal_import_request', params=data, user=student, status=201)['journal_import_request']
 
         jir = JournalImportRequest.objects.get(pk=resp['id'])
-        assert jir.author.pk == student.pk, 'Author is correctly set'
-        assert jir.source.pk == source_journal.pk, 'Source is correctly set'
-        assert jir.target.pk == target_journal.pk, 'Target is correctly set'
+        assert jir.author == student, 'Author is correctly set'
+        assert jir.source == source_journal, 'Source is correctly set'
+        assert jir.target == target_journal, 'Target is correctly set'
         assert jir.processor is None, 'Processor is empty on JIR initialization'
         assert jir.state == JournalImportRequest.PENDING, 'JIR is awaiting processing'
 
@@ -324,7 +324,7 @@ class JournalImportRequestTest(TestCase):
 
         jir = JournalImportRequest.objects.get(pk=jir.pk)
         assert jir.state == JournalImportRequest.DECLINED, 'The jir action is updated'
-        assert jir.processor.pk == teacher.pk, 'The jir processor is updated'
+        assert jir.processor == teacher, 'The jir processor is updated'
 
     def test_jir_import_standalone(self):
         course = factory.Course()
@@ -454,7 +454,7 @@ class JournalImportRequestTest(TestCase):
                             ignore_keys=['last_edited', 'creation_date', 'update_date', 'id', 'access_id', 'content',
                                          'journal']
                         )
-                        assert imported_fc.journal.pk == jir.target.pk, 'FC is linked to the target journal'
+                        assert imported_fc.journal == jir.target, 'FC is linked to the target journal'
                     # Assume working with Field.RICH_TEXT
                     else:
                         test_utils.check_equality_of_imported_rich_text(
