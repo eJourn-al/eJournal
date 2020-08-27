@@ -2042,31 +2042,6 @@ class JournalImportRequest(CreateUpdateModel):
 
     def save(self, *args, **kwargs):
         is_new = self._state.adding
-        target_id = self.__dict__.get('target_id', None)
-        source_id = self.__dict__.get('source_id', None)
-
-        if target_id:
-            target = Journal.objects.get(pk=target_id)
-            if target.assignment.lock_date and target.assignment.lock_date < timezone.now():
-                raise ValidationError('You are not allowed to create an import request for a locked assignment.')
-
-        if source_id:
-            source = Journal.objects.get(pk=source_id)
-            if not Entry.objects.filter(node__journal=source).exists():
-                raise ValidationError('You cannot create an import request whose source is empty.')
-
-        # QUESTION: Could even move the permission checks here, e.g. need to be author of both source and target journal
-        if target_id and source_id:
-            if source.assignment.pk == target.assignment.pk:
-                raise ValidationError('You cannot import a journal into itself.')
-
-            existing_import_qry = target.import_request_targets.filter(
-                state__in=JournalImportRequest.APPROVED_STATES, source=source)
-            if self.pk:
-                existing_import_qry = existing_import_qry.exclude(pk=self.pk)
-            if existing_import_qry.exists():
-                raise ValidationError('You cannot import the same journal multiple times.')
-
         super(JournalImportRequest, self).save(*args, **kwargs)
 
         if is_new:
@@ -2076,3 +2051,27 @@ class JournalImportRequest(CreateUpdateModel):
     @receiver(models.signals.pre_delete, sender=Journal)
     def delete_pending_jirs_on_source_deletion(sender, instance, **kwargs):
         JournalImportRequest.objects.filter(source=instance, state=JournalImportRequest.PENDING).delete()
+
+
+@receiver(models.signals.pre_save, sender=JournalImportRequest)
+def validate_jir_before_save(sender, instance, **kwargs):
+    if instance.target:
+        if instance.target.assignment.lock_date and instance.target.assignment.lock_date < timezone.now():
+            raise ValidationError('You are not allowed to create an import request for a locked assignment.')
+        if instance.state == JournalImportRequest.PENDING and not instance.target.assignment.is_published:
+            raise ValidationError('You are not allowed to create an import request for an unpublished assignment.')
+
+    if instance.source:
+        if not Entry.objects.filter(node__journal=instance.source).exists():
+            raise ValidationError('You cannot create an import request whose source is empty.')
+
+    if instance.target and instance.source:
+        if instance.source.assignment.pk == instance.target.assignment.pk:
+            raise ValidationError('You cannot import a journal into itself.')
+
+        existing_import_qry = instance.target.import_request_targets.filter(
+            state__in=JournalImportRequest.APPROVED_STATES, source=instance.source)
+        if instance.pk:
+            existing_import_qry = existing_import_qry.exclude(pk=instance.pk)
+        if existing_import_qry.exists():
+            raise ValidationError('You cannot import the same journal multiple times.')

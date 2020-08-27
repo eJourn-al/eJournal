@@ -87,7 +87,7 @@ class EntryView(viewsets.ViewSet):
                 # Establish all files in the rich text editor
                 if field.type == Field.RICH_TEXT:
                     files_to_establish += [
-                        (f, created_content) for f in file_handling.get_files_from_rich_text(content)]
+                        (f, created_content) for f in file_handling.get_temp_files_from_rich_text(content)]
 
         # If anything fails during creation of the entry, delete the entry
         except Exception as e:
@@ -195,7 +195,7 @@ class EntryView(viewsets.ViewSet):
                 # Establish all files in the rich text editor
                 if field.type == Field.RICH_TEXT:
                     files_to_establish += [
-                        (f, old_content) for f in file_handling.get_files_from_rich_text(new_content)]
+                        (f, old_content) for f in file_handling.get_temp_files_from_rich_text(new_content)]
 
         for (file, old_content) in files_to_establish:
             file_handling.establish_file(request.user, file.access_id, content=old_content,

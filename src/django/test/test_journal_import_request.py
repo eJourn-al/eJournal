@@ -278,6 +278,18 @@ class JournalImportRequestTest(TestCase):
         assert jir.processor is None, 'Processor is empty on JIR initialization'
         assert jir.state == JournalImportRequest.PENDING, 'JIR is awaiting processing'
 
+    def test_create_jir_for_unpublished_assignment(self):
+        source_journal = factory.Journal()
+        student = source_journal.authors.first().user
+        target_journal = factory.Journal(ap__user=student, assignment__is_published=False)
+
+        data = {'assignment_source_id': source_journal.assignment.pk,
+                'assignment_target_id': target_journal.assignment.pk}
+        api.create(self, 'journal_import_request', params=data, user=student, status=400)
+        target_journal.assignment.is_published = True
+        target_journal.assignment.save()
+        api.create(self, 'journal_import_request', params=data, user=student)
+
     def test_create_jir_for_group_journal(self):
         student2 = factory.Student()
         source_journal = factory.GroupJournal(add_users=[student2])

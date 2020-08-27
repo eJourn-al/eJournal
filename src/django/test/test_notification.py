@@ -4,11 +4,9 @@ import test.factory as factory
 from django.core import mail
 from django.test import TestCase
 from django.test.utils import override_settings
-from django.utils import timezone
 
 import VLE.factory
-import VLE.utils.generic_utils as utils
-from VLE.models import Node, Notification, Preferences, PresetNode, User, gen_url
+from VLE.models import Notification, Preferences, User, gen_url
 from VLE.permissions import get_supervisors_of
 from VLE.tasks.beats.notifications import send_digest_notifications
 from VLE.tasks.email import send_push_notification
