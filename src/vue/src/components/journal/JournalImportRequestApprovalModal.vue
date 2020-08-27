@@ -109,7 +109,6 @@ export default {
         return {
             jirs: [],
             selectedAssignment: null,
-            preview: false,
             loading: true,
             jirAction: null,
         }
