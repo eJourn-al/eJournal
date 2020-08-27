@@ -29,7 +29,7 @@ postgres_dev_user_pass = password
 ##### TEST COMMANDS #####
 
 test-back:
-	pep8 ./src/django --max-line-length=120 --exclude='./src/django/VLE/migrations','./src/django/VLE/settings*'
+	pycodestyle ./src/django --max-line-length=120 --exclude='./src/django/VLE/migrations','./src/django/VLE/settings*'
 	bash -c 'source ./venv/bin/activate && flake8 --max-line-length=120 src/django --exclude="src/django/VLE/migrations/*","src/django/VLE/settings/*","src/django/VLE/settings.py","src/django/VLE/tasks/__init__.py" && deactivate'
 	bash -c "source ./venv/bin/activate && pytest -n auto --cov=VLE -vvl --cov-report term-missing --cov-config .coveragerc src/django/test ${TOTEST} && deactivate"
 	bash -c 'source ./venv/bin/activate && isort -rc src/django/ && deactivate'
@@ -70,7 +70,7 @@ setup-no-input:
 
 	sudo apt install npm -y
 	sudo npm install npm@latest -g
-	sudo apt install nodejs python3 python3-pip pep8 libpq-dev python3-dev postgresql postgresql-contrib rabbitmq-server python3-setuptools sshpass -y
+	sudo apt install nodejs python3 python3-pip pycodestyle libpq-dev python3-dev postgresql postgresql-contrib rabbitmq-server python3-setuptools sshpass -y
 
 	make setup-venv requirements_file=local.txt
 
@@ -85,7 +85,7 @@ setup-no-input:
 setup-travis:
 	(sudo apt-cache show python3.6 | grep "Package: python3.6") || (sudo add-apt-repository ppa:deadsnakes/ppa -y; sudo apt update) || echo "0"
 	sudo apt install npm -y
-	sudo apt install nodejs python3 python3-pip pep8 python3-setuptools -y
+	sudo apt install nodejs python3 python3-pip pycodestyle python3-setuptools -y
 
 	sudo pip3 install virtualenv
 	virtualenv -p python3 venv
