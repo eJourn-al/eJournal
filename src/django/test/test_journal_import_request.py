@@ -417,7 +417,7 @@ class JournalImportRequestTest(TestCase):
             diff = test_utils.equal_models(
                 source_node, target_node,
                 return_diff=True,
-                ignore_keys=['jID', 'nID', 'creation_date', 'last_edited', 'download_url', 'jir'],
+                ignore_keys=['jID', 'nID', 'creation_date', 'download_url', 'jir'],
                 exclude_regex_paths=[
                     # Match exactly root['entry']['content']['<index>']['id']
                     r"^{}\d+{}$".format(re.escape(r"root['entry']['content']['"), re.escape(r"']['id']")),

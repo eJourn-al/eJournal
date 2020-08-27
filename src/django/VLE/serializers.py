@@ -629,7 +629,7 @@ class EntrySerializer(serializers.ModelSerializer):
     def get_content(self, entry):
         content_dict = {}
 
-        for content in entry.content_set.all().order_by('field__location'):
+        for content in entry.content_set.all():
             # Only include the actual content (so e.g. text).
             if content.field.type == Field.FILE:
                 try:

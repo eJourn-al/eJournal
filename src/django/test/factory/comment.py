@@ -1,4 +1,3 @@
-# from VLE.models import FileContext
 from test.factory.file_context import AttachedCommentFileContextFactory, RichTextCommentFileContextFactory
 
 import factory

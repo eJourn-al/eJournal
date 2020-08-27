@@ -11,13 +11,6 @@ from VLE.utils.error_handling import VLEProgrammingError
 
 
 class ContentTest(TestCase):
-    def test_temp_todo_remove(self):
-        journal = factory.Journal(entries__n=0, assignment__format__templates=[{'type': Field.RICH_TEXT}])
-        entry = factory.UnlimitedEntry(node__journal=journal)
-
-        for c in entry.content_set.all():
-            VLE.validators.validate_entry_content(c.data, c.field)
-
     def test_content_factory(self):
         entry = factory.UnlimitedEntry()
         n_template_fields = entry.template.field_set.count()

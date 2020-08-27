@@ -46,7 +46,7 @@ class ImportTest(TestCase):
             'One additional comment is created'
         assert equal_models(
             source_comment, imported_comment,
-            ignore_keys=['last_edited', 'creation_date', 'update_date', 'files', 'id', 'entry']), \
+            ignore_keys=['creation_date', 'update_date', 'files', 'id', 'entry']), \
             'The imported model is mostly equal to the source model'
 
         assert FileContext.objects.filter(comment=imported_comment).count() == 1, \
@@ -97,7 +97,7 @@ class ImportTest(TestCase):
         assert equal_models(
             source_entry.node,
             copied_node_instance,
-            ignore_keys=['last_edited', 'update_date', 'id', 'creation_date', 'journal', 'entry']
+            ignore_keys=['update_date', 'id', 'creation_date', 'journal', 'entry']
         ), 'Copied node is equal to the source node apart from the journal and entry'
         assert copied_node_instance.journal.pk == target_journal.pk, \
             'Node should be linked to the provided target journal'
@@ -105,7 +105,7 @@ class ImportTest(TestCase):
         copied_entry_instance = import_utils.copy_entry(source_entry, node=copied_node_instance)
         assert copied_entry_instance.pk != source_entry
         assert equal_models(
-            source_entry, copied_entry_instance, ignore_keys=['last_edited', 'update_date', 'id', 'creation_date'])
+            source_entry, copied_entry_instance, ignore_keys=['update_date', 'id', 'creation_date'])
         assert copied_entry_instance.node.entry.pk == copied_entry_instance.pk, \
             'Copied node is linked to the provided entry'
         assert copied_entry_instance.node.journal == target_journal, 'Entry is linked to the target journal'
@@ -160,9 +160,10 @@ class ImportTest(TestCase):
         journal = factory.Journal()
         teacher2 = factory.Teacher()
 
-        entry = factory.UnlimitedEntry(node__journal=journal, grade__grade=1, grade__published=False)
+        entry = factory.UnlimitedEntry(node__journal=journal, grade__grade=1, grade__published=True)
         grade = import_utils._copy_grade_based_on_jir_action(entry, teacher2, JournalImportRequest.APPROVED_INC_GRADES)
 
+        # Only approved JIR states allow for grade copy
         self.assertRaises(
             VLEProgrammingError,
             import_utils._copy_grade_based_on_jir_action,
@@ -177,17 +178,21 @@ class ImportTest(TestCase):
 
         entry = factory.UnlimitedEntry(node__journal=journal, grade=None)
         grade = import_utils._copy_grade_based_on_jir_action(entry, teacher2, JournalImportRequest.APPROVED_INC_GRADES)
-        assert grade is None, 'Approvied including grades with a previous grade of None creates no new grade object'
+        assert grade is None, 'Approved including grades with a previous grade of None creates no new grade object'
+
+        entry = factory.UnlimitedEntry(node__journal=journal, grade__grade=1, grade__published=False)
+        grade = import_utils._copy_grade_based_on_jir_action(entry, teacher2, JournalImportRequest.APPROVED_INC_GRADES)
+        assert grade is None, 'Copying an unpublished grade should yield no new grade'
 
         grade = import_utils._copy_grade_based_on_jir_action(entry, teacher2, JournalImportRequest.APPROVED_EXC_GRADES)
-        assert grade is None, 'Approved excluding grades creats no new grade object'
+        assert grade is None, 'Approved excluding grades creates no new grade object'
 
         grade = import_utils._copy_grade_based_on_jir_action(
             entry, teacher2, JournalImportRequest.APPROVED_WITH_GRADES_ZEROED)
-        assert grade.grade == 0, 'Aproved with grades zeroed creates a new grade object set to zero.'
+        assert grade.grade == 0, 'Approved with grades zeroed creates a new grade object set to zero.'
 
-    def test__select_vle_couplting_based_on_jir_action(self):
-        f = import_utils._select_vle_couplting_based_on_jir_action
+    def test__select_vle_coupling_based_on_jir_action(self):
+        f = import_utils._select_vle_coupling_based_on_jir_action
         journal = factory.Journal()
         entry = factory.UnlimitedEntry(node__journal=journal, grade__grade=1, grade__published=False)
 

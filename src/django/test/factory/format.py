@@ -1,4 +1,3 @@
-
 import test.factory
 
 import factory

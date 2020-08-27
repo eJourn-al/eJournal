@@ -12,7 +12,7 @@ def _copy_grade_based_on_jir_action(entry, author, action=JournalImportRequest.A
     """
     Create a new grade instance with a fresh history. Could be ungraded, zeroed or none based on the action.
 
-    If the Entry's grade was unpublished, the new grade WILL be published.
+    If the Entry's grade was unpublished, it is not copied and set to None.
 
     Args:
         entry (:model:`VLE.entry`): Entry the copied grade should be attached to.
@@ -23,7 +23,7 @@ def _copy_grade_based_on_jir_action(entry, author, action=JournalImportRequest.A
         raise VLEProgrammingError('Copy grade request based on unrecognized action')
 
     if action == JournalImportRequest.APPROVED_INC_GRADES:
-        if entry.grade is None:
+        if entry.grade is None or not entry.grade.published:
             return None
         points = entry.grade.grade
     if action == JournalImportRequest.APPROVED_EXC_GRADES:
@@ -39,7 +39,7 @@ def _copy_grade_based_on_jir_action(entry, author, action=JournalImportRequest.A
     )
 
 
-def _select_vle_couplting_based_on_jir_action(action, entry):
+def _select_vle_coupling_based_on_jir_action(action, entry):
     """
     Args:
         action (str): Choice of (:model:`VLE.JournalImportRequest`).APPROVED_STATES
@@ -88,7 +88,7 @@ def import_entry(entry, journal, jir=None, grade_author=None,
         entry,
         node=copied_node,
         grade=_copy_grade_based_on_jir_action(entry, grade_author, grade_action),
-        vle_coupling=_select_vle_couplting_based_on_jir_action(grade_action, entry)
+        vle_coupling=_select_vle_coupling_based_on_jir_action(grade_action, entry)
     )
 
     copied_entry.jir = jir
@@ -119,9 +119,12 @@ def import_comment(comment, entry):
     if not comment.published:
         raise VLEProgrammingError('Unpublished comments should not be imported')
 
+    last_edited = comment.last_edited
     source_comment_pk = comment.pk
     comment.pk = None
     comment.entry = entry
+    comment.save()
+    comment.last_edited = last_edited
     comment.save()
 
     source_comment = Comment.objects.get(pk=source_comment_pk)
@@ -215,6 +218,7 @@ def copy_entry(entry, node, grade=None, vle_coupling=None):
 
     Does not copy the associated template into the journal's assignment format
     """
+    last_edited = entry.last_edited
     entry = Entry.objects.create(
         node=node,
         template=entry.template,
@@ -225,6 +229,9 @@ def copy_entry(entry, node, grade=None, vle_coupling=None):
     )
     node.entry = entry
     node.save()
+    # Last edited is set on creation, even when specified during initialization.
+    entry.last_edited = last_edited
+    entry.save()
 
     return entry
 

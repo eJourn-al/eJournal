@@ -2040,14 +2040,6 @@ class JournalImportRequest(CreateUpdateModel):
 
         return responses[self.state]
 
-    def save(self, *args, **kwargs):
-        is_new = self._state.adding
-        super(JournalImportRequest, self).save(*args, **kwargs)
-
-        if is_new:
-            # TODO JIR Create notifications depending on state
-            pass
-
     @receiver(models.signals.pre_delete, sender=Journal)
     def delete_pending_jirs_on_source_deletion(sender, instance, **kwargs):
         JournalImportRequest.objects.filter(source=instance, state=JournalImportRequest.PENDING).delete()

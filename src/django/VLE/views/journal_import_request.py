@@ -19,7 +19,6 @@ class JournalImportRequestView(viewsets.ViewSet):
         journal_target_id, = utils.required_typed_params(request.query_params, (int, 'journal_target_id'))
 
         journal_target = Journal.objects.get(pk=journal_target_id)
-        request.user.check_can_view(journal_target)
         request.user.check_permission('can_manage_journal_import_requests', journal_target.assignment)
 
         serializer = JournalImportRequestSerializer(
@@ -70,8 +69,6 @@ class JournalImportRequestView(viewsets.ViewSet):
         if jir_action not in allowed_actions:
             return response.bad_request('Invalid journal import request action.')
 
-        if not request.user.has_permission('can_grade', jir.target.assignment):
-            return response.forbidden('You require the ability to grade the journal in order to approve the import.')
         request.user.check_permission('can_manage_journal_import_requests', jir.target.assignment)
 
         jir.state = jir_action

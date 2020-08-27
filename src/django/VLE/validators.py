@@ -54,7 +54,6 @@ def validate_entry_content(content, field):
     """Validates the given data based on its field type, any validation error will be thrown."""
     if field.required and not (content or content == ''):
         raise VLEMissingRequiredField(field)
-    # QUESTION: Is '' really valid data for all fields?
     if not content:
         return
 

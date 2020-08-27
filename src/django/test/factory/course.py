@@ -1,4 +1,4 @@
-from test.factory.participation import ParticipationFactory
+import test.factory
 
 import factory
 
@@ -31,7 +31,7 @@ class CourseFactory(factory.django.DjangoModelFactory):
 
         if not VLE.models.Participation.objects.filter(user=self.author, course=self).exists():
             role = VLE.models.Role.objects.get(name='Teacher', course=self)
-            ParticipationFactory(user=self.author, course=self, role=role)
+            test.factory.Participation(user=self.author, course=self, role=role)
 
 
 class LtiCourseFactory(CourseFactory):

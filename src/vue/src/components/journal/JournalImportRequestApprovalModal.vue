@@ -182,7 +182,10 @@ export default {
                 if (this.jirs.length === 1) {
                     this.selectedAssignment = { name: this.jirs[0].source.assignment.name, jir: this.jirs[0] }
                 }
-                if (this.jirs.length === 0) { this.$root.$emit('bv::hide::modal', this.modalID) }
+                if (this.jirs.length === 0) {
+                    this.selectedAssignment = null
+                    this.$root.$emit('bv::hide::modal', this.modalID)
+                }
             })
         },
         openSelectedJirInNewWindow () {
