@@ -2,6 +2,7 @@ import os
 import test.factory as factory
 
 from django.core.exceptions import ValidationError
+from django.db import IntegrityError
 from django.test import TestCase
 
 import VLE.validators
@@ -129,3 +130,12 @@ class ContentTest(TestCase):
         content = entry.content_set.first()
         fc = content.filecontext_set.first()
         assert os.path.exists(fc.file.path), 'An actual file is created when working from file object'
+
+    def test_content_validation(self):
+        assignment = factory.Assignment(format__templates=[{'type': Field.TEXT}])
+        entry = factory.UnlimitedEntry(gen_content=False, node__journal__assignment=assignment)
+        field = assignment.format.template_set.first().field_set.first()
+
+        factory.Content(field=field, entry=entry)
+        # Content should be unique together for (field, entry)
+        self.assertRaises(IntegrityError, factory.Content, field=field, entry=entry)

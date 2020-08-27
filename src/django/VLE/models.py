@@ -1862,6 +1862,9 @@ class Content(CreateUpdateModel):
     Defines the content of an Entry
     """
 
+    class Meta:
+        unique_together = ('entry', 'field')
+
     entry = models.ForeignKey(
         'Entry',
         on_delete=models.CASCADE
@@ -1875,9 +1878,6 @@ class Content(CreateUpdateModel):
     )
 
     def save(self, *args, **kwargs):
-        if Content.objects.filter(field=self.field, entry=self.entry).count() > 1:
-            raise VLEProgrammingError('Multiple content instances for the same field and entry')
-
         self.data = sanitization.strip_script_tags(self.data)
 
         return super(Content, self).save(*args, **kwargs)
