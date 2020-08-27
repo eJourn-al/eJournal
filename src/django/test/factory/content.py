@@ -71,9 +71,6 @@ class ContentFactory(factory.django.DjangoModelFactory):
                 # NOTE: Params are not available in post generation
                 # https://github.com/FactoryBoy/factory_boy/issues/544
                 for _ in range(kwargs['n_files'] if 'n_files' in kwargs else 1):
-                    # TODO deep syntax could be made available by using a dedicated class with its own related
-                    # factory. Could be done via traits as well, could these be unlocked based on field type?
-                    # Same for FileContentFileContextFactory
                     RichTextContentFileContextFactory(
                         content=self,
                         author=self.entry.author,

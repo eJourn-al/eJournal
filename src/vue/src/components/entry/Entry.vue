@@ -102,7 +102,12 @@
                     </b-badge>
                     <b-badge
                         v-if="node.entry.jir"
-                        v-b-tooltip:hover="'This entry was imported from another journal'"
+                        v-b-tooltip:hover="
+                            `This entry has been imported from the assignment
+                            ${node.entry.jir.source.assignment.name}
+                            (${node.entry.jir.source.assignment.course.abbreviation}), approved by
+                            ${node.entry.jir.processor.full_name}`
+                        "
                         class="imported-entry-badge"
                     >
                         IMPORTED

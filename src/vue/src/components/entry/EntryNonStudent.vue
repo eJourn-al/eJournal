@@ -86,8 +86,12 @@
                     LATE
                 </b-badge>
                 <b-badge
-                    v-if="entryNode.jir"
-                    v-b-tooltip:hover="'This entry was imported from another journal'"
+                    v-if="entryNode.entry.jir"
+                    v-b-tooltip:hover="
+                        `This entry has been imported from the assignment
+                        ${entryNode.entry.jir.source.assignment.name}
+                        (${entryNode.entry.jir.source.assignment.course.abbreviation}), approved by
+                        ${entryNode.entry.jir.processor.full_name}`"
                     class="imported-entry-badge"
                 >
                     IMPORTED

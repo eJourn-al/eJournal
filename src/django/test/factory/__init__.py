@@ -32,7 +32,6 @@ def rel_factory(instance, create, extracted, key, model, factory=None, size=1, n
     elif not (kwargs or non_cond_kwargs or cond_kwargs) and default:
         setattr(instance, key, default)
     else:
-        # TODO Handle size more cleanly
         if size == 1:
             setattr(instance, key, factory(**{**cond_kwargs, **kwargs, **non_cond_kwargs}))
         else:
