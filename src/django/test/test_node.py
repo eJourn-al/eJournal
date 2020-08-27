@@ -1,11 +1,11 @@
 import test.factory as factory
 from test.utils import api
 
+import VLE.models
+
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError
 from django.test import TestCase
-
-import VLE.models
 
 
 class NodeTest(TestCase):

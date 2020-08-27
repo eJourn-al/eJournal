@@ -1,12 +1,12 @@
 import test.factory as factory
 from test.utils import api
 
-from django.db.utils import IntegrityError
-from django.test import TestCase
-
 import VLE.serializers as serialize
 from VLE.models import Assignment, Course, Entry, Field, Format, Group, Journal, Template
 from VLE.utils.error_handling import VLEProgrammingError
+
+from django.db.utils import IntegrityError
+from django.test import TestCase
 
 
 class FormatAPITest(TestCase):

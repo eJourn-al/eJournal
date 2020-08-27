@@ -5,10 +5,10 @@ import random
 from test.factory.file_context import FileContentFileContextFactory, RichTextContentFileContextFactory
 
 import factory
-from django.core.exceptions import ValidationError
-
 from VLE.models import Field
 from VLE.utils.error_handling import VLEProgrammingError
+
+from django.core.exceptions import ValidationError
 
 IMG_FILE_PATH = '../vue/public/journal-view.png'
 PDF_FILE_PATH = './VLE/management/commands/dummy.pdf'

@@ -2,9 +2,9 @@ import os
 import test.factory
 
 import factory
-from django.core.exceptions import ValidationError
-
 from VLE.models import Field, Journal
+
+from django.core.exceptions import ValidationError
 
 
 class FileContextFactory(factory.django.DjangoModelFactory):

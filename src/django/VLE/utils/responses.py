@@ -7,11 +7,11 @@ to receive the appropriate error code.
 """
 from urllib import parse
 
-from django.conf import settings
-from django.http import FileResponse, HttpResponse, JsonResponse
+import VLE.models
 from sentry_sdk import capture_exception, capture_message
 
-import VLE.models
+from django.conf import settings
+from django.http import FileResponse, HttpResponse, JsonResponse
 
 
 def sentry_log(description='No description given', exception=None):

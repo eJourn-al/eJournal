@@ -3,13 +3,12 @@ grade.py.
 
 In this file are all the grade api requests.
 """
-from rest_framework import viewsets
-from rest_framework.decorators import action
-
 import VLE.factory as factory
 import VLE.utils.generic_utils as utils
 import VLE.utils.grading as grading
 import VLE.utils.responses as response
+from rest_framework import viewsets
+from rest_framework.decorators import action
 from VLE.models import Assignment, Comment, Entry, Grade, Journal
 from VLE.serializers import EntrySerializer, GradeHistorySerializer
 

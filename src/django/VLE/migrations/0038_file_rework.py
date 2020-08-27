@@ -4,14 +4,14 @@ import re
 import uuid
 from mimetypes import guess_extension
 
+import VLE.utils.file_handling
+from VLE.utils import file_handling
+
 import django.db.models.deletion
 from django.conf import settings
 from django.core.files.base import ContentFile
 from django.db import migrations, models
 from django.utils import timezone
-
-import VLE.utils.file_handling
-from VLE.utils import file_handling
 
 logger = logging.getLogger(__name__)
 base64ImgEmbedded = re.compile(r'<img\s+src=\"(data:image\/[^;]+;base64[^\"]+)\"\s*/>')

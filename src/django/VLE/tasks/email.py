@@ -1,13 +1,13 @@
 from __future__ import absolute_import, unicode_literals
 
+import VLE.models
 from celery import shared_task
+
 from django.conf import settings
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
 from django.core.mail import EmailMultiAlternatives
 from django.template.loader import render_to_string
 from django.utils.html import strip_tags
-
-import VLE.models
 
 # QUESTION: What action should be taken if sending the email goes wrong? E.g. SMTP auth exception
 # Idempotent tasks and retry? Will still require handling for when the retries ultimately fail

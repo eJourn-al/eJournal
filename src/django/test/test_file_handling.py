@@ -3,12 +3,12 @@ import test.factory as factory
 from pathlib import Path
 from test.utils import api
 
-from django.core.files.uploadedfile import SimpleUploadedFile
-from django.test import TestCase
-
 from VLE.models import Content, Entry, Field, FileContext, PresetNode, Template, User
 from VLE.utils import file_handling
 from VLE.utils.error_handling import VLEBadRequest, VLEPermissionError
+
+from django.core.files.uploadedfile import SimpleUploadedFile
+from django.test import TestCase
 
 MULTIPART_CONTENT = 'multipart/form-data; boundary=BoUnDaRyStRiNg'
 

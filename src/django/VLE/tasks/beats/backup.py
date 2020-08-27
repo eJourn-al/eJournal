@@ -6,8 +6,9 @@ import shutil
 import time
 
 from celery import shared_task
-from django.conf import settings
 from sh import pg_dump
+
+from django.conf import settings
 
 
 @shared_task

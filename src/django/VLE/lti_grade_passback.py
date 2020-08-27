@@ -1,9 +1,9 @@
 import xml.etree.cElementTree as ET
 
 import oauth2
-from django.conf import settings
-
 from VLE.models import Counter
+
+from django.conf import settings
 
 
 class GradePassBackRequest(object):

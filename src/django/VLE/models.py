@@ -7,7 +7,14 @@ import os
 import random
 import string
 
+import VLE.permissions as permissions
+import VLE.utils.file_handling as file_handling
 from computedfields.models import ComputedFieldsModel, computed, update_dependent
+from VLE.tasks.email import send_push_notification
+from VLE.utils import sanitization
+from VLE.utils.error_handling import (VLEBadRequest, VLEParticipationError, VLEPermissionError, VLEProgrammingError,
+                                      VLEUnverifiedEmailError)
+
 from django.conf import settings
 from django.contrib.auth.models import AbstractUser
 from django.contrib.postgres.fields import ArrayField, CIEmailField, CITextField
@@ -17,13 +24,6 @@ from django.db.models import F, Q, Sum
 from django.dispatch import receiver
 from django.utils import timezone
 from django.utils.timezone import now
-
-import VLE.permissions as permissions
-import VLE.utils.file_handling as file_handling
-from VLE.tasks.email import send_push_notification
-from VLE.utils import sanitization
-from VLE.utils.error_handling import (VLEBadRequest, VLEParticipationError, VLEPermissionError, VLEProgrammingError,
-                                      VLEUnverifiedEmailError)
 
 
 class CreateUpdateModel(models.Model):

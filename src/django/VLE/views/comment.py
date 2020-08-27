@@ -3,15 +3,15 @@ comment.py.
 
 In this file are all the comment api requests.
 """
-from django.utils import timezone
-from rest_framework import viewsets
-
 import VLE.factory as factory
 import VLE.utils.generic_utils as utils
 import VLE.utils.responses as response
+from rest_framework import viewsets
 from VLE.models import Comment, Entry, FileContext
 from VLE.serializers import CommentSerializer
 from VLE.utils import file_handling
+
+from django.utils import timezone
 
 
 def handle_comment_files(user, files, comment):

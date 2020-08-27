@@ -2,9 +2,9 @@ import datetime
 import test.factory
 
 import factory
-from django.utils import timezone
-
 from VLE.models import Participation, Role, User
+
+from django.utils import timezone
 
 
 def _add_courses(self, create, extracted, **kwargs):

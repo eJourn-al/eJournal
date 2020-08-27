@@ -7,13 +7,13 @@ import datetime
 import test.factory as test_factory
 from test.factory.user import DEFAULT_PASSWORD
 
-from django.core.validators import ValidationError
-from django.test import TestCase
-
 import VLE.factory as factory
 import VLE.permissions as permissions
 from VLE.models import Participation, Role
 from VLE.utils.error_handling import VLEParticipationError, VLEPermissionError, VLEProgrammingError
+
+from django.core.validators import ValidationError
+from django.test import TestCase
 
 
 class PermissionTests(TestCase):

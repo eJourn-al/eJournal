@@ -3,10 +3,9 @@ format.py.
 
 In this file are all the Format api requests.
 """
-from rest_framework import viewsets
-
 import VLE.utils.generic_utils as utils
 import VLE.utils.responses as response
+from rest_framework import viewsets
 from VLE.models import Assignment, Course, Field, Group, PresetNode
 from VLE.serializers import AssignmentFormatSerializer, FormatSerializer
 from VLE.utils import file_handling

@@ -1,9 +1,9 @@
 import test.factory as factory
 from test.utils import api
 
-from django.test import TestCase
-
 from VLE.models import Role, User
+
+from django.test import TestCase
 
 
 class ParticipationAPITest(TestCase):

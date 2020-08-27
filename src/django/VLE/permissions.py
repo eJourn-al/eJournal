@@ -3,10 +3,10 @@ permissions.py.
 
 All the permission functions.
 """
-from django.db.models import Q
-
 import VLE.models
 from VLE.utils.error_handling import VLEProgrammingError
+
+from django.db.models import Q
 
 
 def has_general_permission(user, permission):

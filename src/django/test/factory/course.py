@@ -1,7 +1,6 @@
 from test.factory.participation import ParticipationFactory
 
 import factory
-
 import VLE.models
 
 

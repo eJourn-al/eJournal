@@ -6,12 +6,12 @@ Test the lti grade passback.
 import test.factory as factory
 from test.utils import api
 
-from django.test import TestCase
-
 import VLE.lti_grade_passback as lti_grade
 import VLE.tasks.beats.lti as lti_beats
 from VLE.models import Entry
 from VLE.utils import grading
+
+from django.test import TestCase
 
 
 class GradePassBackRequestXMLTest(TestCase):

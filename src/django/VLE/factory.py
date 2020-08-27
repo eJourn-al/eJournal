@@ -7,12 +7,12 @@ Sometimes this also supports extra functionallity like adding courses to assignm
 from datetime import timedelta
 
 import requests
-from django.conf import settings
-from django.utils import timezone
-
 import VLE.validators as validators
 from VLE.models import (Assignment, AssignmentParticipation, Comment, Content, Course, Entry, Field, Format, Grade,
                         Group, Node, Participation, PresetNode, Role, Template, User)
+
+from django.conf import settings
+from django.utils import timezone
 
 
 def make_user(username, password=None, email=None, lti_id=None, profile_picture=settings.DEFAULT_PROFILE_PICTURE,

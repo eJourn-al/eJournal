@@ -3,10 +3,9 @@ user.py.
 
 In this file are all the user api requests.
 """
-from rest_framework import viewsets
-
 import VLE.utils.generic_utils as utils
 import VLE.utils.responses as response
+from rest_framework import viewsets
 from VLE.models import Preferences
 from VLE.serializers import PreferencesSerializer
 

@@ -3,10 +3,9 @@ instance.py.
 
 In this file are all the instance api requests.
 """
+import VLE.utils.responses as response
 from rest_framework import viewsets
 from rest_framework.permissions import AllowAny
-
-import VLE.utils.responses as response
 from VLE.models import Instance
 from VLE.serializers import InstanceSerializer
 

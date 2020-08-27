@@ -1,10 +1,10 @@
 import test.factory as factory
 from test.utils import api
 
+from VLE.models import Field
+
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
-
-from VLE.models import Field
 
 MULTIPART_CONTENT = 'multipart/form-data; boundary=BoUnDaRyStRiNg'
 

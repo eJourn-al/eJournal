@@ -7,11 +7,11 @@ import random
 import test.factory as factory
 
 from dateutil.relativedelta import relativedelta
+from faker import Faker
+from VLE.models import Entry, Journal, Node, Role
+
 from django.core.management.base import BaseCommand
 from django.utils import timezone
-from faker import Faker
-
-from VLE.models import Entry, Journal, Node, Role
 
 faker = Faker()
 

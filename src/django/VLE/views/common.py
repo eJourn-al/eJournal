@@ -5,9 +5,8 @@ In this file are all the extra api requests.
 This includes:
     /names/ -- to get the names belonging to the ids
 """
-from rest_framework.decorators import api_view
-
 import VLE.utils.responses as response
+from rest_framework.decorators import api_view
 from VLE.models import Assignment, Course, Journal
 
 

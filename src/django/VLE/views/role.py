@@ -1,10 +1,9 @@
 
-from rest_framework import viewsets
-
 import VLE.factory as factory
 import VLE.permissions as permissions
 import VLE.utils.generic_utils as utils
 import VLE.utils.responses as response
+from rest_framework import viewsets
 from VLE.models import Assignment, Course, Role, User
 from VLE.serializers import RoleSerializer
 from VLE.utils.error_handling import VLEMissingRequiredKey, VLEParamWrongType

@@ -1,9 +1,9 @@
 from smtplib import SMTPAuthenticationError
 
 import jwt
-from django.core.exceptions import ObjectDoesNotExist, ValidationError
-
 import VLE.utils.responses as response
+
+from django.core.exceptions import ObjectDoesNotExist, ValidationError
 
 
 class VLEBadRequest(Exception):

@@ -5,18 +5,18 @@ In this file are all the email api requests.
 This includes:
     /forgot_password/ -- to get the names belonging to the ids
 """
+import VLE.utils.generic_utils as utils
+import VLE.utils.responses as response
+import VLE.validators as validators
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import AllowAny
+from VLE.models import User
+from VLE.tasks import send_email_feedback, send_email_verification_link, send_password_recovery_link
+
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
 from django.db.models import Q
 from django.http import HttpResponse
 from django.utils.html import escape
-from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import AllowAny
-
-import VLE.utils.generic_utils as utils
-import VLE.utils.responses as response
-import VLE.validators as validators
-from VLE.models import User
-from VLE.tasks import send_email_feedback, send_email_verification_link, send_password_recovery_link
 
 
 def index(request):

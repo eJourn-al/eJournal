@@ -32,7 +32,7 @@ test-back:
 	pep8 ./src/django --max-line-length=120 --exclude='./src/django/VLE/migrations','./src/django/VLE/settings*'
 	bash -c 'source ./venv/bin/activate && flake8 --max-line-length=120 src/django --exclude="src/django/VLE/migrations/*","src/django/VLE/settings/*","src/django/VLE/settings.py","src/django/VLE/tasks/__init__.py" && deactivate'
 	bash -c "source ./venv/bin/activate && pytest -n auto --cov=VLE -vvl --cov-report term-missing --cov-config .coveragerc src/django/test ${TOTEST} && deactivate"
-	bash -c 'source ./venv/bin/activate && isort -rc src/django/ && deactivate'
+	bash -c 'source ./venv/bin/activate && isort src/django/ && deactivate'
 
 test-front:
 	npm run lint --prefix ./src/vue
@@ -54,7 +54,7 @@ run-back: isort
 	bash -c "source ./venv/bin/activate && python ./src/django/manage.py runserver && deactivate"
 
 isort:
-	bash -c 'source ./venv/bin/activate && isort -rc src/django/ && deactivate'
+	bash -c 'source ./venv/bin/activate && isort src/django/ && deactivate'
 
 
 setup:
@@ -102,7 +102,7 @@ setup-venv:
 	bash -c '\
 		source ./venv/bin/activate && \
 		pip install -r requirements/$(requirements_file) && \
-		isort -rc src/django/ && \
+		isort src/django/ && \
 		ansible-playbook ./config/provision-local.yml --ask-vault-pass && \
 		deactivate'
 

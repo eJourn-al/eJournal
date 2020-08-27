@@ -6,12 +6,12 @@ Test all about the timeline.
 import datetime
 import test.factory as factory
 
-from django.test import TestCase
-
 import VLE.factory
 import VLE.timeline as timeline
 from VLE.models import Journal, Role
 from VLE.utils import generic_utils as utils
+
+from django.test import TestCase
 
 
 class TimelineTests(TestCase):

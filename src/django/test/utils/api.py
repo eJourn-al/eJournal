@@ -7,9 +7,9 @@ Helpter function for the test enviroment.
 import json
 import test.factory.user as userfactory
 
-from django.urls import reverse
-
 import VLE.utils.generic_utils as utils
+
+from django.urls import reverse
 
 
 def format_url(obj, url, params, function):

@@ -2,7 +2,6 @@
 import test.factory
 
 import factory
-
 import VLE.models
 from VLE.utils.error_handling import VLEProgrammingError
 

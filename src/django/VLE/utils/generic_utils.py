@@ -7,12 +7,12 @@ import base64
 import re
 from mimetypes import guess_extension
 
-from django.core.files.base import ContentFile
-from django.db.models import Case, When
-
 import VLE.factory as factory
 from VLE.models import Entry, Journal, JournalImportRequest, Node, PresetNode, Template
 from VLE.utils.error_handling import VLEBadRequest, VLEMissingRequiredKey, VLEParamWrongType
+
+from django.core.files.base import ContentFile
+from django.db.models import Case, When
 
 
 # START: API-POST functions

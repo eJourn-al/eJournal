@@ -1,10 +1,10 @@
 import datetime
 
 import factory
-from django.utils import timezone
-
 import VLE.models
 from VLE.utils import generic_utils as utils
+
+from django.utils import timezone
 
 
 class PresetNodeFactory(factory.django.DjangoModelFactory):
