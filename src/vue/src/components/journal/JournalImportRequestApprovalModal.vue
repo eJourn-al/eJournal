@@ -139,7 +139,11 @@ export default {
         // How to simply provide jirs as options to the multiselect with a display for jir.source.assignment.name?
         assignments () {
             const arr = []
-            this.jirs.forEach(jir => arr.push({ name: jir.source.assignment.name, id: jir.id, jir }))
+            this.jirs.forEach(jir => arr.push({
+                name: `${jir.source.assignment.name}, ${this.getCourseName(jir.source.assignment.course)}`,
+                id: jir.id,
+                jir,
+            }))
             return arr
         },
         selectedJir () {
@@ -192,6 +196,18 @@ export default {
             if (event.trigger !== 'event') {
                 this.$store.commit('preferences/ADD_DISMISSED_JIRS_TO_JOURNAL', Array.from(this.jirs, jir => jir.id))
             }
+        },
+        getCourseName (course) {
+            let name = course.name
+            if (course.startdate) {
+                name += ' ('
+                name += course.startdate.substring(0, 4)
+                if (course.enddate) {
+                    name += ` - ${course.enddate.substring(0, 4)}`
+                }
+                name += ')'
+            }
+            return name
         },
     },
 }
