@@ -239,15 +239,7 @@ class NotificationTest(TestCase):
 
         # "2" new grades for student, 1 new entry for teacher, 1 course & assignment membership for student
         entry = factory.Grade(entry__node__journal=journal).entry
-
-        # TODO JIR: Remove once PresetEntryFactory no longer deletes the initiated node
-        preset_node = PresetNode.objects.create(
-            format=journal.assignment.format,
-            type=Node.ENTRYDEADLINE,
-            due_date=timezone.now() + datetime.timedelta(days=3),
-            forced_template=journal.assignment.format.template_set.first(),
-        )
-        utils.update_journals([journal], preset_node)
+        factory.DeadlinePresetNode(format=journal.assignment.format)
 
         factory.StudentComment(entry=entry, author=student)
         factory.StudentComment(entry=entry, author=student)  # 2 new comments for teacher
