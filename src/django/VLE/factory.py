@@ -171,7 +171,6 @@ def make_lti_groups(course):
                 continue
 
 
-# TODO: Remove the chain of not used factories (or only used in tests)
 def make_default_format(due_date=None, points_possible=10):
     format = Format()
     format.save()

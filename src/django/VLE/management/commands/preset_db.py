@@ -23,63 +23,63 @@ class Command(BaseCommand):
 
     def gen_users(self):
         self.student = factory.Student(
-            username="student",
-            full_name="Lars van Hijfte",
-            password="pass",
-            email="lars@eJournal.app",
+            username='student',
+            full_name='Lars van Hijfte',
+            password='pass',
+            email='lars@eJournal.app',
         )
         self.student2 = factory.Student(
-            username="student2",
-            full_name="Rick Watertor",
-            password="pass",
-            email="rick@eJournal.app",
+            username='student2',
+            full_name='Rick Watertor',
+            password='pass',
+            email='rick@eJournal.app',
         )
         self.student3 = factory.Student(
-            username="student3",
-            full_name="Dennis Wind",
-            password="pass",
-            email="dennis@eJournal.app",
+            username='student3',
+            full_name='Dennis Wind',
+            password='pass',
+            email='dennis@eJournal.app',
         )
         self.student4 = factory.Student(
-            username="student4",
-            full_name="Maarten van Keulen",
-            password="pass",
-            email="maarten@eJournal.app",
+            username='student4',
+            full_name='Maarten van Keulen',
+            password='pass',
+            email='maarten@eJournal.app',
             verified_email=False,
         )
         self.student5 = factory.Student(
-            username="student5",
-            full_name="Zi Long Zhu",
-            password="pass",
-            email="zi@eJournal.app",
+            username='student5',
+            full_name='Zi Long Zhu',
+            password='pass',
+            email='zi@eJournal.app',
             verified_email=False,
         )
         self.test_user = factory.TestUser(is_test_student=True)
         self.teacher = factory.Teacher(
-            username="teacher",
-            full_name="Engel Hamer",
-            password="pass",
-            email="test@eJournal.app",
+            username='teacher',
+            full_name='Engel Hamer',
+            password='pass',
+            email='test@eJournal.app',
         )
         self.ta = factory.Student(
-            username="TA",
-            full_name="De TA van TAing",
+            username='TA',
+            full_name='De TA van TAing',
             verified_email=False,
-            password="pass",
-            email="ta@eJournal.app",
+            password='pass',
+            email='ta@eJournal.app',
         )
         self.ta2 = factory.Student(
-            username="TA2",
-            full_name="Backup TA van TAing",
+            username='TA2',
+            full_name='Backup TA van TAing',
             verified_email=False,
-            password="pass",
-            email="ta2@eJournal.app",
+            password='pass',
+            email='ta2@eJournal.app',
         )
         self.superuser = factory.Admin(
-            username="superuser",
-            full_name="Super User",
-            password="pass",
-            email="superuser@eJournal.app",
+            username='superuser',
+            full_name='Super User',
+            password='pass',
+            email='superuser@eJournal.app',
             verified_email=False,
             is_superuser=True,
             is_teacher=True,
@@ -92,72 +92,72 @@ class Command(BaseCommand):
 
     def gen_courses(self):
         self.courses = {
-            "Portfolio Academische Vaardigheden - Cohort 1": {
+            'Portfolio Academische Vaardigheden - Cohort 1': {
                 'instance': factory.Course(
                     pk=1697,
-                    name="Portfolio Academische Vaardigheden - Cohort 1",
-                    abbreviation="PAV1",
+                    name='Portfolio Academische Vaardigheden - Cohort 1',
+                    abbreviation='PAV1',
                     author=self.teacher,
-                    startdate=faker.date("2018-09-01"),
-                    enddate=faker.date("2021-07-31"),
+                    startdate=faker.date('2018-09-01'),
+                    enddate=faker.date('2021-07-31'),
                 ),
-                "students": self.students + [self.test_user],
-                "student_group_names": ["Cobol", "Smalltalk"],
-                "tas": [self.ta],
+                'students': self.students + [self.test_user],
+                'student_group_names': ['Cobol', 'Smalltalk'],
+                'tas': [self.ta],
             },
-            "Portfolio Academische Vaardigheden - Cohort 2":  {
+            'Portfolio Academische Vaardigheden - Cohort 2':  {
                 'instance': factory.Course(
                     pk=1698,
-                    name="Portfolio Academische Vaardigheden - Cohort 2",
-                    abbreviation="PAV2",
+                    name='Portfolio Academische Vaardigheden - Cohort 2',
+                    abbreviation='PAV2',
                     author=self.teacher,
-                    startdate=faker.date("2019-09-01"),
-                    enddate=faker.date("2022-07-31"),
+                    startdate=faker.date('2019-09-01'),
+                    enddate=faker.date('2022-07-31'),
                 ),
-                "students": self.students + [self.test_user],
-                "tas": [self.ta2],
-                "student_group_names": ["Algol", "Ruby"]
+                'students': self.students + [self.test_user],
+                'tas': [self.ta2],
+                'student_group_names': ['Algol', 'Ruby']
             }
         }
 
         for c in self.courses.values():
             course = c['instance']
             student_groups = [
-                factory.Group(course=course, name=name, lti_id=None) for name in c["student_group_names"]]
-            staff_group = factory.Group(name="Staff", course=course)
+                factory.Group(course=course, name=name, lti_id=None) for name in c['student_group_names']]
+            staff_group = factory.Group(name='Staff', course=course)
 
             role_student = Role.objects.get(name='Student', course=course)
             role_ta = Role.objects.get(name='TA', course=course)
 
-            for student in c["students"]:
+            for student in c['students']:
                 factory.Participation(
                     user=student, course=course, role=role_student, group=random.choice(student_groups))
-            for ta in c["tas"]:
+            for ta in c['tas']:
                 factory.Participation(user=ta, course=course, role=role_ta, group=random.choice(student_groups))
             teacher_p = course.author.participation_set.get(course=course)
             teacher_p.groups.add(staff_group)
 
     def gen_assignments(self):
         self.logboek = factory.Assignment(
-            name="Logboek",
-            description="<p>This is a logboek for all your logging purposes</p>",
+            name='Logboek',
+            description='<p>This is a logboek for all your logging purposes</p>',
             courses=[
-                self.courses["Portfolio Academische Vaardigheden - Cohort 1"]['instance'],
-                self.courses["Portfolio Academische Vaardigheden - Cohort 2"]['instance']
+                self.courses['Portfolio Academische Vaardigheden - Cohort 1']['instance'],
+                self.courses['Portfolio Academische Vaardigheden - Cohort 2']['instance']
             ],
             format__templates=False,
         )
         self.colloquium = factory.Assignment(
-            name="Colloquium",
-            description="<p>This is the best colloquium logbook in the world</p>",
-            courses=[self.courses["Portfolio Academische Vaardigheden - Cohort 1"]['instance']],
+            name='Colloquium',
+            description='<p>This is the best colloquium logbook in the world</p>',
+            courses=[self.courses['Portfolio Academische Vaardigheden - Cohort 1']['instance']],
             format__templates=False,
         )
         self.group_assignment = factory.Assignment(
-            name="Group Assignment",
-            description="<p>This is a group assignment. This is purely for testing group assignment stuff.<br/>" +
-                        "Initialized with student and student2 in 1 journal and student3 in another.</p>",
-            courses=[self.courses["Portfolio Academische Vaardigheden - Cohort 2"]['instance']],
+            name='Group Assignment',
+            description='<p>This is a group assignment. This is purely for testing group assignment stuff.<br/>' +
+                        'Initialized with student and student2 in 1 journal and student3 in another.</p>',
+            courses=[self.courses['Portfolio Academische Vaardigheden - Cohort 2']['instance']],
             is_group_assignment=True,
             format__templates=False,
         )
@@ -165,10 +165,10 @@ class Command(BaseCommand):
         self.assignments = [self.logboek, self.colloquium, self.group_assignment]
 
     def gen_group_journals(self):
-        '''
+        """
         Creating an assignment will create an AP for ALL of its linked course users.
         Journals are created upon the creation of an AP except if we are dealing with a group assignment.
-        '''
+        """
         factory.GroupJournal(
             assignment=self.group_assignment,
             ap=False,
@@ -202,14 +202,14 @@ class Command(BaseCommand):
             target=1,
             due_date=timezone.now() + relativedelta(days=1),
             lock_date=timezone.now() + relativedelta(days=1),
-            description="One day",
+            description='One day',
         )
         factory.ProgressPresetNode(
             format=self.colloquium.format,
             target=3,
             due_date=timezone.now() + relativedelta(weeks=7),
             lock_date=timezone.now() + relativedelta(weeks=7),
-            description="One week",
+            description='One week',
         )
         factory.ProgressPresetNode(
             format=self.colloquium.format,
@@ -220,13 +220,13 @@ class Command(BaseCommand):
             format=self.colloquium.format,
             due_date=timezone.now() + relativedelta(weeks=7),
             lock_date=timezone.now() + relativedelta(weeks=7),
-            forced_template=self.colloquium.format.template_set.get(name="Mentorgesprek")
+            forced_template=self.colloquium.format.template_set.get(name='Mentorgesprek')
         )
         factory.DeadlinePresetNode(
             format=self.colloquium.format,
             due_date=timezone.now() + relativedelta(months=7),
             lock_date=timezone.now() + relativedelta(months=7),
-            forced_template=self.colloquium.format.template_set.get(name="Mentorgesprek")
+            forced_template=self.colloquium.format.template_set.get(name='Mentorgesprek')
         )
 
         # Group Assignment
@@ -240,7 +240,7 @@ class Command(BaseCommand):
                 factory.UnlimitedEntry(node__journal=j, grade=grade, gen_content__from_file=True)
 
                 # Colloquium holds some preset nodes
-                if a.name == "Colloquium":
+                if a.name == 'Colloquium':
                     deadline_nodes = list(j.node_set.filter(type=Node.ENTRYDEADLINE))
                     n_deadline_entries = random.randint(0, j.node_set.filter(type=Node.ENTRYDEADLINE).count())
                     for deadline_node in random.sample(deadline_nodes, n_deadline_entries):
