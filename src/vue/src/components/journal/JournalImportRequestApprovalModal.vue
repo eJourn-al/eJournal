@@ -109,6 +109,7 @@ export default {
         return {
             jirs: [],
             selectedAssignment: null,
+            preview: false,
             loading: true,
             jirAction: null,
         }
@@ -194,18 +195,3 @@ export default {
     },
 }
 </script>
-
-<style lang="sass">
-.resp-iframe-container
-    position: relative
-    overflow: hidden
-    padding-top: 56.25%
-
-.resp-iframe
-    position: absolute
-    top: 0
-    left: 0
-    width: 100%
-    height: 100%
-    border: 0
-</style>
