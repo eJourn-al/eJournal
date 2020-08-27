@@ -1,6 +1,6 @@
-'''
+"""
 Model import helper functionality
-'''
+"""
 
 from django.core.files.base import ContentFile
 
@@ -9,7 +9,7 @@ from VLE.utils.error_handling import VLEProgrammingError
 
 
 def _copy_grade_based_on_jir_action(entry, author, action=JournalImportRequest.APPROVED_WITH_GRADES_ZEROED):
-    '''
+    """
     Create a new grade instance with a fresh history. Could be ungraded, zeroed or none based on the action.
 
     If the Entry's grade was unpublished, the new grade WILL be published.
@@ -18,7 +18,7 @@ def _copy_grade_based_on_jir_action(entry, author, action=JournalImportRequest.A
         entry (:model:`VLE.entry`): Entry the copied grade should be attached to.
         author (:model:`VLE.user`): Author of the new grade
         action (str): Choice of (:model:`VLE.JournalImportRequest`).APPROVED_STATES
-    '''
+    """
     if action not in JournalImportRequest.APPROVED_STATES:
         raise VLEProgrammingError('Copy grade request based on unrecognized action')
 
@@ -40,11 +40,11 @@ def _copy_grade_based_on_jir_action(entry, author, action=JournalImportRequest.A
 
 
 def _select_vle_couplting_based_on_jir_action(action, entry):
-    '''
+    """
     Args:
         action (str): Choice of (:model:`VLE.JournalImportRequest`).APPROVED_STATES
         entry (:model:`VLE.entry`): The original entry.
-    '''
+    """
     if action not in JournalImportRequest.APPROVED_STATES:
         raise VLEProgrammingError('Copy grade request based on unrecognized action')
 
@@ -60,7 +60,7 @@ def _select_vle_couplting_based_on_jir_action(action, entry):
 
 def import_entry(entry, journal, jir=None, grade_author=None,
                  grade_action=JournalImportRequest.APPROVED_WITH_GRADES_ZEROED):
-    '''
+    """
     Creates a new entry object attached to the given journal.
 
     Any nested content (node, comments, contents, and associated files) are copied.
@@ -76,7 +76,7 @@ def import_entry(entry, journal, jir=None, grade_author=None,
 
     Returns:
         The copied entry.
-    '''
+    """
     if jir is None and grade_author is None:
         raise VLEProgrammingError('A grade author needs to be specified either via a JIR or directly.')
 
@@ -104,7 +104,7 @@ def import_entry(entry, journal, jir=None, grade_author=None,
 
 
 def import_comment(comment, entry):
-    '''
+    """
     Creates a new comment object attached to the target entry.
 
     Unpublished comments are not imported.
@@ -115,7 +115,7 @@ def import_comment(comment, entry):
     Args:
         comment (:model:`VLE.comment`): Comment to import.
         entry (:model:`VLE.entry`): Entry to attach content to.
-    '''
+    """
     if not comment.published:
         raise VLEProgrammingError('Unpublished comments should not be imported')
 
@@ -151,7 +151,7 @@ def import_comment(comment, entry):
 
 
 def import_content(content, entry):
-    '''
+    """
     Creates a new content instance attached to the target entry.
 
     The source content is edited in place, any in memory references will be altered. The source content in db remains
@@ -160,7 +160,7 @@ def import_content(content, entry):
     Args:
         content (:model:`VLE.content`): Content to import.
         entry (:model:`VLE.entry`): Entry to attach content to.
-    '''
+    """
     source_content_pk = content.pk
     content.pk = None
     content.entry = entry
@@ -192,9 +192,9 @@ def import_content(content, entry):
 
 
 def import_template(template, assignment, archived=None):
-    '''
+    """
     Copies the given template and adds it to the given assignment's format
-    '''
+    """
     source_template_id = template.pk
     template.pk = None
     template.format = assignment.format
@@ -210,11 +210,11 @@ def import_template(template, assignment, archived=None):
 
 
 def copy_entry(entry, node, grade=None, vle_coupling=None):
-    '''
+    """
     Create a copy of an entry instance
 
     Does not copy the associated template into the journal's assignment format
-    '''
+    """
     entry = Entry.objects.create(
         node=node,
         template=entry.template,
@@ -230,7 +230,7 @@ def copy_entry(entry, node, grade=None, vle_coupling=None):
 
 
 def copy_node(node, journal, entry=None):
-    '''
+    """
     Create a copy of a node instance
 
     Since a node has a one to one relation with an entry, a new entry is expected.
@@ -239,7 +239,7 @@ def copy_node(node, journal, entry=None):
         node (:model:`VLE.node`): Node to copy.
         entry (:model:`VLE.entry`): Entry to attach the node to.
         journal (:model:`VLE.journal`): Journal to attach the node to.
-    '''
+    """
     return Node.objects.create(
         type=node.type,
         entry=entry,

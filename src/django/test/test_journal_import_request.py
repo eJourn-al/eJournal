@@ -96,9 +96,9 @@ class JournalImportRequestTest(TestCase):
             | g_journal.import_request_sources.all().values('pk')
         remaining_jir = JournalImportRequest.objects.get(pk__in=remaining_jir_ids)
         assert remaining_jir == source_approved_jir, \
-            '''When the final group member is removed, the journal reset is triggered. This should remove all
+            """When the final group member is removed, the journal reset is triggered. This should remove all
             jirs apart from those approved with the journal as source. These imported entries should remain flagged
-            as imported.'''
+            as imported."""
 
     def test_pending_jir_delete_on_kick_group_journal(self):
         student = factory.Student()
@@ -131,9 +131,9 @@ class JournalImportRequestTest(TestCase):
             | g_journal.import_request_sources.all().values('pk')
         remaining_jir = JournalImportRequest.objects.get(pk__in=remaining_jir_ids)
         assert remaining_jir == source_approved_jir, \
-            '''When the final group member is removed, the journal reset is triggered. This should remove all
+            """When the final group member is removed, the journal reset is triggered. This should remove all
             jirs apart from those approved with the journal as source. These imported entries should remain flagged
-            as imported.'''
+            as imported."""
 
     def test_remove_jirs_on_user_remove_from_jounal(self):
         student = factory.Student()

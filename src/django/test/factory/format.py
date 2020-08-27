@@ -8,10 +8,10 @@ from VLE.utils.error_handling import VLEProgrammingError
 
 
 class FormatFactory(factory.django.DjangoModelFactory):
-    '''
+    """
     A format is only created by an Assignment. Do not initialise in isolation or via an upwards chain. E.g.
     format.Template without arguments.
-    '''
+    """
     class Meta:
         model = 'VLE.Format'
 
@@ -20,7 +20,7 @@ class FormatFactory(factory.django.DjangoModelFactory):
 
     @classmethod
     def _adjust_kwargs(cls, **kwargs):
-        '''
+        """
         Blocks setting the assignment via the format.
 
         Because of the OneToOne relation between Assignment and Format, initialisation can become unclear:
@@ -32,7 +32,7 @@ class FormatFactory(factory.django.DjangoModelFactory):
         is linked to a format via, content.entry.node.journal.assignment.format and content.field.template.format.
 
         Simply only allowing an assignment to create a format removes this ambiguity.
-        '''
+        """
         if not kwargs['called_from_assignment']:
             raise VLEProgrammingError('Invalid initialisation. Initialise the assignment first.')
 
@@ -40,9 +40,9 @@ class FormatFactory(factory.django.DjangoModelFactory):
 
     @factory.post_generation
     def templates(self, create, extracted):
-        '''
+        """
         Generates a TextTemplate and a Colloquium template by default
-        '''
+        """
         if not create:
             return
 

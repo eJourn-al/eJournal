@@ -47,7 +47,6 @@ class NodeTest(TestCase):
         self.assertRaises(IntegrityError, VLE.models.Node.objects.create, preset=deadline, journal=journal)
 
     def test_get(self):
-        # TODO: Some meaningful tests on what is returned?
         api.get(self, 'nodes', params={'journal_id': self.journal.pk}, user=self.student)
         api.get(self, 'nodes', params={'journal_id': self.journal.pk}, user=factory.Admin())
         api.get(self, 'nodes', params={'journal_id': self.journal.pk}, user=factory.Teacher(), status=403)

@@ -117,8 +117,8 @@ class JournalAPITest(TestCase):
 
         assert user_count + 1 == User.objects.count(), 'One user is created by a group journal by default'
         assert ap_count + 4 == AssignmentParticipation.objects.count(), \
-            '''Creating a group journal with 3 users, also creates three assignment participations (plus one for the
-            teacher)'''
+            """Creating a group journal with 3 users, also creates three assignment participations (plus one for the
+            teacher)"""
         assert AssignmentParticipation.objects.filter(
             journal=group_journal, user__in=group_journal.authors.all().values('user')).count() == 3, \
             'All students APs are attached to the journal'
@@ -164,9 +164,9 @@ class JournalAPITest(TestCase):
             | g_journal.import_request_sources.all().values('pk')
         remaining_jir = JournalImportRequest.objects.get(pk__in=remaining_jir_ids)
         assert remaining_jir == source_approved_jir, \
-            '''When a group journal is reset all jirs apart from those approved with the journal as source should be
+            """When a group journal is reset all jirs apart from those approved with the journal as source should be
             removed. Approved JIRs with the journal as source should persists as this is how entries are flagged as
-            imported.'''
+            imported."""
 
     def test_computed_name(self):
         # A short name which will not be truncated with two users in a journal

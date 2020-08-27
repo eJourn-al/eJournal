@@ -32,11 +32,11 @@ def _model_instance_to_dict(instance, ignore=[]):
 
 
 def _keys_to_path_ignore_regex(ignore_keys=[]):
-    '''
+    """
     Creates a regex which ignore_keys top level path keys matching the ignore_keys list
 
     Will ignore root['<key>|<key>'] etc.
-    '''
+    """
     ignore_keys = list(map(lambda k: re.escape(k), ignore_keys))
 
     return None if not ignore_keys else re.compile(rf"^root(?:\[.*\])*\['(?:{'|'.join(ignore_keys)})'\]$")
@@ -90,10 +90,10 @@ def check_equality_of_imported_file_context(fc1, fc2, ignore_keys):
 
 
 def check_equality_of_imported_rich_text(source_rt, target_rt, model):
-    '''
+    """
     Compares wether the rich text fields of the given models are equal bar the embedded download urls.
     Also checks if the embedded FCs are actually copied but mostly equal.
-    '''
+    """
     if not any([model is handled_model for handled_model in [VLE.models.Content, VLE.models.Comment]]):
         raise VLEProgrammingError('Validating RT of unhandled model')
 

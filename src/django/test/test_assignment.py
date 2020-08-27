@@ -530,15 +530,15 @@ class AssignmentAPITest(TestCase):
 
         assert not created_assignment.is_published, 'Imported assignment should not be published'
         assert pre_import_journal_count == Journal.all_objects.count(), \
-            '''No journals should not be created before the assignment is published.'''
+            """No journals should not be created before the assignment is published."""
         created_assignment.is_published = True
         created_assignment.save()
 
         assert pre_import_format_count + 1 == Format.objects.count(), 'One additional format is created'
         assert created_format == Format.objects.last(), 'Last created format should be the new assignment format'
         assert pre_import_journal_count * 2 - 1 == Journal.all_objects.count(), \
-            '''A journal should be created for each of the existing course users.
-               However, old teacher should not get journal'''
+            """A journal should be created for each of the existing course users.
+               However, old teacher should not get journal"""
         assert pre_import_entry_count == Entry.objects.count(), 'No additional entries are created'
         assert pre_import_node_count + 4 == Node.objects.count(), \
             'Both student and teacher receive nodes for the presets'

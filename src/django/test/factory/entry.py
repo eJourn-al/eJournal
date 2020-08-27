@@ -9,14 +9,14 @@ import VLE.models
 
 
 def _set_template(self, create, extracted, **kwargs):
-    '''
+    """
     Defaults to the first available template of the assignment, else generates a TextTemplate
 
     If the template is already determined, e.g. by the preset node of a DeadlineEntry, use that template.
 
     kwargs allow the format to be set to a different format than the assignment, as this is the case for imported
     entries.
-    '''
+    """
     if not create:
         return
 
@@ -44,10 +44,10 @@ def _author(self, create, extracted, **kwargs):
 
 
 def _grade(self, create, extracted, **kwargs):
-    '''
+    """
     Defaults to no grade unless passed or mentioned via deep syntax,
     e.g. factory.UnlimitedEntry(grade__published=True)
-    '''
+    """
     if not create:
         return
 
@@ -71,9 +71,9 @@ def _gen_content(self, create, extracted, **kwargs):
 
 
 class BaseEntryFactory(factory.django.DjangoModelFactory):
-    '''
+    """
     Do not initialize on its own.
-    '''
+    """
     class Meta:
         model = 'VLE.Entry'
 
@@ -82,7 +82,7 @@ class BaseEntryFactory(factory.django.DjangoModelFactory):
 
 
 class UnlimitedEntryFactory(BaseEntryFactory):
-    '''
+    """
     Creates an 'unlimited' template entry.
 
     Default Yields:
@@ -93,7 +93,7 @@ class UnlimitedEntryFactory(BaseEntryFactory):
         - Grade: Ungraded by default.
         - Content: Will generate content for all allowed fields of its template.
         - Node: A node attached to a journal of type Entry, chains via journal to an assignment and a course.
-    '''
+    """
     node = factory.SubFactory(
         'test.factory.node.NodeFactory',
         type=VLE.models.Node.ENTRY,
@@ -130,13 +130,13 @@ class UnlimitedEntryFactory(BaseEntryFactory):
 # We can't work with a node, as the node can already be created by a Preset for the journal.
 @factory.use_strategy(factory.BUILD_STRATEGY)
 class PresetEntryFactory(BaseEntryFactory):
-    '''
+    """
     Creates a Deadline entry for a ENTRYDEADLINE preset node.
 
     Yields:
         - Equal fields as an UnlimitedEntry
         - If no preset if provided for its node, a PresetNode is created .
-    '''
+    """
     @factory.post_generation
     def node(self, create, extracted, **kwargs):
         if isinstance(extracted, VLE.models.Node):

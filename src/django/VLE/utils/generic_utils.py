@@ -261,13 +261,13 @@ def base64ToContentFile(string, filename):
 
 
 def remove_jirs_on_user_remove_from_jounal(user, journal):
-    '''
+    """
     Removes any pending JIRs if no other of the journal authors are also author in the JIR source.
 
     Args:
         journal (:model:`VLE.journal`): Journal where the user being remove from.
         user (:model:`VLE.user`): User removed from the journal.
-    '''
+    """
     journal_authors_except_user = journal.authors.all().exclude(user=user)
     pending_journal_jirs_authored_by_user = journal.import_request_targets.filter(
         author=user, state=JournalImportRequest.PENDING)

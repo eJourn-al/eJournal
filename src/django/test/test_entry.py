@@ -232,8 +232,6 @@ class EntryAPITest(TestCase):
         valid_file_field_content = entry.content_set.filter(field__type=Field.FILE).first()
         fc = FileContext.objects.get(content=valid_file_field_content)
 
-        # QUESTION: Now the data which is validated is no longer equal to the data of the actual content.
-        # Should this be addressed?
         correct_data_dict = {'id': fc.pk, 'download_url': valid_file_field_content.data}
         validate_entry_content(correct_data_dict, valid_file_field_content.field)
 

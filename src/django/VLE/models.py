@@ -2032,8 +2032,8 @@ class JournalImportRequest(CreateUpdateModel):
             self.APPROVED_EXC_GRADES:
                 'The journal import request has been successfully approved excluding all previous grades.',
             self.APPROVED_WITH_GRADES_ZEROED:
-                '''The journal import request has been successfully approved,
-                and all of the imported entries have been locked (by setting their respective grades to zero).''',
+                """The journal import request has been successfully approved,
+                and all of the imported entries have been locked (by setting their respective grades to zero).""",
             self.EMPTY_WHEN_PROCESSED:
                 'The source journal no longer has entries to import, the request has been archived.',
         }

@@ -16,12 +16,12 @@ def _add_courses(self, create, extracted, **kwargs):
 
 
 class AssignmentFactory(factory.django.DjangoModelFactory):
-    '''
+    """
     Defaults to a format consisting of two templates: Text and Colloquium
 
     It is ensured that the author is a teacher for each attached course. By default the author of the generated
     course is used.
-    '''
+    """
     class Meta:
         model = 'VLE.Assignment'
 

@@ -21,14 +21,14 @@ class UserFactory(factory.django.DjangoModelFactory):
 
     @factory.post_generation
     def preferences(self, create, extracted, **kwargs):
-        '''
+        """
         Allows deep syntax for a users preferences
 
         Preferences is OneToOne with User, where the user fk is its primary key. This results in Django
         auto generating the preferences on creation of a user. Emulating this with a User SubFactory for
         PreferencesFactory and a RelatedFactory for UserFactory caused a duplicate Preferences instance
         to be generated.
-        '''
+        """
         if not create:
             return
 

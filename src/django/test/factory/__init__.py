@@ -8,7 +8,7 @@
 
 def rel_factory(instance, create, extracted, key, model, factory=None, size=1, non_cond_kwargs={}, cond_kwargs={},
                 default=None, **kwargs):
-    '''
+    """
     Default RelatedFactory is lacking
 
     - Cannot pass size as a keyword to the related factory: https://github.com/FactoryBoy/factory_boy/issues/767
@@ -23,7 +23,7 @@ def rel_factory(instance, create, extracted, key, model, factory=None, size=1, n
         factory (factory.django.DjangoModelFactory): Factory used to created the instances field (fk) instance
         size (int): Number of fk field instances to initiate
         default (obj): If no exact match is found or deep syntax arguments are given, set instance attr to this value.
-    '''
+    """
     if not create:
         return
 

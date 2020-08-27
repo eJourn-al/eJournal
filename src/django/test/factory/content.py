@@ -19,9 +19,9 @@ if not (os.path.exists(IMG_FILE_PATH)):
 
 
 def _from_file_to_file(from_file):
-    '''
+    """
     factoryboy's FileField from_path default is ''
-    '''
+    """
 
     if isinstance(from_file, io.IOBase):
         return from_file
@@ -31,7 +31,7 @@ def _from_file_to_file(from_file):
 
 
 class ContentFactory(factory.django.DjangoModelFactory):
-    '''
+    """
     Generates valid content for the selected (:model:`VLE.Field`): type
 
     Kwargs:
@@ -43,7 +43,7 @@ class ContentFactory(factory.django.DjangoModelFactory):
         Make from_file passing argument checks clean
         Provide a way to provide more varied from file arguments
         Make from file argument compatible with field options
-    '''
+    """
     class Meta:
         model = 'VLE.Content'
 
