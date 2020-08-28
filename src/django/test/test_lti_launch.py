@@ -47,8 +47,12 @@ REQUEST = {
 }
 
 
-def create_request(request_body={}, timestamp=str(int(time.time())), nonce=str(oauth2.generate_nonce()),
+def create_request(request_body={}, timestamp=None, nonce=None,
                    delete_field=False):
+    if nonce is None:
+        nonce = str(oauth2.generate_nonce())
+    if timestamp is None:
+        timestamp = str(int(time.time()))
     request = REQUEST.copy()
     request['oauth_timestamp'] = timestamp
     request['oauth_nonce'] = nonce
@@ -68,11 +72,13 @@ def create_request(request_body={}, timestamp=str(int(time.time())), nonce=str(o
     return request
 
 
-def lti_launch(request_body={}, response_value=lti_view.LTI_STATES.NO_USER.value, timestamp=str(int(time.time())),
+def lti_launch(request_body={}, response_value=lti_view.LTI_STATES.NO_USER.value, timestamp=None,
                nonce=None, status=302, assert_msg='',
                delete_field=False):
     if nonce is None:
         nonce = str(oauth2.generate_nonce())
+    if timestamp is None:
+        timestamp = str(int(time.time()))
     request = create_request(request_body, timestamp, nonce, delete_field)
     request = RequestFactory().post('http://127.0.0.1:8000/lti/launch', request)
     response = lti_view.lti_launch(request)
@@ -81,9 +87,13 @@ def lti_launch(request_body={}, response_value=lti_view.LTI_STATES.NO_USER.value
     return response
 
 
-def get_jwt(obj, request_body={}, timestamp=str(int(time.time())), nonce=str(oauth2.generate_nonce()),
+def get_jwt(obj, request_body={}, timestamp=None, nonce=None,
             user=None, status=200, response_msg='', assert_msg='', response_value=None, delete_field=False,
             access=None, url='get_lti_params_from_jwt'):
+    if nonce is None:
+        nonce = str(oauth2.generate_nonce())
+    if timestamp is None:
+        timestamp = str(int(time.time()))
     request = create_request(request_body, timestamp, nonce, delete_field)
     jwt_params = lti_view.encode_lti_params(request)
     response = api.post(obj, url, params={'jwt_params': jwt_params},  user=user, status=status, access=access)
