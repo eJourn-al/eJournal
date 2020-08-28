@@ -492,7 +492,9 @@ class EntryAPITest(TestCase):
             'content': entry['content'].copy()
         }
 
-        api.update(self, 'entries', params=params.copy(), user=self.student)
+        updated_entry = api.update(self, 'entries', params=params.copy(), user=self.student)['entry']
+        assert entry['last_edited'] != updated_entry['last_edited'], \
+            'Last edited should update when entry content changes'
 
         # Check if last_edited_by gets set to the correct other user
         last_edited = factory.AssignmentParticipation(assignment=self.group_journal.assignment)
@@ -581,9 +583,12 @@ class EntryAPITest(TestCase):
 
     def test_grade(self):
         entry = api.create(self, 'entries', params=self.valid_create_params, user=self.student)['entry']
-        entry = api.create(self, 'grades', params={'entry_id': entry['id'], 'grade': 1, 'published': True},
-                           user=self.teacher)['entry']
-        assert entry['grade']['grade'] == 1
+        graded_entry = api.create(
+            self, 'grades', params={'entry_id': entry['id'], 'grade': 1, 'published': True},
+            user=self.teacher)['entry']
+        assert graded_entry['grade']['grade'] == 1
+        assert entry['last_edited'] == graded_entry['last_edited'], \
+            'Last edited of entry should not update when grade changes'
         entry = api.create(self, 'grades', params={'entry_id': entry['id'], 'grade': 0, 'published': True},
                            user=self.teacher)['entry']
         assert entry['grade']['grade'] == 0

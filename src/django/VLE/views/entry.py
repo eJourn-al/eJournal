@@ -3,6 +3,7 @@ entry.py.
 
 In this file are all the entry api requests.
 """
+from django.utils import timezone
 from rest_framework import viewsets
 
 import VLE.factory as factory
@@ -204,6 +205,7 @@ class EntryView(viewsets.ViewSet):
         file_handling.remove_unused_user_files(request.user)
         grading.task_journal_status_to_LMS.delay(journal.pk)
         entry.last_edited_by = request.user
+        entry.last_edited = timezone.now()
         entry.save()
 
         return response.success({'entry': serialize.EntrySerializer(entry, context={'user': request.user}).data})
