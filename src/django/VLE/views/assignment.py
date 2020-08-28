@@ -453,12 +453,11 @@ class AssignmentView(viewsets.ViewSet):
         template_data = TemplateSerializer(template, context={'user': request.user}).data
         template_data.pop('id')
         template_data.pop('archived')
-        template_data.pop('format')
+        template_data.pop('format', None)
         template.delete()
 
         for field in template_data['field_set']:
             field.pop('id')
-            field.pop('template')
 
         return response.success({'template': template_data})
 

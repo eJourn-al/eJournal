@@ -151,8 +151,8 @@ class CourseSerializer(serializers.ModelSerializer):
 class GroupSerializer(serializers.ModelSerializer):
     class Meta:
         model = Group
-        fields = '__all__'
-        read_only_fields = ('id', 'course', 'lti_id')
+        fields = ('id', 'name', 'course')
+        read_only_fields = ('id', 'course')
 
 
 class AssignmentParticipationSerializer(serializers.ModelSerializer):
@@ -179,7 +179,7 @@ class ParticipationSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Participation
-        fields = '__all__'
+        fields = ('id', 'user', 'course', 'role', 'groups',)
         read_only_fields = ('id', )
 
     def get_user(self, participation):
@@ -468,13 +468,6 @@ class SmallAssignmentSerializer(AssignmentSerializer):
             target__assignment=assignment, state=JournalImportRequest.PENDING).count()
 
 
-class NodeSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Node
-        fields = '__all__'
-        read_only_fields = ('id', )
-
-
 class CommentSerializer(serializers.ModelSerializer):
     author = serializers.SerializerMethodField()
     last_edited_by = serializers.SerializerMethodField()
@@ -513,7 +506,10 @@ class CommentSerializer(serializers.ModelSerializer):
 class RoleSerializer(serializers.ModelSerializer):
     class Meta:
         model = Role
-        fields = '__all__'
+        # Get name, course, and all permissions
+        fields = ('id', 'name', 'course', ) + \
+            tuple(permission.name for permission in Role._meta.get_fields(include_parents=False)
+                  if permission.name in Role.PERMISSIONS)
         read_only_fields = ('id', 'course')
 
 
@@ -699,7 +695,7 @@ class TemplateSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Template
-        fields = '__all__'
+        fields = ('id', 'name', 'preset_only', 'archived', 'field_set')
         read_only_fields = ('id', )
 
     def get_field_set(self, template):
@@ -721,7 +717,7 @@ class FileSerializer(serializers.ModelSerializer):
 class FieldSerializer(serializers.ModelSerializer):
     class Meta:
         model = Field
-        fields = '__all__'
+        fields = ('id', 'type', 'title', 'description', 'options', 'location', 'required', )
 
 
 class JournalImportRequestSerializer(serializers.ModelSerializer):
