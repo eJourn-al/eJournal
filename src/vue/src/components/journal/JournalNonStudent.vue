@@ -208,7 +208,7 @@ import LoadWrapper from '@/components/loading/LoadWrapper.vue'
 import JournalStartCard from '@/components/journal/JournalStartCard.vue'
 import JournalEndCard from '@/components/journal/JournalEndCard.vue'
 import ProgressNode from '@/components/entry/ProgressNode.vue'
-import journalImportRequestApprovalModal from '@/components/journal/JournalImportRequestApprovalModal.vue'
+import JournalImportRequestApprovalModal from '@/components/journal/JournalImportRequestApprovalModal.vue'
 
 import store from '@/Store.vue'
 import journalAPI from '@/api/journal.js'
@@ -225,7 +225,7 @@ export default {
         JournalStartCard,
         JournalEndCard,
         ProgressNode,
-        journalImportRequestApprovalModal,
+        JournalImportRequestApprovalModal,
     },
     props: ['cID', 'aID', 'jID'],
     data () {
