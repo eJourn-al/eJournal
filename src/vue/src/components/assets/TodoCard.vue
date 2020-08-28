@@ -1,7 +1,7 @@
 <template>
     <b-card :class="$root.getBorderClass(deadline.id)">
         <!-- Teacher show things todo -->
-        <number-badges-display
+        <number-badge
             v-if="thingsToDo"
             :absolute="false"
             :badges="[
@@ -61,11 +61,11 @@
 </template>
 
 <script>
-import numberBadgesDisplay from '@/components/assets/NumberBadgesDisplay.vue'
+import NumberBadge from '@/components/assets/NumberBadge.vue'
 
 export default {
     components: {
-        numberBadgesDisplay,
+        NumberBadge,
     },
     props: {
         deadline: {

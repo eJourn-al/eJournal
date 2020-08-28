@@ -4,7 +4,8 @@
         class="no-hover"
     >
         <div class="multi-form">
-            <b>Needs marking</b><number-badges-display
+            <b>Needs marking</b>
+            <number-badge
                 :badges="[{ value: stats.needsMarking }]"
                 :absolute="false"
                 keyPrefix="needs-marking-statistics"
@@ -12,7 +13,8 @@
             />
         </div>
         <div class="multi-form">
-            <b>Unpublished grades</b><number-badges-display
+            <b>Unpublished grades</b>
+            <number-badge
                 :badges="[{ value: stats.unpublished }]"
                 :absolute="false"
                 class="float-right"
@@ -20,7 +22,8 @@
             />
         </div>
         <div :class="{'multi-form': stats.importRequests > 0}">
-            <b>Average points</b><number-badges-display
+            <b>Average points</b>
+            <number-badge
                 :badges="[{ value: stats.averagePoints }]"
                 :absolute="false"
                 class="float-right"
@@ -28,7 +31,8 @@
             />
         </div>
         <div v-if="stats.importRequests">
-            <b>Import requests</b><number-badges-display
+            <b>Import requests</b>
+            <number-badge
                 :badges="[{ value: stats.importRequests }]"
                 :absolute="false"
                 class="float-right"
@@ -39,11 +43,11 @@
 </template>
 
 <script>
-import numberBadgesDisplay from '@/components/assets/NumberBadgesDisplay.vue'
+import NumberBadge from '@/components/assets/NumberBadge.vue'
 
 export default {
     components: {
-        numberBadgesDisplay,
+        NumberBadge,
     },
     props: ['stats'],
 }

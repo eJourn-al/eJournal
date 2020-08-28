@@ -13,7 +13,7 @@
                         class="no-hover"
                         :src="journal.image"
                     />
-                    <number-badges-display
+                    <number-badge
                         v-if="$hasPermission('can_view_all_journals')
                             && (journal.needs_marking || journal.unpublished || journal.import_requests)"
                         :badges="[
@@ -108,14 +108,14 @@
 
 <script>
 import progressBar from '@/components/assets/ProgressBar.vue'
-import numberBadgesDisplay from '@/components/assets/NumberBadgesDisplay.vue'
+import NumberBadge from '@/components/assets/NumberBadge.vue'
 import journalMembers from '@/components/journal/JournalMembers.vue'
 
 export default {
     components: {
         progressBar,
         journalMembers,
-        numberBadgesDisplay,
+        NumberBadge,
     },
     props: {
         assignment: {

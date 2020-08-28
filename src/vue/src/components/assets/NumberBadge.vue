@@ -1,7 +1,7 @@
 <template>
     <div
         :class="{'absolute': absolute}"
-        class="number-badges-container"
+        class="number-badge-container"
     >
         <b-badge
             v-for="(d, i) in displayedBadges"
@@ -102,7 +102,7 @@ export default {
     right: 0px
     top: 0px
 
-.number-badges-container
+.number-badge-container
     font-size: 1em
     .badge-part
         border-top: 1px solid $theme-dark-grey !important

@@ -14,7 +14,7 @@
 
             <p>
                 Please select a journal to import. Your request will be sent to your educator for approval. Once
-                approved, the entries of the selected journal will be added to your journal. The reuse of existing
+                approved, the entries of the selected journal will be added to your journal. The transfer of existing
                 grades remains at the discretion of your eduator.
             </p>
 
@@ -63,7 +63,8 @@
                         No importable journals available.
                     </h4>
                     <hr class="m-0 mb-1"/>
-                    You can only import journal your own journals, and you cannot a journal into itself.
+                    You can only import journal your own journals, and you cannot import a journal from within the same
+                    assignment.
                 </div>
             </load-wrapper>
         </b-card>
