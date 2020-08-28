@@ -1,4 +1,4 @@
-import test.factory.role
+import test.factory
 
 import factory
 
@@ -6,6 +6,11 @@ import VLE.models
 
 
 class CourseFactory(factory.django.DjangoModelFactory):
+    """
+    Provides a (:model:`VLE.Course`) instance
+
+    The author generated unless specified and a given (:model:`VLE.Role`) as a Teacher with the expected permissions.
+    """
     class Meta:
         model = 'VLE.Course'
 
@@ -13,26 +18,20 @@ class CourseFactory(factory.django.DjangoModelFactory):
     abbreviation = "AVI1"
     startdate = factory.Faker('date_between', start_date="-10y", end_date="-1y")
     enddate = factory.Faker('date_between', start_date="+1y", end_date="+10y")
-
-    student_role = factory.RelatedFactory('test.factory.role.StudentRoleFactory', 'course')
-    ta_role = factory.RelatedFactory('test.factory.role.TaRoleFactory', 'course')
     author = factory.SubFactory('test.factory.user.TeacherFactory')
 
+    student_role = factory.RelatedFactory('test.factory.role.StudentRoleFactory', factory_related_name='course')
+    ta_role = factory.RelatedFactory('test.factory.role.TaRoleFactory', factory_related_name='course')
+    teacher_role = factory.RelatedFactory('test.factory.role.TeacherRoleFactory', factory_related_name='course')
+
     @factory.post_generation
-    def author_participation(self, create, extracted):
+    def ensure_author_is_course_teacher(self, create, extracted):
         if not create:
             return
 
-        # Ensure TeacherRole is always created.
-        role = test.factory.role.TeacherRoleFactory(course=self)
-
-        if extracted:
-            return extracted
-
-        participation = VLE.models.Participation(course=self, user=self.author, role=role)
-        participation.save()
-
-        return participation
+        if not VLE.models.Participation.objects.filter(user=self.author, course=self).exists():
+            role = VLE.models.Role.objects.get(name='Teacher', course=self)
+            test.factory.Participation(user=self.author, course=self, role=role)
 
 
 class LtiCourseFactory(CourseFactory):

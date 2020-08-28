@@ -146,7 +146,7 @@
                     </h3>
                     <div
                         v-if="$hasPermission('can_grade')"
-                        class="bonus-section grade-section full-width"
+                        class="bonus-section grade-section mb-2 full-width"
                     >
                         <div>
                             <b-form-input
@@ -172,12 +172,28 @@
                     </div>
                     <b-button
                         v-if="$hasPermission('can_publish_grades')"
-                        class="add-button full-width"
+                        class="add-button mb-2 full-width"
                         @click="publishGradesJournal"
                     >
                         <icon name="upload"/>
                         Publish all grades
                     </b-button>
+                    <div v-if="$hasPermission('can_grade') && !loadingNodes">
+                        <b-button
+                            v-if="journal.import_requests"
+                            v-b-modal="'journal-import-request-approval-modal'"
+                            class="multi-form change-button mb-2 full-width"
+                        >
+                            <icon name="file-import"/>
+                            Manage Import Requests
+                        </b-button>
+
+                        <journal-import-request-approval-modal
+                            v-if="journal.import_requests"
+                            modalID="journal-import-request-approval-modal"
+                            @jir-processed="loadJournal(false)"
+                        />
+                    </div>
                 </b-col>
             </b-row>
         </b-col>
@@ -193,6 +209,7 @@ import LoadWrapper from '@/components/loading/LoadWrapper.vue'
 import JournalStartCard from '@/components/journal/JournalStartCard.vue'
 import JournalEndCard from '@/components/journal/JournalEndCard.vue'
 import ProgressNode from '@/components/entry/ProgressNode.vue'
+import JournalImportRequestApprovalModal from '@/components/journal/JournalImportRequestApprovalModal.vue'
 
 import store from '@/Store.vue'
 import journalAPI from '@/api/journal.js'
@@ -209,6 +226,7 @@ export default {
         JournalStartCard,
         JournalEndCard,
         ProgressNode,
+        JournalImportRequestApprovalModal,
     },
     props: ['cID', 'aID', 'jID'],
     data () {
@@ -393,7 +411,7 @@ export default {
                 journalAPI.update(
                     this.journal.id,
                     { bonus_points: this.bonusPointsTemp },
-                    { customSuccessToast: 'Bonus succesfully added.' },
+                    { customSuccessToast: 'Bonus successfully added.' },
                 )
                     .then((journal) => { this.journal = journal })
             }

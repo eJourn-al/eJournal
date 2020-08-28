@@ -10,15 +10,6 @@ from VLE.models import Field, Node
 from VLE.utils.error_handling import VLEBadRequest, VLEMissingRequiredField
 
 
-def patch_entry_content(user, entry, old_content, field, new_content, assignment):
-    """Creates new content for an entry, deleting the current content.
-
-    If no temporary file is stored to replace the current content, the old content is kept as is.
-    new_content should be the content itself (so e.g. text), whereas old_content is the stored Content object."""
-    old_content.data = new_content
-    old_content.save()
-
-
 def get_node_index(journal, node, user):
     for i, result_node in enumerate(timeline.get_nodes(journal, user)):
         if result_node['nID'] == node.id:

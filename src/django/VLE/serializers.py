@@ -9,10 +9,12 @@ from django.conf import settings
 from django.db.models import Avg, Count, Min, Q, Sum
 from django.utils import timezone
 from rest_framework import serializers
+from sentry_sdk import capture_message
 
 import VLE.permissions as permissions
 from VLE.models import (Assignment, AssignmentParticipation, Comment, Course, Entry, Field, FileContext, Format, Grade,
-                        Group, Instance, Journal, Node, Participation, Preferences, PresetNode, Role, Template, User)
+                        Group, Instance, Journal, JournalImportRequest, Node, Participation, Preferences, PresetNode,
+                        Role, Template, User)
 from VLE.utils import generic_utils as utils
 from VLE.utils.error_handling import VLEParticipationError, VLEProgrammingError
 
@@ -162,11 +164,11 @@ class AssignmentParticipationSerializer(serializers.ModelSerializer):
         fields = ('id', 'journal', 'assignment', 'user', 'needs_lti_link')
         read_only_fields = ('id', 'journal', 'assignment')
 
-    def get_user(self, participation):
-        return UserSerializer(participation.user, context=self.context).data
+    def get_user(self, ap):
+        return UserSerializer(ap.user, context=self.context).data
 
-    def get_needs_lti_link(self, participation):
-        return participation.needs_lti_link()
+    def get_needs_lti_link(self, ap):
+        return ap.needs_lti_link()
 
 
 class ParticipationSerializer(serializers.ModelSerializer):
@@ -361,6 +363,12 @@ class AssignmentSerializer(serializers.ModelSerializer):
                 'needs_marking_own_groups': own_group.aggregate(Sum('needs_marking'))['needs_marking__sum'] or 0,
                 'unpublished_own_groups': own_group.aggregate(Sum('unpublished'))['unpublished__sum'] or 0,
             })
+        if self.context['user'].has_permission('can_manage_journal_import_requests', assignment):
+            own_group = journal_set.filter(authors__user__in=own_group_users)
+            stats.update({
+                'import_requests': journal_set.aggregate(Sum('import_requests'))['import_requests__sum'] or 0,
+                'import_requests_own_groups': own_group.aggregate(Sum('import_requests'))['import_requests__sum'] or 0,
+            })
         # Other stats
         stats['average_points'] = journal_set.aggregate(Avg('grade'))['grade__avg']
 
@@ -446,12 +454,18 @@ class AssignmentFormatSerializer(AssignmentSerializer):
 
 
 class SmallAssignmentSerializer(AssignmentSerializer):
+    journal_import_requests = serializers.SerializerMethodField()
+
     class Meta:
         model = Assignment
         fields = (
             'id', 'name', 'is_group_assignment', 'is_published', 'points_possible', 'unlock_date', 'due_date',
-            'lock_date', 'deadline', 'journal', 'stats', 'course', 'active_lti_course')
+            'lock_date', 'deadline', 'journal', 'stats', 'course', 'journal_import_requests', 'active_lti_course')
         read_only_fields = ('id', )
+
+    def get_journal_import_requests(self, assignment):
+        return JournalImportRequest.objects.filter(
+            target__assignment=assignment, state=JournalImportRequest.PENDING).count()
 
 
 class NodeSerializer(serializers.ModelSerializer):
@@ -511,9 +525,9 @@ class JournalSerializer(serializers.ModelSerializer):
     class Meta:
         model = Journal
         fields = ('id', 'bonus_points', 'grade', 'name', 'image', 'author_limit',
-                  'locked', 'author_count', 'full_names', 'groups',
+                  'locked', 'author_count', 'full_names', 'groups', 'import_requests',
                   'grade', 'name', 'image', 'needs_lti_link', 'unpublished', 'needs_marking', 'usernames')
-        read_only_fields = ('id', 'assignment', 'authors', 'grade')
+        read_only_fields = ('id', 'assignment', 'authors', 'grade', 'import_requests')
 
     def get_author_count(self, journal):
         # If annotated in the query, get that, else query here
@@ -595,11 +609,12 @@ class EntrySerializer(serializers.ModelSerializer):
     comments = serializers.SerializerMethodField()
     author = serializers.SerializerMethodField()
     last_edited_by = serializers.SerializerMethodField()
+    jir = serializers.SerializerMethodField()
 
     class Meta:
         model = Entry
         fields = ('id', 'creation_date', 'template', 'content', 'editable',
-                  'grade', 'last_edited', 'comments', 'author', 'last_edited_by')
+                  'grade', 'last_edited', 'comments', 'author', 'last_edited_by', 'jir')
         read_only_fields = ('id', 'template', 'creation_date', 'content', 'grade')
 
     def get_author(self, entry):
@@ -620,6 +635,8 @@ class EntrySerializer(serializers.ModelSerializer):
                 try:
                     content_dict[content.field.id] = FileSerializer(FileContext.objects.get(pk=content.data)).data
                 except FileContext.DoesNotExist:
+                    capture_message(
+                        f'FILE content {content.pk} refers to unknown file in data: {content.data}', level='error')
                     return None
             else:
                 content_dict[content.field.id] = content.data
@@ -643,6 +660,16 @@ class EntrySerializer(serializers.ModelSerializer):
         if 'comments' not in self.context or not self.context['comments']:
             return None
         return CommentSerializer(Comment.objects.filter(entry=entry), many=True).data
+
+    def get_jir(self, entry):
+        if entry.jir:
+            return {
+                'source': {
+                    'assignment': AssignmentSerializer(entry.jir.source.assignment, context=self.context).data,
+                },
+                'processor': UserSerializer(entry.jir.processor, context=self.context).data
+            }
+        return None
 
 
 class GradeSerializer(serializers.ModelSerializer):
@@ -695,3 +722,36 @@ class FieldSerializer(serializers.ModelSerializer):
     class Meta:
         model = Field
         fields = '__all__'
+
+
+class JournalImportRequestSerializer(serializers.ModelSerializer):
+    author = serializers.SerializerMethodField()
+    source = serializers.SerializerMethodField()
+    target = serializers.SerializerMethodField()
+    processor = serializers.SerializerMethodField()
+
+    class Meta:
+        model = JournalImportRequest
+        fields = ('id', 'source', 'target', 'author', 'processor')
+        read_only_fields = ('id', 'source', 'target', 'author', 'processor')
+
+    def get_author(self, jir):
+        return UserSerializer(jir.author, context=self.context).data
+
+    def get_processor(self, jir):
+        return UserSerializer(jir.processor, context=self.context).data
+
+    def get_source(self, jir):
+        if jir.source is None:
+            return 'Source journal no longer exists.'
+
+        return {
+            'journal': JournalSerializer(jir.source, context=self.context).data,
+            'assignment': SmallAssignmentSerializer(jir.source.assignment, context=self.context).data,
+        }
+
+    def get_target(self, jir):
+        return {
+            'journal': JournalSerializer(jir.target, context=self.context).data,
+            'assignment': SmallAssignmentSerializer(jir.target.assignment, context=self.context).data,
+        }

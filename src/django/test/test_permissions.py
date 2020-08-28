@@ -298,7 +298,6 @@ class PermissionTests(TestCase):
         low2 = factory.make_role_default_no_perms("LOW", self.course2)
         factory.make_participation(low_user, self.course1, low1)
         factory.make_participation(low_user, self.course2, low2)
-        factory.make_journal(self.assignment, author=low_user)
 
         assert permissions.is_user_supervisor_of(high_user, low_user)
         assert permissions.is_user_supervisor_of(high_user, middle_user)

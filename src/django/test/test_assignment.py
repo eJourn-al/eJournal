@@ -8,17 +8,17 @@ from dateutil import parser
 from dateutil.relativedelta import relativedelta
 from django.core.exceptions import ValidationError
 from django.core.files.uploadedfile import SimpleUploadedFile
+from django.db.models import Q
 from django.db.utils import IntegrityError
 from django.test import TestCase
 from django.test.utils import override_settings
 from django.utils import timezone
 
-import VLE.factory
 import VLE.utils.generic_utils as utils
-from VLE.models import (Assignment, AssignmentParticipation, Course, Entry, Field, Format, Journal, Node, Participation,
-                        PresetNode, Role, Template)
+from VLE.models import (Assignment, AssignmentParticipation, Course, Entry, Field, Format, Journal,
+                        JournalImportRequest, Node, Participation, PresetNode, Role, Template)
 from VLE.serializers import AssignmentSerializer
-from VLE.utils.error_handling import VLEParticipationError
+from VLE.utils.error_handling import VLEParticipationError, VLEProgrammingError
 from VLE.views.assignment import day_neutral_datetime_increment, set_assignment_dates
 
 
@@ -58,6 +58,83 @@ class AssignmentAPITest(TestCase):
                       create_params=self.create_params,
                       create_status=403,
                       user=factory.Student())
+
+    def test_assignment_factory(self):
+        # A Format should only be intialized via its respective Assignment
+        self.assertRaises(VLEProgrammingError, factory.Format)
+
+        j_all_count = Journal.all_objects.count()
+        j_count = Journal.objects.count()
+        ap_count = AssignmentParticipation.objects.count()
+
+        assignment = factory.Assignment()
+        assert assignment.author is not None, 'Author should be generated if not specified'
+        assert assignment.courses.exists(), 'Course is generated for the generated assignment'
+        assert assignment.format.template_set.exists(), 'Templates are generated alongside the assignment'
+        assert not assignment.format.presetnode_set.exists(), 'Assignment is initialized by default without PresetNodes'
+        assert j_count == Journal.objects.count(), 'The created journal (teachers) cannot be queried directly'
+        assert j_all_count + 1 == Journal.all_objects.count(), 'One journal is created (assuming the teachers)'
+        assert ap_count + 1 == AssignmentParticipation.objects.count(), 'One AP is created (assuming the teachers)'
+        ap = AssignmentParticipation.objects.get(~Q(journal=None), user=assignment.author, assignment=assignment)
+        assert ap.journal.authors.first().user.pk == assignment.author.pk, 'The AP belongs to the assignment author'
+        assert ap.journal.assignment.pk == assignment.pk, 'AP is correctly linked to the teacher and assignment'
+
+        assignment = factory.Assignment(courses=[])
+        assert not assignment.courses.exists(), 'It is possible to generate an assignment without any associated course'
+        assert assignment.author, 'The assignment still has an author, even without associated course.'
+
+        assignment_author_name = 'Test'
+        assignment = factory.Assignment(author__full_name=assignment_author_name)
+        assert assignment.author.full_name == assignment_author_name, \
+            'If any kwargs relate to the author, generate the author and pass the args along'
+
+        course = factory.Course()
+        assignment = factory.Assignment(courses=[course])
+        teacher_role = Role.objects.get(name='Teacher', course=course)
+
+        assert assignment.courses.filter(pk=course.pk).exists(), 'Assignment is successfully linked to the course'
+        assert course.author.pk == assignment.author.pk, 'Course author is reused for the assignment by default'
+        assert Participation.objects.filter(role=teacher_role, user=assignment.author, course=course).exists(), \
+            'Assignment author is an actual teacher in the associated course'
+
+        teacher = factory.Teacher()
+        course2 = factory.Course()
+        assignment2 = factory.Assignment(courses=[course, course2], author=teacher)
+        assert assignment2.author.pk == teacher.pk, 'Assignment author can be specified manually as well'
+        assert Participation.objects.filter(
+            role__name='Teacher', user=assignment2.author, course__in=[course, course2]).count() == 2, \
+            'Assignment author is also an actual teacher in the associated courses when specified manually'
+
+        lti_assignment = factory.LtiAssignment()
+        lti_assignment.courses.filter(assignment_lti_id_set__contains=[lti_assignment.active_lti_id]).count() \
+            == lti_assignment.courses.count(), 'The lti id is added to each course\'s assignment id'
+
+    def test_group_assignment_factory(self):
+        j_all_count = Journal.all_objects.count()
+        ap_count = AssignmentParticipation.objects.count()
+        j_count = Journal.all_objects.count()
+        g_assignment = factory.Assignment(group_assignment=True)
+
+        assert g_assignment.is_group_assignment
+        assert j_all_count == Journal.all_objects.count(), \
+            'There is no journal created for the teacher in a group assignment'
+        assert ap_count + 1 == AssignmentParticipation.objects.count(), 'One AP created for the teacher'
+        ap = AssignmentParticipation.objects.get(user=g_assignment.author, assignment=g_assignment)
+        assert ap.journal is None, 'The AP of the teacher does not link to any journal in a group assignment'
+
+        g_assignment.is_group_assignment = False
+        g_assignment.save()
+
+        ap = AssignmentParticipation.objects.get(user=g_assignment.author, assignment=g_assignment)
+        assert j_all_count + 1 == Journal.all_objects.count(), 'One journal is created (assuming the teachers)'
+        assert j_count == Journal.objects.count(), 'The created journal (teachers) cannot be queried directly'
+        assert ap_count + 1 == AssignmentParticipation.objects.count(), 'One AP is created (assuming the teachers)'
+        assert ap.journal.authors.first().user.pk == g_assignment.author.pk, 'The AP belongs to the assignment author'
+        assert ap.journal.assignment.pk == g_assignment.pk, 'AP is correctly linked to the teacher and assignment'
+        assert ap.journal is not None, \
+            'The AP is linked to a journal now that the assignment is no longer a group assignment'
+        assert ap.journal.authors.count() == 1 and ap.journal.authors.first().user.pk == g_assignment.author.pk, \
+            'The created journal is linked to the assignment teacher'
 
     def test_create_assignment(self):
         lti_params = {**self.create_params, **{'lti_id': 'new_lti_id'}}
@@ -112,72 +189,89 @@ class AssignmentAPITest(TestCase):
         self.course.refresh_from_db()
         assert 'random_lti_id_salkdjfhas' in self.course.assignment_lti_id_set
 
-    def test_get_assignment(self):
-        student = factory.Student()
+    def test_get_assignment_stats(self):
+        unrelated_student = factory.Student()
         assignment = factory.Assignment(courses=[self.course])
         group = factory.Group(course=self.course)
+        n_journals = 2
+        n_entries = 10
+        n_graded_entries = 4
+        n_jirs = 1
+        n_ungraded_entries = n_entries - n_graded_entries
 
-        api.get(self, 'assignments', params={'pk': assignment.pk}, user=student, status=403)
+        api.get(self, 'assignments', params={'pk': assignment.pk}, user=unrelated_student, status=403)
 
         # Add journals with some graded but unpublished entries
-        for _ in range(2):
-            student = factory.Student()
-            student_participation = factory.Participation(
-                user=student, course=self.course, role=Role.objects.get(course=self.course, name='Student')
-            )
-            journal = Journal.objects.get(authors__user=student, assignment=assignment)
-            for i in range(10):
-                entry = factory.Entry(node__journal=journal)
-                if i > 5:
-                    api.create(self, 'grades', params={'entry_id': entry.pk, 'grade': 5, 'published': False},
-                               user=self.teacher)
+        for _ in range(n_journals):
+            journal = factory.Journal(assignment=assignment, entries__n=n_ungraded_entries)
+            factory.JournalImportRequest(target=journal)
+            for i in range(n_graded_entries):
+                entry = factory.UnlimitedEntry(
+                    node__journal=journal, grade=factory.Grade(grade=5, published=False, author=self.teacher))
 
+        student = journal.authors.first().user
         resp = api.get(self, 'assignments', params={'pk': assignment.pk, 'course_id': self.course.pk},
                        user=student)['assignment']
         assert resp['journal'] is not None, 'Response should include student serializer'
         assert 'needs_marking' not in resp['stats'], 'Student serializer should not include grading stats'
+        assert 'import_requests' not in resp['stats'], 'Student serializer should not import request stats'
         assert 'unpublished' not in resp['stats'], 'Student serializer should not include grading stats'
         assert 'needs_marking_own_groups' not in resp['stats'], 'Student serializer should not include grading stats'
-        assert 'unpublished_own_groups' not in resp['stats'], 'Student serializer should not include grading stats'
-        assert resp['stats']['average_points'] == 0,\
+        assert 'unpublished_own_groups' not in resp['stats'], 'Student serializer should not import request stats'
+        assert 'import_requests_own_groups' not in resp['stats'], 'Student serializer should not include grading stats'
+        assert resp['stats']['average_points'] == 0, \
             'Student serializer should not reveal stats about unpublished grades'
 
         resp = api.get(self, 'assignments', params={'pk': assignment.pk, 'course_id': self.course.pk},
                        user=self.teacher)['assignment']
         assert resp['journals'] is not None, 'Response should include teacher serializer'
-        assert resp['stats']['needs_marking'] == 12, '12 entries do not have a grade yet'
-        assert resp['stats']['unpublished'] == 8, '8 grades still need to be published'
-        assert resp['stats']['needs_marking_own_groups'] == 0,\
+        assert resp['stats']['needs_marking'] == n_ungraded_entries * n_journals, 'entries do not have a grade yet'
+        assert resp['stats']['unpublished'] == n_graded_entries * n_journals, 'grades still need to be published'
+        assert resp['stats']['import_requests'] == n_jirs * n_journals
+        assert resp['stats']['needs_marking_own_groups'] == 0, \
             'Own group stats should be empty without being member of a group'
-        assert resp['stats']['unpublished_own_groups'] == 0,\
+        assert resp['stats']['unpublished_own_groups'] == 0, \
             'Own group stats should be empty without being member of a group'
+        assert resp['stats']['import_requests_own_groups'] == 0, 'No pending import request of own group'
 
         # Add student and teacher to the same group
-        student_participation.groups.add(group)
-        teacher_participation = Participation.objects.get(user=self.teacher, course=self.course)
-        teacher_participation.groups.add(group)
+        student.participation_set.first().groups.add(group)
+        self.teacher.participation_set.get(course=self.course).groups.add(group)
 
         resp = api.get(self, 'assignments', params={'pk': assignment.pk, 'course_id': self.course.pk},
                        user=self.teacher)['assignment']
-        assert resp['stats']['needs_marking'] == 12, 'Non-group stats shall remain the same when in a group'
-        assert resp['stats']['unpublished'] == 8, 'Non-group stats shall remain the same when in a group'
-        assert resp['stats']['needs_marking_own_groups'] == 6, '6 entries in own group do not have a grade yet'
-        assert resp['stats']['unpublished_own_groups'] == 4, '4 grades in own group still need to be published'
+        assert resp['stats']['needs_marking'] == n_ungraded_entries * n_journals, \
+            'Non-group stats shall remain the same when in a group'
+        assert resp['stats']['unpublished'] == n_graded_entries * n_journals, \
+            'Non-group stats shall remain the same when in a group'
+        assert resp['stats']['import_requests'] == n_jirs * n_journals, \
+            'Non group JIR stats shall remain the same when in a group'
+        assert resp['stats']['needs_marking_own_groups'] == n_ungraded_entries, \
+            'Entries in own group do not have a grade yet'
+        assert resp['stats']['unpublished_own_groups'] == n_graded_entries, \
+            'Grades in own group still need to be published'
+        assert resp['stats']['import_requests_own_groups'] == n_jirs, 'Only one import request exists'
 
         # Grade all entries for the assignment and publish grades
         for entry in Entry.objects.filter(node__journal__assignment=assignment):
             api.create(self, 'grades', params={'entry_id': entry.pk, 'grade': 5, 'published': True},
                        user=self.teacher)
+        # Decline all JIRs
+        for jir in JournalImportRequest.objects.filter(target__assignment=assignment):
+            api.patch(self, 'journal_import_request',
+                      params={'pk': jir.pk, 'jir_action': JournalImportRequest.DECLINED}, user=self.teacher)
 
         resp = api.get(self, 'assignments', params={'pk': assignment.pk, 'course_id': self.course.pk},
                        user=self.teacher)['assignment']
         assert resp['stats']['needs_marking'] == 0, 'All entries are graded and grades are published'
         assert resp['stats']['unpublished'] == 0, 'All entries are graded and grades are published'
+        assert resp['stats']['import_requests'] == 0
         assert resp['stats']['needs_marking_own_groups'] == 0, 'All entries are graded and grades are published'
         assert resp['stats']['unpublished_own_groups'] == 0, 'All entries are graded and grades are published'
+        assert resp['stats']['import_requests_own_groups'] == 0
 
         # Check group assignment
-        group_assignment = factory.GroupAssignment()
+        group_assignment = factory.Assignment(group_assignment=True)
         student = factory.AssignmentParticipation(assignment=group_assignment).user
         api.get(self, 'assignments', params={'pk': group_assignment.pk}, user=student)
 
@@ -240,11 +334,11 @@ class AssignmentAPITest(TestCase):
         assignment = api.create(self, 'assignments', params=self.create_params, user=self.teacher)['assignment']
 
         # Try to publish the assignment
-        api.update(self, 'assignments', params={'pk': assignment['id'], 'published': True},
+        api.update(self, 'assignments', params={'pk': assignment['id'], 'is_published': True},
                    user=factory.Student(), status=403)
-        api.update(self, 'assignments', params={'pk': assignment['id'], 'published': True},
+        api.update(self, 'assignments', params={'pk': assignment['id'], 'is_published': True},
                    user=self.teacher)
-        api.update(self, 'assignments', params={'pk': assignment['id'], 'published': True},
+        api.update(self, 'assignments', params={'pk': assignment['id'], 'is_published': True},
                    user=factory.Admin())
 
         # Test script sanitation
@@ -255,10 +349,12 @@ class AssignmentAPITest(TestCase):
         resp = api.update(self, 'assignments', params=params, user=self.teacher)['assignment']
         assert resp['description'] != params['description']
 
-    def test_delete(self):
+    def test_delete_assignment(self):
         teach_course = factory.Course(author=self.teacher)
         other_course = factory.Course()
-        assignment = factory.Assignment(courses=[self.course, teach_course, other_course])
+
+        assignment = factory.Assignment(
+            courses=[self.course, teach_course, other_course], make_author_teacher_in_all_courses=False)
 
         # Test no course specified
         api.delete(self, 'assignments', params={'pk': assignment.pk}, user=self.teacher, status=400)
@@ -379,13 +475,13 @@ class AssignmentAPITest(TestCase):
         source_assignment.active_lti_id = 'some id'
         source_assignment.save()
         source_format = source_assignment.format
-        source_progress_node = factory.ProgressNode(
+        source_progress_node = factory.ProgressPresetNode(
             format=source_format,
             unlock_date=start2018_2019,
             due_date=start2018_2019 + relativedelta(months=6),
             lock_date=start2018_2019 + relativedelta(months=6),
         )
-        source_deadline_node = factory.EntrydeadlineNode(
+        source_deadline_node = factory.DeadlinePresetNode(
             format=source_format,
             unlock_date=None,
             due_date=start2018_2019 + relativedelta(months=6),
@@ -398,14 +494,13 @@ class AssignmentAPITest(TestCase):
         factory.Participation(user=student, course=course, role=Role.objects.get(course=course, name='Student'))
         assert Participation.objects.filter(course=course).count() == 2
         source_student_journal = Journal.objects.get(authors__user=student, assignment=source_assignment)
-        VLE.factory.make_journal(author=teacher, assignment=source_assignment)
         assert Journal.objects.filter(assignment=source_assignment).count() == 1, \
             'Teacher assignment should not show up in count'
         source_entries = []
         number_of_source_student_journal_entries = 4
         for _ in range(number_of_source_student_journal_entries):
-            source_entries.append(factory.Entry(
-                template=source_template, node__journal=source_student_journal, node__preset=None))
+            source_entries.append(
+                factory.UnlimitedEntry(template=source_template, node__journal=source_student_journal))
 
         assert Node.objects.count() == 10, \
             '2 nodes for the presets for teacher and student each, 4 for the student entries'
@@ -435,15 +530,15 @@ class AssignmentAPITest(TestCase):
 
         assert not created_assignment.is_published, 'Imported assignment should not be published'
         assert pre_import_journal_count == Journal.all_objects.count(), \
-            '''No journals should not be created before the assignment is published.'''
+            """No journals should not be created before the assignment is published."""
         created_assignment.is_published = True
         created_assignment.save()
 
         assert pre_import_format_count + 1 == Format.objects.count(), 'One additional format is created'
         assert created_format == Format.objects.last(), 'Last created format should be the new assignment format'
         assert pre_import_journal_count * 2 - 1 == Journal.all_objects.count(), \
-            '''A journal should be created for each of the existing course users.
-               However, old teacher should not get journal'''
+            """A journal should be created for each of the existing course users.
+               However, old teacher should not get journal"""
         assert pre_import_entry_count == Entry.objects.count(), 'No additional entries are created'
         assert pre_import_node_count + 4 == Node.objects.count(), \
             'Both student and teacher receive nodes for the presets'
@@ -510,9 +605,9 @@ class AssignmentAPITest(TestCase):
             'Format of the import should be equal to the import target'
         ignoring = ['id', 'format', 'forced_template', 'creation_date', 'update_date']
         for before_n, created_n in zip(before_source_preset_nodes, created_preset_nodes):
-            assert equal_models(before_n, created_n, ignore=ignoring), 'Import preset nodes should be equal'
+            assert equal_models(before_n, created_n, ignore_keys=ignoring), 'Import preset nodes should be equal'
         for before_t, created_t in zip(before_source_templates, created_templates):
-            assert equal_models(before_t, created_t, ignore=ignoring), 'Import target templates should be equal'
+            assert equal_models(before_t, created_t, ignore_keys=ignoring), 'Import target templates should be equal'
 
         # Import again, but now update all dates
         resp = api.post(self, 'assignments/{}/copy'.format(source_assignment.pk), params={
@@ -541,11 +636,11 @@ class AssignmentAPITest(TestCase):
             'Format of the import should be equal to the import target'
         for before_n, created_n in zip(before_source_preset_nodes, created_preset_nodes):
             assert equal_models(before_n, created_n,
-                                ignore=ignoring + ['unlock_date', 'due_date', 'lock_date']), \
+                                ignore_keys=ignoring + ['unlock_date', 'due_date', 'lock_date']), \
                 'Import preset nodes should be equal, apart from the moved dates'
         for before_t, created_t in zip(before_source_templates, created_templates):
             assert equal_models(before_t, created_t,
-                                ignore=ignoring + ['unlock_date', 'due_date', 'lock_date']), \
+                                ignore_keys=ignoring + ['unlock_date', 'due_date', 'lock_date']), \
                 'Import target templates should be equal, apart from the moved dates'
 
         created_progress_node = created_preset_nodes.filter(type=Node.PROGRESS).first()
@@ -627,10 +722,9 @@ class AssignmentAPITest(TestCase):
             'journals'
 
     def test_deadline(self):
-        journal = factory.Journal(assignment=factory.Assignment())
+        journal = factory.Journal(assignment=factory.Assignment(points_possible=10), entries__n=0)
         assignment = journal.assignment
         teacher = assignment.courses.first().author
-        assignment.points_possible = 10
 
         resp = api.get(self, 'assignments/upcoming', user=journal.authors.first().user)['upcoming']
         assert resp[0]['deadline']['name'] == 'End of assignment', \
@@ -640,22 +734,25 @@ class AssignmentAPITest(TestCase):
         assert resp[0]['deadline']['date'] is None, \
             'Default no deadline for a teacher be shown'
 
-        progress = VLE.factory.make_progress_node(assignment.format, timezone.now() + datetime.timedelta(days=3), 7)
+        progress = factory.ProgressPresetNode(
+            format=assignment.format, due_date=timezone.now() + datetime.timedelta(days=3), target=7)
         utils.update_journals(assignment.journal_set.distinct(), progress)
 
         resp = api.get(self, 'assignments/upcoming', user=journal.authors.first().user)['upcoming']
         assert resp[0]['deadline']['name'] == '0/7 points', \
             'When not having completed an progress node, that should be shown'
 
-        entrydeadline = VLE.factory.make_entrydeadline_node(
-            assignment.format, timezone.now() + datetime.timedelta(days=1), assignment.format.template_set.first())
-        utils.update_journals(assignment.journal_set.distinct(), entrydeadline)
+        entrydeadline = factory.DeadlinePresetNode(
+            format=assignment.format,
+            due_date=timezone.now() + datetime.timedelta(days=1),
+            forced_template=assignment.format.template_set.first()
+        )
 
         resp = api.get(self, 'assignments/upcoming', user=journal.authors.first().user)['upcoming']
         assert resp[0]['deadline']['name'] == assignment.format.template_set.first().name, \
             'When not having completed an entry deadline, that should be shown'
 
-        entry = factory.Entry(node=Node.objects.get(journal=journal, preset=entrydeadline))
+        entry = factory.PresetEntry(node__journal=journal, node__preset=entrydeadline)
 
         resp = api.get(self, 'assignments/upcoming', user=teacher)['upcoming']
         assert resp[0]['deadline']['date'] is not None, \
@@ -735,7 +832,7 @@ class AssignmentAPITest(TestCase):
         assert assignment.get_active_course(factory.Student()) is None, \
             'When someone is not related to the assignment, it should not respond with any course'
 
-        lti_course = factory.LtiCourseFactory(startdate=timezone.now() + datetime.timedelta(weeks=1), author=teacher)
+        lti_course = factory.LtiCourse(startdate=timezone.now() + datetime.timedelta(weeks=1), author=teacher)
         assignment.courses.add(lti_course)
         assignment.active_lti_id = 'lti_id'
         lti_course.assignment_lti_id_set.append('lti_id')
@@ -750,7 +847,7 @@ class AssignmentAPITest(TestCase):
         assignment.courses.add(past)
         future = factory.Course(startdate=timezone.now() + datetime.timedelta(days=1))
         assignment.courses.add(future)
-        lti = factory.LtiCourseFactory(startdate=timezone.now() + datetime.timedelta(weeks=1))
+        lti = factory.LtiCourse(startdate=timezone.now() + datetime.timedelta(weeks=1))
         assignment.courses.add(lti)
         assert assignment.get_active_course(teacher) == lti_course, \
             'Do not select any course that the user is not in'
@@ -812,11 +909,11 @@ class AssignmentAPITest(TestCase):
         student_before = factory.Student()
         student_after = factory.Student()
         normal_before = factory.Assignment(courses=[course_before])
-        factory.GroupAssignment(courses=[course_before])
+        factory.Assignment(courses=[course_before], group_assignment=True)
         normal_unpublished = factory.Assignment(courses=[course_before], is_published=False)
         factory.Participation(user=student_before, course=course_before)
         normal_after = factory.Assignment(courses=[course_before])
-        group_after = factory.GroupAssignment(courses=[course_before])
+        group_after = factory.Assignment(courses=[course_before], group_assignment=True)
         journals = Journal.all_objects.filter(authors__user=student_before)
 
         assert journals.filter(assignment=normal_before).exists(), 'Normal assignment should get journals'
@@ -850,7 +947,7 @@ class AssignmentAPITest(TestCase):
         self.assertRaises(IntegrityError, AssignmentParticipation.objects.create, user=student, assignment=assignment)
 
     def test_participants_without_journal(self):
-        assignment = factory.GroupAssignment()
+        assignment = factory.Assignment(group_assignment=True)
         ap1 = factory.AssignmentParticipation(user=factory.Student(), assignment=assignment)
         ap2 = factory.AssignmentParticipation(user=factory.Student(), assignment=assignment)
         ap3_in_journal = factory.AssignmentParticipation(user=factory.Student(), assignment=assignment)

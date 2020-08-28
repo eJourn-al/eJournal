@@ -59,11 +59,11 @@ class EntryView(viewsets.ViewSet):
 
         entry_utils.check_fields(template, content_dict)
 
-        # Node specific entry
+        # Deadline entry
         if node_id:
             node = Node.objects.get(pk=node_id, journal=journal)
             entry = entry_utils.add_entry_to_node(node, template, request.user)
-        # Template specific entry
+        # Unlimited entry
         else:
             node = factory.make_node(journal)
             entry = factory.make_entry(template, request.user, node)
@@ -87,7 +87,7 @@ class EntryView(viewsets.ViewSet):
                 # Establish all files in the rich text editor
                 if field.type == Field.RICH_TEXT:
                     files_to_establish += [
-                        (f, created_content) for f in file_handling.get_files_from_rich_text(content)]
+                        (f, created_content) for f in file_handling.get_temp_files_from_rich_text(content)]
 
         # If anything fails during creation of the entry, delete the entry
         except Exception as e:
@@ -176,7 +176,8 @@ class EntryView(viewsets.ViewSet):
 
                 changed = old_content.data != new_content
                 if changed:
-                    entry_utils.patch_entry_content(request.user, entry, old_content, field, new_content, assignment)
+                    old_content.data = new_content
+                    old_content.save()
             # If there was no content in this field before, create new content with the new data.
             # This can happen with non-required fields, or when the given data is deleted.
             else:
@@ -194,7 +195,7 @@ class EntryView(viewsets.ViewSet):
                 # Establish all files in the rich text editor
                 if field.type == Field.RICH_TEXT:
                     files_to_establish += [
-                        (f, old_content) for f in file_handling.get_files_from_rich_text(new_content)]
+                        (f, old_content) for f in file_handling.get_temp_files_from_rich_text(new_content)]
 
         for (file, old_content) in files_to_establish:
             file_handling.establish_file(request.user, file.access_id, content=old_content,

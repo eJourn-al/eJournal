@@ -14,11 +14,15 @@
                         :src="journal.image"
                     />
                     <number-badge
-                        v-if="$hasPermission('can_view_all_journals') &&
-                            journal.needs_marking + journal.unpublished > 0"
-                        :leftNum="journal.needs_marking"
-                        :rightNum="journal.unpublished"
-                        :title="squareInfo"
+                        v-if="$hasPermission('can_view_all_journals')
+                            && (journal.needs_marking || journal.unpublished || journal.import_requests)"
+                        :badges="[
+                            { value: journal.needs_marking, tooltip: 'needsMarking' },
+                            { value: journal.unpublished, tooltip: 'unpublished' },
+                            { value: journal.import_requests, tooltip: 'importRequests' },
+                        ]"
+                        :displayZeroValues="false"
+                        :keyPrefix="journal.id"
                     />
                 </div>
                 <div class="student-details">
@@ -104,14 +108,14 @@
 
 <script>
 import progressBar from '@/components/assets/ProgressBar.vue'
-import numberBadge from '@/components/assets/NumberBadge.vue'
+import NumberBadge from '@/components/assets/NumberBadge.vue'
 import journalMembers from '@/components/journal/JournalMembers.vue'
 
 export default {
     components: {
         progressBar,
-        numberBadge,
         journalMembers,
+        NumberBadge,
     },
     props: {
         assignment: {
@@ -129,21 +133,6 @@ export default {
     computed: {
         groups () {
             return this.journal.groups.join(', ')
-        },
-        squareInfo () {
-            const info = []
-            if (this.journal.needs_marking === 1) {
-                info.push('an entry needs marking')
-            } else if (this.journal.needs_marking > 1) {
-                info.push(`${this.journal.needs_marking} entries need marking`)
-            }
-            if (this.journal.unpublished === 1) {
-                info.push('a grade needs to be published')
-            } else if (this.journal.unpublished > 1) {
-                info.push(`${this.journal.unpublished} grades need to be published`)
-            }
-            const s = info.join(' and ')
-            return `${s.charAt(0).toUpperCase()}${s.slice(1)}`
         },
         canManageJournal () {
             return this.assignment.is_group_assignment && (this.assignment.can_set_journal_name
@@ -173,10 +162,6 @@ export default {
             width: 70px
             height: 70px
             border-radius: 50% !important
-        .number-badge
-            position: absolute
-            right: 0px
-            top: 0px
     .student-details
         position: relative
         width: calc(100% - 80px)

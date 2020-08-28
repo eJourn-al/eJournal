@@ -12,7 +12,7 @@ from rest_framework.settings import api_settings
 import VLE.factory as creation_factory
 import VLE.permissions as permissions
 import VLE.validators as validators
-from VLE.models import Instance, User
+from VLE.models import Instance, Preferences, User
 
 
 class UserAPITest(TestCase):
@@ -27,6 +27,15 @@ class UserAPITest(TestCase):
             'custom_user_full_name': 'full name of LMS user',
             'custom_user_email': 'validLMS@address.com',
         }
+
+    def test_user_factory(self):
+        user = factory.Student()
+        assert user.preferences.new_grade_notifications == Preferences.PUSH, \
+            'Generating a user also generates preferences, set to default'
+
+        user = factory.Student(preferences__new_grade_notifications=Preferences.OFF)
+        assert user.preferences.new_grade_notifications == Preferences.OFF, \
+            'User factory supports deep syntax for preferences'
 
     def test_rest(self):
         api.test_rest(self, 'users',
@@ -319,7 +328,7 @@ class UserAPITest(TestCase):
         User.objects.create(**params)
 
     def test_gdpr(self):
-        entry = factory.Entry()
+        entry = factory.UnlimitedEntry()
         user = entry.node.journal.authors.first().user
         user2 = factory.Student()
         admin = factory.Admin()

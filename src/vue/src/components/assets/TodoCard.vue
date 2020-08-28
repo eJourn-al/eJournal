@@ -2,11 +2,19 @@
     <b-card :class="$root.getBorderClass(deadline.id)">
         <!-- Teacher show things todo -->
         <number-badge
-            v-if="unpublishedOrNeedsMarking"
-            :leftNum="filterOwnGroups ? deadline.stats.needs_marking_own_groups : deadline.stats.needs_marking"
-            :rightNum="filterOwnGroups ? deadline.stats.unpublished_own_groups : deadline.stats.unpublished"
+            v-if="thingsToDo"
+            :absolute="false"
+            :badges="[
+                { value: filterOwnGroups ? deadline.stats.needs_marking_own_groups : deadline.stats.needs_marking,
+                  tooltip: 'needsMarking' },
+                { value: filterOwnGroups ? deadline.stats.unpublished_own_groups : deadline.stats.unpublished,
+                  tooltip: 'unpublished' },
+                { value: filterOwnGroups ? deadline.journal_import_requests_own_groups :
+                    deadline.journal_import_requests, tooltip: 'importRequests' },
+            ]"
+            :displayZeroValues="false"
             class="float-right multi-form"
-            :title="squareInfo"
+            keyPrefix="todo"
         />
 
         <b class="field-heading">
@@ -22,7 +30,7 @@
         <br/>
         <span v-if="deadline.deadline.date">
             <!-- Teacher deadline shows last submitted entry date  -->
-            <span v-if="unpublishedOrNeedsMarking">
+            <span v-if="thingsToDo">
                 <icon
                     name="eye"
                     class="fill-grey shift-up-3"
@@ -53,11 +61,11 @@
 </template>
 
 <script>
-import numberBadge from '@/components/assets/NumberBadge.vue'
+import NumberBadge from '@/components/assets/NumberBadge.vue'
 
 export default {
     components: {
-        numberBadge,
+        NumberBadge,
     },
     props: {
         deadline: {
@@ -123,12 +131,15 @@ export default {
             const s = info.join(' and ')
             return `${s.charAt(0).toUpperCase()}${s.slice(1)}`
         },
-        unpublishedOrNeedsMarking () {
+        thingsToDo () {
             if (this.filterOwnGroups) {
-                return this.deadline.stats && this.deadline.stats.needs_marking_own_groups
-                    + this.deadline.stats.unpublished_own_groups > 0
+                return this.deadline.stats
+                    && (this.deadline.stats.needs_marking_own_groups || this.deadline.stats.unpublished_own_groups
+                        || this.deadline.stats.journal_import_requests_own_groups)
             } else {
-                return this.deadline.stats && this.deadline.stats.needs_marking + this.deadline.stats.unpublished > 0
+                return this.deadline.stats
+                    && (this.deadline.stats.needs_marking || this.deadline.stats.unpublished
+                        || this.deadline.stats.journal_import_requests)
             }
         },
     },

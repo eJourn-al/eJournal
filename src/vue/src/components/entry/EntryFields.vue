@@ -52,9 +52,9 @@
                     :autoUpload="true"
                     :aID="$route.params.aID"
                     :contentID="content[field.id] ? content[field.id].contentID : null"
-                    @uploadingFile="$emit('uploadingFile')"
-                    @fileUploadFailed="$emit('finishedUploadingFile')"
-                    @fileUploadSuccess="content[field.id] = $event; $emit('finishedUploadingFile')"
+                    @uploading-file="$emit('uploading-file')"
+                    @fileUploadFailed="$emit('finished-uploading-file')"
+                    @fileUploadSuccess="content[field.id] = $event; $emit('finished-uploading-file')"
                 />
                 <b-input
                     v-else-if="field.type == 'v'"
@@ -68,8 +68,8 @@
                     :id="`rich-text-editor-field-${field.id > 0 ? 'id-' + field.id : 'loc-' + field.location}`"
                     :key="`rich-text-editor-field-${field.id > 0 ? field.id : field.location}`"
                     v-model="content[field.id]"
-                    @startedUploading="$emit('uploadingFile')"
-                    @finishedUploading="$emit('finishedUploadingFile')"
+                    @startedUploading="$emit('uploading-file')"
+                    @finishedUploading="$emit('finished-uploading-file')"
                 />
                 <url-input
                     v-else-if="field.type == 'u'"

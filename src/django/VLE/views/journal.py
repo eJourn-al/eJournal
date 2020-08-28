@@ -356,6 +356,8 @@ class JournalView(viewsets.ViewSet):
 
         author = AssignmentParticipation.objects.get(user=request.user, journal=journal)
         journal.remove_author(author)
+
+        utils.remove_jirs_on_user_remove_from_jounal(author.user, journal)
         if journal.authors.count() == 0:
             journal.reset()
 
@@ -385,6 +387,8 @@ class JournalView(viewsets.ViewSet):
 
         author = AssignmentParticipation.objects.get(user=user, journal=journal)
         journal.remove_author(author)
+
+        utils.remove_jirs_on_user_remove_from_jounal(user, journal)
         if journal.authors.count() == 0:
             journal.reset()
 

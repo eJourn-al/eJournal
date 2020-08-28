@@ -161,7 +161,7 @@ export default {
                     course_id: this.cID,
                     months_offset: (!this.shiftImportDates || this.months === '') ? 0 : this.months,
                     lti_id: this.lti.ltiAssignID,
-                }, { customSuccessToast: 'Assignment succesfully imported.' }).then((response) => {
+                }, { customSuccessToast: 'Assignment successfully imported.' }).then((response) => {
                     this.assignmentImportInFlight = false
 
                     this.$store.commit('user/IMPORT_ASSIGNMENT_PERMISSIONS', {

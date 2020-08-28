@@ -5,6 +5,6 @@ from django.test import TestCase
 class CommandsTestCase(TestCase):
     """Test the self made commands."""
 
-    def test_presetdb(self):
+    def test_preset_db(self):
         """Test preset_db."""
         call_command('preset_db')

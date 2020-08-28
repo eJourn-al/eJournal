@@ -14,9 +14,10 @@ from rest_framework.decorators import action
 
 import VLE.factory as factory
 import VLE.utils.generic_utils as utils
+import VLE.utils.import_utils as import_utils
 import VLE.utils.responses as response
 import VLE.validators as validators
-from VLE.models import Assignment, Course, Field, Journal, PresetNode, Template, User
+from VLE.models import Assignment, Course, Journal, PresetNode, Template, User
 from VLE.serializers import AssignmentSerializer, CourseSerializer, SmallAssignmentSerializer, TemplateSerializer
 from VLE.utils import file_handling, grading
 from VLE.utils.error_handling import VLEMissingRequiredKey, VLEParamWrongType
@@ -447,15 +448,7 @@ class AssignmentView(viewsets.ViewSet):
         template = Template.objects.get(pk=template_id)
         request.user.check_permission('can_edit_assignment', template.format.assignment)
 
-        source_template_id = template.pk
-        template.pk = None
-        template.format = assignment.format
-        template.save()
-
-        for field in Field.objects.filter(template=source_template_id):
-            field.pk = None
-            field.template = template
-            field.save()
+        import_utils.import_template(template, assignment)
 
         template_data = TemplateSerializer(template, context={'user': request.user}).data
         template_data.pop('id')
@@ -513,15 +506,8 @@ class AssignmentView(viewsets.ViewSet):
 
         for template in Template.objects.filter(format=source_format_id, archived=False):
             source_template_id = template.pk
-            template.pk = None
-            template.format = format
-            template.save()
+            import_utils.import_template(template, assignment)
             template_dict[source_template_id] = template.pk
-
-            for field in Field.objects.filter(template=source_template_id):
-                field.pk = None
-                field.template = template
-                field.save()
 
         journals = assignment.journal_set.all()
         for preset in PresetNode.objects.filter(format=source_format_id):

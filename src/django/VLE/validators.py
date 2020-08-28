@@ -1,4 +1,5 @@
 import json
+import os
 import re
 from datetime import datetime
 
@@ -7,6 +8,7 @@ from django.core.exceptions import ValidationError
 from django.core.validators import FileExtensionValidator, URLValidator
 from sentry_sdk import capture_message
 
+import VLE.utils.file_handling as file_handling
 from VLE.models import Field, FileContext
 from VLE.utils.error_handling import VLEMissingRequiredField
 
@@ -55,31 +57,50 @@ def validate_entry_content(content, field):
     if not content:
         return
 
+    if field.type == Field.RICH_TEXT:
+        for access_id in file_handling.get_access_ids_from_rich_text(content):
+            fc = FileContext.objects.filter(access_id=access_id)
+            if not fc.exists():
+                raise ValidationError('Rich text contains reference to non existing file')
+            fc = fc.first()
+            if not fc.file or not os.path.exists(fc.file.path):
+                raise ValidationError('Rich text linked to file context whose file does not exists.')
+
     # TODO: improve VIDEO validator
     if field.type == Field.URL or field.type == Field.VIDEO:
-        url_validate = URLValidator(schemes=('http', 'https', 'ftp', 'ftps'))
+        url_validate = URLValidator(schemes=Field.ALLOWED_URL_SCHEMES)
         url_validate(content)
 
     if field.type == Field.SELECTION:
         if content not in json.loads(field.options):
-            raise ValidationError("Selected option is not in the given options.")
+            raise ValidationError('Selected option is not in the given options.')
 
     if field.type == Field.DATE:
         try:
-            datetime.strptime(content, '%Y-%m-%d')
+            datetime.strptime(content, Field.ALLOWED_DATE_FORMAT)
         except (ValueError, TypeError) as e:
             raise ValidationError(str(e))
 
     if field.type == Field.DATETIME:
         try:
-            datetime.strptime(content, '%Y-%m-%dT%H:%M:%S')
+            datetime.strptime(content, Field.ALLOWED_DATETIME_FORMAT)
         except (ValueError, TypeError) as e:
             raise ValidationError(str(e))
 
     if field.type == Field.FILE:
+        try:
+            int(content['id'])
+        except (ValueError, KeyError):
+            raise ValidationError("The content['id'] of a field file should contain the pk of the related file")
+
+        # Ensures the FC still exists
+        fc = FileContext.objects.get(pk=int(content['id']))
+        if not os.path.isfile(fc.file.path):
+            raise ValidationError('Entry references non existing file')
+
         if field.options:
             validator = FileExtensionValidator(field.options.split(', '))
-            validator(FileContext.objects.get(pk=content['id']).file)
+            validator(fc.file)
 
     if field.type == Field.NO_SUBMISSION:
-        raise ValidationError("No submission is allowed for this field.")
+        raise ValidationError('No submission is allowed for this field.')

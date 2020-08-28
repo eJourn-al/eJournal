@@ -36,7 +36,7 @@ def _generate_upcoming_deadline_notifications(node_query, preferences):
             continue
 
         # Dont send a mail when the target points is reached
-        if node.preset.type == VLE.models.Node.PROGRESS and journal.grade > node.preset.target:
+        if node.preset.type == VLE.models.Node.PROGRESS and journal.grade >= node.preset.target:
             continue
 
         for author in journal.authors.filter(user__preferences__upcoming_deadline_reminder__in=preferences):

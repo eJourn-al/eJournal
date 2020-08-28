@@ -142,6 +142,25 @@
                 />
             </b-card>
 
+            <h3 class="theme-h3">
+                Actions
+            </h3>
+
+            <b-button
+                v-if="!loadingNodes"
+                v-b-modal="'journal-import-modal'"
+                class="multi-form change-button full-width"
+            >
+                <icon name="file-import"/>
+                Import Journal
+            </b-button>
+
+            <journal-import-modal
+                v-if="!loadingNodes"
+                modalID="journal-import-modal"
+                :targetAssignmentID="Number(aID)"
+            />
+
             <transition name="fade">
                 <b-button
                     v-if="addIndex > -1 && currentNode !== addIndex"
@@ -166,6 +185,7 @@ import loadWrapper from '@/components/loading/LoadWrapper.vue'
 import journalStartCard from '@/components/journal/JournalStartCard.vue'
 import journalEndCard from '@/components/journal/JournalEndCard.vue'
 import journalDetails from '@/components/journal/JournalDetails.vue'
+import journalImportModal from '@/components/journal/JournalImportModal.vue'
 import progressNode from '@/components/entry/ProgressNode.vue'
 
 import journalAPI from '@/api/journal.js'
@@ -181,6 +201,7 @@ export default {
         journalStartCard,
         journalEndCard,
         journalDetails,
+        journalImportModal,
     },
     props: ['cID', 'aID', 'jID'],
     data () {

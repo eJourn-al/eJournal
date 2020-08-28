@@ -47,8 +47,8 @@
                 :content="newEntryContent"
                 :edit="edit || create"
                 :nodeID="node ? node.nID : -1"
-                @uploadingFile="uploadingFiles ++"
-                @finishedUploadingFile="uploadingFiles --"
+                @uploading-file="uploadingFiles ++"
+                @finished-uploading-file="uploadingFiles --"
             />
 
             <template v-if="edit">
@@ -95,9 +95,22 @@
                     <b-badge
                         v-if="node.due_date
                             && new Date(node.due_date) < new Date(node.entry.last_edited)"
+                        v-b-tooltip:hover="'This entry was submitted after the due date'"
                         class="late-submission-badge"
                     >
                         LATE
+                    </b-badge>
+                    <b-badge
+                        v-if="node.entry.jir"
+                        v-b-tooltip:hover="
+                            `This entry has been imported from the assignment
+                            ${node.entry.jir.source.assignment.name}
+                            (${node.entry.jir.source.assignment.course.abbreviation}), approved by
+                            ${node.entry.jir.processor.full_name}`
+                        "
+                        class="imported-entry-badge"
+                    >
+                        IMPORTED
                     </b-badge>
                 </span>
             </template>

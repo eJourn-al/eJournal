@@ -47,8 +47,12 @@ REQUEST = {
 }
 
 
-def create_request(request_body={}, timestamp=str(int(time.time())), nonce=str(oauth2.generate_nonce()),
+def create_request(request_body={}, timestamp=None, nonce=None,
                    delete_field=False):
+    if nonce is None:
+        nonce = str(oauth2.generate_nonce())
+    if timestamp is None:
+        timestamp = str(int(time.time()))
     request = REQUEST.copy()
     request['oauth_timestamp'] = timestamp
     request['oauth_nonce'] = nonce
@@ -68,10 +72,13 @@ def create_request(request_body={}, timestamp=str(int(time.time())), nonce=str(o
     return request
 
 
-def lti_launch(request_body={}, response_value=lti_view.LTI_STATES.NO_USER.value, timestamp=str(int(time.time())),
-               nonce=str(oauth2.generate_nonce()), status=302, assert_msg='',
+def lti_launch(request_body={}, response_value=lti_view.LTI_STATES.NO_USER.value, timestamp=None,
+               nonce=None, status=302, assert_msg='',
                delete_field=False):
-
+    if nonce is None:
+        nonce = str(oauth2.generate_nonce())
+    if timestamp is None:
+        timestamp = str(int(time.time()))
     request = create_request(request_body, timestamp, nonce, delete_field)
     request = RequestFactory().post('http://127.0.0.1:8000/lti/launch', request)
     response = lti_view.lti_launch(request)
@@ -80,9 +87,13 @@ def lti_launch(request_body={}, response_value=lti_view.LTI_STATES.NO_USER.value
     return response
 
 
-def get_jwt(obj, request_body={}, timestamp=str(int(time.time())), nonce=str(oauth2.generate_nonce()),
+def get_jwt(obj, request_body={}, timestamp=None, nonce=None,
             user=None, status=200, response_msg='', assert_msg='', response_value=None, delete_field=False,
             access=None, url='get_lti_params_from_jwt'):
+    if nonce is None:
+        nonce = str(oauth2.generate_nonce())
+    if timestamp is None:
+        timestamp = str(int(time.time()))
     request = create_request(request_body, timestamp, nonce, delete_field)
     jwt_params = lti_view.encode_lti_params(request)
     response = api.post(obj, url, params={'jwt_params': jwt_params},  user=user, status=status, access=access)
@@ -260,7 +271,7 @@ class LtiLaunchTest(TestCase):
         resp = lti_launch(
             request_body=test_user_params,
             response_value=lti_view.LTI_STATES.LOGGED_IN.value,
-            assert_msg='A reused test user can launch succesfully after being created.',
+            assert_msg='A reused test user can launch successfully after being created.',
         )
 
         get_jwt(
@@ -357,7 +368,7 @@ class LtiLaunchTest(TestCase):
                 'custom_course_id': course.active_lti_id,
                 'custom_assignment_id': assignment.active_lti_id},
             response_msg='',
-            assert_msg='With valid params it should response succesfully')
+            assert_msg='With valid params it should response successfully')
         assert group_count == Group.objects.filter(course=course).count(), \
             'No new groups should be created, if no supplied'
         get_jwt(
@@ -369,7 +380,7 @@ class LtiLaunchTest(TestCase):
                 'custom_course_id': course.active_lti_id,
                 'custom_assignment_id': assignment.active_lti_id},
             response_msg='',
-            assert_msg='With valid params it should response succesfully')
+            assert_msg='With valid params it should response successfully')
         assert group_count + 2 == Group.objects.filter(course=course).count() and \
             Group.objects.filter(course=course, lti_id='new_group2').exists(), \
             'New groups should be created'
@@ -550,9 +561,7 @@ class LtiLaunchTest(TestCase):
         assignment = factory.LtiAssignment(
             author=self.teacher, courses=[course], name=REQUEST['custom_assignment_title'])
         student = factory.LtiStudent()
-        ap = factory.AssignmentParticipation(user=student, assignment=assignment)
-        journal = factory.Journal(assignment=assignment)
-        journal.add_author(ap)
+        journal = factory.Journal(assignment=assignment, ap__user=student)
         assignment = journal.assignment
 
         journal_exists = Journal.objects.filter(authors__user=student, assignment=assignment, pk=journal.pk).exists()

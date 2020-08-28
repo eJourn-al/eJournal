@@ -19,6 +19,22 @@ class UserFactory(factory.django.DjangoModelFactory):
     first_name = factory.Faker('first_name')
     last_name = factory.Faker('last_name')
 
+    @factory.post_generation
+    def preferences(self, create, extracted, **kwargs):
+        """
+        Allows deep syntax for a users preferences
+
+        Preferences is OneToOne with User, where the user fk is its primary key. This results in Django
+        auto generating the preferences on creation of a user. Emulating this with a User SubFactory for
+        PreferencesFactory and a RelatedFactory for UserFactory caused a duplicate Preferences instance
+        to be generated.
+        """
+        if not create:
+            return
+
+        self.preferences.__dict__.update(kwargs)
+        self.preferences.save()
+
 
 class LtiStudentFactory(UserFactory):
     lti_id = factory.Sequence(lambda x: "id{}".format(x))

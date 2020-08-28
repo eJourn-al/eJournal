@@ -2,9 +2,10 @@ import test.factory as factory
 from test.utils import api
 from test.utils.response import is_response
 
+from django.conf import settings
 from django.test import TestCase
 
-from VLE.models import Assignment, Role
+from VLE.models import Assignment, Course, Participation, Role, User
 
 
 class CourseAPITest(TestCase):
@@ -38,6 +39,24 @@ class CourseAPITest(TestCase):
                       create_status=403,
                       user=factory.Student())
 
+    def test_course_factory(self):
+        c_c = Course.objects.count()
+        u_c = User.objects.count()
+        a_c = Assignment.objects.count()
+
+        course = factory.Course()
+
+        assert c_c + 1 == Course.objects.count(), 'One course is generated'
+        assert u_c + 1 == User.objects.count() and User.objects.last().pk == course.author.pk, 'One user is generated'
+        assert a_c == Assignment.objects.count(), 'No assignment is generated'
+
+        for expected_role in settings.ROLES.keys():
+            assert Role.objects.filter(course=course, name=expected_role).exists()
+
+        teacher_role = Role.objects.get(name='Teacher', course=course)
+        assert Participation.objects.filter(course=course, role=teacher_role, user=course.author).exists(), \
+            'Author of the course is made a teacher by default'
+
     def test_get(self):
         factory.Participation(user=self.teacher2, course=self.course2)
 
@@ -61,9 +80,13 @@ class CourseAPITest(TestCase):
         # Check participating
         get_resp = api.get(self, 'courses', params={'pk': self.course2.pk}, user=self.teacher2)
 
-    def test_create(self):
+    def test_create_course(self):
         # Test courses with same name and abbreviation
-        api.create(self, 'courses', params=self.create_params, user=self.teacher1)
+        resp = api.create(self, 'courses', params=self.create_params, user=self.teacher1)['course']
+        course = Course.objects.get(pk=resp['id'])
+        teacher_role = Role.objects.get(course=course, name='Teacher')
+        assert teacher_role.can_manage_journal_import_requests, 'A teacher should be able to manage JIRs by default'
+
         api.create(self, 'courses', params=self.create_params, user=self.teacher1)
 
         # Test admin without is_teacher can make a course

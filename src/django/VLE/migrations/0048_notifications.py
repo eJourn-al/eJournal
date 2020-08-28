@@ -66,7 +66,7 @@ class Migration(migrations.Migration):
                 ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
                 ('creation_date', models.DateTimeField(auto_now_add=True)),
                 ('update_date', models.DateTimeField(auto_now=True)),
-                ('type', models.IntegerField(choices=[(1, 'new_course_notifications'), (2, 'new_assignment_notifications'), (3, 'new_node_notifications'), (4, 'new_entry_notifications'), (5, 'new_grade_notifications'), (6, 'new_comment_notifications'), (7, 'None')])),
+                ('type', models.CharField(choices=[('COURSE', 'new_course_notifications'), ('ASSIGNMENT', 'new_assignment_notifications'), ('NODE', 'new_node_notifications'), ('ENTRY', 'new_entry_notifications'), ('GRADE', 'new_grade_notifications'), ('COMMENT', 'new_comment_notifications'), ('DEADLINE', 'None')], max_length=10)),
                 ('message', models.TextField()),
                 ('sent', models.BooleanField(default=False)),
                 ('assignment', models.ForeignKey(null=True, on_delete=django.db.models.deletion.CASCADE, to='VLE.Assignment')),

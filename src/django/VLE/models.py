@@ -492,13 +492,13 @@ class Preferences(CreateUpdateModel):
 
 
 class Notification(CreateUpdateModel):
-    NEW_COURSE = 1
-    NEW_ASSIGNMENT = 2
-    NEW_NODE = 3
-    NEW_ENTRY = 4
-    NEW_GRADE = 5
-    NEW_COMMENT = 6
-    UPCOMING_DEADLINE = 7
+    NEW_COURSE = 'COURSE'
+    NEW_ASSIGNMENT = 'ASSIGNMENT'
+    NEW_NODE = 'NODE'
+    NEW_ENTRY = 'ENTRY'
+    NEW_GRADE = 'GRADE'
+    NEW_COMMENT = 'COMMENT'
+    UPCOMING_DEADLINE = 'DEADLINE'
     TYPES = {
         NEW_COURSE: {
             'name': 'new_course_notifications',
@@ -567,7 +567,8 @@ class Notification(CreateUpdateModel):
         NEW_COMMENT: 'entry',
     }
 
-    type = models.IntegerField(
+    type = models.CharField(
+        max_length=10,
         choices=((type, dic['name']) for type, dic in TYPES.items()),
         null=False,
     )
@@ -820,6 +821,8 @@ class Role(CreateUpdateModel):
 
         'can_comment',
         'can_edit_staff_comment',
+
+        'can_manage_journal_import_requests',
     ]
     PERMISSIONS = COURSE_PERMISSIONS + ASSIGNMENT_PERMISSIONS
 
@@ -852,6 +855,7 @@ class Role(CreateUpdateModel):
     can_comment = models.BooleanField(default=False)
     can_edit_staff_comment = models.BooleanField(default=False)
     can_view_unpublished_assignment = models.BooleanField(default=False)
+    can_manage_journal_import_requests = models.BooleanField(default=False)
 
     def save(self, *args, **kwargs):
         if self.can_add_course_users and not self.can_view_course_users:
@@ -884,6 +888,9 @@ class Role(CreateUpdateModel):
 
         if self.can_edit_staff_comment and not self.can_comment:
             raise ValidationError('A user needs to be able to comment in order to edit other comments.')
+
+        if self.can_manage_journal_import_requests and not self.can_grade:
+            raise ValidationError('A user needs the permission to grade in order to manage import requests.')
 
         super(Role, self).save(*args, **kwargs)
 
@@ -1047,8 +1054,9 @@ class Assignment(CreateUpdateModel):
                 pre_save = Assignment.objects.get(pk=self.pk)
                 active_lti_id_modified = pre_save.active_lti_id != self.active_lti_id
 
-                if pre_save.is_published and not self.is_published and pre_save.has_entries():
-                    raise ValidationError('Cannot unpublish an assignment that has entries.')
+                if pre_save.is_published and not self.is_published and not pre_save.can_unpublish():
+                    raise ValidationError(
+                        'Cannot unpublish an assignment that has entries or outstanding journal import requests.')
                 if pre_save.is_group_assignment != self.is_group_assignment:
                     if pre_save.has_entries():
                         raise ValidationError('Cannot change the type of an assignment that has entries.')
@@ -1183,6 +1191,12 @@ class Assignment(CreateUpdateModel):
 
     def has_entries(self):
         return Entry.objects.filter(node__journal__assignment=self).exists()
+
+    def has_outstanding_jirs(self):
+        return JournalImportRequest.objects.filter(target__assignment=self, state=JournalImportRequest.PENDING).exists()
+
+    def can_unpublish(self):
+        return not (self.has_entries() or self.has_outstanding_jirs())
 
     def to_string(self, user=None):
         if user is None:
@@ -1330,6 +1344,12 @@ class Journal(CreateUpdateModel, ComputedFieldsModel):
     def unpublished(self):
         return self.node_set.filter(entry__grade__published=False).count()
 
+    @computed(models.IntegerField(null=True), depends=[
+        ['import_request_targets', ['target', 'state']],
+    ])
+    def import_requests(self):
+        return self.import_request_targets.filter(state=JournalImportRequest.PENDING).count()
+
     @computed(models.FloatField(null=True), depends=[
         ['node_set', ['entry']],
         ['node_set.entry', ['grade']],
@@ -1392,22 +1412,31 @@ class Journal(CreateUpdateModel, ComputedFieldsModel):
 
     def reset(self):
         Node.objects.filter(journal=self).delete()
+        self.import_request_targets.all().delete()
+        self.import_request_sources.filter(state=JournalImportRequest.PENDING).delete()
 
         preset_nodes = self.assignment.format.presetnode_set.all()
         for preset_node in preset_nodes:
             Node.objects.create(type=preset_node.type, journal=self, preset=preset_node)
 
     def save(self, *args, **kwargs):
+        if not self.author_limit == self.UNLIMITED and self.authors.count() > self.author_limit:
+            raise ValidationError('Journal users exceed author limit.')
+        if not self.assignment.is_group_assignment and self.author_limit > 1:
+            raise ValidationError('Journal author limit of a non group assignment exceeds 1')
+
         is_new = self._state.adding
         if self.stored_name is None:
             if self.assignment.is_group_assignment:
                 self.stored_name = 'Journal {}'.format(Journal.objects.filter(assignment=self.assignment).count() + 1)
+
         super(Journal, self).save(*args, **kwargs)
         # On create add preset nodes
         if is_new:
             preset_nodes = self.assignment.format.presetnode_set.all()
             for preset_node in preset_nodes:
-                Node.objects.create(type=preset_node.type, journal=self, preset=preset_node)
+                if not self.node_set.filter(preset=preset_node).exists():
+                    Node.objects.create(type=preset_node.type, journal=self, preset=preset_node)
 
     @property
     def published_nodes(self):
@@ -1493,6 +1522,24 @@ class Node(CreateUpdateModel):
 
     def to_string(self, user=None):
         return "Node"
+
+    class Meta:
+        unique_together = ('preset', 'journal')
+
+    def save(self, *args, **kwargs):
+        is_new = self._state.adding
+
+        super(Node, self).save(*args, **kwargs)
+
+        # Create a Notifcation for deadline PresetNodes
+        if is_new and self.type in [self.ENTRYDEADLINE, self.PROGRESS]:
+            for author in self.journal.authors.all():
+                if author.user.can_view(self.journal):
+                    Notification.objects.create(
+                        type=Notification.NEW_NODE,
+                        user=author.user,
+                        node=self,
+                    )
 
 
 class Format(CreateUpdateModel):
@@ -1604,7 +1651,7 @@ class Entry(CreateUpdateModel):
         null=True,
     )
 
-    last_edited = models.DateTimeField()
+    last_edited = models.DateTimeField(auto_now_add=True)
     last_edited_by = models.ForeignKey(
         'User',
         on_delete=models.SET_NULL,
@@ -1615,6 +1662,13 @@ class Entry(CreateUpdateModel):
     vle_coupling = models.TextField(
         default=NEEDS_SUBMISSION,
         choices=TYPES,
+    )
+
+    jir = models.ForeignKey(
+        'JournalImportRequest',
+        on_delete=models.SET_NULL,
+        blank=True,
+        null=True,
     )
 
     def is_locked(self):
@@ -1628,8 +1682,18 @@ class Entry(CreateUpdateModel):
 
     def save(self, *args, **kwargs):
         is_new = not self.pk
-        if is_new:
-            self.last_edited = timezone.now()
+        author_id = self.__dict__.get('author_id', None)
+        node_id = self.__dict__.get('node_id', None)
+
+        try:
+            node = Node.objects.get(pk=node_id) if node_id else self.node
+        except Node.DoesNotExist:
+            raise ValidationError('Saving entry without corresponding node')
+
+        author = self.author if self.author else User.objects.get(pk=author_id) if author_id else None
+        if author:
+            if not node.journal.authors.filter(user=author).exists():
+                raise ValidationError('Saving entry created by user not part of journal.')
 
         super(Entry, self).save(*args, **kwargs)
 
@@ -1729,11 +1793,20 @@ class Template(CreateUpdateModel):
         return "Template"
 
 
+@receiver(models.signals.pre_delete, sender=Template)
+def delete_pending_jirs_on_source_deletion(sender, instance, **kwargs):
+    if Content.objects.filter(field__template=instance).exists():
+        raise VLEProgrammingError('Content still exists which depends on a template being deleted')
+
+
 class Field(CreateUpdateModel):
     """Field.
 
     Defines the fields of an Template
     """
+    ALLOWED_URL_SCHEMES = ('http', 'https', 'ftp', 'ftps')
+    ALLOWED_DATE_FORMAT = '%Y-%m-%d'
+    ALLOWED_DATETIME_FORMAT = '%Y-%m-%dT%H:%M:%S'
 
     TEXT = 't'
     RICH_TEXT = 'rt'
@@ -1789,15 +1862,16 @@ class Content(CreateUpdateModel):
     Defines the content of an Entry
     """
 
+    class Meta:
+        unique_together = ('entry', 'field')
+
     entry = models.ForeignKey(
         'Entry',
         on_delete=models.CASCADE
     )
-    # Question: Why can this be null?
     field = models.ForeignKey(
         'Field',
-        on_delete=models.SET_NULL,
-        null=True
+        on_delete=models.CASCADE,
     )
     data = models.TextField(
         null=True
@@ -1885,3 +1959,111 @@ class Comment(CreateUpdateModel):
 
     def to_string(self, user=None):
         return "Comment"
+
+
+class JournalImportRequest(CreateUpdateModel):
+    """
+    Journal Import Request (JIR).
+    Stores a single request to import all entries of a journal (source) into another journal (target).
+
+    Attributes:
+        source (:model:`VLE.journal`): The journal from which entries will be copied
+        target (:model:`VLE.journal`): The journal into which entries will be copied
+        author (:model:`VLE.user`): The user who created the journal import request
+        state: State of the JIR
+        processor (:model:`VLE.user`): The user who updated the JIR state
+    """
+
+    PENDING = 'PEN'
+    DECLINED = 'DEC'
+    APPROVED_INC_GRADES = 'AIG'
+    APPROVED_EXC_GRADES = 'AEG'
+    APPROVED_WITH_GRADES_ZEROED = 'AWGZ'
+    EMPTY_WHEN_PROCESSED = 'EWP'
+    APPROVED_STATES = [APPROVED_INC_GRADES, APPROVED_EXC_GRADES, APPROVED_WITH_GRADES_ZEROED]
+    STATES = (
+        (PENDING, 'Pending'),
+        (DECLINED, 'Declined'),
+        (APPROVED_INC_GRADES, 'Approved including grades'),
+        (APPROVED_EXC_GRADES, 'Approved excluding grades'),
+        (APPROVED_WITH_GRADES_ZEROED, 'Approved with all grades set to zero'),
+        (EMPTY_WHEN_PROCESSED, 'Empty when processed')
+    )
+
+    state = models.CharField(
+        max_length=4,
+        choices=STATES,
+        default=PENDING,
+    )
+    source = models.ForeignKey(
+        'journal',
+        related_name='import_request_sources',
+        blank=True,
+        null=True,
+        on_delete=models.SET_NULL
+    )
+    target = models.ForeignKey(
+        'journal',
+        related_name='import_request_targets',
+        blank=True,
+        null=True,
+        on_delete=models.CASCADE
+    )
+    author = models.ForeignKey(
+        'user',
+        related_name='jir_author',
+        blank=True,
+        null=True,
+        on_delete=models.SET_NULL
+    )
+    processor = models.ForeignKey(
+        'user',
+        related_name='jir_processor',
+        blank=True,
+        null=True,
+        on_delete=models.SET_NULL
+    )
+
+    def get_update_response(self):
+        responses = {
+            self.DECLINED: 'The journal import request has been successfully declined.',
+            self.APPROVED_INC_GRADES:
+                'The journal import request has been successfully approved including all previous grades.',
+            self.APPROVED_EXC_GRADES:
+                'The journal import request has been successfully approved excluding all previous grades.',
+            self.APPROVED_WITH_GRADES_ZEROED:
+                """The journal import request has been successfully approved,
+                and all of the imported entries have been locked (by setting their respective grades to zero).""",
+            self.EMPTY_WHEN_PROCESSED:
+                'The source journal no longer has entries to import, the request has been archived.',
+        }
+
+        return responses[self.state]
+
+    @receiver(models.signals.pre_delete, sender=Journal)
+    def delete_pending_jirs_on_source_deletion(sender, instance, **kwargs):
+        JournalImportRequest.objects.filter(source=instance, state=JournalImportRequest.PENDING).delete()
+
+
+@receiver(models.signals.pre_save, sender=JournalImportRequest)
+def validate_jir_before_save(sender, instance, **kwargs):
+    if instance.target:
+        if instance.target.assignment.lock_date and instance.target.assignment.lock_date < timezone.now():
+            raise ValidationError('You are not allowed to create an import request for a locked assignment.')
+        if instance.state == JournalImportRequest.PENDING and not instance.target.assignment.is_published:
+            raise ValidationError('You are not allowed to create an import request for an unpublished assignment.')
+
+    if instance.source:
+        if not Entry.objects.filter(node__journal=instance.source).exists():
+            raise ValidationError('You cannot create an import request whose source is empty.')
+
+    if instance.target and instance.source:
+        if instance.source.assignment.pk == instance.target.assignment.pk:
+            raise ValidationError('You cannot import a journal into itself.')
+
+        existing_import_qry = instance.target.import_request_targets.filter(
+            state__in=JournalImportRequest.APPROVED_STATES, source=instance.source)
+        if instance.pk:
+            existing_import_qry = existing_import_qry.exclude(pk=instance.pk)
+        if existing_import_qry.exists():
+            raise ValidationError('You cannot import the same journal multiple times.')

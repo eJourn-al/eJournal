@@ -50,6 +50,9 @@
                     <option value="markingNeeded">
                         Sort by marking needed
                     </option>
+                    <option value="importRequests">
+                        Sort by import requests
+                    </option>
                     <option value="points">
                         Sort by points
                     </option>
@@ -106,7 +109,7 @@
                         :endpoint="'assignments/' + $route.params.aID + '/add_bonus_points'"
                         :aID="$route.params.aID"
                         class="mt-2"
-                        @bonusPointsSuccesfullyUpdated="hideModal('bonusPointsModal'); init()"
+                        @bonusPointsSuccessfullyUpdated="hideModal('bonusPointsModal'); init()"
                     />
                 </b-card>
             </b-modal>
@@ -605,15 +608,18 @@ export default {
             let needsMarking = 0
             let unpublished = 0
             let points = 0
+            let importRequests = 0
 
             for (let i = 0; i < filteredJournals.length; i++) {
                 needsMarking += filteredJournals[i].needs_marking
                 unpublished += filteredJournals[i].unpublished
                 points += filteredJournals[i].grade
+                importRequests += filteredJournals[i].import_requests
             }
             this.stats = {
                 needsMarking,
                 unpublished,
+                importRequests,
                 averagePoints: points / filteredJournals.length,
             }
         },

@@ -12,8 +12,7 @@ from django.utils import timezone
 
 import VLE.validators as validators
 from VLE.models import (Assignment, AssignmentParticipation, Comment, Content, Course, Entry, Field, Format, Grade,
-                        Group, Journal, Node, Participation, PresetNode, Role, Template, User)
-from VLE.utils.error_handling import VLEBadRequest
+                        Group, Node, Participation, PresetNode, Role, Template, User)
 
 
 def make_user(username, password=None, email=None, lti_id=None, profile_picture=settings.DEFAULT_PROFILE_PICTURE,
@@ -194,23 +193,6 @@ def make_progress_node(format, due_date, target):
     return node
 
 
-def make_entrydeadline_node(format, due_date, template, unlock_date=None, lock_date=None):
-    """Make entry deadline.
-
-    Arguments:
-    format -- format of the entry deadline.
-    unlock_date -- unlock date of the entry deadline.
-    due_date -- due date of the entry deadline.
-    lock_date -- lock date of the entry deadline.
-    template -- template of the entrydeadline.
-    """
-    node = PresetNode(type=Node.ENTRYDEADLINE, unlock_date=unlock_date, due_date=due_date,
-                      lock_date=lock_date, forced_template=template, format=format)
-    node.save()
-
-    return node
-
-
 def make_node(journal, entry=None, type=Node.ENTRY, preset=None):
     """Make a node.
 
@@ -219,36 +201,6 @@ def make_node(journal, entry=None, type=Node.ENTRY, preset=None):
     entry -- entry the node belongs to.
     """
     return Node.objects.get_or_create(type=type, entry=entry, preset=preset, journal=journal)[0]
-
-
-def make_journal(assignment, author=None, author_limit=None):
-    """Make a new journal.
-
-    First creates all nodes defined by the format.
-    The deadlines and templates are the same object
-    as those in the format, so any changes should
-    be reflected in the Nodes as well.
-    """
-    if assignment.is_group_assignment:
-        if author is not None:
-            raise VLEBadRequest('Group journals should not be initialized with an author')
-        journal = Journal.objects.create(assignment=assignment, author_limit=author_limit)
-
-    else:
-        if author_limit is not None:
-            raise VLEBadRequest('Non group-journals should not be initialized with an author_limit')
-        if Journal.all_objects.filter(assignment=assignment, authors__user=author).exists():
-            return Journal.all_objects.get(assignment=assignment, authors__user=author)
-
-        ap = AssignmentParticipation.objects.filter(assignment=assignment, user=author).first()
-        if ap is None:
-            ap = AssignmentParticipation.objects.create(assignment=assignment, user=author)
-            journal = Journal.all_objects.get(assignment=assignment, authors__in=[ap])
-        else:
-            journal = Journal.objects.create(assignment=assignment)
-            journal.add_author(ap)
-
-    return journal
 
 
 def make_assignment_participation(assignment, author):

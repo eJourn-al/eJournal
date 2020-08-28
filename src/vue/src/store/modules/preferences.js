@@ -7,6 +7,9 @@ const getters = {
     // Stored user preferences.
     saved: state => state.saved,
 
+    journalImportRequestButtonSetting: state => state.journalImportRequestButtonSetting,
+    dismissedJIRs: state => state.dismissedJIRs,
+
     // Search filters.
     todoSortBy: state => state.todo.sortBy,
     todoFilterOwnGroups: state => state.todo.filterOwnGroups,
@@ -117,6 +120,12 @@ const mutations = {
     [types.SET_ASSIGNMENT_OVERVIEW_FILTER_OWN_GROUPS] (state, filterOwnGroups) {
         state.assignmentOverview.filterOwnGroups = filterOwnGroups
     },
+    [types.SET_JOURNAL_IMPORT_REQUEST_BUTTON_SETTING] (state, val) {
+        state.journalImportRequestButtonSetting = val
+    },
+    [types.ADD_DISMISSED_JIRS_TO_JOURNAL] (state, data) {
+        state.dismissedJIRs = [...state.dismissedJIRs, ...data]
+    },
     [types.RESET_PREFERENCES] (state) {
         state.saved = {}
         state.todo.sortBy = 'date'
@@ -136,6 +145,8 @@ const mutations = {
         state.assignmentOverview.searchValue = ''
         state.assignmentOverview.sortBy = 'name'
         state.assignmentOverview.filterOwnGroups = true
+        state.journalImportRequestButtonSetting = 'AIG'
+        state.dismissedJIRs = []
     },
 }
 
@@ -168,6 +179,8 @@ export default {
             sortBy: 'name',
             filterOwnGroups: true,
         },
+        journalImportRequestButtonSetting: 'AIG',
+        dismissedJIRs: [],
     },
     getters,
     mutations,
