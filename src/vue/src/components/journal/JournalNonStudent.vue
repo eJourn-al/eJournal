@@ -146,7 +146,7 @@
                     </h3>
                     <div
                         v-if="$hasPermission('can_grade')"
-                        class="bonus-section grade-section mt-1 full-width"
+                        class="bonus-section grade-section mb-2 full-width"
                     >
                         <div>
                             <b-form-input
@@ -172,7 +172,7 @@
                     </div>
                     <b-button
                         v-if="$hasPermission('can_publish_grades')"
-                        class="add-button full-width"
+                        class="add-button mb-2 full-width"
                         @click="publishGradesJournal"
                     >
                         <icon name="upload"/>
@@ -182,7 +182,7 @@
                         <b-button
                             v-if="journal.import_requests"
                             v-b-modal="'journal-import-request-approval-modal'"
-                            class="multi-form change-button mt-1 full-width"
+                            class="multi-form change-button mb-2 full-width"
                         >
                             <icon name="file-import"/>
                             Manage Import Requests
