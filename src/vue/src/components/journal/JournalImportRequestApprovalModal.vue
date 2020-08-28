@@ -50,22 +50,22 @@
                         :options="{
                             AIG: {
                                 text: 'Approve including grades',
-                                icon: 'paper-plane',
+                                icon: 'check',
                                 class: 'add-button',
                             },
                             AEG: {
                                 text: 'Approve excluding grades',
-                                icon: 'paper-plane',
+                                icon: 'check',
                                 class: 'add-button',
                             },
                             AWGZ: {
                                 text: 'Approve with grades zeroed',
-                                icon: 'paper-plane',
+                                icon: 'check',
                                 class: 'change-button',
                             },
                             DEC: {
                                 text: 'Decline',
-                                icon: 'ban',
+                                icon: 'times',
                                 class: 'delete-button',
                             },
                         }"
@@ -78,7 +78,7 @@
 
                 <div v-else>
                     <h4 class="theme-h4">
-                        No outstanding journal import requests available.
+                        No outstanding journal import requests.
                     </h4>
                 </div>
             </load-wrapper>
@@ -151,7 +151,6 @@ export default {
                 + `Journal/${jir.source.journal.id}`
         },
         handleJIR (jir) {
-            // TODO JIR: Update timeline without required reload
             journalImportRequestAPI.update(
                 jir.id,
                 this.$store.getters['preferences/journalImportRequestButtonSetting'],
@@ -165,6 +164,7 @@ export default {
                     this.selectedAssignment = null
                     this.$root.$emit('bv::hide::modal', this.modalID)
                 }
+                this.$emit('jir-processed')
             })
         },
         openSelectedJirInNewWindow () {

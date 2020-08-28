@@ -191,6 +191,7 @@
                         <journal-import-request-approval-modal
                             v-if="journal.import_requests"
                             modalID="journal-import-request-approval-modal"
+                            @jir-processed="loadJournal(false)"
                         />
                     </div>
                 </b-col>
