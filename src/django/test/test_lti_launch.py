@@ -69,9 +69,10 @@ def create_request(request_body={}, timestamp=str(int(time.time())), nonce=str(o
 
 
 def lti_launch(request_body={}, response_value=lti_view.LTI_STATES.NO_USER.value, timestamp=str(int(time.time())),
-               nonce=str(oauth2.generate_nonce()), status=302, assert_msg='',
+               nonce=None, status=302, assert_msg='',
                delete_field=False):
-
+    if nonce is None:
+        nonce = str(oauth2.generate_nonce())
     request = create_request(request_body, timestamp, nonce, delete_field)
     request = RequestFactory().post('http://127.0.0.1:8000/lti/launch', request)
     response = lti_view.lti_launch(request)
