@@ -6,8 +6,8 @@ from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.test import TestCase
 
-from VLE.models import (Assignment, AssignmentParticipation, Course, Entry, Journal, JournalImportRequest,
-                        Participation, Role, User)
+from VLE.models import (Assignment, AssignmentParticipation, Comment, Content, Course, Entry, FileContext, Journal,
+                        JournalImportRequest, Participation, Role, User)
 
 
 class JournalAPITest(TestCase):
@@ -152,13 +152,12 @@ class JournalAPITest(TestCase):
         g_journal.authors.remove(g_journal.authors.first())
         g_journal.reset()
 
-        # TODO: Enable once fixed?
-        # assert not g_journal.node_set.exists()
-        # assert not Entry.objects.filter(pk=entry.pk).exists()
-        # assert not Content.objects.filter(entry=entry).exists()
-        # assert not FileContext.objects.filter(journal=g_journal).exists()
-        # assert not FileContext.objects.filter(content__in=entry.content_set.all()).exists()
-        # assert not Comment.objects.filter(entry=entry).exists()
+        assert not g_journal.node_set.exists()
+        assert not Entry.objects.filter(pk=entry.pk).exists()
+        assert not Content.objects.filter(entry=entry).exists()
+        assert not FileContext.objects.filter(journal=g_journal).exists()
+        assert not FileContext.objects.filter(content__in=entry.content_set.all()).exists()
+        assert not Comment.objects.filter(entry=entry).exists()
 
         remaining_jir_ids = g_journal.import_request_targets.all().values('pk') \
             | g_journal.import_request_sources.all().values('pk')

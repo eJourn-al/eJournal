@@ -1411,13 +1411,9 @@ class Journal(CreateUpdateModel, ComputedFieldsModel):
         self.save()
 
     def reset(self):
-        Node.objects.filter(journal=self).delete()
+        Entry.objects.filter(node__journal=self).delete()
         self.import_request_targets.all().delete()
         self.import_request_sources.filter(state=JournalImportRequest.PENDING).delete()
-
-        preset_nodes = self.assignment.format.presetnode_set.all()
-        for preset_node in preset_nodes:
-            Node.objects.create(type=preset_node.type, journal=self, preset=preset_node)
 
     def save(self, *args, **kwargs):
         if not self.author_limit == self.UNLIMITED and self.authors.count() > self.author_limit:
@@ -1707,6 +1703,13 @@ class Entry(CreateUpdateModel):
 
     def to_string(self, user=None):
         return "Entry"
+
+
+@receiver(models.signals.pre_delete, sender=Entry)
+def delete_corresponding_node(sender, instance, **kwargs):
+    """Ensures an entries corresponding unlimited node is also deleted."""
+    if instance.node and instance.node.type == Node.ENTRY:
+        instance.node.delete()
 
 
 class Grade(CreateUpdateModel):

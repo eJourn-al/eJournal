@@ -4,13 +4,14 @@ import os
 import test.factory as factory
 from datetime import date, timedelta
 from test.utils import api
+from test.utils.generic_utils import equal_models
 
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.test import TestCase
 from faker import Faker
 
-from VLE.models import (Assignment, Content, Course, Entry, Field, FileContext, Format, Grade, Journal, Node,
+from VLE.models import (Assignment, Comment, Content, Course, Entry, Field, FileContext, Format, Grade, Journal, Node,
                         PresetNode, Template)
 from VLE.utils import generic_utils as utils
 from VLE.utils.error_handling import VLEMissingRequiredField, VLEPermissionError
@@ -643,3 +644,58 @@ class EntryAPITest(TestCase):
             'Node should also exist after deletion of preset'
         assert not Node.objects.filter(pk=node_student2.pk).exists(), \
             'Node student 2 does not exist after deletion of preset'
+
+    def test_utils_delete_entry(self):
+        assignment = factory.Assignment(format__templates=[])
+        factory.TemplateAllTypes(format=assignment.format)
+        factory.ProgressPresetNode(format=assignment.format)
+
+        all_pre_setup_contents = list(Content.objects.all().values_list('pk', flat=True))
+        all_pre_setup_comments = list(Comment.objects.all().values_list('pk', flat=True))
+        all_pre_setup_fcs = list(FileContext.objects.all().values_list('pk', flat=True))
+
+        journal = factory.Journal(assignment=assignment, entries__n=0)
+        unlimited_entry = factory.UnlimitedEntry(node__journal=journal)
+        assert journal.node_set.count() == 2
+        progress_node = journal.node_set.get(type=Node.PROGRESS)
+        factory.StudentComment(entry=unlimited_entry, n_att_files=1, n_rt_files=1)
+
+        unlimited_entry.delete()
+
+        assert journal.node_set.count() == 1, 'One node should remain, hopefully the progress node'
+        node = journal.node_set.first()
+        assert equal_models(node, progress_node), 'Progress node is unchanged'
+
+        assert not Entry.objects.filter(pk=unlimited_entry.pk).exists(), 'The entry itself is deleted'
+
+        assert not Content.objects.all().exclude(pk__in=all_pre_setup_contents).exists(), 'Content should cascade'
+        assert not Comment.objects.all().exclude(pk__in=all_pre_setup_comments).exists(), 'Comments should cascade'
+        assert not FileContext.objects.all().exclude(pk__in=all_pre_setup_fcs).exists(), \
+            'All fcs should cascade (comment rt, comment attached files, content rt, content files)'
+
+        deadline = factory.DeadlinePresetNode(format=assignment.format)
+        deadline_entry = factory.PresetEntry(node__journal=journal, node__preset=deadline)
+        deadline_node = journal.node_set.get(type=Node.ENTRYDEADLINE)
+        factory.StudentComment(entry=deadline_entry, n_att_files=1, n_rt_files=1)
+
+        deadline_entry.delete()
+
+        assert journal.node_set.count() == 2, 'Progress node and ENTRYDEADLINE node should remain'
+        post_delete_progress_node = journal.node_set.get(type=Node.PROGRESS)
+        post_delete_deadline_node = journal.node_set.get(type=Node.ENTRYDEADLINE)
+        assert equal_models(post_delete_progress_node, post_delete_progress_node), \
+            'Progress node is unchanged'
+        assert equal_models(deadline_node, post_delete_deadline_node, ignore_keys=['entry'])
+        assert post_delete_deadline_node.entry is None, 'Entry should be set to none after deletion'
+
+        assert not Content.objects.all().exclude(pk__in=all_pre_setup_contents).exists(), 'Content should cascade'
+        assert not Comment.objects.all().exclude(pk__in=all_pre_setup_comments).exists(), 'Comments should cascade'
+        assert not FileContext.objects.all().exclude(pk__in=all_pre_setup_fcs).exists(), \
+            'All fcs should cascade (comment rt, comment attached files, content rt, content files)'
+
+        factory.UnlimitedEntry(node__journal=journal)
+        factory.UnlimitedEntry(node__journal=journal)
+        Entry.objects.filter(node__journal=journal).delete()
+
+        assert not Content.objects.all().exclude(pk__in=all_pre_setup_contents).exists(), \
+            'Cascade works properly on bulk delete as well'

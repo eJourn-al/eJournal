@@ -92,10 +92,7 @@ class EntryView(viewsets.ViewSet):
 
         # If anything fails during creation of the entry, delete the entry
         except Exception as e:
-            node.entry.delete()
-            # If there is a newly created node, delete that as well
-            if not node_id:
-                node.delete()
+            entry.delete()
 
             # If it is a file issue, raise with propper response, else respond with the exception that was raised
             if type(e) == FileContext.DoesNotExist:
@@ -244,7 +241,5 @@ class EntryView(viewsets.ViewSet):
         if len(journal.needs_lti_link) > 0:
             return response.forbidden(journal.outdated_link_warning_msg)
 
-        if entry.node.type != Node.ENTRYDEADLINE:
-            entry.node.delete()
         entry.delete()
         return response.success(description='Successfully deleted entry.')
