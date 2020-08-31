@@ -1,11 +1,21 @@
 <template>
-    <b-form-file
-        :accept="acceptedFiletype"
-        :state="Boolean(file)"
-        :placeholder="placeholderText"
-        class="fileinput"
-        @change="fileHandler"
-    />
+    <div>
+        <b-form-file
+            ref="formFile"
+            :accept="acceptedFiletype"
+            :state="Boolean(file)"
+            :placeholder="placeholderText"
+            :plain="plain"
+            class="fileinput"
+            @change="fileHandler"
+        />
+        <small
+            v-if="acceptedFiletype !== '*/*'"
+            class="multi-form"
+        >
+            <b>Accepted extension(s):</b> {{ acceptedFiletype }}
+        </small>
+    </div>
 </template>
 
 <script>
@@ -22,7 +32,7 @@ export default {
             Number,
         },
         aID: {
-            required: true,
+            default: null,
             String,
         },
         autoUpload: {
@@ -34,6 +44,9 @@ export default {
         },
         placeholder: {
             default: 'No file chosen',
+        },
+        plain: {
+            default: false,
         },
         contentID: {
             default: null,
@@ -49,8 +62,8 @@ export default {
         // Assume the given file is present in the backend
         if (this.placeholder !== null && this.placeholder !== 'No file chosen') {
             this.file = true
-            this.placeholderText = this.placeholder
         }
+        this.placeholderText = this.placeholder ? this.placeholder : 'No file chosen'
     },
     methods: {
         fileHandler (e) {
@@ -71,9 +84,7 @@ export default {
         uploadFile () {
             const formData = new FormData()
             formData.append('file', this.file)
-            formData.append('assignment_id', this.aID)
-            formData.append('content_id', this.contentID)
-            this.$emit('uploadingFile')
+            this.$emit('uploading-file')
             auth.uploadFile(this.endpoint, formData, { customSuccessToast: 'File upload success.' })
                 .then((resp) => {
                     this.$emit('fileUploadSuccess', resp.data)
@@ -82,6 +93,9 @@ export default {
                     this.$emit('fileUploadFailed', this.file.file_name)
                     this.file = null
                 })
+        },
+        openFileUpload () {
+            this.$refs.formFile.$el.click()
         },
     },
 }

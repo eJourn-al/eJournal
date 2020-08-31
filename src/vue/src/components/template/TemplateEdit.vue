@@ -70,117 +70,13 @@
                 @end="endDrag"
                 @update="onUpdate"
             >
-                <b-card
+                <template-field
                     v-for="field in template.field_set"
                     :key="field.location"
-                    class="field-card"
-                >
-                    <b-row
-                        alignH="between"
-                        noGutters
-                    >
-                        <b-col
-                            cols="12"
-                            sm="10"
-                            lg="11"
-                        >
-                            <b-input
-                                v-model="field.title"
-                                class="multi-form theme-input"
-                                placeholder="Field title"
-                                required
-                            />
-                            <text-editor
-                                v-if="showEditors"
-                                :id="`rich-text-editor-field-${template.id}-${field.location}`"
-                                :key="`rich-text-editor-field-${template.id}-${field.location}`"
-                                v-model="field.description"
-                                :basic="true"
-                                :displayInline="true"
-                                :minifiedTextArea="true"
-                                class="multi-form"
-                                placeholder="Optional description"
-                                required
-                            />
-                            <div class="d-flex">
-                                <b-select
-                                    v-model="field.type"
-                                    :options="fieldTypes"
-                                    class="theme-select multi-form mr-2"
-                                    @change="field.options = ''"
-                                />
-                                <b-button
-                                    v-if="!field.required"
-                                    class="optional-field-template float-right multi-form"
-                                    @click.stop
-                                    @click="field.required = !field.required"
-                                >
-                                    <icon name="asterisk"/>
-                                    Optional
-                                </b-button>
-                                <b-button
-                                    v-if="field.required"
-                                    class="required-field-template float-right multi-form"
-                                    @click.stop
-                                    @click="field.required = !field.required"
-                                >
-                                    <icon name="asterisk"/>
-                                    Required
-                                </b-button>
-                            </div>
-
-                            <!-- Field Options -->
-                            <div v-if="field.type == 's'">
-                                <!-- Event targeting allows us to access the input value -->
-                                <div class="d-flex">
-                                    <b-input
-                                        class="multi-form mr-2 theme-input"
-                                        placeholder="Enter an option"
-                                        @keyup.enter.native="addSelectionOption($event.target, field)"
-                                    />
-                                    <b-button
-                                        class="float-right multi-form add-button"
-                                        @click.stop="addSelectionOption($event.target.previousElementSibling, field)"
-                                    >
-                                        <icon name="plus"/>
-                                        Add
-                                    </b-button>
-                                </div>
-                                <div v-if="field.options">
-                                    <b-button
-                                        v-for="(option, index) in JSON.parse(field.options)"
-                                        :key="index"
-                                        class="delete-button mr-2 mb-2"
-                                        @click.stop="removeSelectionOption(option, field)"
-                                    >
-                                        <icon name="trash"/>
-                                        {{ option }}
-                                    </b-button>
-                                </div>
-                            </div>
-                        </b-col>
-                        <b-col
-                            cols="12"
-                            sm="2"
-                            lg="1"
-                            class="icon-box"
-                        >
-                            <div class="handle d-inline d-sm-block">
-                                <icon
-                                    class="move-icon"
-                                    name="arrows-alt"
-                                    scale="1.75"
-                                />
-                            </div>
-                            <icon
-                                class="trash-icon"
-                                name="trash"
-                                scale="1.75"
-                                @click.native="removeField(field.location)"
-                            />
-                        </b-col>
-                    </b-row>
-                </b-card>
+                    :field="field"
+                    :showEditors="showEditors"
+                    @removeField="removeField"
+                />
                 <div class="invisible"/>
             </draggable>
             <b-button
@@ -191,23 +87,27 @@
                 Add field
             </b-button>
         </div>
-        <template-preview
+        <entry-fields
             v-if="mode !== 'edit'"
             :template="template"
+            :content="() => Object()"
+            :edit="true"
+            :readOnly="true"
         />
     </b-card>
 </template>
 
 <script>
-import templatePreview from '@/components/template/TemplatePreview.vue'
-import textEditor from '@/components/assets/TextEditor.vue'
+import EntryFields from '@/components/entry/EntryFields.vue'
+// Try changing below import (and filename in tree) to TemplateField.vue: why is it specifically unresolved?
+import TemplateField from '@/components/template/Field.vue'
 import draggable from 'vuedraggable'
 
 export default {
     components: {
         draggable,
-        textEditor,
-        templatePreview,
+        EntryFields,
+        TemplateField,
     },
     props: {
         template: {
@@ -216,18 +116,6 @@ export default {
     },
     data () {
         return {
-            fieldTypes: {
-                t: 'Text',
-                rt: 'Rich Text',
-                i: 'Image',
-                p: 'PDF',
-                f: 'File',
-                v: 'YouTube Video',
-                u: 'URL',
-                d: 'Date',
-                dt: 'Date Time',
-                s: 'Selection',
-            },
             mode: 'edit',
             selectedLocation: null,
             showEditors: true,
@@ -244,7 +132,7 @@ export default {
         },
         addField () {
             const newField = {
-                type: 't',
+                type: 'rt',
                 title: '',
                 description: '',
                 options: null,
@@ -272,23 +160,6 @@ export default {
         },
         onUpdate () {
             this.updateLocations()
-        },
-        addSelectionOption (target, field) {
-            if (target.value.trim()) {
-                if (!field.options) {
-                    field.options = JSON.stringify([])
-                }
-                const options = JSON.parse(field.options)
-                options.push(target.value.trim())
-                field.options = JSON.stringify(options)
-                target.value = ''
-                target.focus()
-            }
-        },
-        removeSelectionOption (option, field) {
-            const options = JSON.parse(field.options)
-            options.splice(options.indexOf(option.trim()), 1)
-            field.options = JSON.stringify(options)
         },
         togglePresetOnly () {
             this.template.preset_only = !this.template.preset_only

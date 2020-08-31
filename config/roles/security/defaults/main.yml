@@ -2,8 +2,6 @@
 
 perform_aptitude_dist_upgrade: true
 
-force_ssh_authentication: true
-
 enable_unattended_upgrades: true
 
 enable_ufw: true

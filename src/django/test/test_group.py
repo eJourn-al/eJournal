@@ -54,7 +54,7 @@ class GroupAPITest(TestCase):
         test_student = factory.TestUser()
         journal = factory.Journal(assignment__courses=[self.course])
         journal.authors.set([])
-        journal.authors.add(factory.AssignmentParticipation(user=test_student))
+        journal.add_author(factory.AssignmentParticipation(user=test_student))
         assignment = journal.assignment
 
         test_student_group = factory.Group(course=self.course)
@@ -95,12 +95,12 @@ class GroupAPITest(TestCase):
         for ap in group_journal.authors.all():
             ap.user.delete()
         group_journal.assignment.courses.set([self.course])
-        group_journal.authors.add(factory.AssignmentParticipation(user=student))
-        group_journal.authors.add(factory.AssignmentParticipation(user=other_student))
+        group_journal.add_author(factory.AssignmentParticipation(user=student))
+        group_journal.add_author(factory.AssignmentParticipation(user=other_student))
         other_group_journal = factory.GroupJournal(assignment=group_journal.assignment)
         for ap in other_group_journal.authors.all():
             ap.user.delete()
-        other_group_journal.authors.add(factory.AssignmentParticipation(user=test_student))
+        other_group_journal.add_author(factory.AssignmentParticipation(user=test_student))
 
         groups = api.get(
             self, 'groups', params={'course_id': self.course.pk, 'assignment_id': assignment.pk},

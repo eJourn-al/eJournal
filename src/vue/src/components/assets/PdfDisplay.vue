@@ -187,7 +187,7 @@ export default {
     &:hover
         opacity: 1
     svg
-        @extend .shadow
+        @extend .theme-shadow
         width: 1.6em
         height: 1.6em
         border-radius: 5px

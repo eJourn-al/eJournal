@@ -14,7 +14,8 @@ source ./venv/bin/activate
 test () {
     clear
     echo -e '\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n'
-    pytest src/django/test $totest && flake8 --max-line-length=120 src/django --exclude="src/django/VLE/migrations/*","src/django/VLE/settings/*","src/django/VLE/settings.py","src/django/VLE/tasks/__init__.py" && isort -rc src/django/
+    pytest src/django/test $totest && flake8 --max-line-length=120 src/django --exclude="src/django/VLE/migrations/*","src/django/VLE/settings/*","src/django/VLE/settings.py","src/django/VLE/tasks/__init__.py"
+    isort -rc src/django/
     echo
     echo ">>> Press Enter to force update."
     previous_sha=`ls -lR src/django -I "media" | sha1sum`

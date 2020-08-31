@@ -3,6 +3,7 @@ entry.py.
 
 In this file are all the entry api requests.
 """
+from django.utils import timezone
 from rest_framework import viewsets
 
 import VLE.factory as factory
@@ -36,9 +37,9 @@ class EntryView(viewsets.ViewSet):
             node_id -- optional: the node to bind the entry to (only for entrydeadlines)
             content -- the list of {tag, data} tuples to bind data to a template field.
         """
-        journal_id, template_id, content_list = utils.required_params(
-            request.data, "journal_id", "template_id", "content")
-        node_id, = utils.optional_params(request.data, "node_id")
+        journal_id, template_id, content_dict = utils.required_params(
+            request.data, 'journal_id', 'template_id', 'content')
+        node_id, = utils.optional_params(request.data, 'node_id')
 
         journal = Journal.objects.get(pk=journal_id, authors__user=request.user)
         assignment = journal.assignment
@@ -49,7 +50,7 @@ class EntryView(viewsets.ViewSet):
         if assignment.is_locked():
             return response.forbidden('The assignment is locked, entries can no longer be edited/changed.')
 
-        if journal.needs_lti_link():
+        if len(journal.needs_lti_link) > 0:
             return response.forbidden(journal.outdated_link_warning_msg)
 
         # Check if the template is available
@@ -57,45 +58,41 @@ class EntryView(viewsets.ViewSet):
                                                                  pk=template.pk).exists()):
             return response.forbidden('Entry template is not available.')
 
-        entry_utils.check_fields(template, content_list)
+        entry_utils.check_fields(template, content_dict)
 
-        # Node specific entry
+        # Deadline entry
         if node_id:
             node = Node.objects.get(pk=node_id, journal=journal)
             entry = entry_utils.add_entry_to_node(node, template, request.user)
-        # Template specific entry
+        # Unlimited entry
         else:
-            entry = factory.make_entry(template, request.user)
-            node = factory.make_node(journal, entry)
+            node = factory.make_node(journal)
+            entry = factory.make_entry(template, request.user, node)
 
         try:
             files_to_establish = []
-            for content in content_list:
-                field_id, = utils.required_typed_params(content, (int, 'id'))
+            for field_id, content in content_dict.items():
                 field = Field.objects.get(pk=field_id)
-                data, = utils.required_params(content, 'data')
-                if data is not None and field.type in field.FILE_TYPES:
-                    data, = utils.required_typed_params(data, (str, 'id'))
+                if content is not None and field.type == field.FILE:
+                    content, = utils.required_typed_params(content, (str, 'id'))
 
-                created_content = factory.make_content(node.entry, data, field)
+                created_content = factory.make_content(node.entry, content, field)
 
-                if field.type in field.FILE_TYPES:  # Image, file or PDF
-                    if field.required and not data:
+                if field.type == field.FILE:
+                    if field.required and not content:
                         raise FileContext.DoesNotExist
-                    if data:
+                    if content:
                         files_to_establish.append(
-                            (FileContext.objects.get(pk=int(data)), created_content))
+                            (FileContext.objects.get(pk=int(content)), created_content))
 
                 # Establish all files in the rich text editor
                 if field.type == Field.RICH_TEXT:
-                    files_to_establish += [(f, created_content) for f in file_handling.get_files_from_rich_text(data)]
+                    files_to_establish += [
+                        (f, created_content) for f in file_handling.get_temp_files_from_rich_text(content)]
 
         # If anything fails during creation of the entry, delete the entry
         except Exception as e:
-            node.entry.delete()
-            # If there is a newly created node, delete that as well
-            if not node_id:
-                node.delete()
+            entry.delete()
 
             # If it is a file issue, raise with propper response, else respond with the exception that was raised
             if type(e) == FileContext.DoesNotExist:
@@ -103,9 +100,9 @@ class EntryView(viewsets.ViewSet):
             else:
                 raise e
 
-        for (file, content) in files_to_establish:
-            file_handling.establish_file(
-                request.user, file.access_id, content=content, in_rich_text=content.field.type == Field.RICH_TEXT)
+        for (file, created_content) in files_to_establish:
+            file_handling.establish_file(request.user, file.access_id, content=created_content,
+                                         in_rich_text=created_content.field.type == Field.RICH_TEXT)
 
         # Notify teacher on new entry
         grading.task_journal_status_to_LMS.delay(journal.pk)
@@ -138,7 +135,7 @@ class EntryView(viewsets.ViewSet):
             success -- with the new entry data
 
         """
-        content_list, = utils.required_params(request.data, 'content')
+        content_dict, = utils.required_params(request.data, 'content')
         entry_id, = utils.required_typed_params(kwargs, (int, 'pk'))
         entry = Entry.objects.get(pk=entry_id)
         journal = entry.node.journal
@@ -153,60 +150,59 @@ class EntryView(viewsets.ViewSet):
             return response.bad_request('You are not allowed to edit graded entries.')
         if entry.is_locked():
             return response.bad_request('You are not allowed to edit locked entries.')
-        if journal.needs_lti_link():
+        if len(journal.needs_lti_link) > 0:
             return response.forbidden(journal.outdated_link_warning_msg)
 
         # Check for required fields
-        entry_utils.check_fields(entry.template, content_list)
+        entry_utils.check_fields(entry.template, content_dict)
 
         # Attempt to edit the entries content.
         files_to_establish = []
-        for content in content_list:
-            field_id, = utils.required_typed_params(content, (int, 'id'))
-            data, = utils.required_params(content, 'data')
+        for (field_id, new_content) in content_dict.items():
             field = Field.objects.get(pk=field_id)
-            if data is not None and field.type in field.FILE_TYPES:
-                data, = utils.required_typed_params(data, (str, 'id'))
+            if new_content is not None and field.type == field.FILE:
+                new_content, = utils.required_typed_params(new_content, (str, 'id'))
 
             old_content = entry.content_set.filter(field=field)
             changed = False
             if old_content.exists():
                 old_content = old_content.first()
-                if old_content.field.pk != field_id:
-                    return response.bad_request('The given content does not match the accompanying field type.')
-                if not data:
+                if not new_content:
                     old_content.data = None
                     old_content.save()
                     continue
 
-                changed = old_content.data != data
+                changed = old_content.data != new_content
                 if changed:
-                    entry_utils.patch_entry_content(request.user, entry, old_content, field, data, assignment)
+                    old_content.data = new_content
+                    old_content.save()
             # If there was no content in this field before, create new content with the new data.
             # This can happen with non-required fields, or when the given data is deleted.
             else:
-                old_content = factory.make_content(entry, data, field)
+                old_content = factory.make_content(entry, new_content, field)
                 changed = True
 
             if changed:
-                if field.type in field.FILE_TYPES:  # Image, file or PDF
-                    if field.required and not data:
+                if field.type == field.FILE:
+                    if field.required and not new_content:
                         raise FileContext.DoesNotExist
-                    if data:
+                    if new_content:
                         files_to_establish.append(
-                            (FileContext.objects.get(pk=int(data)), old_content))
+                            (FileContext.objects.get(pk=int(new_content)), old_content))
 
                 # Establish all files in the rich text editor
                 if field.type == Field.RICH_TEXT:
-                    files_to_establish += [(f, old_content) for f in file_handling.get_files_from_rich_text(data)]
+                    files_to_establish += [
+                        (f, old_content) for f in file_handling.get_temp_files_from_rich_text(new_content)]
 
-        for (file, content) in files_to_establish:
-            file_handling.establish_file(
-                request.user, file.access_id, content=content, in_rich_text=content.field.type == Field.RICH_TEXT)
+        for (file, old_content) in files_to_establish:
+            file_handling.establish_file(request.user, file.access_id, content=old_content,
+                                         in_rich_text=old_content.field.type == Field.RICH_TEXT)
 
         file_handling.remove_unused_user_files(request.user)
         grading.task_journal_status_to_LMS.delay(journal.pk)
         entry.last_edited_by = request.user
+        entry.last_edited = timezone.now()
         entry.save()
 
         return response.success({'entry': serialize.EntrySerializer(entry, context={'user': request.user}).data})
@@ -242,10 +238,8 @@ class EntryView(viewsets.ViewSet):
                 return response.forbidden('You are not allowed to delete entries in a locked assignment.')
         elif not request.user.is_superuser:
             return response.forbidden('You are not allowed to delete someone else\'s entry.')
-        if journal.needs_lti_link():
+        if len(journal.needs_lti_link) > 0:
             return response.forbidden(journal.outdated_link_warning_msg)
 
-        if entry.node.type != Node.ENTRYDEADLINE:
-            entry.node.delete()
         entry.delete()
         return response.success(description='Successfully deleted entry.')

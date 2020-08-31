@@ -6,12 +6,11 @@ from test.utils import api
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
 
-from VLE.models import Entry, Field, FileContext, PresetNode, Template
+from VLE.models import Content, Entry, Field, FileContext, PresetNode, Template, User
 from VLE.utils import file_handling
 from VLE.utils.error_handling import VLEBadRequest, VLEPermissionError
 
-BOUNDARY = 'BoUnDaRyStRiNg'
-MULTIPART_CONTENT = 'multipart/form-data; boundary=%s' % BOUNDARY
+MULTIPART_CONTENT = 'multipart/form-data; boundary=BoUnDaRyStRiNg'
 
 
 class FileHandlingTest(TestCase):
@@ -25,20 +24,82 @@ class FileHandlingTest(TestCase):
         self.video = SimpleUploadedFile('file.mp4', b'file_content', content_type='video/mp4')
         self.image = SimpleUploadedFile('file.png', b'image_content', content_type='image/png')
         self.template = factory.TemplateAllTypes(format=self.format)
-        self.img_field = Field.objects.get(template=self.template, type=Field.IMG)
+        self.img_field = Field.objects.get(template=self.template, type=Field.FILE, options__contains='png')
         self.rt_field = Field.objects.get(template=self.template, type=Field.RICH_TEXT)
-        self.file_field = Field.objects.get(template=self.template, type=Field.FILE)
+        self.file_field = Field.objects.get(template=self.template, type=Field.FILE, options=None)
 
         self.create_params = {
             'journal_id': self.journal.pk,
             'template_id': self.template.pk,
-            'content': []
+            'content': {},
         }
 
     def tearDown(self):
         """Cleans any remaining user_files on the file system (remnants from failed tests) assumes user_file instance
         infact deletes corresponding files"""
         FileContext.objects.all().delete()
+
+    def test_file_context_factory(self):
+        u_count = User.objects.count()
+
+        fc = factory.FileContext()
+        assert u_count + 1 == User.objects.count(), 'One user is generated'
+        assert User.objects.last().pk == fc.author.pk, 'The generated user is indeed the author of the fc'
+        assert fc.file_name in fc.file.name, 'The instance file name is sensible in comparison to the underlying file.'
+        assert os.path.exists(fc.file.path), 'An actual file is created for the file context test instance'
+
+        author = factory.Student()
+        u_count = User.objects.count()
+
+        fc = factory.FileContext(author=author)
+        assert u_count == User.objects.count(), 'No user is generated if the author is specified'
+
+    def test_file_content_file_context_factory(self):
+        entry = factory.UnlimitedEntry()
+        u_count = User.objects.count()
+
+        file_content_fc = factory.FileContentFileContext(author=entry.author, content__entry=entry)
+        assert u_count == User.objects.count(), 'No additional user is created if the author is specified'
+        assert entry.author.pk == file_content_fc.author.pk, 'The entry user is indeed the author of the fc'
+
+        entry = factory.UnlimitedEntry()
+        u_count = User.objects.count()
+
+        file_content_fc = factory.FileContentFileContext(content__entry=entry)
+        assert u_count == User.objects.count(), 'No additional user is created if the entry is specified'
+        assert entry.author.pk == file_content_fc.author.pk, 'The entry user is indeed the author of the fc'
+
+        entry = factory.UnlimitedEntry()
+        u_count = User.objects.count()
+        c_count = Content.objects.count()
+
+        file_content = factory.Content(field__type=Field.FILE, entry=entry)
+        assert file_content.filecontext_set.count() == 1
+        fc = file_content.filecontext_set.first()
+
+        assert c_count + 1 == Content.objects.count(), 'A single content instance is generated'
+        assert u_count == User.objects.count(), 'No additional user is generated'
+        assert entry.author.pk == fc.author.pk, 'The entries user should be used as the author of the fc'
+
+    def test_establish_files_entry_update(self):
+        assignment = factory.Assignment()
+        template = factory.FilesTemplate(format=assignment.format)
+        entry = factory.UnlimitedEntry(template=template, node__journal__assignment=assignment)
+        student = entry.node.journal.authors.first().user
+
+        image = SimpleUploadedFile('file.png', b'image_content', content_type='image/png')
+        new_image = api.post(
+            self, 'files', params={'file': image}, user=student, content_type=MULTIPART_CONTENT, status=201)
+
+        patch = {
+            'pk': entry.pk,
+            'template_id': template.pk,
+            'journal_id': entry.node.journal.pk,
+            'content': {
+                template.field_set.first().pk: new_image,
+            },
+        }
+        api.update(self, 'entries', params=patch, user=student)
 
     def test_file_retrieve(self):
         file = FileContext.objects.create(file=self.video, author=self.student, file_name=self.video.name)
@@ -55,7 +116,7 @@ class FileHandlingTest(TestCase):
         # Test only teacher can see own unpublished comment
         file = FileContext.objects.create(file=self.video, author=self.teacher, file_name=self.video.name)
         hidden_comment = factory.TeacherComment(
-            author=self.teacher, entry=factory.Entry(node__journal=self.journal), published=False)
+            author=self.teacher, entry=factory.UnlimitedEntry(node__journal=self.journal), published=False)
         file_handling.establish_file(self.teacher, file.pk, comment=hidden_comment)
         api.get(self, 'files', params={'pk': file.pk}, user=factory.Teacher(), status=403)
         api.get(self, 'files', params={'pk': file.pk}, user=self.student, status=403)
@@ -78,7 +139,7 @@ class FileHandlingTest(TestCase):
         file = FileContext.objects.create(file=self.video, author=self.student, file_name=self.video.name)
 
         file_get = FileContext.objects.filter(author=self.student.pk, file_name=self.video.name).first()
-        assert file, "The student should have succesfully created a temp user file."
+        assert file, "The student should have successfully created a temp user file."
         assert file == file_get, "The created user file should be equal to the gotten user file from db."
         path = file.file.path
         actual_file_name = Path(path).name
@@ -118,14 +179,14 @@ class FileHandlingTest(TestCase):
         assert FileContext.objects.get(pk=file1.pk).file.path != FileContext.objects.get(pk=file2.pk).file.path
         assert FileContext.objects.get(pk=file2.pk).file.path != FileContext.objects.get(pk=file3.pk).file.path
 
-    def test_remove_unused_files(self):
+    def test_remove_unused_files_content(self):
         # Test uploading two files, then post entry, 1 gets removed
         content_fake = api.post(
             self, 'files', params={'file': self.image}, user=self.student, content_type=MULTIPART_CONTENT, status=201)
         content_real = api.post(
             self, 'files', params={'file': self.image}, user=self.student, content_type=MULTIPART_CONTENT, status=201)
         post = self.create_params
-        post['content'] = [{'data': content_real, 'id': self.img_field.pk}]
+        post['content'] = {self.img_field.pk: content_real}
         api.post(self, 'entries', params=post, user=self.student, status=201)
         assert self.student.filecontext_set.filter(pk=content_real['id']).exists(), 'real file should stay'
         assert not self.student.filecontext_set.filter(pk=content_fake['id']).exists(), 'fake file should be removed'
@@ -141,10 +202,10 @@ class FileHandlingTest(TestCase):
             self, 'files', params={'file': self.image, 'in_rich_text': True},
             user=self.student, content_type=MULTIPART_CONTENT, status=201)
         post = self.create_params
-        post['content'] = [
-            {'data': content_real, 'id': self.img_field.pk},
-            {'data': "<p>hello!<img src='{}' /></p>".format(content_rt['download_url']), 'id': self.rt_field.pk}
-        ]
+        post['content'] = {
+            self.img_field.pk: content_real,
+            self.rt_field.pk: "<p>hello!<img src='{}'/></p>".format(content_rt['download_url']),
+        }
         entry_with_rt = api.post(self, 'entries', params=post, user=self.student, status=201)['entry']
         assert self.student.filecontext_set.filter(pk=content_real['id']).exists(), 'real file should stay'
         assert self.student.filecontext_set.filter(pk=content_rt['id']).exists(), 'rich text shoud stay'
@@ -156,9 +217,9 @@ class FileHandlingTest(TestCase):
             self, 'files', params={'file': self.image}, user=self.student, content_type=MULTIPART_CONTENT, status=201)
         patch = {
             'pk': entry_with_rt['id'],
-            'content': post['content']
+            'content': post['content'],
         }
-        patch['content'][0]['data'] = content_new
+        patch['content'][list(patch['content'].keys())[0]] = content_new
         api.update(self, 'entries', params=patch, user=self.student)
         assert self.student.filecontext_set.filter(pk=content_new['id']).exists(), 'new file should exist'
         assert not self.student.filecontext_set.filter(pk=content_old['id']).exists(), 'old file should be removed'
@@ -171,12 +232,31 @@ class FileHandlingTest(TestCase):
         content_new_rt2 = api.post(
             self, 'files', params={'file': self.image, 'in_rich_text': True},
             user=self.student, content_type=MULTIPART_CONTENT, status=201)
-        patch['content'][1]['data'] = "<p>hello!<img src='{}' /><img src='{}' /></p>".format(
+        rt_field_id = next(field for field in self.template.field_set.all() if field.type == 'rt').id
+        patch['content'][rt_field_id] = "<p>hello!<img src='{}' /><img src='{}' /></p>".format(
             content_new_rt['download_url'], content_new_rt2['download_url'])
         api.update(self, 'entries', params=patch, user=self.student)
         assert self.student.filecontext_set.filter(pk=content_new_rt['id']).exists(), 'new file should exist'
         assert self.student.filecontext_set.filter(pk=content_new_rt2['id']).exists(), 'new file should exist'
         assert not self.student.filecontext_set.filter(pk=content_old_rt['id']).exists(), 'old file should be removed'
+
+    def test_remove_unused_files_comment(self):
+        # Test uploading two files, then post comment, 1 gets removed
+        content_fake = api.post(
+            self, 'files', params={'file': self.image, 'in_rich_text': True}, user=self.student,
+            content_type=MULTIPART_CONTENT, status=201)
+        content_real = api.post(
+            self, 'files', params={'file': self.image, 'in_rich_text': True}, user=self.student,
+            content_type=MULTIPART_CONTENT, status=201)
+        params = {
+            'entry_id': factory.UnlimitedEntry(node__journal=self.journal).pk,
+            'text': '<p><img src="{}"</p>'.format(content_real['download_url']),
+            'published': True,
+            'files': [],
+        }
+        api.create(self, 'comments', params=params, user=self.student)
+        assert self.student.filecontext_set.filter(pk=content_real['id']).exists(), 'real file should stay'
+        assert not self.student.filecontext_set.filter(pk=content_fake['id']).exists(), 'fake file should be removed'
 
     def test_remove_profile_picture(self):
         user = factory.Student()
@@ -287,7 +367,7 @@ class FileHandlingTest(TestCase):
         api.post(
             self, 'files', params={'file': self.image}, user=self.teacher, content_type=MULTIPART_CONTENT, status=201)
         file = FileContext.objects.get(author=self.teacher.pk, file_name=self.image.name)
-        assert file, 'The student should have succesfully created a temp user file.'
+        assert file, 'The student should have successfully created a temp user file.'
 
     def test_establish(self):
         to_establish = api.post(
@@ -314,7 +394,10 @@ class FileHandlingTest(TestCase):
         assert 'No accompanying file found in the request.' in response['description']
 
     def test_long_file_name(self):
-        entry = factory.PresetEntry()
+        assignment = factory.Assignment()
+        template = assignment.format.template_set.first()
+        entry = factory.PresetEntry(template=template)
+
         node = entry.node
         author = entry.author
         entry.delete()
@@ -330,13 +413,12 @@ class FileHandlingTest(TestCase):
         resp = api.post(
             self, 'files', params={'file': long_name, 'in_rich_text': False},
             user=author, content_type=MULTIPART_CONTENT, status=201)
+        content = {f.pk: 'abcd' for f in node.preset.forced_template.field_set.exclude(pk=field.pk)}
+        content[field.pk] = resp.copy()
         entry = api.create(
             self, 'entries', params={
                 'journal_id': node.journal.pk, 'node_id': node.pk, 'template_id': node.preset.forced_template.pk,
-                'content': [{
-                    'id': field.pk,
-                    'data': resp.copy()
-                }] + [{'id': f.pk, 'data': 'asdf'} for f in node.preset.forced_template.field_set.exclude(pk=field.pk)]
+                'content': content
             },
             user=author)['entry']
         Entry.objects.get(pk=entry['id']).delete()

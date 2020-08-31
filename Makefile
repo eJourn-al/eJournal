@@ -4,12 +4,6 @@ else
 TOTEST=
 endif
 
-ifeq (,$(wildcard ./pass.txt))
-ansible_use = --ask-vault-pass
-else
-ansible_use = --vault-password-file pass.txt
-endif
-
 ifdef no_become
 become =
 else
@@ -23,6 +17,8 @@ ifndef host
 host=staging
 endif
 
+ansible_play_default_flags = --ask-pass --ask-vault-pass
+
 vars = --extra-vars "git_branch=${branch} deploy_host=${host}"
 
 postgres_db = ejournal
@@ -33,9 +29,9 @@ postgres_dev_user_pass = password
 ##### TEST COMMANDS #####
 
 test-back:
-	pep8 ./src/django --max-line-length=120 --exclude='./src/django/VLE/migrations','./src/django/VLE/settings*'
+	bash -c 'source ./venv/bin/activate && pycodestyle ./src/django --max-line-length=120 --exclude="./src/django/VLE/migrations","./src/django/VLE/settings*"'
 	bash -c 'source ./venv/bin/activate && flake8 --max-line-length=120 src/django --exclude="src/django/VLE/migrations/*","src/django/VLE/settings/*","src/django/VLE/settings.py","src/django/VLE/tasks/__init__.py" && deactivate'
-	bash -c "source ./venv/bin/activate && pytest -n auto --cov=VLE --cov-config .coveragerc src/django/test ${TOTEST} && deactivate"
+	bash -c "source ./venv/bin/activate && pytest -n auto --cov=VLE -vvl --cov-report term-missing --cov-config .coveragerc src/django/test ${TOTEST} && deactivate"
 	bash -c 'source ./venv/bin/activate && isort -rc src/django/ && deactivate'
 
 test-front:
@@ -74,7 +70,7 @@ setup-no-input:
 
 	sudo apt install npm -y
 	sudo npm install npm@latest -g
-	sudo apt install nodejs python3 python3-pip pep8 libpq-dev python3-dev postgresql postgresql-contrib rabbitmq-server python3-setuptools -y
+	sudo apt install nodejs python3 python3-pip libpq-dev python3-dev postgresql postgresql-contrib rabbitmq-server python3-setuptools sshpass -y
 
 	make setup-venv requirements_file=local.txt
 
@@ -89,7 +85,7 @@ setup-no-input:
 setup-travis:
 	(sudo apt-cache show python3.6 | grep "Package: python3.6") || (sudo add-apt-repository ppa:deadsnakes/ppa -y; sudo apt update) || echo "0"
 	sudo apt install npm -y
-	sudo apt install nodejs python3 python3-pip pep8 python3-setuptools -y
+	sudo apt install nodejs python3 python3-pip python3-setuptools -y
 
 	sudo pip3 install virtualenv
 	virtualenv -p python3 venv
@@ -107,7 +103,7 @@ setup-venv:
 		source ./venv/bin/activate && \
 		pip install -r requirements/$(requirements_file) && \
 		isort -rc src/django/ && \
-		ansible-playbook ./config/provision-local.yml --ask-become-pass --ask-vault-pass && \
+		ansible-playbook ./config/provision-local.yml --ask-vault-pass && \
 		deactivate'
 
 ##### DEPLOY COMMANDS ######
@@ -118,31 +114,31 @@ ansible-test-connection:
 
 run-ansible-provision:
 	bash -c 'source ./venv/bin/activate && \
-	ansible-playbook config/provision-servers.yml ${become} ${ansible_use} ${vars}'
+	ansible-playbook config/provision-servers.yml ${ansible_play_default_flags} ${become} ${vars}'
 
 run-ansible-deploy:
 	bash -c 'source ./venv/bin/activate && \
-	ansible-playbook config/provision-servers.yml ${become} ${ansible_use} ${vars} --tags "deploy_front,deploy_back"'
+	ansible-playbook config/provision-servers.yml ${ansible_play_default_flags} ${become} ${vars} --tags "deploy_front,deploy_back"'
 
 run-ansible-deploy-front:
 	bash -c 'source ./venv/bin/activate && \
-	ansible-playbook config/provision-servers.yml ${become}  ${ansible_use} ${vars} --tags "deploy_front"'
+	ansible-playbook config/provision-servers.yml ${ansible_play_default_flags} ${become} ${vars} --tags "deploy_front"'
 
 run-ansible-deploy-back:
 	bash -c 'source ./venv/bin/activate && \
-	ansible-playbook config/provision-servers.yml ${become}  ${ansible_use} ${vars} --tags "deploy_back"'
+	ansible-playbook config/provision-servers.yml ${ansible_play_default_flags} ${become} ${vars} --tags "deploy_back"'
 
 run-ansible-backup:
 	bash -c 'source ./venv/bin/activate && \
-	ansible-playbook config/provision-servers.yml ${become}  ${ansible_use} ${vars} --tags "backup"'
+	ansible-playbook config/provision-servers.yml ${ansible_play_default_flags} ${become} ${vars} --tags "backup"'
 
 run-ansible-preset_db:
 	bash -c 'source ./venv/bin/activate && \
-	ansible-playbook config/provision-servers.yml ${become} ${ansible_use} ${vars} --tags "run_preset_db"'
+	ansible-playbook config/provision-servers.yml ${ansible_play_default_flags} ${become} ${vars} --tags "run_preset_db"'
 
 run-ansible-restore-latest:
 	bash -c 'source ./venv/bin/activate && \
-	ansible-playbook config/provision-servers.yml ${become} ${ansible_use} ${vars} --tags "restore_latest"'
+	ansible-playbook config/provision-servers.yml ${ansible_play_default_flags} ${become} ${vars} --tags "restore_latest"'
 
 ##### MAKEFILE COMMANDS #####
 
@@ -165,6 +161,8 @@ postgres-reset:
 	-c \"DROP DATABASE IF EXISTS test_$(postgres_db)\" \
 	-c \"DROP USER IF EXISTS $(postgres_dev_user)\" \
 	" postgres
+	make postgres-init-development
+	make migrate-back
 
 postgres-drop-development-db:
 	@sudo su -c "psql -c \"DROP DATABASE IF EXISTS $(postgres_db)\"" postgres
@@ -188,8 +186,6 @@ preset-db:
 preset-db-no-input:
 	rm -rf src/django/media/*
 	make postgres-reset
-	make postgres-init-development
-	make migrate-back
 	bash -c 'source ./venv/bin/activate && cd ./src/django && python manage.py preset_db && deactivate'
 
 migrate-back:

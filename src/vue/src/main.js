@@ -94,6 +94,13 @@ new Vue({
             dateFormat: 'Y-m-d',
             disableMobile: true,
         },
+        fileTypes: {
+            // https://developer.mozilla.org/en-US/docs/Web/HTML/Element/Img
+            // Only used extensions that are supported by all named browsers
+            // No: apng (IE), webp (IE, Safari), tiff (all)
+            img: 'bmp, gif, ico, cur, jpg, jpeg, jfif, pjpeg, pjp, png, svg',
+            pdf: 'pdf',
+        },
     },
     computed: {
         /* Bootstrap breakpoints for custom events. */
@@ -193,6 +200,10 @@ new Vue({
                         { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }),
                     `${name}.xlsx`)
                 })
+        },
+        canGradeForSomeCourse () {
+            return Object.entries(this.$store.getters['user/permissions']).some(
+                ([key, value]) => ((key.indexOf('assignment') >= 0) && value.can_grade))
         },
     },
     render: h => h(App),

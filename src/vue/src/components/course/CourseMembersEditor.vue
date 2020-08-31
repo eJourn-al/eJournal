@@ -215,8 +215,16 @@ export default {
             }
 
             function groupFilter (user) {
-                if (self.groupFilter) {
-                    return user.groups.map(group => group.name).includes(self.groupFilter)
+                /* Only apply group filter is view enrolled. */
+                if (self.viewEnrolled) {
+                    /* If student has no groups, return false. */
+                    if (!user.groups) {
+                        return false
+                    }
+                    /* Only check if group filter is applied. */
+                    if (self.groupFilter) {
+                        return user.groups.map(group => group.name).includes(self.groupFilter)
+                    }
                 }
                 return true
             }

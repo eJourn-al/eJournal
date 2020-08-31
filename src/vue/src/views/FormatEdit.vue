@@ -247,7 +247,6 @@ import templateImportModal from '@/components/template/TemplateImportModal.vue'
 import templateEdit from '@/components/template/TemplateEdit.vue'
 
 import formatAPI from '@/api/format.js'
-import preferencesAPI from '@/api/preferences.js'
 import assignmentAPI from '@/api/assignment.js'
 
 export default {
@@ -302,7 +301,7 @@ export default {
     },
     methods: {
         loadFormat () {
-            formatAPI.get(this.aID)
+            formatAPI.get(this.aID, this.cID)
                 .then((data) => {
                     this.currentData = data
                     this.originalData = JSON.stringify(data, this.replacer)
@@ -315,9 +314,8 @@ export default {
                     this.newTemplateId = -1
                     this.newPresetId = -1
 
-                    if (this.$store.getters['preferences/showFormatTutorial']) {
-                        preferencesAPI.update(this.$store.getters['user/uID'], { show_format_tutorial: false })
-                            .then(() => { this.$store.commit('preferences/SET_FORMAT_TUTORIAL', false) })
+                    if (this.$store.getters['preferences/saved'].show_format_tutorial) {
+                        this.$store.commit('preferences/CHANGE_PREFERENCES', { show_format_tutorial: false })
                         this.startTour()
                     }
                 })
@@ -494,6 +492,7 @@ export default {
                 presets: this.presets,
                 removed_templates: this.deletedTemplates,
                 removed_presets: this.deletedPresets,
+                course_id: this.cID,
             }, { customSuccessToast: 'New format saved' })
                 .then((data) => {
                     this.currentData = data

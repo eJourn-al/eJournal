@@ -93,7 +93,7 @@
             <b-form-file
                 ref="fileinput"
                 v-model="files"
-                class="fileinput"
+                class="fileinput multi-form"
                 multiple
                 placeholder="Add an attachment (optional)"
                 @change="filesHandler"

@@ -7,8 +7,8 @@ from rest_framework import viewsets
 
 import VLE.utils.generic_utils as utils
 import VLE.utils.responses as response
-from VLE.models import Assignment, Field, Group, PresetNode
-from VLE.serializers import AssignmentDetailsSerializer, FormatSerializer
+from VLE.models import Assignment, Course, Field, Group, PresetNode
+from VLE.serializers import AssignmentFormatSerializer, FormatSerializer
 from VLE.utils import file_handling
 
 
@@ -31,12 +31,16 @@ class FormatView(viewsets.ViewSet):
         corresponding assignment name and description.
         """
         assignment = Assignment.objects.get(pk=pk)
+        course_id, = utils.optional_typed_params(request.query_params, (int, 'course_id'))
+        course = None
+        if course_id:
+            course = Course.objects.get(pk=course_id)
 
         request.user.check_can_view(assignment)
         request.user.check_permission('can_edit_assignment', assignment)
 
         serializer = FormatSerializer(assignment.format)
-        assignment_details = AssignmentDetailsSerializer(assignment, context={'user': request.user})
+        assignment_details = AssignmentFormatSerializer(assignment, context={'user': request.user, 'course': course})
 
         return response.success({'format': serializer.data, 'assignment_details': assignment_details.data})
 
@@ -67,14 +71,15 @@ class FormatView(viewsets.ViewSet):
                                     'removed_templates', 'removed_presets')
 
         assignment = Assignment.objects.get(pk=pk)
+        course = None
         format = assignment.format
 
         request.user.check_permission('can_edit_assignment', assignment)
 
         is_published, can_set_journal_name, can_set_journal_image, can_lock_journal = \
             utils.optional_typed_params(
-                assignment_details, (bool, 'is_published'),
-                (bool, 'can_set_journal_name'), (bool, 'can_set_journal_image'), (bool, 'can_lock_journal'))
+                assignment_details, (bool, 'is_published'), (bool, 'can_set_journal_name'),
+                (bool, 'can_set_journal_image'), (bool, 'can_lock_journal'))
 
         # Remove data that must not be changed by the serializer
         req_data = assignment_details or {}
@@ -85,15 +90,18 @@ class FormatView(viewsets.ViewSet):
                 req_data[key] = None
 
         # Update the assignment details
-        assigned_groups = req_data.pop('assigned_groups', [])
-        if len(assigned_groups) > 0:
-            assignment.assigned_groups.set([])
-            for group in assigned_groups:
-                assignment.assigned_groups.add(Group.objects.get(pk=group['id']))
-        else:
-            assignment.assigned_groups.set([])
-        serializer = AssignmentDetailsSerializer(assignment, data=req_data, context={'user': request.user},
-                                                 partial=True)
+        if 'assigned_groups' in req_data:
+            course_id, = utils.required_typed_params(request.data, (int, 'course_id'))
+            course = Course.objects.get(pk=course_id)
+            assigned_groups = req_data.pop('assigned_groups')
+            assignment.assigned_groups.remove(*assignment.assigned_groups.filter(course=course))
+            for group_id in assigned_groups:
+                group = Group.objects.get(pk=group_id['id'])
+                if group.course == course:
+                    assignment.assigned_groups.add(group)
+
+        serializer = AssignmentFormatSerializer(
+            assignment, data=req_data, context={'user': request.user, 'course': course}, partial=True)
         if not serializer.is_valid():
             return response.bad_request('Invalid assignment data.')
         serializer.save()
@@ -112,6 +120,6 @@ class FormatView(viewsets.ViewSet):
 
         file_handling.remove_unused_user_files(request.user)
         serializer = FormatSerializer(format)
-        assignment_details = AssignmentDetailsSerializer(assignment, context={'user': request.user})
+        assignment_details = AssignmentFormatSerializer(assignment, context={'user': request.user, 'course': course})
 
         return response.success({'format': serializer.data, 'assignment_details': assignment_details.data})

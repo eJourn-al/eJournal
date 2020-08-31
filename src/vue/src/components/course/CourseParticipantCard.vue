@@ -81,11 +81,6 @@ export default {
             init: 2,
         }
     },
-    computed: {
-        groupNames () {
-            return this.user.groups.map(group => group.name)
-        },
-    },
     watch: {
         selectedRole (val) {
             if (this.init > 0) {

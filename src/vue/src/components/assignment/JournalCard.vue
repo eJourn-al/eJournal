@@ -14,11 +14,11 @@
                         :src="journal.image"
                     />
                     <number-badge
-                        v-if="$hasPermission('can_view_all_journals') &&
-                            journal.stats.marking_needed + journal.stats.unpublished > 0"
-                        :leftNum="journal.stats.marking_needed"
-                        :rightNum="journal.stats.unpublished"
-                        :title="squareInfo"
+                        v-if="$hasPermission('can_view_all_journals')
+                            && (journal.needs_marking || journal.unpublished || journal.import_requests)"
+                        :badges="badges"
+                        :displayZeroValues="false"
+                        :keyPrefix="journal.id"
                     />
                 </div>
                 <div class="student-details">
@@ -104,14 +104,14 @@
 
 <script>
 import progressBar from '@/components/assets/ProgressBar.vue'
-import numberBadge from '@/components/assets/NumberBadge.vue'
+import NumberBadge from '@/components/assets/NumberBadge.vue'
 import journalMembers from '@/components/journal/JournalMembers.vue'
 
 export default {
     components: {
         progressBar,
-        numberBadge,
         journalMembers,
+        NumberBadge,
     },
     props: {
         assignment: {
@@ -130,24 +130,21 @@ export default {
         groups () {
             return this.journal.groups.join(', ')
         },
-        squareInfo () {
-            const info = []
-            if (this.journal.stats.marking_needed === 1) {
-                info.push('an entry needs marking')
-            } else if (this.journal.stats.marking_needed > 1) {
-                info.push(`${this.journal.stats.marking_needed} entries need marking`)
-            }
-            if (this.journal.stats.unpublished === 1) {
-                info.push('a grade needs to be published')
-            } else if (this.journal.stats.unpublished > 1) {
-                info.push(`${this.journal.stats.unpublished} grades need to be published`)
-            }
-            const s = info.join(' and ')
-            return `${s.charAt(0).toUpperCase()}${s.slice(1)}`
-        },
         canManageJournal () {
             return this.assignment.is_group_assignment && (this.assignment.can_set_journal_name
                 || this.assignment.can_set_journal_image || this.$hasPermission('can_manage_journals'))
+        },
+        badges () {
+            const badges = [
+                { value: this.journal.needs_marking, tooltip: 'needsMarking' },
+                { value: this.journal.unpublished, tooltip: 'unpublished' },
+            ]
+
+            if (this.$hasPermission('can_manage_journal_import_requests')) {
+                badges.push({ value: this.journal.import_requests, tooltip: 'importRequests' })
+            }
+
+            return badges
         },
     },
     methods: {
@@ -169,14 +166,10 @@ export default {
         min-width: 80px
         height: 70px
         img
-            @extend .shadow
+            @extend .theme-shadow
             width: 70px
             height: 70px
             border-radius: 50% !important
-        .number-badge
-            position: absolute
-            right: 0px
-            top: 0px
     .student-details
         position: relative
         width: calc(100% - 80px)

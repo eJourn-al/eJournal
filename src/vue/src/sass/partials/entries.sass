@@ -1,6 +1,6 @@
 .grade-section
     border-radius: 5px !important
-    border: 2px solid $theme-dark-grey
+    border: 1px solid $theme-dark-grey
     min-width: 3em
     min-height: 3em
     background-color: white
@@ -8,11 +8,11 @@
     margin: 0px 0px 10px 0px
     text-align: center
     &.grade
-        line-height: 2.5em
+        line-height: 3em
         font-weight: bold
-    .theme-input, .theme-input:hover:not(.no-hover), .theme-input:focus, .btn
+    .theme-input, .theme-input:hover, .theme-input:focus, .btn, .btn:hover, .btn:focus
         box-shadow: none
-    .theme-input, .theme-input:hover:not(.no-hover), .theme-input:focus
+    .theme-input, .theme-input:hover, .theme-input:focus
         width: 3em
         display: inline-block
         border: none !important
@@ -51,4 +51,8 @@ hr.full-width
     .late-submission-badge
         margin-left: 5px
         background-color: $theme-red
+        color: white
+    .imported-entry-badge
+        margin-left: 5px
+        background-color: grey
         color: white

@@ -17,11 +17,11 @@
             support@eJournal.app</a>
         -
         <a
-            href="/eJournal-privacy-notice.pdf"
+            href="https://www.eJournal.app/privacy-policy"
             target="_blank"
             class="text-grey"
         >
-            Privacy notice
+            Privacy policy
         </a>
     </footer>
 </template>

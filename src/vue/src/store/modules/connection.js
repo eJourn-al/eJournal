@@ -60,7 +60,7 @@ const actions = {
             setTimeout(() => { commit(types.SET_MIN_CON_TIMER_RUNNING, { val: false }) }, 300)
         }
     },
-    /* The user has a valid refresh token and the access token is sucessfully updated.
+    /* The user has a valid refresh token and the access token is successfully updated.
      * Attempt to retry all refresh subscribers and reset state accordingly. */
     handleValidRefreshToken ({ commit }) {
         commit(types.ACCESS_TOKEN_FETCH_COMPLETED)
@@ -84,6 +84,9 @@ const actions = {
      * - On failure all queued request are failed silently, and the user is redirected to login. */
     setupTokenRefreshErrorInterceptor ({ commit, getters, dispatch }, { connection }) { // eslint-disable-line no-shadow
         connection.interceptors.response.use(null, (error) => {
+            if (error.response === undefined) {
+                return Promise.reject(error)
+            }
             const { config, response: { status } } = error
             const originalRequest = config
 

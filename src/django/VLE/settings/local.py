@@ -25,14 +25,19 @@ LOG_DIR = os.path.join(BASE_DIR, 'logs/')
 if not os.path.exists(LOG_DIR):
     os.makedirs(LOG_DIR)
 
-USER_MAX_FILE_SIZE_BYTES = 10485760
-USER_MAX_TOTAL_STORAGE_BYTES = 104857600
-USER_MAX_EMAIL_ATTACHMENT_BYTES = 10485760
-
 CORS_ORIGIN_ALLOW_ALL = True
+CSP_DEFAULT_SRC = ("'self'", "'unsafe-inline'")
 
-MIDDLEWARE = ['corsheaders.middleware.CorsMiddleware'] + MIDDLEWARE
+INSTALLED_APPS += ['silk']
+
+MIDDLEWARE = [
+    'silk.middleware.SilkyMiddleware',
+    'corsheaders.middleware.CorsMiddleware'
+] + MIDDLEWARE
 ALLOWED_HOSTS = ['*']
+
+SILKY_PYTHON_PROFILER = True
+SILKY_PYTHON_PROFILER_RESULT_PATH = '/'
 
 # If this is True, all tasks will be executed locally by blocking until the task returns.
 # TODO implement a testing environment, which does use background workers moving closer to production.

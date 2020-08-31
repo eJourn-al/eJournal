@@ -18,7 +18,7 @@ def get_nodes(journal, author=None):
     progress node is in the future and maximally one.
     """
     can_add = author and author not in journal.authors.all() and \
-        author.has_permission('can_have_journal', journal.assignment) and not journal.needs_lti_link()
+        author.has_permission('can_have_journal', journal.assignment) and not len(journal.needs_lti_link) > 0
 
     node_list = []
     for node in utils.get_sorted_nodes(journal):

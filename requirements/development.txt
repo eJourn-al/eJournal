@@ -19,3 +19,5 @@ pytest==5.2.0 # Testing library
 pytest-cov==2.7.1 # Pytest
 pytest-django==3.5.1 # Pytest
 pytest-xdist==1.30.0 # Run Pytest in parallel
+django-silk==4.0.1 # Profiling / Optimisation
+deepdiff==5.0.2 # Testing deep difference of dictionary and list combinations

@@ -1,21 +1,16 @@
 import json
+import os
 import re
 from datetime import datetime
 
 from django.conf import settings
 from django.core.exceptions import ValidationError
-from django.core.validators import URLValidator
+from django.core.validators import FileExtensionValidator, URLValidator
 from sentry_sdk import capture_message
 
-from VLE.models import Field
+import VLE.utils.file_handling as file_handling
+from VLE.models import Field, FileContext
 from VLE.utils.error_handling import VLEMissingRequiredField
-
-
-# Base 64 image is roughly 37% larger than a plain image
-def validate_profile_picture_base64(url_data):
-    """Checks if the original size does not exceed 10MB AFTER encoding."""
-    if len(url_data) > settings.USER_MAX_FILE_SIZE_BYTES * 1.37:
-        raise ValidationError("Max size of file is {} Bytes".format(settings.USER_MAX_FILE_SIZE_BYTES))
 
 
 def validate_user_file(in_memory_uploaded_file, user):
@@ -55,30 +50,57 @@ def validate_password(password):
         raise ValidationError("Password needs to contain a special character.")
 
 
-def validate_entry_content(data, field):
+def validate_entry_content(content, field):
     """Validates the given data based on its field type, any validation error will be thrown."""
-    if field.required and not (data or data == ''):
+    if field.required and not (content or content == ''):
         raise VLEMissingRequiredField(field)
-    if not data:
+    if not content:
         return
+
+    if field.type == Field.RICH_TEXT:
+        for access_id in file_handling.get_access_ids_from_rich_text(content):
+            fc = FileContext.objects.filter(access_id=access_id)
+            if not fc.exists():
+                raise ValidationError('Rich text contains reference to non existing file')
+            fc = fc.first()
+            if not fc.file or not os.path.exists(fc.file.path):
+                raise ValidationError('Rich text linked to file context whose file does not exists.')
 
     # TODO: improve VIDEO validator
     if field.type == Field.URL or field.type == Field.VIDEO:
-        url_validate = URLValidator(schemes=('http', 'https', 'ftp', 'ftps'))
-        url_validate(data)
+        url_validate = URLValidator(schemes=Field.ALLOWED_URL_SCHEMES)
+        url_validate(content)
 
     if field.type == Field.SELECTION:
-        if data not in json.loads(field.options):
-            raise ValidationError("Selected option is not in the given options")
+        if content not in json.loads(field.options):
+            raise ValidationError('Selected option is not in the given options.')
 
     if field.type == Field.DATE:
         try:
-            datetime.strptime(data, '%Y-%m-%d')
-        except ValueError as e:
+            datetime.strptime(content, Field.ALLOWED_DATE_FORMAT)
+        except (ValueError, TypeError) as e:
             raise ValidationError(str(e))
 
     if field.type == Field.DATETIME:
         try:
-            datetime.strptime(data, '%Y-%m-%dT%H:%M:%S')
-        except ValueError as e:
+            datetime.strptime(content, Field.ALLOWED_DATETIME_FORMAT)
+        except (ValueError, TypeError) as e:
             raise ValidationError(str(e))
+
+    if field.type == Field.FILE:
+        try:
+            int(content['id'])
+        except (ValueError, KeyError):
+            raise ValidationError("The content['id'] of a field file should contain the pk of the related file")
+
+        # Ensures the FC still exists
+        fc = FileContext.objects.get(pk=int(content['id']))
+        if not os.path.isfile(fc.file.path):
+            raise ValidationError('Entry references non existing file')
+
+        if field.options:
+            validator = FileExtensionValidator(field.options.split(', '))
+            validator(fc.file)
+
+    if field.type == Field.NO_SUBMISSION:
+        raise ValidationError('No submission is allowed for this field.')

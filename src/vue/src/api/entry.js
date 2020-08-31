@@ -1,11 +1,6 @@
 import auth from '@/api/auth.js'
 
 export default {
-    get (id, connArgs = auth.DEFAULT_CONN_ARGS) {
-        return auth.get(`entries/${id}`, null, connArgs)
-            .then(response => response.data.entry)
-    },
-
     create (data, connArgs = auth.DEFAULT_CONN_ARGS) {
         return auth.create('entries', data, connArgs)
             .then(response => response.data)

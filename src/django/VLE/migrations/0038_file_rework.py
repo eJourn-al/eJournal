@@ -172,8 +172,10 @@ def convertBase64CommentsToFiles(apps, schema_editor):
                 file=base64ToContentFile(str_match.group(1), file_name),
                 file_name=file_name,
                 author=c.author,
+                comment=c,
                 journal=c.entry.node.journal,
                 is_temp=False,
+                in_rich_text=True,
                 creation_date=c.creation_date,
                 last_edited=c.last_edited,
             )
@@ -197,8 +199,10 @@ def convertBase64ContentsToFiles(apps, schema_editor):
                 file=base64ToContentFile(str_match.group(1), file_name),
                 file_name=file_name,
                 author=c.entry.node.journal.user,
+                content=c,
                 journal=c.entry.node.journal,
                 is_temp=False,
+                in_rich_text=True,
                 creation_date=c.entry.creation_date,
                 last_edited=c.entry.last_edited,
             )
@@ -237,6 +241,7 @@ def convertBase64AssignmentDescriptionsToFiles(apps, schema_editor):
                 author=a.author,
                 assignment=a,
                 is_temp=False,
+                in_rich_text=True,
                 creation_date=a.courses.first().startdate or timezone.now(),
                 last_edited=a.courses.first().startdate or timezone.now(),
             )
@@ -272,6 +277,7 @@ def convertBase64FieldDescriptionsToFiles(apps, schema_editor):
                 file_name=file_name,
                 author=assignment.author,
                 assignment=assignment,
+                in_rich_text=True,
                 is_temp=False,
                 # QUESTION: Should we add these dates to a template?
                 creation_date=assignment.courses.first().startdate or timezone.now(),

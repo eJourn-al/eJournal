@@ -6,7 +6,6 @@ In this file are all the instance api requests.
 from rest_framework import viewsets
 from rest_framework.permissions import AllowAny
 
-import VLE.factory as factory
 import VLE.utils.responses as response
 from VLE.models import Instance
 from VLE.serializers import InstanceSerializer
@@ -21,10 +20,7 @@ class InstanceView(viewsets.ViewSet):
     """
     def retrieve(self, request, pk=0):
         """Get all instance details."""
-        try:
-            instance = Instance.objects.get(pk=1)
-        except Instance.DoesNotExist:
-            instance = factory.make_instance()
+        instance = Instance.objects.get_or_create(pk=1)[0]
 
         return response.success({'instance': InstanceSerializer(instance).data})
 
@@ -46,10 +42,7 @@ class InstanceView(viewsets.ViewSet):
         if not request.user.is_superuser:
             return response.forbidden('You are not allowed to edit instance details.')
 
-        try:
-            instance = Instance.objects.get(pk=1)
-        except Instance.DoesNotExist:
-            instance = factory.make_instance()
+        instance = Instance.objects.get_or_create(pk=1)[0]
 
         req_data = request.data
         serializer = InstanceSerializer(instance, data=req_data, partial=True)

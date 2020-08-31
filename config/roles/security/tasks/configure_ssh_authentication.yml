@@ -8,10 +8,17 @@
   with_items:
     - "{{ user_public_keys }}"
 
-- name: Disallow password authentication
+- name: Enforce both key AND password authentication
+  lineinfile: dest=/etc/ssh/sshd_config
+              regexp="^AuthenticationMethods"
+              line="AuthenticationMethods publickey,password"
+              state=present
+  notify: restart ssh
+
+- name: Allow password authentication
   lineinfile: dest=/etc/ssh/sshd_config
               regexp="^PasswordAuthentication"
-              line="PasswordAuthentication no"
+              line="PasswordAuthentication yes"
               state=present
   notify: restart ssh
 

@@ -22,6 +22,12 @@ sentry_sdk.init(
     integrations=[DjangoIntegration(), CeleryIntegration()]
 )
 
+MiB = 2**20
+USER_MAX_FILE_SIZE_BYTES = 10 * MiB
+USER_MAX_TOTAL_STORAGE_BYTES = 100 * MiB
+USER_MAX_EMAIL_ATTACHMENT_BYTES = USER_MAX_FILE_SIZE_BYTES
+DATA_UPLOAD_MAX_MEMORY_SIZE = USER_MAX_FILE_SIZE_BYTES
+
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 BASELINK = os.environ['BASELINK']
 API_URL = os.environ['API_URL']
@@ -33,6 +39,7 @@ MEDIA_URL = 'media/'
 
 SECRET_KEY = os.environ['DJANGO_SECRET_KEY']
 
+EXPLICITLY_WITHOUT_CONTEXT = -1
 
 # Email settings
 EMAIL_BACKEND = 'anymail.backends.mailgun.EmailBackend'
@@ -90,6 +97,7 @@ INSTALLED_APPS = [
     'corsheaders',
     'django_celery_results',
     'django_celery_beat',
+    'computedfields',
 ]
 
 REST_FRAMEWORK = {
@@ -173,3 +181,5 @@ TIME_ZONE = 'CET'
 USE_I18N = True
 USE_L10N = True
 USE_TZ = False
+
+DEFAULT_LMS_PROFILE_PICTURE = os.environ['DEFAULT_LMS_PROFILE_PICTURE']

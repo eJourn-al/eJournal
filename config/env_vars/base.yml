@@ -15,7 +15,7 @@ application_name: ejournal
 #
 # More info here: https://launchpad.net/~fkrull/+archive/ubuntu/deadsnakes
 enable_deadsnakes_ppa: true
-virtualenv_python_version: python3.5
+virtualenv_python_version: python3.6
 
 
 # Backup settings

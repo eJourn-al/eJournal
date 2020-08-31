@@ -92,6 +92,13 @@ def is_user_supervisor_of(supervisor, user):
         course__in=VLE.models.Participation.objects.filter(user=user).values('course')).exists()
 
 
+def get_supervisors_of(journal):
+    return VLE.models.User.objects.filter(pk__in=VLE.models.Participation.objects.filter(
+        role__can_view_all_journals=True,
+        role__course__in=journal.assignment.courses.all()
+    ).values('user')).distinct()
+
+
 def can_edit(user, obj):
     if isinstance(obj, VLE.models.Entry):
         return _can_edit_entry(user, obj)
@@ -107,7 +114,7 @@ def _can_edit_entry(user, entry):
         entry.node.journal.assignment.is_locked() or
         entry.is_graded() or
         entry.is_locked() or
-        entry.node.journal.needs_lti_link()
+        len(entry.node.journal.needs_lti_link) > 0
     ):
         return False
 

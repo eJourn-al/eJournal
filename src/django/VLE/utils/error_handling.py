@@ -55,6 +55,10 @@ class VLEMissingRequiredField(Exception):
         super(VLEMissingRequiredField, self).__init__('Missing required field: ' + field.to_string())
 
 
+class LmsGradingResponseException(Exception):
+    """Exception based on LMS error response whilest grading"""
+
+
 class ErrorMiddleware:
     def __init__(self, get_response):
         self.get_response = get_response
@@ -71,7 +75,7 @@ class ErrorMiddleware:
         elif isinstance(exception, ObjectDoesNotExist):
             return response.not_found('{0} does not exist.'.format(str(exception).split()[0]), exception=exception)
         elif isinstance(exception, ValidationError):
-            return response.validation_error(str(exception), exception=exception)
+            return response.validation_error(', '.join(exception.messages), exception=exception)
 
         # Variable exceptions
         elif isinstance(exception, VLEMissingRequiredKey):

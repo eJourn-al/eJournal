@@ -218,6 +218,7 @@ def lti_launch(request):
             query['state'] = LTI_STATES.NO_USER.value
             query['lti_params'] = lti_params
             query['username'] = params['custom_username']
+            query['username_already_exists'] = User.objects.filter(username=params['custom_username']).exists()
             query['full_name'] = params.get('custom_user_full_name', None)
         else:
             refresh = TokenObtainPairSerializer.get_token(user)

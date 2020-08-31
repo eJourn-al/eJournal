@@ -8,31 +8,47 @@
                 <h2 class="theme-h2 multi-form">
                     Hi {{ lti.fullName ? lti.fullName : lti.username }}
                 </h2>
-                <p>
-                    You are ready to start using eJournal as soon as you configure a password below.
-                    This allows you to access eJournal directly at
-                    <a
-                        :href="domainUrl"
-                        target="_blank"
-                    >
-                        {{ domain }}
-                    </a>, as well as via Canvas like you did just now.
-                </p>
-                <p>
-                    Do you already have an existing eJournal account?
-                    <a
-                        href=""
-                        class="text-blue"
-                        @click.prevent.stop="showModal('linkUserModal')"
-                    >
-                        <u>Click here</u>
-                    </a> to link it instead.
-                </p>
-                <register-user
-                    :lti="lti"
-                    class="mt-2"
-                    @handleAction="userIntegrated"
-                />
+                <template v-if="usernameAlreadyExists">
+                    <p>
+                        It looks like you already have an account on eJournal. Please verify this by logging in below.
+                        If this is not the case, reach out to us at
+                        <a
+                            href="mailto:support@eJournal.app"
+                            target="_blank"
+                            class="text-blue"
+                        >
+                            support@eJournal.app
+                        </a>.
+                    </p>
+                    <login-form @handleAction="handleLinked"/>
+                </template>
+                <template v-else>
+                    <p>
+                        You are ready to start using eJournal as soon as you configure a password below.
+                        This allows you to access eJournal directly at
+                        <a
+                            :href="domainUrl"
+                            target="_blank"
+                        >
+                            {{ domain }}
+                        </a>, as well as via Canvas like you did just now.
+                    </p>
+                    <p>
+                        Do you already have an existing eJournal account?
+                        <a
+                            href=""
+                            class="text-blue"
+                            @click.prevent.stop="showModal('linkUserModal')"
+                        >
+                            <u>Click here</u>
+                        </a> to link it instead.
+                    </p>
+                    <register-user
+                        :lti="lti"
+                        class="mt-2"
+                        @handleAction="userIntegrated"
+                    />
+                </template>
             </b-card>
 
             <b-modal
@@ -88,6 +104,8 @@ export default {
                 username: '',
                 email: '',
             },
+
+            usernameAlreadyExists: false,
         }
     },
     computed: {
@@ -153,6 +171,9 @@ export default {
                 }
                 if (this.$route.query.email !== undefined) {
                     this.lti.email = this.$route.query.email
+                }
+                if (this.$route.query.username_already_exists === 'True') {
+                    this.usernameAlreadyExists = true
                 }
 
                 this.handleUserIntegration = true

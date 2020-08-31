@@ -50,3 +50,6 @@ urlpatterns = [
 
     path('names/<int:course_id>/<int:assignment_id>/<int:journal_id>/', common.names, name='names'),
 ] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
+
+if 'silk' in settings.INSTALLED_APPS:
+    urlpatterns.append(url(r'^silk/', include('silk.urls', namespace='silk')))

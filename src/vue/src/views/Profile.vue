@@ -3,7 +3,7 @@
         <bread-crumb/>
         <profile-data ref="profileData"/>
         <notification-card/>
-        <grading-card v-if="showGradeSettings"/>
+        <grading-card v-if="$root.canGradeForSomeCourse"/>
         <h4 class="theme-h4 mb-2 mt-4">
             <span>Password</span>
         </h4>
@@ -31,12 +31,6 @@ export default {
         profileData,
         notificationCard,
         passwordCard,
-    },
-    computed: {
-        showGradeSettings () {
-            return Object.entries(this.$store.getters['user/permissions']).some(
-                ([key, value]) => ((key.indexOf('assignment') >= 0) && value.can_grade))
-        },
     },
     beforeRouteLeave (to, from, next) {
         if ((this.$refs.profileData.isChanged() || this.$refs.passData.isChanged())

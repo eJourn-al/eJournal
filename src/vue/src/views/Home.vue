@@ -24,15 +24,6 @@
                         />
                     </b-link>
                 </div>
-                <b-button
-                    v-if="$hasPermission('can_add_course')"
-                    slot="main-content-column"
-                    class="add-button"
-                    @click="showModal('createCourseRef')"
-                >
-                    <icon name="plus"/>
-                    Create new course
-                </b-button>
             </div>
             <main-card
                 v-else
@@ -40,6 +31,14 @@
                 line2="You currently do not participate in any courses."
                 class="no-hover border-dark-grey"
             />
+            <b-button
+                v-if="$hasPermission('can_add_course')"
+                class="add-button"
+                @click="showModal('createCourseRef')"
+            >
+                <icon name="plus"/>
+                Create new course
+            </b-button>
         </load-wrapper>
 
         <deadline-deck slot="right-content-column"/>

@@ -70,7 +70,12 @@
                     v-if="previewTemplate"
                     class="no-hover multi-form"
                 >
-                    <template-preview :template="previewTemplate"/>
+                    <entry-fields
+                        :template="previewTemplate"
+                        :content="() => Object()"
+                        :edit="true"
+                        :readOnly="true"
+                    />
                 </b-card>
 
                 <b-button
@@ -113,13 +118,14 @@
 </template>
 
 <script>
-import templatePreview from '@/components/template/TemplatePreview.vue'
+import EntryFields from '@/components/entry/EntryFields.vue'
 
 import assignmentAPI from '@/api/assignment.js'
+import utils from '@/utils/generic_utils.js'
 
 export default {
     components: {
-        templatePreview,
+        EntryFields,
     },
     props: {
         modalID: {
@@ -142,11 +148,7 @@ export default {
         courses () {
             return this.importableTemplates.map((importable) => {
                 const course = { ...importable.course }
-                if (course.startdate || course.enddate) {
-                    course.name += ` (${course.startdate ? course.startdate.substring(0, 4) : ''} - ${
-                        course.enddate ? course.enddate.substring(0, 4) : ''})`
-                }
-
+                course.name = utils.courseWithDatesDisplay(course)
                 return course
             })
         },

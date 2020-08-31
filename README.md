@@ -85,8 +85,8 @@ Make sure to use a strong password, as these credentials will be able to manipul
 
 ## Troubleshooting
 
-May the setup or deployment fail, [open an issue on github](https://github.com/eJourn-al/eJournal/issues/new).
-The setup and deployment scripts have been built for ubuntu, and may not work on any other linux distributions. May the need for this arise, the scripts can be altered to support additional distributions.
+The setup and deployment scripts have been built for ubuntu, and may not work on any other linux distributions. May the need for this arise, the scripts can be altered to support additional distributions. 
+May the setup or deployment fail, feel free to contact us at support@ejournal.app.
 
 ## Contributors
 

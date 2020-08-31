@@ -20,8 +20,9 @@
             >
                 We are sorry, but an unknown error has brought you here.
             </span>
+            <!-- TODO: Enable once feedbacklink is fixed -->
             <sentry-feedback-form
-                v-if="sentryLastEventID !== null"
+                v-if="sentryLastEventID !== null && false"
                 class="sentry-feedback-form"
             />
             <b-button

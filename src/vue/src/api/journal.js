@@ -37,7 +37,7 @@ export default {
     },
 
     getMembers (id, connArgs = auth.DEFAULT_CONN_ARGS) {
-        return auth.get(`journals/${id}/get_members`, connArgs)
+        return auth.get(`journals/${id}/get_members`, null, connArgs)
             .then(response => response.data.authors)
     },
 

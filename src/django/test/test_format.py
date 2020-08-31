@@ -1,10 +1,12 @@
 import test.factory as factory
 from test.utils import api
 
+from django.db.utils import IntegrityError
 from django.test import TestCase
 
 import VLE.serializers as serialize
-from VLE.models import Entry, Journal
+from VLE.models import Assignment, Course, Entry, Field, Format, Group, Journal, Template
+from VLE.utils.error_handling import VLEProgrammingError
 
 
 class FormatAPITest(TestCase):
@@ -13,7 +15,7 @@ class FormatAPITest(TestCase):
         self.admin = factory.Admin()
         self.course = factory.Course(author=self.teacher)
         self.assignment = factory.Assignment(courses=[self.course])
-        self.format = factory.Format(assignment=self.assignment)
+        self.format = self.assignment.format
         self.template = factory.Template(format=self.format)
         self.update_dict = {
             'assignment_details': {
@@ -26,6 +28,101 @@ class FormatAPITest(TestCase):
             'removed_templates': [],
             'presets': []
         }
+
+    def test_format_factory(self):
+        self.assertRaises(VLEProgrammingError, factory.Format)
+        assignment = factory.Assignment(format__templates=[])
+
+        template = factory.TemplateAllTypes(format=assignment.format)
+        assert template.format.pk == assignment.format.pk and assignment.format.template_set.count() == 1 \
+            and assignment.format.template_set.get(pk=template.pk), \
+            'A format can be generated via an assignment, and its templates can be set'
+
+        assignment = factory.Assignment(format__templates=[{'type': Field.URL}])
+        assert assignment.format.template_set.count() == 1, 'One template is created'
+        field = Field.objects.get(template=assignment.format.template_set.first())
+        assert field.type == Field.URL, 'And the template consists only out of the specified field'
+
+    def test_template_without_format(self):
+        self.assertRaises(IntegrityError, factory.Template)
+
+    def test_template_factory(self):
+        assignment = factory.Assignment()
+
+        t_c = Template.objects.count()
+        a_c = Assignment.objects.count()
+        j_c = Journal.objects.count()
+        c_c = Course.objects.count()
+        f_c = Format.objects.count()
+
+        template = factory.Template(format=assignment.format)
+        assert not template.field_set.exists(), 'By default a template should be iniated without fields'
+
+        assert f_c == Format.objects.count(), 'No additional format is generated'
+        assert a_c == Assignment.objects.count(), 'No additional assignment should be generated'
+        assert c_c == Course.objects.count(), 'No additional course should be generated'
+        assert j_c == Journal.objects.count(), 'No journals should be generated'
+        assert t_c + 1 == Template.objects.count(), 'One template should be generated'
+
+    def test_template_delete_with_content(self):
+        format = factory.Assignment(format__templates=[]).format
+        template = factory.MentorgesprekTemplate(format=format)
+
+        # It should be no issue to delete a template without content
+        template.delete()
+
+        template = factory.MentorgesprekTemplate(format=format)
+        factory.Journal(assignment=format.assignment, entries__n=1)
+
+        # If any content relies on a template, it should not be possible to delete the template
+        self.assertRaises(VLEProgrammingError, template.delete)
+
+    def test_update_assign_to(self):
+        def check_groups(groups, status=200):
+            api.update(
+                self, 'formats', params={'pk': self.assignment.pk, **self.update_dict},
+                user=self.teacher, status=status)
+            if status == 200:
+                self.assignment.refresh_from_db()
+                assert self.assignment.assigned_groups.count() == len(groups), \
+                    'Assigned group amount should be correct'
+                for group in Group.objects.all():
+                    if group in groups:
+                        assert self.assignment.assigned_groups.filter(pk=group.pk).exists(), \
+                            'Group should be in assigned groups'
+                    else:
+                        assert not self.assignment.assigned_groups.filter(pk=group.pk).exists(), \
+                            'Group should not be in assigned groups'
+
+        group = factory.Group(course=self.course)
+        self.update_dict['assignment_details']['assigned_groups'] = [
+            {'id': group.pk},
+        ]
+        self.update_dict['course_id'] = self.course.pk
+        check_groups([group])
+
+        # Test groups from other courses are not added when course_id is wrong
+        course2 = factory.Course()
+        self.assignment.add_course(course2)
+        group2 = factory.Group(course=course2)
+        self.update_dict['assignment_details']['assigned_groups'] = [
+            {'id': group.pk},
+            {'id': group2.pk},
+        ]
+        self.update_dict['course_id'] = self.course.pk
+        check_groups([group])
+
+        # Test group gets added when other course is supplied, also check if other group does not get removed
+        self.update_dict['assignment_details']['assigned_groups'] = [
+            {'id': group2.pk},
+        ]
+        self.update_dict['course_id'] = course2.pk
+        check_groups([group, group2])
+
+        # Test if only groups from supplied course get removed
+        self.update_dict['assignment_details']['assigned_groups'] = []
+        self.update_dict['course_id'] = course2.pk
+        check_groups([group])
 
     def test_update_format(self):
         # TODO: Improve template testing
@@ -57,7 +154,7 @@ class FormatAPITest(TestCase):
                    user=factory.Admin())
 
         # Check cannot unpublish/change assignment type if there are entries
-        factory.Entry(node__journal__assignment=self.assignment)
+        factory.UnlimitedEntry(node__journal__assignment=self.assignment)
         group_dict = self.update_dict.copy()
         group_dict['assignment_details']['is_group_assignment'] = True
         self.update_dict['assignment_details']['is_published'] = False

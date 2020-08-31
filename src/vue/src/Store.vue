@@ -27,8 +27,9 @@ export default {
                 }
                 return 0
             },
-            markingNeeded: (a, b) => compare(a.stats.marking_needed, b.stats.marking_needed),
+            markingNeeded: (a, b) => compare(a.needs_marking, b.needs_marking),
             points: (a, b) => compare(a.grade, b.grade),
+            importRequests: (a, b) => compare(a.import_requests, b.import_requests),
         }
 
         function groupFilter (journal) {

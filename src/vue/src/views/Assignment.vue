@@ -50,6 +50,13 @@
                     <option value="markingNeeded">
                         Sort by marking needed
                     </option>
+                    <option
+                        v-if="$hasPermission('can_manage_journal_import_requests')
+                            && !loadingJournals && assignment.stats.import_requests"
+                        value="importRequests"
+                    >
+                        Sort by import requests
+                    </option>
                     <option value="points">
                         Sort by points
                     </option>
@@ -71,43 +78,6 @@
                 >
                     <icon name="long-arrow-alt-up"/>
                     Descending
-                </b-button>
-            </div>
-
-            <div class="d-flex flex-wrap assignments-menu-wrapper-margin">
-                <b-button
-                    v-if="$hasPermission('can_publish_grades') && assignmentJournals && assignmentJournals.length > 0"
-                    class="add-button multi-form fill-form-width"
-                    @click="publishGradesAssignment"
-                >
-                    <icon name="upload"/>
-                    {{ assignment.journals.length === filteredJournals.length ?
-                        "Publish all grades" : "Publish grades" }}
-                </b-button>
-                <b-button
-                    v-if="$hasPermission('can_edit_assignment') && assignment.lti_courses
-                        && Object.keys(assignment.lti_courses).length > 1"
-                    class="add-button multi-form fill-form-width"
-                    @click="showModal('manageLTIModal')"
-                >
-                    <icon name="graduation-cap"/>
-                    Manage LTI
-                </b-button>
-                <b-button
-                    v-if="$hasPermission('can_publish_grades') && assignmentJournals.length > 0"
-                    class="change-button multi-form fill-form-width"
-                    @click="showModal('bonusPointsModal')"
-                >
-                    <icon name="star"/>
-                    Import bonus points
-                </b-button>
-                <b-button
-                    v-if="assignmentJournals.length > 0"
-                    class="add-button multi-form fill-form-width"
-                    @click="showModal('assignmentExportSpreadsheetModal')"
-                >
-                    <icon name="file-export"/>
-                    Export results
                 </b-button>
             </div>
 
@@ -138,26 +108,24 @@
 
                     <bonus-file-upload-input
                         ref="bounsPointsUpload"
-                        :acceptedFiletype="'*/*.csv'"
-                        :maxSizeBytes="$root.maxFileSizeBytes"
                         :endpoint="'assignments/' + $route.params.aID + '/add_bonus_points'"
                         :aID="$route.params.aID"
                         class="mt-2"
-                        @bonusPointsSuccesfullyUpdated="hideModal('bonusPointsModal'); init()"
+                        @bonusPointsSuccessfullyUpdated="hideModal('bonusPointsModal'); init()"
                     />
                 </b-card>
             </b-modal>
 
             <b-modal
                 ref="assignmentExportSpreadsheetModal"
-                title="Export to spreadsheet"
+                title="Export results"
                 size="lg"
                 hideFooter
                 noEnforceFocus
             >
                 <b-card class="no-hover">
                     <h2 class="theme-h2 multi-form">
-                        Export assignment results
+                        Export assignment results to spreadsheet
                     </h2>
                     Select which columns should be included in the exported file.
                     <hr/>
@@ -166,6 +134,49 @@
                         :filteredJournals="filteredJournals"
                         :assignmentJournals="assignmentJournals"
                         @spreadsheet-exported="hideModal('assignmentExportSpreadsheetModal')"
+                    />
+                </b-card>
+            </b-modal>
+
+            <b-modal
+                ref="postTeacherEntry"
+                title="Post teacher entries"
+                size="lg"
+                hideFooter
+                noEnforceFocus
+            >
+                <b-card class="no-hover">
+                    <h2 class="theme-h2 multi-form">
+                        Post teacher-initiated entries to student journals
+                    </h2>
+
+                    <hr/>
+                    <post-teacher-entry
+                        :aID="aID"
+                        :assignmentJournals="assignmentJournals"
+                        @teacher-entry-posted="hideModal('postTeacherEntry'); init()"
+                    />
+                </b-card>
+            </b-modal>
+
+            <b-modal
+                ref="manageTeacherEntries"
+                title="Manage teacher entries"
+                size="lg"
+                hideFooter
+                noEnforceFocus
+            >
+                <b-card class="no-hover">
+                    <h2 class="theme-h2 multi-form">
+                        Manage existing teacher entries
+                    </h2>
+                    <b>Note:</b> Changes will not be saved until you click 'save' at the bottom of this window!
+
+                    <hr/>
+                    <teacher-entries
+                        :aID="aID"
+                        :assignmentJournals="assignmentJournals"
+                        @teacher-entry-updated="hideModal('manageTeacherEntries'); init()"
                     />
                 </b-card>
             </b-modal>
@@ -340,27 +351,92 @@
             </b-modal>
         </load-wrapper>
 
-        <div
-            v-if="stats"
-            slot="right-content-column"
-        >
-            <h3 class="theme-h3">
-                Insights
-            </h3>
-            <statistics-card :stats="stats"/>
-        </div>
+        <b-row slot="right-content-column">
+            <b-col
+                v-if="stats"
+                md="6"
+                lg="12"
+                class="mb-3"
+            >
+                <h3 class="theme-h3">
+                    Insights
+                </h3>
+                <statistics-card :stats="stats"/>
+            </b-col>
+            <b-col
+                v-if="canPerformActions"
+                slot="right-content-column"
+                md="6"
+                lg="12"
+            >
+                <h3 class="theme-h3">
+                    Actions
+                </h3>
+                <b-button
+                    v-if="canPublishGradesAssignment"
+                    class="add-button multi-form full-width"
+                    @click="publishGradesAssignment"
+                >
+                    <icon name="upload"/>
+                    {{ assignment.journals.length === filteredJournals.length ?
+                        "Publish all grades" : "Publish grades" }}
+                </b-button>
+                <b-button
+                    v-if="canManageLTI"
+                    class="add-button multi-form full-width"
+                    @click="showModal('manageLTIModal')"
+                >
+                    <icon name="graduation-cap"/>
+                    Manage LTI
+                </b-button>
+                <b-button
+                    v-if="canImportBonusPoints"
+                    class="change-button multi-form full-width"
+                    @click="showModal('bonusPointsModal')"
+                >
+                    <icon name="star"/>
+                    Import bonus points
+                </b-button>
+                <b-button
+                    v-if="canExportResults"
+                    class="add-button multi-form full-width"
+                    @click="showModal('assignmentExportSpreadsheetModal')"
+                >
+                    <icon name="file-export"/>
+                    Export results
+                </b-button>
+                <b-button
+                    v-if="$hasPermission('can_post_teacher_entries')"
+                    class="add-button multi-form full-width mb-2"
+                    @click="showModal('postTeacherEntry')"
+                >
+                    <icon name="plus"/>
+                    Post teacher entries
+                </b-button>
+                <b-button
+                    v-if="$hasPermission('can_post_teacher_entries') && assignment.has_teacher_entries"
+                    class="change-button multi-form full-width"
+                    @click="showModal('manageTeacherEntries')"
+                >
+                    <icon name="edit"/>
+                    Manage teacher entries
+                </b-button>
+            </b-col>
+        </b-row>
     </content-columns>
 </template>
 
 <script>
-import assignmentSpreadsheetExport from '@/components/assignment/AssignmentSpreadsheetExport.vue'
-import bonusFileUploadInput from '@/components/assets/file_handling/BonusFileUploadInput.vue'
-import breadCrumb from '@/components/assets/BreadCrumb.vue'
-import contentColumns from '@/components/columns/ContentColumns.vue'
-import loadWrapper from '@/components/loading/LoadWrapper.vue'
-import mainCard from '@/components/assets/MainCard.vue'
-import statisticsCard from '@/components/assignment/StatisticsCard.vue'
-import journalCard from '@/components/assignment/JournalCard.vue'
+import AssignmentSpreadsheetExport from '@/components/assignment/AssignmentSpreadsheetExport.vue'
+import BonusFileUploadInput from '@/components/assets/file_handling/BonusFileUploadInput.vue'
+import BreadCrumb from '@/components/assets/BreadCrumb.vue'
+import ContentColumns from '@/components/columns/ContentColumns.vue'
+import JournalCard from '@/components/assignment/JournalCard.vue'
+import LoadWrapper from '@/components/loading/LoadWrapper.vue'
+import MainCard from '@/components/assets/MainCard.vue'
+import PostTeacherEntry from '@/components/assignment/PostTeacherEntry.vue'
+import StatisticsCard from '@/components/assignment/StatisticsCard.vue'
+import TeacherEntries from '@/components/assignment/TeacherEntries.vue'
 
 import store from '@/Store.vue'
 import assignmentAPI from '@/api/assignment.js'
@@ -373,14 +449,16 @@ import { mapGetters, mapMutations } from 'vuex'
 export default {
     name: 'Assignment',
     components: {
-        assignmentSpreadsheetExport,
-        bonusFileUploadInput,
-        breadCrumb,
-        contentColumns,
-        loadWrapper,
-        mainCard,
-        statisticsCard,
-        journalCard,
+        AssignmentSpreadsheetExport,
+        BonusFileUploadInput,
+        BreadCrumb,
+        ContentColumns,
+        JournalCard,
+        LoadWrapper,
+        MainCard,
+        PostTeacherEntry,
+        StatisticsCard,
+        TeacherEntries,
     },
     props: {
         cID: {
@@ -447,6 +525,25 @@ export default {
             this.calcStats(store.state.filteredJournals)
             return store.state.filteredJournals
         },
+        canPerformActions () {
+            return this.canPublishGradesAssignment || this.canManageLTI || this.canImportBonusPoints
+                || this.canExportResults || this.$hasPermission('can_post_teacher_entries')
+        },
+        canPublishGradesAssignment  () {
+            return this.$hasPermission('can_publish_grades') && this.assignmentJournals
+                && this.assignmentJournals.length > 0
+        },
+        canManageLTI  () {
+            return this.$hasPermission('can_edit_assignment') && this.assignment.lti_courses
+                    && Object.keys(this.assignment.lti_courses).length > 1
+        },
+        canImportBonusPoints  () {
+            return this.$hasPermission('can_publish_grades') && this.assignmentJournals
+                && this.assignmentJournals.length > 0
+        },
+        canExportResults  () {
+            return this.assignmentJournals && this.assignmentJournals.length > 0
+        },
     },
     created () {
         // TODO Should be moved to the breadcrumb, ensuring there is no more natural flow left that can get you to this
@@ -488,27 +585,29 @@ export default {
             initialCalls.push(assignmentAPI.get(this.aID, this.cID))
             initialCalls.push(groupAPI.getFromAssignment(this.cID, this.aID))
             /* Superuser does not have any participation, this should not redict to error, nor give an error toast */
-            initialCalls.push(
-                participationAPI.get(this.cID, { redirect: !this.isSuperuser, customErrorToast: '' }).catch(() => {}))
+            if (!this.isSuperuser) {
+                initialCalls.push(participationAPI.get(this.cID))
+            }
 
             Promise.all(initialCalls).then((results) => {
-                this.loadingJournals = false
                 this.assignment = results[0]
                 this.assignmentJournals = results[0].journals
                 this.groups = results[1].sort((a, b) => b.name < a.name)
-                const participant = results[2]
-
-                /* If the group filter has not been set, set it to the
-                   groups of the user provided that yields journals. */
-                if (!this.getSelfSetGroupFilter && participant && participant.groups) {
-                    this.setJournalGroupFilter(participant.groups.filter(
-                        participantGroup => this.groups.some(group => group.id === participantGroup.id)))
+                if (!this.isSuperuser) {
+                    const participant = results[2]
+                    /* If the group filter has not been set, set it to the
+                       groups of the user provided that yields journals. */
+                    if (!this.getSelfSetGroupFilter && participant && participant.groups) {
+                        this.setJournalGroupFilter(participant.groups.filter(
+                            participantGroup => this.groups.some(group => group.id === participantGroup.id)))
+                    }
                 }
 
                 /* If there are no groups or the current group filter yields no journals, remove the filter. */
                 if (!this.groups || this.filteredJournals.length === 0) {
                     this.setJournalGroupFilter(null)
                 }
+                this.loadingJournals = false
             })
         },
         showModal (ref) {
@@ -574,15 +673,18 @@ export default {
             let needsMarking = 0
             let unpublished = 0
             let points = 0
+            let importRequests = 0
 
             for (let i = 0; i < filteredJournals.length; i++) {
-                needsMarking += filteredJournals[i].stats.marking_needed
-                unpublished += filteredJournals[i].stats.unpublished
+                needsMarking += filteredJournals[i].needs_marking
+                unpublished += filteredJournals[i].unpublished
                 points += filteredJournals[i].grade
+                importRequests += ((filteredJournals[i].import_requests) ? filteredJournals[i].import_requests : 0)
             }
             this.stats = {
                 needsMarking,
                 unpublished,
+                importRequests,
                 averagePoints: points / filteredJournals.length,
             }
         },
@@ -631,7 +733,4 @@ export default {
     svg
         margin-top: -5px
         fill: grey
-
-.assignments-menu-wrapper-margin
-    margin: 0px -4px
 </style>

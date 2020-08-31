@@ -7,6 +7,7 @@ import csv
 
 import chardet
 from dateutil.relativedelta import relativedelta
+from django.conf import settings
 from django.db.models import Q
 from django.utils import timezone
 from rest_framework import viewsets
@@ -14,10 +15,12 @@ from rest_framework.decorators import action
 
 import VLE.factory as factory
 import VLE.utils.generic_utils as utils
+import VLE.utils.import_utils as import_utils
 import VLE.utils.responses as response
 import VLE.validators as validators
-from VLE.models import Assignment, Course, Field, Journal, PresetNode, Template, User
-from VLE.serializers import AssignmentDetailsSerializer, AssignmentSerializer, CourseSerializer, TemplateSerializer
+from VLE.models import Assignment, Course, Journal, PresetNode, Template, User
+from VLE.serializers import (AssignmentSerializer, CourseSerializer, SmallAssignmentSerializer, TeacherEntrySerializer,
+                             TemplateSerializer)
 from VLE.utils import file_handling, grading
 from VLE.utils.error_handling import VLEMissingRequiredKey, VLEParamWrongType
 
@@ -70,12 +73,12 @@ class AssignmentView(viewsets.ViewSet):
             request.user.check_participation(course)
             courses = [course]
         except (VLEMissingRequiredKey, VLEParamWrongType):
-            course = None
+            course = settings.EXPLICITLY_WITHOUT_CONTEXT
             courses = request.user.participations.all()
 
         query = Assignment.objects.filter(courses__in=courses).distinct()
         viewable = [assignment for assignment in query if request.user.can_view(assignment)]
-        serializer = AssignmentSerializer(viewable, many=True, context={'user': request.user, 'course': course})
+        serializer = SmallAssignmentSerializer(viewable, many=True, context={'user': request.user, 'course': course})
 
         data = serializer.data
         for i, assignment in enumerate(data):
@@ -132,8 +135,6 @@ class AssignmentView(viewsets.ViewSet):
         if lti_id is not None:
             request.user.check_permission('can_add_assignment', course)
             assignment.add_lti_id(lti_id, course)
-            for user in course.users.all():
-                factory.make_journal(assignment, user)
             request.data.pop('lti_id')
 
         file_handling.establish_rich_text(request.user, assignment.description, assignment=assignment)
@@ -313,7 +314,7 @@ class AssignmentView(viewsets.ViewSet):
             request.user.check_participation(course)
             courses = [course]
         except (VLEMissingRequiredKey, VLEParamWrongType):
-            course = None
+            course = settings.EXPLICITLY_WITHOUT_CONTEXT
             courses = request.user.participations.all()
 
         now = timezone.now()
@@ -321,7 +322,8 @@ class AssignmentView(viewsets.ViewSet):
             Q(lock_date__gt=now) | Q(lock_date=None), courses__in=courses
         ).distinct()
         viewable = [assignment for assignment in query if request.user.can_view(assignment)]
-        upcoming = AssignmentSerializer(viewable, context={'user': request.user, 'course': course}, many=True).data
+        upcoming = SmallAssignmentSerializer(
+            viewable, context={'user': request.user, 'course': course}, many=True).data
 
         return response.success({'upcoming': upcoming})
 
@@ -409,7 +411,7 @@ class AssignmentView(viewsets.ViewSet):
         for j, b in bonuses.items():
             j.bonus_points = b
             j.save()
-            grading.task_journal_status_to_LMS.delay(journal.pk)
+            grading.task_journal_status_to_LMS.delay(j.pk)
 
         return response.success()
 
@@ -427,8 +429,8 @@ class AssignmentView(viewsets.ViewSet):
             if assignments:
                 importable.append({
                     'course': CourseSerializer(course).data,
-                    'assignments': AssignmentDetailsSerializer(assignments, context={'user': request.user},
-                                                               many=True).data
+                    'assignments': SmallAssignmentSerializer(
+                        assignments, context={'user': request.user}, many=True).data
                 })
         return response.success({'data': importable})
 
@@ -448,25 +450,16 @@ class AssignmentView(viewsets.ViewSet):
         template = Template.objects.get(pk=template_id)
         request.user.check_permission('can_edit_assignment', template.format.assignment)
 
-        source_template_id = template.pk
-        template.pk = None
-        template.format = assignment.format
-        template.save()
-
-        for field in Field.objects.filter(template=source_template_id):
-            field.pk = None
-            field.template = template
-            field.save()
+        import_utils.import_template(template, assignment)
 
         template_data = TemplateSerializer(template, context={'user': request.user}).data
         template_data.pop('id')
         template_data.pop('archived')
-        template_data.pop('format')
+        template_data.pop('format', None)
         template.delete()
 
         for field in template_data['field_set']:
             field.pop('id')
-            field.pop('template')
 
         return response.success({'template': template_data})
 
@@ -514,15 +507,8 @@ class AssignmentView(viewsets.ViewSet):
 
         for template in Template.objects.filter(format=source_format_id, archived=False):
             source_template_id = template.pk
-            template.pk = None
-            template.format = format
-            template.save()
+            import_utils.import_template(template, assignment)
             template_dict[source_template_id] = template.pk
-
-            for field in Field.objects.filter(template=source_template_id):
-                field.pk = None
-                field.template = template
-                field.save()
 
         journals = assignment.journal_set.all()
         for preset in PresetNode.objects.filter(format=source_format_id):
@@ -536,7 +522,8 @@ class AssignmentView(viewsets.ViewSet):
             if preset.forced_template:
                 preset.forced_template = Template.objects.get(pk=template_dict[preset.forced_template.pk])
             preset.save()
-            utils.update_journals(journals, preset)
+            for journal in journals:
+                factory.make_node(journal, None, preset.type, preset)
 
         # Add new lti id to new assignment
         lti_id, = utils.optional_typed_params(request.data, (str, 'lti_id'))
@@ -569,3 +556,28 @@ class AssignmentView(viewsets.ViewSet):
                 })
 
         return response.success({'participants': participants_without_journal})
+
+    @action(methods=['get'], detail=True)
+    def templates(self, request, pk):
+        """Get all templates (unlimited and preset-only) for an assignment.
+
+        Returns a list of templates."""
+        assignment = Assignment.objects.get(pk=pk)
+
+        request.user.check_permission('can_post_teacher_entries', assignment)
+
+        return response.success({'templates': TemplateSerializer(assignment.format.template_set.filter(
+            archived=False).order_by('name'), many=True).data})
+
+    @action(methods=['get'], detail=True)
+    def teacher_entries(self, request, pk):
+        """Get all teacher entries for an assignment.
+
+        Returns a list of teacher entries containing all grades and journals the entry is part of, as well as the
+        content of the entry."""
+        assignment = Assignment.objects.get(pk=pk)
+
+        request.user.check_permission('can_post_teacher_entries', assignment)
+
+        return response.success({'teacher_entries': TeacherEntrySerializer(assignment.teacherentry_set.all(),
+                                                                           many=True).data})

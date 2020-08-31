@@ -3,14 +3,28 @@ comment.py.
 
 In this file are all the comment api requests.
 """
+from django.utils import timezone
 from rest_framework import viewsets
 
 import VLE.factory as factory
 import VLE.utils.generic_utils as utils
 import VLE.utils.responses as response
-from VLE.models import Comment, Entry
+from VLE.models import Comment, Entry, FileContext
 from VLE.serializers import CommentSerializer
 from VLE.utils import file_handling
+
+
+def handle_comment_files(user, files, comment):
+    # Add new files
+    for file_id in files:
+        file = FileContext.objects.get(pk=int(file_id))
+        if not comment.files.filter(pk=file.pk).exists():
+            comment.files.add(file)
+            file_handling.establish_file(user, file.access_id, comment=comment)
+    # Remove old files
+    comment.files.exclude(pk__in=files).delete()
+    file_handling.establish_rich_text(user, comment.text, comment=comment)
+    file_handling.remove_unused_user_files(user)
 
 
 class CommentView(viewsets.ViewSet):
@@ -53,7 +67,7 @@ class CommentView(viewsets.ViewSet):
         else:
             comments = Comment.objects.filter(entry=entry, published=True)
 
-        serializer = CommentSerializer(comments, context={'user': request.user}, many=True)
+        serializer = CommentSerializer(comments.order_by('creation_date'), context={'user': request.user}, many=True)
         return response.success({'comments': serializer.data})
 
     def create(self, request):
@@ -64,6 +78,7 @@ class CommentView(viewsets.ViewSet):
             entry_id -- entry ID
             text -- comment text
             published -- published state
+            files -- list of file IDs
 
         Returns:
         On failure:
@@ -75,7 +90,8 @@ class CommentView(viewsets.ViewSet):
             success -- with the assignment data
 
         """
-        entry_id, text, = utils.required_typed_params(request.data, (int, 'entry_id'), (str, 'text'))
+        entry_id, text, files = utils.required_typed_params(
+            request.data, (int, 'entry_id'), (str, 'text'), (int, 'files'))
         published, = utils.optional_typed_params(request.data, (bool, 'published'))
 
         entry = Entry.objects.get(pk=entry_id)
@@ -88,8 +104,9 @@ class CommentView(viewsets.ViewSet):
         # By default a comment will be published, only users who can grade can delay publishing.
         published = published or not request.user.has_permission('can_grade', assignment)
         comment = factory.make_comment(entry, request.user, text, published)
-        file_handling.establish_rich_text(request.user, text, comment=comment)
-        file_handling.remove_unused_user_files(request.user)
+
+        handle_comment_files(request.user, files, comment)
+
         return response.created({'comment': CommentSerializer(comment, context={'user': request.user}).data})
 
     def retrieve(self, request, pk=None):
@@ -121,6 +138,8 @@ class CommentView(viewsets.ViewSet):
         Arguments:
         request -- request data
             text -- comment text
+            files -- list of file IDs
+            published -- (optional) published state
         pk -- comment ID
 
         Returns:
@@ -134,7 +153,7 @@ class CommentView(viewsets.ViewSet):
 
         """
         comment_id, = utils.required_typed_params(kwargs, (int, 'pk'))
-        text, = utils.required_typed_params(request.data, (str, 'text'))
+        text, files = utils.required_typed_params(request.data, (str, 'text'), (int, 'files'))
         published, = utils.optional_typed_params(request.data, (bool, 'published'))
 
         comment = Comment.objects.get(pk=comment_id)
@@ -148,13 +167,13 @@ class CommentView(viewsets.ViewSet):
             return response.forbidden('You are not allowed to edit this comment.')
 
         comment.last_edited_by = request.user
-
-        if not text:
-            return response.bad_request('Comment cannot be empty.')
+        comment.last_edited = timezone.now()
 
         comment.text = text
         comment.published = published or not request.user.has_permission('can_grade', assignment)
         comment.save()
+
+        handle_comment_files(request.user, files, comment)
 
         return response.success({'comment': CommentSerializer(comment, context={'user': request.user}).data})
 

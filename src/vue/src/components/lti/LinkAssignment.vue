@@ -49,6 +49,7 @@
 
 <script>
 import assignmentAPI from '@/api/assignment.js'
+import utils from '@/utils/generic_utils.js'
 
 export default {
     name: 'LinkAssignment',
@@ -63,11 +64,7 @@ export default {
         courses () {
             return this.linkableAssignments.map((linkable) => {
                 const course = { ...linkable.course }
-                if (course.startdate || course.enddate) {
-                    course.name += ` (${course.startdate ? course.startdate.substring(0, 4) : ''} - ${
-                        course.enddate ? course.enddate.substring(0, 4) : ''})`
-                }
-
+                course.name = utils.courseWithDatesDisplay(course)
                 return course
             })
         },

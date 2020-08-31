@@ -29,6 +29,9 @@ def get_lti_params(request, *keys):
         lti_params = lti.decode_lti_params(jwt_params)
     else:
         lti_params = {'empty': ''}
+    if 'custom_user_image' in lti_params and \
+       lti_params['custom_user_image'] == Instance.objects.get_or_create(pk=1)[0].default_lms_profile_picture:
+        lti_params['custom_user_image'] = settings.DEFAULT_PROFILE_PICTURE
     values = utils.optional_params(lti_params, *keys)
     values.append(settings.ROLES['Teacher'] in lti_launch.roles_to_list(lti_params))
     return values

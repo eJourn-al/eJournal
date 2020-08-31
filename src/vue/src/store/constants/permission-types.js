@@ -24,11 +24,13 @@ export const ASSIGNMENT_LEVEL_PERMISSIONS = new Set([
     'can_publish_grades',
     'can_view_grade_history',
     'can_view_unpublished_assignment',
+    'can_post_teacher_entries',
     // Journal level
     'can_manage_journals',
     'can_have_journal',
     'can_comment',
     'can_edit_staff_comment',
+    'can_manage_journal_import_requests',
 ])
 
 export const ALL_PERIMSSIONS = new Set([

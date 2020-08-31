@@ -2,17 +2,18 @@
     <b-card :class="$root.getBorderClass(deadline.id)">
         <!-- Teacher show things todo -->
         <number-badge
-            v-if="deadline.stats && deadline.stats.needs_marking + deadline.stats.unpublished > 0"
-            :leftNum="deadline.stats.needs_marking"
-            :rightNum="deadline.stats.unpublished"
+            v-if="thingsToDo"
+            :absolute="false"
+            :badges="badges"
+            :displayZeroValues="false"
             class="float-right multi-form"
-            :title="squareInfo"
+            keyPrefix="todo"
         />
 
         <b class="field-heading">
             {{ deadline.name }}
         </b>
-        ({{ course.abbreviation }})
+        {{ courseAbbreviations }}
         <b-badge
             v-if="!deadline.is_published"
             class="ml-2 align-top"
@@ -20,9 +21,9 @@
             Unpublished
         </b-badge>
         <br/>
-        <span v-if="deadline.deadline.date">
-            <!-- Teacher deadline shows last submitted entry date  -->
-            <span v-if="deadline.stats.needs_marking + deadline.stats.unpublished > 0">
+        <!-- Teacher deadline shows last submitted entry date  -->
+        <span v-if="$hasPermission('can_view_all_journals', 'assignment', deadline.id)">
+            <span v-if="thingsToDo">
                 <icon
                     name="eye"
                     class="fill-grey shift-up-3"
@@ -32,35 +33,78 @@
                     class="fill-grey shift-up-3"
                 /> {{ $root.beautifyDate(deadline.deadline.date) }}
             </span>
+        </span>
+        <span v-else-if="deadline.deadline.date">
             <!-- Student deadline shows last not submitted deadline -->
-            <span v-else>
-                <icon
-                    name="calendar"
-                    class="fill-grey shift-up-3 mr-1"
-                />
-                <span v-if="timeLeft[0] < 0">Due in {{ timeLeft[1] }}<br/></span>
-                <span
-                    v-else
-                    class="text-red"
-                >{{ timeLeft[1] }} late<br/></span>
-                <icon
-                    name="flag"
-                    class="fill-grey shift-up-3"
-                /> {{ deadline.deadline.name }}
-            </span>
+            <icon
+                name="calendar"
+                class="fill-grey shift-up-3 mr-1"
+            />
+            <span v-if="timeLeft[0] < 0">Due in {{ timeLeft[1] }}<br/></span>
+            <span
+                v-else
+                class="text-red"
+            >{{ timeLeft[1] }} late<br/></span>
+            <icon
+                name="flag"
+                class="fill-grey shift-up-3"
+            /> {{ deadline.deadline.name }}
         </span>
     </b-card>
 </template>
 
 <script>
-import numberBadge from '@/components/assets/NumberBadge.vue'
+import NumberBadge from '@/components/assets/NumberBadge.vue'
 
 export default {
     components: {
-        numberBadge,
+        NumberBadge,
     },
-    props: ['deadline', 'course'],
+    props: {
+        deadline: {
+            required: true,
+        },
+        courses: {
+            required: true,
+        },
+        filterOwnGroups: {
+            required: false,
+            default: false,
+        },
+    },
     computed: {
+        badges () {
+            const badges = [
+                {
+                    value: this.filterOwnGroups ? this.deadline.stats.needs_marking_own_groups
+                        : this.deadline.stats.needs_marking,
+                    tooltip: 'needsMarking',
+                },
+                {
+                    value: this.filterOwnGroups ? this.deadline.stats.unpublished_own_groups
+                        : this.deadline.stats.unpublished,
+                    tooltip: 'unpublished',
+                },
+            ]
+
+            if (this.deadline.stats.import_requests) {
+                badges.push({
+                    value: this.filterOwnGroups ? this.deadline.stats.import_requests_own_groups
+                        : this.deadline.stats.import_requests,
+                    tooltip: 'importRequests',
+                })
+            }
+
+            return badges
+        },
+        courseAbbreviations () {
+            if (this.courses) {
+                const abbrList = this.courses.map(c => c.abbreviation)
+                return `(${abbrList.join(', ')})`
+            } else {
+                return `(${this.deadline.course.abbreviation})`
+            }
+        },
         timeLeft () {
             if (!this.deadline.deadline.date) { return '' }
             const dateNow = new Date()
@@ -94,18 +138,34 @@ export default {
         },
         squareInfo () {
             const info = []
-            if (this.deadline.stats.needs_marking === 1) {
+            const needsMarking = this.filterOwnGroups ? this.deadline.stats.needs_marking_own_groups
+                : this.deadline.stats.needs_marking
+            const unpublished = this.filterOwnGroups ? this.deadline.stats.unpublished_own_groups
+                : this.deadline.stats.unpublished
+
+            if (needsMarking === 1) {
                 info.push('an entry needs marking')
-            } else if (this.deadline.stats.needs_marking > 1) {
-                info.push(`${this.deadline.stats.needs_marking} entries need marking`)
+            } else if (needsMarking > 1) {
+                info.push(`${needsMarking} entries need marking`)
             }
-            if (this.deadline.stats.unpublished === 1) {
+            if (unpublished === 1) {
                 info.push('a grade needs to be published')
-            } else if (this.deadline.stats.unpublished > 1) {
-                info.push(`${this.deadline.stats.unpublished} grades need to be published`)
+            } else if (unpublished > 1) {
+                info.push(`${unpublished} grades need to be published`)
             }
             const s = info.join(' and ')
             return `${s.charAt(0).toUpperCase()}${s.slice(1)}`
+        },
+        thingsToDo () {
+            if (this.filterOwnGroups) {
+                return this.deadline.stats
+                    && (this.deadline.stats.needs_marking_own_groups || this.deadline.stats.unpublished_own_groups
+                        || this.deadline.stats.import_requests_own_groups)
+            } else {
+                return this.deadline.stats
+                    && (this.deadline.stats.needs_marking || this.deadline.stats.unpublished
+                        || this.deadline.stats.import_requests)
+            }
         },
     },
 }

@@ -3,7 +3,6 @@
 # Virtualenv settings.
 enable_deadsnakes_ppa: false
 recreate_virtualenv: false
-virtualenv_python_version: "{{ base_python_package }}"
 
 
 # Application settings.
@@ -49,6 +48,7 @@ project_environment:
   DATABASE_HOST: "{{ db_host }}"
   DATABASE_PORT: "{{ db_port }}"
   BROKER_URL: "{{ broker_url }}"
+  DEFAULT_LMS_PROFILE_PICTURE: "{{ default_lms_profile_picture }}"
   LTI_SECRET: "{{ lti_secret }}"
   LTI_KEY: "{{ lti_key }}"
   BACKUP_DIR: "{{ backup_dir }}"

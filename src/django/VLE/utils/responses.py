@@ -141,7 +141,7 @@ def file(file_path, filename):
     if isinstance(file_path, VLE.models.FileContext):
         file_path = file_path.file.path
 
-    if settings.ENVIRONMENT == 'LOCAL':
+    if settings.ENVIRONMENT == 'LOCAL' or settings.ENVIRONMENT == 'TRAVIS':
         try:
             response = FileResponse(open(file_path, 'rb'), as_attachment=True)
         except FileNotFoundError:

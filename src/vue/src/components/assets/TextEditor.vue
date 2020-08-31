@@ -16,6 +16,7 @@
 <script>
 /* eslint-disable import/extensions */
 import tinymce from 'tinymce/tinymce'
+import 'tinymce/icons/default'
 import 'tinymce/themes/silver'
 
 /* Only works with basic lists enabled. */
@@ -86,6 +87,7 @@ export default {
     },
     data () {
         return {
+            uploading: 0,
             content: '',
             editor: null,
             justFocused: false,
@@ -137,15 +139,15 @@ export default {
             basicConfig: {
                 toolbar1: 'bold italic underline alignleft aligncenter alignright alignjustify '
                     + '| forecolor backcolor | formatselect | bullist numlist | image table '
-                    + '| removeformat fullscreentoggle fullscreen',
+                    + '| link removeformat fullscreentoggle fullscreen',
                 plugins: [
-                    'placeholder autoresize paste image lists wordcount autolink',
+                    'placeholder link autoresize paste image lists wordcount autolink',
                     'table fullscreen',
                 ],
             },
             extensiveConfig: {
                 toolbar1: 'bold italic underline alignleft aligncenter alignright alignjustify | forecolor backcolor '
-                    + '| formatselect | bullist numlist | image table | removeformat fullscreentoggle fullscreen',
+                    + '| formatselect | bullist numlist | image table | link removeformat fullscreentoggle fullscreen',
                 plugins: [
                     'placeholder link preview paste print hr lists advlist wordcount autolink',
                     'autoresize code fullscreen image imagetools',
@@ -273,10 +275,15 @@ export default {
             } else {
                 formData.append('in_rich_text', true)
                 formData.append('file', file)
-
+                this.uploading += 1
+                this.$emit('startedUploading')
                 auth.uploadFile('files', formData)
                     .then((response) => { success(response.data.download_url) })
                     .catch(() => { failure('File upload failed') })
+                    .finally(() => {
+                        this.uploading -= 1
+                        this.$emit('finishedUploading')
+                    })
             }
         },
         insertDataURL () {

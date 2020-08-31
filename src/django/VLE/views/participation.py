@@ -190,7 +190,8 @@ class ParticipationView(viewsets.ViewSet):
             user = users.filter(username=unenrolled_query)
             if user:
                 return response.success({
-                    'participants': UserSerializer(user, context={'user': request.user}, many=True).data
+                    'participants': UserSerializer(
+                        user, context={'user': request.user, 'course': course}, many=True).data
                 })
             else:
                 return response.success({'participants': []})
@@ -199,5 +200,6 @@ class ParticipationView(viewsets.ViewSet):
                                    Q(full_name__contains=unenrolled_query))
 
         return response.success({
-            'participants': UserSerializer(found_users, context={'user': request.user}, many=True).data
+            'participants': UserSerializer(
+                found_users, context={'user': request.user, 'course': course}, many=True).data
         })

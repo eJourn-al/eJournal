@@ -38,7 +38,7 @@ export default {
         nodeTitle () {
             switch (this.node.type) {
             case 'e':
-                return this.node.entry.template.name
+                return this.node.entry.title
             case 'd':
                 return this.node.template.name
             case 'p':

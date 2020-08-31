@@ -123,26 +123,34 @@ def establish_file(author, identifier, course=None, assignment=None, journal=Non
     return file_context
 
 
+def get_access_ids_from_rich_text(rich_text):
+    re_access_ids = re.compile(r'\/files\/[0-9]+\?access_id=([a-zA-Z0-9]+)')
+    return re.findall(re_access_ids, rich_text)
+
+
 def get_files_from_rich_text(rich_text):
     if rich_text is None or len(rich_text) < 128:
-        return []
-    re_access_ids = re.compile(r'\/files\/[0-9]+\?access_id=([a-zA-Z0-9]+)')
-    return VLE.models.FileContext.objects.filter(access_id__in=re.findall(re_access_ids, rich_text), is_temp=True)
+        return VLE.models.FileContext.objects.none()
+    return VLE.models.FileContext.objects.filter(access_id__in=get_access_ids_from_rich_text(rich_text))
+
+
+def get_temp_files_from_rich_text(rich_text):
+    return get_files_from_rich_text(rich_text).filter(is_temp=True)
 
 
 def establish_rich_text(author, rich_text, course=None, assignment=None, journal=None, comment=None, content=None):
-    for file in get_files_from_rich_text(rich_text):
+    for file in get_temp_files_from_rich_text(rich_text):
         establish_file(author, file.access_id, course, assignment, journal, content, comment, in_rich_text=True)
 
 
 def remove_unused_user_files(user):
     """Deletes floating user files."""
-    # Remove temp images
+    # Remove temp files
     VLE.models.FileContext.objects.filter(author=user, is_temp=True).delete()
 
     # Remove overwritten files
     for file in VLE.models.FileContext.objects.filter(author=user, content__isnull=False):
-        if file.content.field.type in VLE.models.Field.FILE_TYPES:  # Check if file is replaced
+        if file.content.field.type == VLE.models.Field.FILE:  # Check if file is replaced
             if str(file.pk) != file.content.data:
                 file.delete()
         # Remove rich_text files
@@ -151,7 +159,8 @@ def remove_unused_user_files(user):
                 file.delete()
     for file in VLE.models.FileContext.objects.filter(author=user, comment__isnull=False):
         # Check if url is not in comment anymore
-        if not file.comment.text or str(file.access_id) not in file.comment.text:
+        if not file.comment_files.filter(pk=file.comment.pk).exists() and \
+           (not file.comment.text or str(file.access_id) not in file.comment.text):
             file.delete()
     for file in VLE.models.FileContext.objects.filter(
        author=user, journal__isnull=False, comment__isnull=True, content__isnull=True):

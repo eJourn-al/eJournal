@@ -49,6 +49,8 @@ celery_num_workers: 2
 django_settings_file: "{{ project_name }}.settings.local"
 django_secret_key: "@a4c3cpgfe0@8s!be=23d5+3e30vyj7!q%tolqpewafp^-@=br"
 
+default_lms_profile_picture: https://canvas.instructure.com/images/messages/avatar-50.png
+
 broker_url: "amqp://localhost"
 
 run_django_db_migrations: true

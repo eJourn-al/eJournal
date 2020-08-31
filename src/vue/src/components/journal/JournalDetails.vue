@@ -93,7 +93,7 @@ export default {
 
 .journal-details
     .journal-image
-        @extend .shadow
+        @extend .theme-shadow
         position: absolute
         width: 70px
         height: 70px

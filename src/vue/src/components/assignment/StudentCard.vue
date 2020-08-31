@@ -41,14 +41,10 @@ export default {
     min-width: 80px
     height: 70px
     img
-        @extend .shadow
+        @extend .theme-shadow
         width: 70px
         height: 70px
         border-radius: 50% !important
-    .number-badge
-        position: absolute
-        right: 0px
-        top: 0px
 
 .student-details
     position: relative

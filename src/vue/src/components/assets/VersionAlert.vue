@@ -15,8 +15,6 @@
     </b-alert>
 </template>
 <script>
-import preferencesAPI from '@/api/preferences.js'
-
 export default {
     data () {
         return {
@@ -25,15 +23,12 @@ export default {
     },
     computed: {
         showVersionAlert () {
-            return this.$store.getters['preferences/hideVersionAlert'] !== this.version
+            return this.$store.getters['preferences/saved'].hide_version_alert !== this.version
         },
     },
     methods: {
         hideVersionAlert () {
-            preferencesAPI.update(this.$store.getters['user/uID'], { hide_version_alert: this.version })
-                .then((preferences) => {
-                    this.$store.commit('preferences/SET_HIDE_VERSION_ALERT', preferences.hide_version_alert)
-                })
+            this.$store.commit('preferences/CHANGE_PREFERENCES', { hide_version_alert: this.version })
         },
     },
 }

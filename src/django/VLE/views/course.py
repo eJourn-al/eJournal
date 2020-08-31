@@ -108,7 +108,8 @@ class CourseView(viewsets.ViewSet):
         if 'lti_id' in request.data:
             if course.active_lti_id:
                 return response.bad_request('Course already linked to LMS.')
-            request.data['active_lti_id'] = request.data.pop('lti_id')
+            course.active_lti_id = request.data.pop('lti_id')
+            course.save()
 
         request.data['startdate'], request.data['enddate'] = utils.optional_params(request.data, 'startdate', 'enddate')
         serializer = self.serializer_class(course, data=request.data, partial=True)
@@ -136,6 +137,21 @@ class CourseView(viewsets.ViewSet):
         course = Course.objects.get(pk=course_id)
 
         request.user.check_permission('can_delete_course', course)
+
+        for assignment in course.assignment_set.all():
+            if assignment.courses.count() == 1:
+                request.user.check_permission('can_delete_assignment', course)
+                assignment.delete()
+            else:
+                if assignment.active_lti_id:
+                    new_lti_connected_course = assignment.courses.exclude(
+                        pk=course.pk).exclude(active_lti_id=None).order_by('-startdate').first()
+                    assignment.lti_id_set.remove(assignment.active_lti_id)
+                    if new_lti_connected_course:
+                        assignment.active_lti_id = assignment.get_lti_id_from_course(new_lti_connected_course)
+                    else:
+                        assignment.active_lti_id = None
+                    assignment.save()
 
         course.delete()
         return response.success(description='Successfully deleted course.')

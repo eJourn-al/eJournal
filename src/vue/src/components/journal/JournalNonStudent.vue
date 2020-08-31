@@ -59,7 +59,7 @@
                 <load-wrapper :loading="loadingNodes">
                     <div v-if="nodes.length > currentNode && currentNode !== -1">
                         <div v-if="nodes[currentNode].type == 'e' || nodes[currentNode].type == 'd'">
-                            <entry-non-student-preview
+                            <entry-non-student
                                 ref="entry-template-card"
                                 :journal="journal"
                                 :entryNode="nodes[currentNode]"
@@ -110,32 +110,31 @@
                             v-if="!loadingNodes"
                             :journal="journal"
                             :assignment="assignment"
-                            class="mb-2 no-hover"
                         />
-                        <div
-                            v-if="filteredJournals.length > 1"
-                            class="d-flex"
-                        >
-                            <b-button
-                                v-if="filteredJournals.length !== 0"
-                                :to="{ name: 'Journal', params: { cID: cID, aID: aID, jID: prevJournal.id } }"
-                                class="mr-2 flex-grow-1"
-                                tag="b-button"
-                            >
-                                <icon name="arrow-left"/>
-                                Previous
-                            </b-button>
-                            <b-button
-                                v-if="filteredJournals.length !== 0"
-                                :to="{ name: 'Journal', params: { cID: cID, aID: aID, jID: nextJournal.id } }"
-                                class="flex-grow-1"
-                                tag="b-button"
-                            >
-                                Next
-                                <icon name="arrow-right"/>
-                            </b-button>
-                        </div>
                     </b-card>
+                    <div
+                        v-if="filteredJournals.length > 1"
+                        class="d-flex mb-2"
+                    >
+                        <b-button
+                            v-if="filteredJournals.length !== 0"
+                            :to="{ name: 'Journal', params: { cID: cID, aID: aID, jID: prevJournal.id } }"
+                            class="mr-2 flex-grow-1"
+                            tag="b-button"
+                        >
+                            <icon name="arrow-left"/>
+                            Previous
+                        </b-button>
+                        <b-button
+                            v-if="filteredJournals.length !== 0"
+                            :to="{ name: 'Journal', params: { cID: cID, aID: aID, jID: nextJournal.id } }"
+                            class="flex-grow-1"
+                            tag="b-button"
+                        >
+                            Next
+                            <icon name="arrow-right"/>
+                        </b-button>
+                    </div>
                 </b-col>
                 <b-col
                     v-if="journal && ($hasPermission('can_grade') || $hasPermission('can_publish_grades'))"
@@ -145,45 +144,56 @@
                     <h3 class="theme-h3">
                         Grading
                     </h3>
-                    <b-card
-                        :class="$root.getBorderClass($route.params.cID)"
-                        class="no-hover"
+                    <div
+                        v-if="$hasPermission('can_grade')"
+                        class="bonus-section grade-section mb-2 full-width"
                     >
-                        <div
-                            v-if="$hasPermission('can_grade')"
-                            class="grade-section bonus-section full-width shadow"
-                        >
-                            <div>
-                                <b-form-input
-                                    v-model="journal.bonus_points"
-                                    type="number"
-                                    class="theme-input mr-2"
-                                    size="2"
-                                    placeholder="0"
-                                    min="0.0"
-                                />
-                                Bonus points
-                            </div>
-                            <b-button
-                                class="add-button"
-                                @click="commitBonus"
-                            >
-                                <icon
-                                    name="save"
-                                    scale="1"
-                                />
-                                Save bonus
-                            </b-button>
+                        <div>
+                            <b-form-input
+                                v-model="bonusPointsTemp"
+                                type="number"
+                                class="theme-input mr-2"
+                                size="2"
+                                placeholder="0"
+                                min="0.0"
+                            />
+                            Bonus points
                         </div>
                         <b-button
-                            v-if="$hasPermission('can_publish_grades')"
-                            class="add-button full-width mt-1"
-                            @click="publishGradesJournal"
+                            class="add-button"
+                            @click="commitBonus"
                         >
-                            <icon name="upload"/>
-                            Publish all grades
+                            <icon
+                                name="save"
+                                scale="1"
+                            />
+                            Save bonus
                         </b-button>
-                    </b-card>
+                    </div>
+                    <b-button
+                        v-if="$hasPermission('can_publish_grades')"
+                        class="add-button mb-2 full-width"
+                        @click="publishGradesJournal"
+                    >
+                        <icon name="upload"/>
+                        Publish all grades
+                    </b-button>
+                    <div v-if="$hasPermission('can_manage_journal_import_requests') && !loadingNodes">
+                        <b-button
+                            v-if="journal.import_requests"
+                            v-b-modal="'journal-import-request-approval-modal'"
+                            class="multi-form change-button mb-2 full-width"
+                        >
+                            <icon name="file-import"/>
+                            Manage Import Requests
+                        </b-button>
+
+                        <journal-import-request-approval-modal
+                            v-if="journal.import_requests"
+                            modalID="journal-import-request-approval-modal"
+                            @jir-processed="loadJournal(false)"
+                        />
+                    </div>
                 </b-col>
             </b-row>
         </b-col>
@@ -191,14 +201,15 @@
 </template>
 
 <script>
-import entryNonStudentPreview from '@/components/entry/EntryNonStudentPreview.vue'
-import timeline from '@/components/timeline/Timeline.vue'
-import journalDetails from '@/components/journal/JournalDetails.vue'
-import breadCrumb from '@/components/assets/BreadCrumb.vue'
-import loadWrapper from '@/components/loading/LoadWrapper.vue'
-import journalStartCard from '@/components/journal/JournalStartCard.vue'
-import journalEndCard from '@/components/journal/JournalEndCard.vue'
-import progressNode from '@/components/entry/ProgressNode.vue'
+import EntryNonStudent from '@/components/entry/EntryNonStudent.vue'
+import Timeline from '@/components/timeline/Timeline.vue'
+import JournalDetails from '@/components/journal/JournalDetails.vue'
+import BreadCrumb from '@/components/assets/BreadCrumb.vue'
+import LoadWrapper from '@/components/loading/LoadWrapper.vue'
+import JournalStartCard from '@/components/journal/JournalStartCard.vue'
+import JournalEndCard from '@/components/journal/JournalEndCard.vue'
+import JournalImportRequestApprovalModal from '@/components/journal/JournalImportRequestApprovalModal.vue'
+import ProgressNode from '@/components/entry/ProgressNode.vue'
 
 import store from '@/Store.vue'
 import journalAPI from '@/api/journal.js'
@@ -207,14 +218,15 @@ import { mapGetters, mapMutations } from 'vuex'
 
 export default {
     components: {
-        entryNonStudentPreview,
-        breadCrumb,
-        loadWrapper,
-        timeline,
-        journalDetails,
-        journalStartCard,
-        journalEndCard,
-        progressNode,
+        EntryNonStudent,
+        BreadCrumb,
+        LoadWrapper,
+        Timeline,
+        JournalDetails,
+        JournalStartCard,
+        JournalEndCard,
+        JournalImportRequestApprovalModal,
+        ProgressNode,
     },
     props: ['cID', 'aID', 'jID'],
     data () {
@@ -229,6 +241,7 @@ export default {
             journal: null,
             loadingNodes: true,
             editingName: false,
+            bonusPointsTemp: 0,
         }
     },
     computed: {
@@ -285,6 +298,7 @@ export default {
             initialCalls.push(journalAPI.getNodes(this.jID))
             Promise.all(initialCalls).then((results) => {
                 this.journal = results[0]
+                this.bonusPointsTemp = this.journal.bonus_points
                 this.nodes = results[1]
                 this.loadingNodes = false
                 if (this.$route.query.nID !== undefined) {
@@ -305,9 +319,9 @@ export default {
                 }
             }
 
-            if (min < this.nodes.length && this.$store.getters['preferences/autoSelectUngradedEntry']) {
+            if (min < this.nodes.length && this.$store.getters['preferences/saved'].auto_select_ungraded_entry) {
                 this.currentNode = min
-            } else if (min === this.nodes.length && this.$store.getters['preferences/autoProceedNextJournal']
+            } else if (min === this.nodes.length && this.$store.getters['preferences/saved'].auto_proceed_next_journal
                 && gradeUpdated && this.filteredJournals.length > 1) {
                 this.$router.push({
                     name: 'Journal',
@@ -318,22 +332,22 @@ export default {
         adaptData (editedData) {
             this.nodes[this.currentNode] = editedData
         },
-        selectNode ($event) {
+        selectNode (newNode) {
             /* Function that prevents you from instant leaving an EntryNode
              * or a DeadlineNode when clicking on a different node in the
              * timeline. */
-            if ($event === this.currentNode) {
+            if (newNode === this.currentNode) {
                 /* TODO fix mess */
-            } else if (!this.discardChanges()) {
+            } else if (!this.safeToLeave()) {
                 /* pass */
             } else if (this.currentNode === -1 || this.currentNode >= this.nodes.length
                 || this.nodes[this.currentNode].type !== 'e'
                 || this.nodes[this.currentNode].type !== 'd') {
-                this.currentNode = $event
+                this.currentNode = newNode
             } else if (this.$refs['entry-template-card'].saveEditMode === 'Save') {
                 window.confirm('Progress will not be saved if you leave. Do you wish to continue?')
             } else {
-                this.currentNode = $event
+                this.currentNode = newNode
             }
         },
         publishGradesJournal () {
@@ -370,16 +384,15 @@ export default {
 
             return false
         },
-        discardChanges () {
+        safeToLeave () {
             if (this.currentNode !== -1
                 && this.currentNode < this.nodes.length
                 && (this.nodes[this.currentNode].type === 'e'
                 || (this.nodes[this.currentNode].type === 'd' && this.nodes[this.currentNode].entry !== null))) {
                 if (this.nodes[this.currentNode].entry.grade === null) {
-                    if (this.$refs['entry-template-card'].grade.grade > 0) {
-                        if (!window.confirm('Progress will not be saved if you leave. Do you wish to continue?')) {
-                            return false
-                        }
+                    if (this.$refs['entry-template-card'].grade.grade > 0
+                        && !window.confirm('Progress will not be saved if you leave. Do you wish to continue?')) {
+                        return false
                     }
                 } else if (this.$refs['entry-template-card'].grade.grade
                            !== this.nodes[this.currentNode].entry.grade.grade
@@ -394,11 +407,11 @@ export default {
             return true
         },
         commitBonus () {
-            if (this.journal.bonus_points !== null && this.journal.bonus_points !== '') {
+            if (this.bonusPointsTemp !== null && this.bonusPointsTemp !== '') {
                 journalAPI.update(
                     this.journal.id,
-                    { bonus_points: this.journal.bonus_points },
-                    { customSuccessToast: 'Bonus succesfully added.' },
+                    { bonus_points: this.bonusPointsTemp },
+                    { customSuccessToast: 'Bonus successfully added.' },
                 )
                     .then((journal) => { this.journal = journal })
             }
@@ -408,17 +421,22 @@ export default {
 </script>
 
 <style lang="sass">
-.bonus-section
-    float: left !important
-    display: block
-    margin-bottom: 0px
-    div
-        text-align: center
+@import '~sass/modules/colors.sass'
+@import '~sass/partials/shadows.sass'
+
+.grade-section.bonus-section
+    @extend .theme-shadow
     .btn
         display: block
         width: 100%
         border-width: 1px 0px 0px 0px !important
         border-radius: 0px 0px 5px 5px !important
+    .theme-input, .theme-input:hover, .theme-input:focus
+        margin-left: 0px
+        font-size: 1.3em
+        width: 3.5em
+        display: inline-block
+        padding-right: 0px !important
 
 .journal-details-card > .card-body
     padding-top: 45px

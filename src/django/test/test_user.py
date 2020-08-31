@@ -12,7 +12,7 @@ from rest_framework.settings import api_settings
 import VLE.factory as creation_factory
 import VLE.permissions as permissions
 import VLE.validators as validators
-from VLE.models import User
+from VLE.models import Instance, Preferences, User
 
 
 class UserAPITest(TestCase):
@@ -27,6 +27,15 @@ class UserAPITest(TestCase):
             'custom_user_full_name': 'full name of LMS user',
             'custom_user_email': 'validLMS@address.com',
         }
+
+    def test_user_factory(self):
+        user = factory.Student()
+        assert user.preferences.new_grade_notifications == Preferences.PUSH, \
+            'Generating a user also generates preferences, set to default'
+
+        user = factory.Student(preferences__new_grade_notifications=Preferences.OFF)
+        assert user.preferences.new_grade_notifications == Preferences.OFF, \
+            'User factory supports deep syntax for preferences'
 
     def test_rest(self):
         api.test_rest(self, 'users',
@@ -120,10 +129,22 @@ class UserAPITest(TestCase):
 
         # Standard LTI user creation
         jwt_params = factory.JWTParams()
+        jwt_params['custom_user_image'] = Instance.objects.get_or_create(pk=1)[0].default_lms_profile_picture
         api.create(self, 'users', params={**user_params, **gen_jwt_params(jwt_params)})
         user = User.objects.get(username=user_params['username'])
         assert not user.is_test_student, 'A default user created via LTI parameters should not be flagged ' \
             'as a test student.'
+        assert user.profile_picture == settings.DEFAULT_PROFILE_PICTURE
+        # Standard LTI user creation
+        jwt_params = factory.JWTParams()
+        jwt_params['user_id'] = 'second_user'
+        user_params['username'] = 'second_user'
+        jwt_params['custom_user_image'] = 'https://www.ejournal.app/img/ejournal-logo-white.83c3aad1.svg'
+        api.create(self, 'users', params={**user_params, **gen_jwt_params(jwt_params)})
+        user = User.objects.get(username=user_params['username'])
+        assert not user.is_test_student, 'A default user created via LTI parameters should not be flagged ' \
+            'as a test student.'
+        assert user.profile_picture == 'https://www.ejournal.app/img/ejournal-logo-white.83c3aad1.svg'
 
         # Can't create two users with the same lti ID
         resp = api.create(self, 'users', params={
@@ -307,7 +328,7 @@ class UserAPITest(TestCase):
         User.objects.create(**params)
 
     def test_gdpr(self):
-        entry = factory.Entry()
+        entry = factory.UnlimitedEntry()
         user = entry.node.journal.authors.first().user
         user2 = factory.Student()
         admin = factory.Admin()
@@ -367,7 +388,7 @@ class UserAPITest(TestCase):
         user1 = journal.authors.first().user
         ap2 = factory.AssignmentParticipation(assignment=journal.assignment)
         user2 = ap2.user
-        journal.authors.add(ap2)
+        journal.add_author(ap2)
         user3 = factory.AssignmentParticipation(assignment=journal.assignment).user
 
         assert user1.can_view(user2) and user2.can_view(user1), 'Users in same journal should be able to see each other'

@@ -2,7 +2,7 @@
     <b-modal
         :id="modalID"
         size="lg"
-        title="Import existing assignment"
+        title="Import assignment"
         hideFooter
         noEnforceFocus
     >
@@ -104,6 +104,7 @@
 
 <script>
 import assignmentAPI from '@/api/assignment.js'
+import utils from '@/utils/generic_utils.js'
 
 export default {
     props: {
@@ -132,11 +133,7 @@ export default {
         courses () {
             return this.importableFormats.map((importable) => {
                 const course = { ...importable.course }
-                if (course.startdate || course.enddate) {
-                    course.name += ` (${course.startdate ? course.startdate.substring(0, 4) : ''} - ${
-                        course.enddate ? course.enddate.substring(0, 4) : ''})`
-                }
-
+                course.name = utils.courseWithDatesDisplay(course)
                 return course
             })
         },
@@ -161,7 +158,7 @@ export default {
                     course_id: this.cID,
                     months_offset: (!this.shiftImportDates || this.months === '') ? 0 : this.months,
                     lti_id: this.lti.ltiAssignID,
-                }, { customSuccessToast: 'Assignment succesfully imported.' }).then((response) => {
+                }, { customSuccessToast: 'Assignment successfully imported.' }).then((response) => {
                     this.assignmentImportInFlight = false
 
                     this.$store.commit('user/IMPORT_ASSIGNMENT_PERMISSIONS', {

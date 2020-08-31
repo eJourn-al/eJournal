@@ -1,12 +1,14 @@
+import mimetypes
 import random
 import string
 import test.factory as factory
 from test.utils import api
 
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
 
 import VLE.factory as nfac
-from VLE.models import Comment
+from VLE.models import Comment, FileContext, Notification, Participation, User
 
 
 def set_entry_comment_counts(obj):
@@ -50,6 +52,25 @@ class CommentAPITest(TestCase):
         assert self.entry_published_comments == 1, 'Journal should have 3 comments of which only one is published'
         assert self.entry_unpublished_comments == 2, 'Expected 2 unpublished comments'
 
+    def test_comment_factory(self):
+        entry = factory.UnlimitedEntry()
+        comment = factory.StudentComment(entry=entry)
+        journal = entry.node.journal
+
+        assert comment.author.pk == entry.author.pk, 'Student comment author is equal to the attached entry by default'
+        assert entry.node.journal.authors.filter(user=comment.author).exists(), \
+            'Student comment author is among the participants of the attached journal when instantiated via entry'
+        assert Notification.objects.filter(comment=comment).exists(), 'Creating a comment also creates notifaction(s)'
+
+        comment = factory.StudentComment(entry__node__journal=journal)
+        assert entry.node.journal.authors.filter(user=comment.author).exists(), \
+            'Student comment author is among the participants of the attached journal when instantiated via journal'
+
+        comment = factory.TeacherComment(entry=entry)
+        participations = Participation.objects.filter(role__name='Teacher', user=comment.author)
+        assert any([journal.assignment.courses.filter(pk=p.course.pk).exists() for p in participations]), \
+            'Teacher comment author has Teacher role for the entry used for initialization'
+
     def test_get(self):
         comments = api.get(
             self, 'comments', params={'entry_id': self.teacher_comment.entry.pk}, user=self.student)['comments']
@@ -76,30 +97,30 @@ class CommentAPITest(TestCase):
     def test_create(self):
         api.create(
             self, 'comments',
-            params={'entry_id': self.comment.entry.pk, 'text': 'test-create-comment'},
+            params={'entry_id': self.comment.entry.pk, 'text': 'test-create-comment', 'files': []},
             user=self.student)
 
         comment = api.create(
             self, 'comments',
-            params={'entry_id': self.comment.entry.pk, 'text': 'test-create-comment', 'published': False},
+            params={'entry_id': self.comment.entry.pk, 'text': 'test-create-comment', 'published': False, 'files': []},
             user=self.student)['comment']
         assert comment['published'], 'Student should not be able to post unpublished comments'
 
         comment = api.create(
             self, 'comments',
-            params={'entry_id': self.comment.entry.pk, 'text': 'test-create-comment', 'published': False},
+            params={'entry_id': self.comment.entry.pk, 'text': 'test-create-comment', 'published': False, 'files': []},
             user=self.teacher)['comment']
         assert not comment['published'], 'Comment should not be published'
 
         comment = api.create(
             self, 'comments',
-            params={'entry_id': self.comment.entry.pk, 'text': 'test-create-comment', 'published': True},
+            params={'entry_id': self.comment.entry.pk, 'text': 'test-create-comment', 'published': True, 'files': []},
             user=self.teacher)['comment']
         assert comment['published'], 'Comment should be published'
 
         api.create(
             self, 'comments',
-            params={'entry_id': self.comment.entry.pk, 'text': 'test-create-comment', 'published': True},
+            params={'entry_id': self.comment.entry.pk, 'text': 'test-create-comment', 'published': True, 'files': []},
             user=factory.Student(), status=403)
 
         set_entry_comment_counts(self)
@@ -113,13 +134,6 @@ class CommentAPITest(TestCase):
         self.check_comment_update(self.TA_comment, self.admin, True)
 
     def test_update_as_teacher(self):
-        # empty comment cannot be created
-        api.update(
-            self,
-            'comments',
-            params={'pk': self.comment.pk, 'text': ''},
-            user=self.student,
-            status=400)
         # Teacher should be allowed to edit his own comment
         self.check_comment_update(self.teacher_comment, self.teacher, True)
         # Teacher should not be allowed to edit students comment
@@ -151,9 +165,16 @@ class CommentAPITest(TestCase):
         comment = api.update(
             self,
             'comments',
-            params={'pk': self.comment.pk, 'text': 'asdf', 'published': False},
+            params={'pk': self.comment.pk, 'text': 'asdf', 'published': False, 'files': []},
             user=self.student)['comment']
         assert comment['published'], 'published state for comment by student should always stay published'
+
+        # empty comment can be updated
+        api.update(
+            self,
+            'comments',
+            params={'pk': self.comment.pk, 'text': '', 'files': []},
+            user=self.student)
 
         # Student should be allowed to edit his own comment
         self.check_comment_update(self.comment, self.student, True)
@@ -206,7 +227,58 @@ class CommentAPITest(TestCase):
         # Student should not be allowed to delete a Teachers comment
         self.check_comment_delete(self.teacher_comment, self.student, False)
 
-    def check_comment_update(self, comment, user, should_succeed):
+    def test_files(self):
+        video = SimpleUploadedFile('file.mp4', b'file_content', content_type='video/mp4')
+        file = FileContext.objects.create(file=video, author=self.student, file_name=video.name)
+        file2 = FileContext.objects.create(file=video, author=self.student, file_name=video.name)
+        self.check_comment_update(self.comment, self.student, True, files=[file])
+        # Need to create the file again, as old file is deleted
+        file2 = FileContext.objects.create(file=video, author=self.student, file_name=video.name)
+        self.check_comment_update(self.comment, self.student, True, files=[file, file2])
+        self.check_comment_update(self.comment, self.student, True, files=[file])
+        self.check_comment_update(self.comment, self.student, True, files=[])
+
+        entry = factory.UnlimitedEntry(author=self.student, node__journal=self.journal)
+        file = FileContext.objects.create(file=video, author=self.student, file_name=video.name)
+        file2 = FileContext.objects.create(file=video, author=self.student, file_name=video.name)
+        self.check_comment_create(entry, self.student, files=[file])
+        file = FileContext.objects.create(file=video, author=self.student, file_name=video.name)
+        file2 = FileContext.objects.create(file=video, author=self.student, file_name=video.name)
+        self.check_comment_create(entry, self.student, files=[file, file2])
+        file = FileContext.objects.create(file=video, author=self.student, file_name=video.name)
+        self.check_comment_create(entry, self.student, files=[file])
+        self.check_comment_create(entry, self.student, files=[])
+
+    def check_comment_create(self, entry, user, files=[], published=True, status=201):
+        create_msg = ''.join(random.choice(string.ascii_letters + string.digits) for _ in range(50))
+
+        comment_resp = api.create(
+            self,
+            'comments',
+            params={
+                'entry_id': entry.pk,
+                'text': create_msg,
+                'files': [file.id for file in files],
+                'published': published
+            },
+            user=user,
+            status=status
+        )
+
+        if status == 201:
+            comment = Comment.objects.get(pk=comment_resp['comment']['id'])
+            comment_resp = comment_resp['comment']
+            entry.refresh_from_db()
+            assert entry.comment_set.filter(pk=comment.pk).exists(), 'Comment should be added to entry'
+            assert comment_resp['text'] == create_msg, 'Text should be updated'
+            assert not comment_resp['last_edited'], 'No last edited on creation'
+            assert not comment_resp['last_edited_by'], 'No last edited on creation'
+            assert FileContext.objects.filter(comment=comment).count() == len(files), \
+                'Check if all files supplied are also in comment files, no more no less'
+            for file in comment.files.all():
+                assert file in files, 'Check if all files supplied are also in comment files, no more no less'
+
+    def check_comment_update(self, comment, user, should_succeed, files=[]):
         update_msg = ''.join(random.choice(string.ascii_letters + string.digits) for _ in range(50))
         comment_before_op = Comment.objects.get(pk=comment.pk)
 
@@ -216,7 +288,7 @@ class CommentAPITest(TestCase):
         comment_resp = api.update(
             self,
             'comments',
-            params={'pk': comment.pk, 'text': update_msg},
+            params={'pk': comment.pk, 'text': update_msg, 'files': [file.id for file in files]},
             user=user,
             status=200 if should_succeed else 403
         )
@@ -227,8 +299,12 @@ class CommentAPITest(TestCase):
             comment_resp = comment_resp['comment']
             assert comment_resp['text'] == update_msg, 'Text should be updated'
             assert comment_resp['creation_date'] == old_comment_resp['creation_date'], 'Creation date modified'
-            assert comment_resp['last_edited'] != old_comment_resp['last_edited'], 'Last edited not updated'
-            assert comment_resp['last_edited_by'] == user.full_name, 'Last edited by incorrect'
+            assert comment_before_op.last_edited != comment_after_op.last_edited, 'Last edited not updated'
+            assert comment_after_op.last_edited_by.full_name == user.full_name, 'Last edited by incorrect'
+            assert FileContext.objects.filter(comment=comment).count() == len(files), \
+                'Check if all files supplied are also in comment files, no more no less'
+            for file in comment.files.all():
+                assert file in files, 'Check if all files supplied are also in comment files, no more no less'
         else:
             assert_comments_are_equal(comment_before_op, comment_after_op)
 
@@ -238,8 +314,50 @@ class CommentAPITest(TestCase):
         api.delete(self, 'comments', params={'pk': comment.pk}, user=user, status=200 if should_succeed else 403)
 
         if should_succeed:
-            assert not Comment.objects.filter(pk=comment.pk).exists(), 'Comment was not succesfully deleted'
+            assert not Comment.objects.filter(pk=comment.pk).exists(), 'Comment was not successfully deleted'
             comment_before_op.save()
         else:
             comment_after_op = Comment.objects.get(pk=comment.pk)
             assert_comments_are_equal(comment_before_op, comment_after_op)
+
+    def test_rich_text_comment_file_context_factory(self):
+        number_of_embedded_files = 2
+        comment = factory.StudentComment()
+        u_count = User.objects.count()
+
+        rt_comment_fc = factory.RichTextCommentFileContext(comment=comment)
+        assert u_count == User.objects.count(), \
+            'Generating a rich text comment\'s fc, generates no additional users if the comment is provied'
+        assert rt_comment_fc.author.pk == comment.author.pk, 'The RT comment\'s FC\'s author is the comment\'s author'
+        assert comment.pk == rt_comment_fc.comment.pk, 'The fc is correctly linked to the given comment'
+        assert comment.entry.node.journal.pk == rt_comment_fc.journal.pk, \
+            'Comment RT files require the journal context to be set'
+        assert rt_comment_fc.in_rich_text, 'Comment rich text file context should be flagged as such'
+
+        comment = factory.StudentComment(n_rt_files=number_of_embedded_files)
+        comment = Comment.objects.get(pk=comment.pk)
+
+        assert FileContext.objects.filter(comment=comment).count() == number_of_embedded_files, \
+            '{} embedded files are generated'.format(number_of_embedded_files)
+
+        for fc in FileContext.objects.filter(comment=comment):
+            assert fc.download_url(access_id=fc.access_id) in comment.text, 'The fc download url is embedded in the RT'
+            file_name_type, _ = mimetypes.guess_type(fc.file_name)
+            file_type, _ = mimetypes.guess_type(fc.file.path)
+
+            assert file_name_type.split('/')[0] == file_type.split('/')[0] == 'image'
+
+    def test_attached_comment_file_context_factory(self):
+        comment = factory.StudentComment()
+        att_comment_fc = factory.AttachedCommentFileContext(comment=comment)
+
+        assert comment.pk == att_comment_fc.comment.pk, 'The fc is correctly linked to the given comment'
+        assert comment.entry.node.journal.pk == att_comment_fc.journal.pk, \
+            'Attached FC comment files require the journal context to be set'
+        assert not att_comment_fc.in_rich_text, 'Comment attached file context should not be flagged as RT'
+
+        comment = factory.StudentComment(n_att_files=2)
+
+        assert comment.files.count() == 2, 'Two attached files are generated'
+        assert FileContext.objects.filter(comment=comment, journal=comment.entry.node.journal).count() == 2, \
+            'The generated files are correctly attached to the generated comment'

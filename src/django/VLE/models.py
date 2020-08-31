@@ -7,24 +7,35 @@ import os
 import random
 import string
 
+from computedfields.models import ComputedFieldsModel, computed, update_dependent
 from django.conf import settings
 from django.contrib.auth.models import AbstractUser
 from django.contrib.postgres.fields import ArrayField, CIEmailField, CITextField
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models import F, Q, Sum
+from django.db.models.deletion import CASCADE, SET_NULL
 from django.dispatch import receiver
 from django.utils import timezone
 from django.utils.timezone import now
 
 import VLE.permissions as permissions
 import VLE.utils.file_handling as file_handling
+from VLE.tasks.email import send_push_notification
 from VLE.utils import sanitization
 from VLE.utils.error_handling import (VLEBadRequest, VLEParticipationError, VLEPermissionError, VLEProgrammingError,
                                       VLEUnverifiedEmailError)
 
 
-class Instance(models.Model):
+class CreateUpdateModel(models.Model):
+    creation_date = models.DateTimeField(auto_now_add=True, editable=False)
+    update_date = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        abstract = True
+
+
+class Instance(CreateUpdateModel):
     """Global settings for the running instance."""
     allow_standalone_registration = models.BooleanField(
         default=True
@@ -32,9 +43,43 @@ class Instance(models.Model):
     name = models.TextField(
         default='eJournal'
     )
+    default_lms_profile_picture = models.TextField(
+        default=settings.DEFAULT_LMS_PROFILE_PICTURE
+    )
 
     def to_string(self, user=None):
         return self.name
+
+
+def gen_url(node=None, journal=None, assignment=None, course=None, user=None):
+    """Generate the corresponding frontend url to the supplied object.
+
+    Works for: node, journal, assignment, and course
+    User needs to be added if no course is supplied, this is to get the correct course.
+    """
+    if not (node or journal or assignment or course):
+        raise VLEProgrammingError('(gen_url) no object was supplied')
+
+    if journal is None and node is not None:
+        journal = node.journal
+    if assignment is None and journal is not None:
+        assignment = journal.assignment
+    if course is None and assignment is not None:
+        if user is None:
+            raise VLEProgrammingError('(gen_url) if course is not supplied, user needs to be supplied')
+        course = assignment.get_active_course(user)
+        if course is None:
+            raise VLEParticipationError(assignment, user)
+
+    url = '{}/Home/Course/{}'.format(settings.BASELINK, course.pk)
+    if assignment:
+        url += '/Assignment/{}'.format(assignment.pk)
+        if journal:
+            url += '/Journal/{}'.format(journal.pk)
+            if node:
+                url += '?nID={}'.format(node.pk)
+
+    return url
 
 
 # https://stackoverflow.com/a/2257449
@@ -42,7 +87,7 @@ def access_gen(size=128, chars=string.ascii_lowercase + string.ascii_uppercase +
     return ''.join(random.SystemRandom().choice(chars) for _ in range(size))
 
 
-class FileContext(models.Model):
+class FileContext(CreateUpdateModel):
     """FileContext.
 
     FileContext is a file uploaded by the user stored in MEDIA_ROOT/uID/<category>/?[id/]<filename>
@@ -55,7 +100,6 @@ class FileContext(models.Model):
     - content: The content that the File is linked to. Can be rich text or a dedicated file field.
     - course: The course that the File is linked to (e.g. course description).
     - journal: The journal that the File is linked to (e.g. comment).
-    - creation_date: The time and date the file was uploaded.
     """
     file = models.FileField(
         null=False,
@@ -108,9 +152,6 @@ class FileContext(models.Model):
         default=True
     )
 
-    creation_date = models.DateTimeField(editable=False)
-    last_edited = models.DateTimeField()
-
     def download_url(self, access_id=False):
         if access_id:
             return '{}/files/{}?access_id={}'.format(settings.API_URL, self.pk, self.access_id)
@@ -121,11 +162,8 @@ class FileContext(models.Model):
 
     def save(self, *args, **kwargs):
         if self._state.adding:
-            if not self.creation_date:
-                self.creation_date = timezone.now()
             if not self.author:
                 raise VLEProgrammingError('FileContext author should be set on creation')
-        self.last_edited = timezone.now()
 
         return super(FileContext, self).save(*args, **kwargs)
 
@@ -342,30 +380,78 @@ def delete_dangling_files(sender, instance, **kwargs):
             f.delete()
 
 
-class Preferences(models.Model):
+class Preferences(CreateUpdateModel):
     """Preferences.
 
     Describes the preferences of a user:
     - show_format_tutorial: whether or not to show the assignment format tutorial.
-    - grade_notifications: whether or not to receive grade notifications via email.
-    - comment_notifications: whether or not to receive comment notifications via email.
-    - upcoming_deadline_notifications: whether or not to receive upcoming deadline notifications via email.
+    - ..._reminder: when a user wants to be reminded of an event that will happen in the future
+    - ..._notifications: when a user wants to receive this notification, either immidiatly, daily, weekly, or never
     - hide_version_alert: latest version number for which a version alert has been dismissed.
     """
+    DAILY = 'd'
+    WEEKLY = 'w'
+    PUSH = 'p'
+    OFF = 'o'
+    DAY_AND_WEEK = 'p'
+    WEEK = 'w'
+    DAY = 'd'
+    FREQUENCIES = (
+        (DAILY, 'd'),
+        (WEEKLY, 'w'),
+        (PUSH, 'p'),
+        (OFF, 'o'),
+    )
+    REMINDER = (
+        (DAY, 'd'),
+        (WEEK, 'w'),
+        (DAY_AND_WEEK, 'p'),
+        (OFF, 'o'),
+    )
+
     user = models.OneToOneField(
         User,
         on_delete=models.CASCADE,
         primary_key=True
     )
-    grade_notifications = models.BooleanField(
-        default=True
+
+    new_grade_notifications = models.TextField(
+        max_length=1,
+        choices=FREQUENCIES,
+        default=PUSH,
     )
-    comment_notifications = models.BooleanField(
-        default=True
+    new_comment_notifications = models.TextField(
+        max_length=1,
+        choices=FREQUENCIES,
+        default=DAILY,
     )
-    upcoming_deadline_notifications = models.BooleanField(
-        default=True
+    new_assignment_notifications = models.TextField(
+        max_length=1,
+        choices=FREQUENCIES,
+        default=WEEKLY,
     )
+    new_course_notifications = models.TextField(
+        max_length=1,
+        choices=FREQUENCIES,
+        default=WEEKLY,
+    )
+    new_entry_notifications = models.TextField(
+        max_length=1,
+        choices=FREQUENCIES,
+        default=WEEKLY,
+    )
+    new_node_notifications = models.TextField(
+        max_length=1,
+        choices=FREQUENCIES,
+        default=WEEKLY,
+    )
+
+    upcoming_deadline_reminder = models.TextField(
+        max_length=1,
+        choices=REMINDER,
+        default=DAY_AND_WEEK,
+    )
+
     show_format_tutorial = models.BooleanField(
         default=True
     )
@@ -406,7 +492,197 @@ class Preferences(models.Model):
         return "Preferences"
 
 
-class Course(models.Model):
+class Notification(CreateUpdateModel):
+    NEW_COURSE = 'COURSE'
+    NEW_ASSIGNMENT = 'ASSIGNMENT'
+    NEW_NODE = 'NODE'
+    NEW_ENTRY = 'ENTRY'
+    NEW_GRADE = 'GRADE'
+    NEW_COMMENT = 'COMMENT'
+    UPCOMING_DEADLINE = 'DEADLINE'
+    TYPES = {
+        NEW_COURSE: {
+            'name': 'new_course_notifications',
+            'content': {
+                'title': 'New course membership',
+                'content': 'You are now a member of {course}.',
+                'button_text': 'View Course',
+            },
+        },
+        NEW_ASSIGNMENT: {
+            'name': 'new_assignment_notifications',
+            'content': {
+                'title': 'New assignment',
+                'content': 'The assignment {assignment} is now available.',
+                'button_text': 'View Assignment',
+            },
+        },
+        NEW_NODE: {
+            'name': 'new_node_notifications',
+            'content': {
+                'title': 'New deadline',
+                'content': 'A new deadline has been added to your journal.',
+                'button_text': 'View Deadline',
+            },
+        },
+        NEW_ENTRY: {
+            'name': 'new_entry_notifications',
+            'content': {
+                'title': 'New entry',
+                'content': '{entry} was posted in the journal of {journal}.',
+                'batch_content': '{n} new entries were posted in  the journal of {journal}.',
+                'button_text': 'View Entry',
+            },
+        },
+        NEW_GRADE: {
+            'name': 'new_grade_notifications',
+            'content': {
+                'title': 'New grade',
+                'content': '{entry} has been graded.',
+                'batch_content': '{entry} has been graded.',
+                'button_text': 'View Grade',
+            },
+        },
+        NEW_COMMENT: {
+            'name': 'new_comment_notifications',
+            'content': {
+                'title': 'New comment',
+                'content': '{comment} commented on {entry}.',
+                'batch_content': '{n} new comments on {entry} in the journal of {journal}.',
+                'button_text': 'View Comment',
+            },
+        },
+        UPCOMING_DEADLINE: {
+            'name': 'None',
+            'content': {
+                'title': 'Upcoming deadline',
+                'content': 'You have an unfinished deadline ({node}) that is due on {deadline}',
+                'button_text': 'View Deadline',
+            },
+        },
+    }
+    # Specify which notifications can be batched in the email, and on what model field they need to be batched to
+    BATCHED_TYPES = {
+        NEW_ENTRY: 'journal',
+        NEW_GRADE: 'entry',
+        NEW_COMMENT: 'entry',
+    }
+
+    type = models.CharField(
+        max_length=10,
+        choices=((type, dic['name']) for type, dic in TYPES.items()),
+        null=False,
+    )
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+    )
+    message = models.TextField()
+    sent = models.BooleanField(
+        default=False
+    )
+
+    course = models.ForeignKey(
+        'course',
+        on_delete=models.CASCADE,
+        null=True,
+    )
+    assignment = models.ForeignKey(
+        'assignment',
+        on_delete=models.CASCADE,
+        null=True,
+    )
+    journal = models.ForeignKey(
+        'journal',
+        on_delete=models.CASCADE,
+        null=True,
+    )
+    node = models.ForeignKey(
+        'node',
+        on_delete=models.CASCADE,
+        null=True,
+    )
+    entry = models.ForeignKey(
+        'entry',
+        on_delete=models.CASCADE,
+        null=True,
+    )
+    grade = models.ForeignKey(
+        'grade',
+        on_delete=models.CASCADE,
+        null=True,
+    )
+    comment = models.ForeignKey(
+        'comment',
+        on_delete=models.CASCADE,
+        null=True,
+    )
+
+    def _fill_text(self, text, n=None):
+        node_name = None
+        if self.node:
+            if self.node.type == Node.PROGRESS:
+                node_name = f"{self.journal.grade}/{self.node.preset.target}"
+            elif self.node.type == Node.ENTRYDEADLINE:
+                node_name = self.node.preset.forced_template.name
+
+        return text.format(
+            comment=self.comment.author.full_name if self.comment else None,
+            entry=self.entry.template.name if self.entry and self.entry.template else None,
+            node=node_name,
+            journal=self.journal.name if self.journal else None,
+            assignment=self.assignment.name if self.assignment else None,
+            course=self.course.name if self.course else None,
+            deadline=self.node.preset.due_date.strftime("%B %-d at %H:%M") if self.node and self.node.preset else None,
+            n=n,
+        )
+
+    @property
+    def title(self):
+        return self._fill_text(self.TYPES[self.type]['content']['title'])
+
+    @property
+    def content(self):
+        return self._fill_text(self.TYPES[self.type]['content']['content'])
+
+    @property
+    def button_text(self):
+        return Notification.TYPES[self.type]['content']['button_text']
+
+    def batch_content(self, n=None):
+        return self._fill_text(self.TYPES[self.type]['content']['batch_content'], n=n)
+
+    @property
+    def url(self):
+        return gen_url(
+            node=self.node, journal=self.journal, assignment=self.assignment, course=self.course, user=self.user)
+
+    def save(self, *args, **kwargs):
+        is_new = self._state.adding
+        if is_new:
+            if self.comment:
+                self.entry = self.comment.entry
+            elif self.grade:
+                self.entry = self.grade.entry
+            if self.entry:
+                self.node = self.entry.node
+            if self.node:
+                self.journal = self.node.journal
+            if self.journal:
+                self.assignment = self.journal.assignment
+            if self.assignment:
+                self.course = self.assignment.get_active_course(self.user)
+
+        super(Notification, self).save(*args, **kwargs)
+
+        if is_new:
+            # Send notification on creation if user preference is set to push, default (for reminders) is daily
+            if getattr(self.user.preferences, Notification.TYPES[self.type]['name'], Preferences.DAILY) == \
+               Preferences.PUSH:
+                send_push_notification.delay(self.pk)
+
+
+class Course(CreateUpdateModel):
     """Course.
 
     A Course entity has the following features:
@@ -472,7 +748,7 @@ class Course(models.Model):
         return self.name + " (" + str(self.pk) + ")"
 
 
-class Group(models.Model):
+class Group(CreateUpdateModel):
     """Group.
 
     A Group entity has the following features:
@@ -502,7 +778,7 @@ class Group(models.Model):
         return "{} ({})".format(self.name, self.pk)
 
 
-class Role(models.Model):
+class Role(CreateUpdateModel):
     """Role.
 
     A complete overview of the role requirements can be found here:
@@ -546,6 +822,9 @@ class Role(models.Model):
 
         'can_comment',
         'can_edit_staff_comment',
+
+        'can_post_teacher_entries',
+        'can_manage_journal_import_requests',
     ]
     PERMISSIONS = COURSE_PERMISSIONS + ASSIGNMENT_PERMISSIONS
 
@@ -576,8 +855,10 @@ class Role(models.Model):
     can_view_grade_history = models.BooleanField(default=False)
     can_have_journal = models.BooleanField(default=False)
     can_comment = models.BooleanField(default=False)
+    can_post_teacher_entries = models.BooleanField(default=False)
     can_edit_staff_comment = models.BooleanField(default=False)
     can_view_unpublished_assignment = models.BooleanField(default=False)
+    can_manage_journal_import_requests = models.BooleanField(default=False)
 
     def save(self, *args, **kwargs):
         if self.can_add_course_users and not self.can_view_course_users:
@@ -602,6 +883,9 @@ class Role(models.Model):
             raise ValidationError('A user needs to be able to view and grade journals in order to see a history\
                                    of grades.')
 
+        if self.can_post_teacher_entries and not (self.can_publish_grades and self.can_grade):
+            raise ValidationError('A user must be able to view and publish grades in order to post teacher entries.')
+
         if self.can_comment and not (self.can_view_all_journals or self.can_have_journal):
             raise ValidationError('A user requires a journal to comment on.')
 
@@ -610,6 +894,9 @@ class Role(models.Model):
 
         if self.can_edit_staff_comment and not self.can_comment:
             raise ValidationError('A user needs to be able to comment in order to edit other comments.')
+
+        if self.can_manage_journal_import_requests and not self.can_grade:
+            raise ValidationError('A user needs the permission to grade in order to manage import requests.')
 
         super(Role, self).save(*args, **kwargs)
 
@@ -627,7 +914,7 @@ class Role(models.Model):
         unique_together = ('name', 'course',)
 
 
-class Participation(models.Model):
+class Participation(CreateUpdateModel):
     """Participation.
 
     A participation defines the way a user interacts within a certain course.
@@ -649,6 +936,7 @@ class Participation(models.Model):
 
     def save(self, *args, **kwargs):
         is_new = self._state.adding
+        notify_user = kwargs.pop('notify_user', True)
         super(Participation, self).save(*args, **kwargs)
 
         # Instance is being created (not modified)
@@ -656,6 +944,12 @@ class Participation(models.Model):
             existing = AssignmentParticipation.objects.filter(user=self.user).values('assignment')
             for assignment in Assignment.objects.filter(courses__in=[self.course]).exclude(pk__in=existing):
                 AssignmentParticipation.objects.create(assignment=assignment, user=self.user)
+            if notify_user and self.user != self.course.author:
+                Notification.objects.create(
+                    type=Notification.NEW_COURSE,
+                    user=self.user,
+                    course=self.course
+                )
 
     class Meta:
         """Meta data for the model: unique_together."""
@@ -672,7 +966,7 @@ class Participation(models.Model):
             self.user.to_string(user=user), self.course.to_string(user=user), self.role.to_string(user=user))
 
 
-class Assignment(models.Model):
+class Assignment(CreateUpdateModel):
     """Assignment.
 
     An Assignment entity has the following features:
@@ -766,8 +1060,9 @@ class Assignment(models.Model):
                 pre_save = Assignment.objects.get(pk=self.pk)
                 active_lti_id_modified = pre_save.active_lti_id != self.active_lti_id
 
-                if pre_save.is_published and not self.is_published and pre_save.has_entries():
-                    raise ValidationError('Cannot unpublish an assignment that has entries.')
+                if pre_save.is_published and not self.is_published and not pre_save.can_unpublish():
+                    raise ValidationError(
+                        'Cannot unpublish an assignment that has entries or outstanding journal import requests.')
                 if pre_save.is_group_assignment != self.is_group_assignment:
                     if pre_save.has_entries():
                         raise ValidationError('Cannot change the type of an assignment that has entries.')
@@ -781,6 +1076,7 @@ class Assignment(models.Model):
         if active_lti_id_modified:
             # Reset all sourcedid if the active lti id is updated.
             AssignmentParticipation.objects.filter(assignment=self).update(sourcedid=None, grade_url=None)
+            update_dependent(AssignmentParticipation.objects.filter(assignment=self))
 
             if self.active_lti_id is not None and self.active_lti_id not in self.lti_id_set:
                 self.lti_id_set.append(self.active_lti_id)
@@ -792,9 +1088,9 @@ class Assignment(models.Model):
 
         is_new = self._state.adding
         if not self._state.adding and self.pk:
-            old_publish = Assignment.objects.get(pk=self.pk).is_published
+            was_published = Assignment.objects.get(pk=self.pk).is_published
         else:
-            old_publish = self.is_published
+            was_published = self.is_published
 
         super(Assignment, self).save(*args, **kwargs)
 
@@ -802,7 +1098,7 @@ class Assignment(models.Model):
             # Delete all journals if assignment type changes
             Journal.objects.filter(assignment=self).delete()
 
-        if type_changed or not old_publish and self.is_published:
+        if type_changed or not was_published and self.is_published:
             # Create journals if it is changed to (or published as) a non group assignment
             if not self.is_group_assignment:
                 users = self.courses.values('users').distinct()
@@ -813,10 +1109,27 @@ class Assignment(models.Model):
                 else:
                     existing = Journal.objects.filter(assignment=self).values('authors__user')
                 for user in users.exclude(pk__in=existing):
-                    ap = AssignmentParticipation.objects.get(assignment=self, user=user['users'])
+                    ap = AssignmentParticipation.objects.get_or_create(
+                        assignment=self, user=User.objects.get(pk=user['users']))[0]
                     if not Journal.objects.filter(assignment=self, authors__in=[ap]).exists():
                         journal = Journal.objects.create(assignment=self)
-                        journal.authors.add(ap)
+                        journal.add_author(ap)
+
+        # Send notifications once an assignment is published
+        if (is_new or not was_published) and self.is_published:
+            for ap in AssignmentParticipation.objects.filter(assignment=self):
+                if ap.user.has_permission('can_have_journal', self):
+                    Notification.objects.create(
+                        type=Notification.NEW_ASSIGNMENT,
+                        user=ap.user,
+                        assignment=self,
+                    )
+        # Delete notifications if a teacher unpublishes an assignment after publishing
+        elif was_published and not self.is_published:
+            Notification.objects.filter(
+                type=Notification.NEW_ASSIGNMENT,
+                assignment=self,
+            ).delete()
 
     def get_active_lti_course(self):
         """"Query for retrieving the course which matches the active lti id of the assignment."""
@@ -885,6 +1198,12 @@ class Assignment(models.Model):
     def has_entries(self):
         return Entry.objects.filter(node__journal__assignment=self).exists()
 
+    def has_outstanding_jirs(self):
+        return JournalImportRequest.objects.filter(target__assignment=self, state=JournalImportRequest.PENDING).exists()
+
+    def can_unpublish(self):
+        return not (self.has_entries() or self.has_outstanding_jirs())
+
     def to_string(self, user=None):
         if user is None:
             return "Assignment"
@@ -894,7 +1213,7 @@ class Assignment(models.Model):
         return "{} ({})".format(self.name, self.pk)
 
 
-class AssignmentParticipation(models.Model):
+class AssignmentParticipation(CreateUpdateModel):
     """AssignmentParticipation
 
     A user that is connected to an assignment
@@ -932,13 +1251,13 @@ class AssignmentParticipation(models.Model):
         if is_new:
             if self.assignment.is_published and not self.assignment.is_group_assignment and not self.journal:
                 journal = Journal.objects.create(assignment=self.assignment)
-                journal.authors.add(self)
+                journal.add_author(self)
 
     def to_string(self, user=None):
-        if user is None or not user.can_view(self.assignment):
+        if user is None or not (user == self.user or user.is_supervisor_of(self.user)):
             return "Participant"
 
-        return "{0} in {1}".format(self.user.username, self.assignment.name)
+        return "{} in {}".format(self.user.username, self.assignment.name)
 
     class Meta:
         """A class for meta data.
@@ -969,7 +1288,7 @@ class JournalManager(models.Manager):
         ).distinct().order_by('pk')
 
 
-class Journal(models.Model):
+class Journal(CreateUpdateModel, ComputedFieldsModel):
     """Journal.
 
     A journal is a collection of Nodes that holds the student's
@@ -994,11 +1313,11 @@ class Journal(models.Model):
         default=1
     )
 
-    name = models.TextField(
+    stored_name = models.TextField(
         null=True,
     )
 
-    image = models.TextField(
+    stored_image = models.TextField(
         null=True,
     )
 
@@ -1014,24 +1333,62 @@ class Journal(models.Model):
     outdated_link_warning_msg = 'This journal has an outdated LMS uplink and can no longer be edited. Visit  ' \
         + 'eJournal from an updated LMS connection.'
 
-    def get_grade(self):
+    @computed(models.FloatField(null=True), depends=[
+        ['node_set', ['entry']],
+        ['node_set.entry', ['grade']],
+    ])
+    def grade(self):
         return round(self.bonus_points + (
             self.node_set.filter(entry__grade__published=True)
             .values('entry__grade__grade')
             .aggregate(Sum('entry__grade__grade'))['entry__grade__grade__sum'] or 0), 2)
 
+    @computed(models.FloatField(null=True), depends=[
+        ['node_set', ['entry']],
+        ['node_set.entry', ['grade']],
+    ])
+    def unpublished(self):
+        return self.node_set.filter(entry__grade__published=False).count()
+
+    @computed(models.IntegerField(null=True), depends=[
+        ['import_request_targets', ['target', 'state']],
+    ])
+    def import_requests(self):
+        return self.import_request_targets.filter(state=JournalImportRequest.PENDING).count()
+
+    @computed(models.FloatField(null=True), depends=[
+        ['node_set', ['entry']],
+        ['node_set.entry', ['grade']],
+    ])
+    def needs_marking(self):
+        return self.node_set.filter(entry__isnull=False, entry__grade__isnull=True).count()
+
+    @computed(ArrayField(models.TextField(), default=list), depends=[
+        ['authors', ['journal', 'sourcedid']],
+        ['authors.user', ['full_name']],
+        ['assignment', ['active_lti_id']],
+    ])
     def needs_lti_link(self):
-        return any(author.needs_lti_link() for author in self.authors.all())
+        if not self.assignment.active_lti_id:
+            return list()
+        return list(self.authors.filter(sourcedid__isnull=True).values_list('user__full_name', flat=True))
 
-    def get_name(self):
-        if self.name is not None:
-            return self.name
+    @computed(models.TextField(null=True), depends=[
+        ['self', ['stored_name']],
+        ['authors.user', ['full_name']],
+    ])
+    def name(self):
+        if self.stored_name:
+            return self.stored_name
+        return ', '.join(self.authors.values_list('user__full_name', flat=True))
 
-        return self.get_full_names()
-
-    def get_image(self):
-        if self.image:
-            return self.image
+    @computed(models.TextField(null=True), depends=[
+        ['self', ['stored_image']],
+        ['authors.user', ['profile_picture']],
+    ])
+    def image(self):
+        if self.stored_image:
+            return self.stored_image
 
         user_with_pic = self.authors.all().exclude(user__profile_picture=settings.DEFAULT_PROFILE_PICTURE).first()
         if user_with_pic is not None:
@@ -1039,27 +1396,49 @@ class Journal(models.Model):
 
         return settings.DEFAULT_PROFILE_PICTURE
 
-    def get_full_names(self):
+    @computed(models.TextField(null=True), depends=[
+        ['authors.user', ['full_name']],
+    ])
+    def full_names(self):
         return ', '.join(self.authors.values_list('user__full_name', flat=True))
 
-    def reset(self):
-        Node.objects.filter(journal=self).delete()
+    @computed(models.TextField(null=True), depends=[
+        ['authors.user', ['username']],
+    ])
+    def usernames(self):
+        return ', '.join(self.authors.values_list('user__username', flat=True))
 
-        preset_nodes = self.assignment.format.presetnode_set.all()
-        for preset_node in preset_nodes:
-            Node.objects.create(type=preset_node.type, journal=self, preset=preset_node)
+    def add_author(self, author):
+        self.authors.add(author)
+        self.save()
+
+    def remove_author(self, author):
+        self.authors.remove(author)
+        self.save()
+
+    def reset(self):
+        Entry.objects.filter(node__journal=self).delete()
+        self.import_request_targets.all().delete()
+        self.import_request_sources.filter(state=JournalImportRequest.PENDING).delete()
 
     def save(self, *args, **kwargs):
+        if not self.author_limit == self.UNLIMITED and self.authors.count() > self.author_limit:
+            raise ValidationError('Journal users exceed author limit.')
+        if not self.assignment.is_group_assignment and self.author_limit > 1:
+            raise ValidationError('Journal author limit of a non group assignment exceeds 1')
+
         is_new = self._state.adding
-        if self.name is None:
+        if self.stored_name is None:
             if self.assignment.is_group_assignment:
-                self.name = 'Journal {}'.format(Journal.objects.filter(assignment=self.assignment).count() + 1)
+                self.stored_name = 'Journal {}'.format(Journal.objects.filter(assignment=self.assignment).count() + 1)
+
         super(Journal, self).save(*args, **kwargs)
         # On create add preset nodes
         if is_new:
             preset_nodes = self.assignment.format.presetnode_set.all()
             for preset_node in preset_nodes:
-                Node.objects.create(type=preset_node.type, journal=self, preset=preset_node)
+                if not self.node_set.filter(preset=preset_node).exists():
+                    Node.objects.create(type=preset_node.type, journal=self, preset=preset_node)
 
     @property
     def published_nodes(self):
@@ -1072,15 +1451,23 @@ class Journal(models.Model):
             entry__isnull=False).order_by('entry__last_edited')
 
     def to_string(self, user=None):
-        if user is None:
-            return "Journal"
-        if not user.can_view(self):
-            return "Journal"
+        if user is None or not user.can_view(self):
+            return 'Journal'
 
-        return "the {0} journal of {1}".format(self.assignment.name, self.get_full_names())
+        return self.get_name()
 
 
-class Node(models.Model):
+def CASCADE_IF_UNLIMITED_ENTRY_NODE_ELSE_SET_NULL(collector, field, sub_objs, using):
+    # NOTE: Either the function is not yet defined or the node type is not defined.
+    # Tag Node.FIELD, update hard coded if changed
+    unlimited_entry_nodes = [n for n in sub_objs if n.type == 'e']
+    other_nodes = [n for n in sub_objs if n.type != 'e']
+
+    CASCADE(collector, field, unlimited_entry_nodes, using)
+    SET_NULL(collector, field, other_nodes, using)
+
+
+class Node(CreateUpdateModel):
     """Node.
 
     The Node is an Timeline component.
@@ -1131,7 +1518,7 @@ class Node(models.Model):
     entry = models.OneToOneField(
         'Entry',
         null=True,
-        on_delete=models.SET_NULL,
+        on_delete=CASCADE_IF_UNLIMITED_ENTRY_NODE_ELSE_SET_NULL,
     )
 
     journal = models.ForeignKey(
@@ -1148,8 +1535,26 @@ class Node(models.Model):
     def to_string(self, user=None):
         return "Node"
 
+    class Meta:
+        unique_together = ('preset', 'journal')
 
-class Format(models.Model):
+    def save(self, *args, **kwargs):
+        is_new = self._state.adding
+
+        super(Node, self).save(*args, **kwargs)
+
+        # Create a Notifcation for deadline PresetNodes
+        if is_new and self.type in [self.ENTRYDEADLINE, self.PROGRESS]:
+            for author in self.journal.authors.all():
+                if author.user.can_view(self.journal):
+                    Notification.objects.create(
+                        type=Notification.NEW_NODE,
+                        user=author.user,
+                        node=self,
+                    )
+
+
+class Format(CreateUpdateModel):
     """Format.
 
     Format of a journal.
@@ -1161,7 +1566,7 @@ class Format(models.Model):
         return "Format"
 
 
-class PresetNode(models.Model):
+class PresetNode(CreateUpdateModel):
     """PresetNode.
 
     A preset node is a node that has been pre-defined by the teacher.
@@ -1221,22 +1626,23 @@ class PresetNode(models.Model):
         return "PresetNode"
 
 
-class Entry(models.Model):
+class Entry(CreateUpdateModel):
     """Entry.
 
     An Entry has the following features:
-    - creation_date: the date and time when the entry was posted.
-    - last_edited: the date and time when the etry was last edited
+    - last_edited: the date and time when the etry was last edited by an author. This also changes the last_edited_by
     """
     NEEDS_SUBMISSION = 'Submission needs to be sent to VLE'
     SENT_SUBMISSION = 'Submission is successfully received by VLE'
     NEEDS_GRADE_PASSBACK = 'Grade needs to be sent to VLE'
     LINK_COMPLETE = 'Everything is sent to VLE'
+    NO_LINK = 'Ignore VLE coupling (e.g. for teacher entries)'
     TYPES = (
         (NEEDS_SUBMISSION, 'entry_submission'),
         (SENT_SUBMISSION, 'entry_submitted'),
         (NEEDS_GRADE_PASSBACK, 'grade_submission'),
         (LINK_COMPLETE, 'done'),
+        (NO_LINK, 'no_link'),
     )
 
     # TODO Should not be nullable
@@ -1251,8 +1657,12 @@ class Entry(models.Model):
         related_name='+',
         null=True,
     )
+    teacher_entry = models.ForeignKey(
+        'TeacherEntry',
+        on_delete=models.CASCADE,
+        null=True,
+    )
 
-    creation_date = models.DateTimeField(editable=False)
     author = models.ForeignKey(
         'User',
         on_delete=models.SET_NULL,
@@ -1260,7 +1670,7 @@ class Entry(models.Model):
         null=True,
     )
 
-    last_edited = models.DateTimeField()
+    last_edited = models.DateTimeField(auto_now_add=True)
     last_edited_by = models.ForeignKey(
         'User',
         on_delete=models.SET_NULL,
@@ -1273,6 +1683,13 @@ class Entry(models.Model):
         choices=TYPES,
     )
 
+    jir = models.ForeignKey(
+        'JournalImportRequest',
+        on_delete=models.SET_NULL,
+        blank=True,
+        null=True,
+    )
+
     def is_locked(self):
         return (self.node.preset and self.node.preset.is_locked()) or self.node.journal.assignment.is_locked()
 
@@ -1283,18 +1700,80 @@ class Entry(models.Model):
         return not (self.grade is None or self.grade.grade is None)
 
     def save(self, *args, **kwargs):
-        if not self.pk:
-            now = timezone.now()
-            self.creation_date = now
-            self.last_edited = now
+        is_new = not self.pk
+        author_id = self.__dict__.get('author_id', None)
+        node_id = self.__dict__.get('node_id', None)
+        author = self.author if self.author else User.objects.get(pk=author_id) if author_id else None
 
-        return super(Entry, self).save(*args, **kwargs)
+        if author and not self.last_edited_by:
+            self.last_edited_by = author
+
+        if not isinstance(self, TeacherEntry):
+            try:
+                node = Node.objects.get(pk=node_id) if node_id else self.node
+            except Node.DoesNotExist:
+                raise ValidationError('Saving entry without corresponding node')
+
+            if (author and not node.journal.authors.filter(user=author).exists() and not self.teacher_entry and
+                    not self.jir):
+                raise ValidationError('Saving non-teacher entry created by user not part of journal')
+
+        super(Entry, self).save(*args, **kwargs)
+
+        if is_new and not isinstance(self, TeacherEntry):
+            for user in permissions.get_supervisors_of(self.node.journal):
+                Notification.objects.create(
+                    type=Notification.NEW_ENTRY,
+                    user=user,
+                    entry=self,
+                )
 
     def to_string(self, user=None):
         return "Entry"
 
 
-class Grade(models.Model):
+class TeacherEntry(Entry):
+    """TeacherEntry.
+
+    An entry posted by a teacher to multiple student journals.
+    """
+    assignment = models.ForeignKey(
+        'Assignment',
+        on_delete=models.CASCADE,
+    )
+    title = models.TextField(
+        null=False,
+    )
+    show_title_in_timeline = models.BooleanField(
+        default=True
+    )
+
+    # Teacher entries objects cannot directly contribute to journal grades. They should be added to each journal and
+    # are individually graded / grades passed back to the LMS from there.
+    # This allows editing and grade passback mechanics for students like usual.
+    grade = None
+    teacher_entry = None
+    vle_coupling = None
+
+    def save(self, *args, **kwargs):
+        is_new = not self.pk
+        self.grade = None
+        self.teacher_entry = None
+        self.vle_coupling = Entry.NO_LINK
+
+        if not self.title:
+            raise ValidationError('No valid title provided.')
+
+        if is_new and not self.template:
+            raise ValidationError('No valid template provided.')
+
+        if is_new and not self.author:
+            raise ValidationError('No author provided.')
+
+        return super(TeacherEntry, self).save(*args, **kwargs)
+
+
+class Grade(CreateUpdateModel):
     """Grade.
 
     Used to keep a history of grades.
@@ -1313,10 +1792,6 @@ class Grade(models.Model):
         default=False,
         editable=False
     )
-    creation_date = models.DateTimeField(
-        editable=False,
-        auto_now_add=True
-    )
     author = models.ForeignKey(
         'User',
         null=True,
@@ -1325,14 +1800,21 @@ class Grade(models.Model):
     )
 
     def save(self, *args, **kwargs):
-        self.creation_date = timezone.now()
-        return super(Grade, self).save(*args, **kwargs)
+        super(Grade, self).save(*args, **kwargs)
+
+        if self.published:
+            for author in self.entry.node.journal.authors.all():
+                Notification.objects.create(
+                    type=Notification.NEW_GRADE,
+                    user=author.user,
+                    grade=self
+                )
 
     def to_string(self, user=None):
         return "Grade"
 
 
-class Counter(models.Model):
+class Counter(CreateUpdateModel):
     """Counter.
 
     A single counter class which can be used to keep track of incremental values
@@ -1350,7 +1832,7 @@ class Counter(models.Model):
         return self.name + " is on " + self.count
 
 
-class Template(models.Model):
+class Template(CreateUpdateModel):
     """Template.
 
     A template for an Entry.
@@ -1375,34 +1857,40 @@ class Template(models.Model):
         return "Template"
 
 
-class Field(models.Model):
+@receiver(models.signals.pre_delete, sender=Template)
+def delete_pending_jirs_on_source_deletion(sender, instance, **kwargs):
+    if Content.objects.filter(field__template=instance).exists():
+        raise VLEProgrammingError('Content still exists which depends on a template being deleted')
+
+
+class Field(CreateUpdateModel):
     """Field.
 
     Defines the fields of an Template
     """
+    ALLOWED_URL_SCHEMES = ('http', 'https', 'ftp', 'ftps')
+    ALLOWED_DATE_FORMAT = '%Y-%m-%d'
+    ALLOWED_DATETIME_FORMAT = '%Y-%m-%dT%H:%M:%S'
 
     TEXT = 't'
     RICH_TEXT = 'rt'
-    IMG = 'i'
     FILE = 'f'
     VIDEO = 'v'
-    PDF = 'p'
     URL = 'u'
     DATE = 'd'
     DATETIME = 'dt'
     SELECTION = 's'
-    FILE_TYPES = [PDF, FILE, IMG]
+    NO_SUBMISSION = 'n'
     TYPES = (
         (TEXT, 'text'),
         (RICH_TEXT, 'rich text'),
-        (IMG, 'img'),
-        (PDF, 'pdf'),
         (FILE, 'file'),
         (VIDEO, 'vid'),
         (URL, 'url'),
         (DATE, 'date'),
         (DATETIME, 'datetime'),
-        (SELECTION, 'selection')
+        (SELECTION, 'selection'),
+        (NO_SUBMISSION, 'no submission')
     )
     type = models.TextField(
         max_length=4,
@@ -1426,22 +1914,28 @@ class Field(models.Model):
     def to_string(self, user=None):
         return "{} ({})".format(self.title, self.id)
 
+    def save(self, *args, **kwargs):
+        if self.type == Field.FILE and self.options:
+            self.options = ', '.join(f.strip().lower() for f in self.options.split(','))
+        return super(Field, self).save(*args, **kwargs)
 
-class Content(models.Model):
+
+class Content(CreateUpdateModel):
     """Content.
 
     Defines the content of an Entry
     """
 
+    class Meta:
+        unique_together = ('entry', 'field')
+
     entry = models.ForeignKey(
         'Entry',
         on_delete=models.CASCADE
     )
-    # Question: Why can this be null?
     field = models.ForeignKey(
         'Field',
-        on_delete=models.SET_NULL,
-        null=True
+        on_delete=models.CASCADE,
     )
     data = models.TextField(
         null=True
@@ -1456,7 +1950,7 @@ class Content(models.Model):
         return "Content"
 
 
-class Comment(models.Model):
+class Comment(CreateUpdateModel):
     """Comment.
 
     Comments contain the comments given to the entries.
@@ -1476,8 +1970,11 @@ class Comment(models.Model):
     published = models.BooleanField(
         default=True
     )
-    creation_date = models.DateTimeField(editable=False)
-    last_edited = models.DateTimeField()
+    files = models.ManyToManyField(
+        'FileContext',
+        related_name='comment_files',
+    )
+    last_edited = models.DateTimeField(auto_now_add=True)
     last_edited_by = models.ForeignKey(
         'User',
         related_name='last_edited_by',
@@ -1505,11 +2002,132 @@ class Comment(models.Model):
             not self.entry.node.journal.authors.filter(user=self.author).exists()
 
     def save(self, *args, **kwargs):
-        if not self.pk:
-            self.creation_date = timezone.now()
-        self.last_edited = timezone.now()
+        is_new = not self.pk
         self.text = sanitization.strip_script_tags(self.text)
-        return super(Comment, self).save(*args, **kwargs)
+        super(Comment, self).save(*args, **kwargs)
+
+        if is_new:
+            if self.published:
+                for user in permissions.get_supervisors_of(self.entry.node.journal).exclude(pk=self.author.pk):
+                    Notification.objects.create(
+                        type=Notification.NEW_COMMENT,
+                        user=user,
+                        comment=self,
+                    )
+                for author in self.entry.node.journal.authors.all().exclude(user=self.author):
+                    Notification.objects.create(
+                        type=Notification.NEW_COMMENT,
+                        user=author.user,
+                        comment=self,
+                    )
 
     def to_string(self, user=None):
         return "Comment"
+
+
+class JournalImportRequest(CreateUpdateModel):
+    """
+    Journal Import Request (JIR).
+    Stores a single request to import all entries of a journal (source) into another journal (target).
+
+    Attributes:
+        source (:model:`VLE.journal`): The journal from which entries will be copied
+        target (:model:`VLE.journal`): The journal into which entries will be copied
+        author (:model:`VLE.user`): The user who created the journal import request
+        state: State of the JIR
+        processor (:model:`VLE.user`): The user who updated the JIR state
+    """
+
+    PENDING = 'PEN'
+    DECLINED = 'DEC'
+    APPROVED_INC_GRADES = 'AIG'
+    APPROVED_EXC_GRADES = 'AEG'
+    APPROVED_WITH_GRADES_ZEROED = 'AWGZ'
+    EMPTY_WHEN_PROCESSED = 'EWP'
+    APPROVED_STATES = [APPROVED_INC_GRADES, APPROVED_EXC_GRADES, APPROVED_WITH_GRADES_ZEROED]
+    STATES = (
+        (PENDING, 'Pending'),
+        (DECLINED, 'Declined'),
+        (APPROVED_INC_GRADES, 'Approved including grades'),
+        (APPROVED_EXC_GRADES, 'Approved excluding grades'),
+        (APPROVED_WITH_GRADES_ZEROED, 'Approved with all grades set to zero'),
+        (EMPTY_WHEN_PROCESSED, 'Empty when processed')
+    )
+
+    state = models.CharField(
+        max_length=4,
+        choices=STATES,
+        default=PENDING,
+    )
+    source = models.ForeignKey(
+        'journal',
+        related_name='import_request_sources',
+        blank=True,
+        null=True,
+        on_delete=models.SET_NULL
+    )
+    target = models.ForeignKey(
+        'journal',
+        related_name='import_request_targets',
+        blank=True,
+        null=True,
+        on_delete=models.CASCADE
+    )
+    author = models.ForeignKey(
+        'user',
+        related_name='jir_author',
+        blank=True,
+        null=True,
+        on_delete=models.SET_NULL
+    )
+    processor = models.ForeignKey(
+        'user',
+        related_name='jir_processor',
+        blank=True,
+        null=True,
+        on_delete=models.SET_NULL
+    )
+
+    def get_update_response(self):
+        responses = {
+            self.DECLINED: 'The journal import request has been successfully declined.',
+            self.APPROVED_INC_GRADES:
+                'The journal import request has been successfully approved including all previous grades.',
+            self.APPROVED_EXC_GRADES:
+                'The journal import request has been successfully approved excluding all previous grades.',
+            self.APPROVED_WITH_GRADES_ZEROED:
+                """The journal import request has been successfully approved,
+                and all of the imported entries have been locked (by setting their respective grades to zero).""",
+            self.EMPTY_WHEN_PROCESSED:
+                'The source journal no longer has entries to import, the request has been archived.',
+        }
+
+        return responses[self.state]
+
+    @receiver(models.signals.pre_delete, sender=Journal)
+    def delete_pending_jirs_on_source_deletion(sender, instance, **kwargs):
+        JournalImportRequest.objects.filter(source=instance, state=JournalImportRequest.PENDING).delete()
+
+
+@receiver(models.signals.pre_save, sender=JournalImportRequest)
+def validate_jir_before_save(sender, instance, **kwargs):
+    if instance.target:
+        if instance.target.assignment.lock_date and instance.target.assignment.lock_date < timezone.now():
+            raise ValidationError('You are not allowed to create an import request for a locked assignment.')
+        if instance.state == JournalImportRequest.PENDING and not instance.target.assignment.is_published:
+            raise ValidationError('You are not allowed to create an import request for an unpublished assignment.')
+
+    if instance.source:
+        if not Entry.objects.filter(node__journal=instance.source).exists():
+            raise ValidationError('You cannot create an import request whose source is empty.')
+
+    if instance.target and instance.source:
+        if instance.source.assignment.pk == instance.target.assignment.pk:
+            raise ValidationError('You cannot import a journal into itself.')
+
+        existing_import_qry = instance.target.import_request_targets.filter(
+            state__in=JournalImportRequest.APPROVED_STATES, source=instance.source)
+        if instance.pk:
+            existing_import_qry = existing_import_qry.exclude(pk=instance.pk)
+        if existing_import_qry.exists():
+            raise ValidationError('You cannot import the same journal multiple times.')

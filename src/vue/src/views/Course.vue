@@ -112,7 +112,6 @@ export default {
             cardColor: '',
             post: null,
             error: null,
-            deadlines: [],
             loadingAssignments: true,
         }
     },
@@ -126,9 +125,6 @@ export default {
                     this.assignments = assignments
                     this.loadingAssignments = false
                 })
-
-            assignmentAPI.getUpcoming(this.cID)
-                .then((deadlines) => { this.deadlines = deadlines })
         },
         handleEdit () {
             this.$router.push({

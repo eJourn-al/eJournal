@@ -126,7 +126,7 @@ class JournalView(viewsets.ViewSet):
             journals.append(Journal.objects.create(
                 assignment=assignment,
                 author_limit=author_limit,
-                name=self._get_name(name, amount, assignment)
+                stored_name=self._get_name(name, amount, assignment)
             ))
 
         serializer = JournalSerializer(
@@ -200,7 +200,7 @@ class JournalView(viewsets.ViewSet):
                 if not request.user.has_permission('can_manage_journals', journal.assignment):
                     if not journal.assignment.can_set_journal_name:
                         return response.forbidden('You are not allowed to change the journal name.')
-                journal.name = name
+                journal.stored_name = name
                 journal.save()
             # Update image if allowed
             if image is not None:
@@ -218,7 +218,7 @@ class JournalView(viewsets.ViewSet):
                     is_temp=False,
                     in_rich_text=True,
                 )
-                journal.image = file.download_url(access_id=True)
+                journal.stored_image = file.download_url(access_id=True)
                 journal.save()
                 file_handling.remove_unused_user_files(request.user)
             # Update author_limit if allowed
@@ -277,7 +277,7 @@ class JournalView(viewsets.ViewSet):
             return response.bad_request('This journal is already full.')
 
         author = AssignmentParticipation.objects.get(assignment=journal.assignment, user=request.user)
-        journal.authors.add(author)
+        journal.add_author(author)
         grading.task_author_status_to_LMS.delay(journal.pk, author.pk)
 
         serializer = JournalSerializer(journal, context={'user': request.user})
@@ -331,7 +331,7 @@ class JournalView(viewsets.ViewSet):
 
         for user in users:
             author = AssignmentParticipation.objects.get(assignment=journal.assignment, user=user)
-            journal.authors.add(author)
+            journal.add_author(author)
             grading.task_author_status_to_LMS.delay(journal.pk, author.pk)
 
         return response.success({
@@ -355,7 +355,9 @@ class JournalView(viewsets.ViewSet):
             return response.bad_request('You are not allowed to leave a locked journal.')
 
         author = AssignmentParticipation.objects.get(user=request.user, journal=journal)
-        journal.authors.remove(author)
+        journal.remove_author(author)
+
+        utils.remove_jirs_on_user_remove_from_jounal(author.user, journal)
         if journal.authors.count() == 0:
             journal.reset()
 
@@ -384,7 +386,9 @@ class JournalView(viewsets.ViewSet):
             return response.bad_request('Student is currently not a member of this journal.')
 
         author = AssignmentParticipation.objects.get(user=user, journal=journal)
-        journal.authors.remove(author)
+        journal.remove_author(author)
+
+        utils.remove_jirs_on_user_remove_from_jounal(user, journal)
         if journal.authors.count() == 0:
             journal.reset()
 
