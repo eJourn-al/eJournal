@@ -118,9 +118,14 @@
 </template>
 
 <script>
+import EntryFields from '@/components/entry/EntryFields.vue'
+
 import assignmentAPI from '@/api/assignment.js'
 
 export default {
+    components: {
+        EntryFields,
+    },
     props: {
         modalID: {
             required: true,

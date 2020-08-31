@@ -1,6 +1,7 @@
 <template>
     <div>
         <b-form-file
+            ref="formFile"
             :accept="acceptedFiletype"
             :state="Boolean(file)"
             :placeholder="placeholderText"
@@ -92,6 +93,9 @@ export default {
                     this.$emit('fileUploadFailed', this.file.file_name)
                     this.file = null
                 })
+        },
+        openFileUpload () {
+            this.$refs.formFile.$el.click()
         },
     },
 }

@@ -2,13 +2,12 @@
     <div>
         <b-form-file
             ref="bonusInput"
-            :accept="acceptedFiletype"
+            accept="*/*.csv"
             :state="Boolean(file)"
             :placeholder="placeholderText"
-            class="fileinput"
+            class="fileinput mb-2"
             @change="fileHandler"
         />
-        <hr class="mt-2"/>
         <b-button
             v-if="!autoUpload"
             class="add-button float-right"
@@ -88,14 +87,6 @@ import auth from '@/api/auth.js'
 
 export default {
     props: {
-        acceptedFiletype: {
-            required: true,
-            String,
-        },
-        maxSizeBytes: {
-            required: true,
-            Number,
-        },
         aID: {
             required: true,
             String,
@@ -133,8 +124,9 @@ export default {
             const files = e.target.files
 
             if (!files.length) { return }
-            if (files[0].size > this.maxSizeBytes) {
-                this.$toasted.error(`The selected file exceeds the maximum file size of: ${this.maxSizeBytes} bytes.`)
+            if (files[0].size > this.$root.maxFileSizeBytes) {
+                this.$toasted.error(
+                    `The selected file exceeds the maximum file size of: ${this.$root.maxFileSizeBytes} bytes.`)
                 return
             }
 

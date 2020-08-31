@@ -2,7 +2,7 @@
     <b-modal
         :id="modalID"
         size="lg"
-        title="Import existing assignment"
+        title="Import assignment"
         hideFooter
         noEnforceFocus
     >

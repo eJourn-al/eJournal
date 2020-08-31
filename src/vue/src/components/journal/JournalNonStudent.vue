@@ -208,8 +208,8 @@ import BreadCrumb from '@/components/assets/BreadCrumb.vue'
 import LoadWrapper from '@/components/loading/LoadWrapper.vue'
 import JournalStartCard from '@/components/journal/JournalStartCard.vue'
 import JournalEndCard from '@/components/journal/JournalEndCard.vue'
-import ProgressNode from '@/components/entry/ProgressNode.vue'
 import JournalImportRequestApprovalModal from '@/components/journal/JournalImportRequestApprovalModal.vue'
+import ProgressNode from '@/components/entry/ProgressNode.vue'
 
 import store from '@/Store.vue'
 import journalAPI from '@/api/journal.js'
@@ -225,8 +225,8 @@ export default {
         JournalDetails,
         JournalStartCard,
         JournalEndCard,
-        ProgressNode,
         JournalImportRequestApprovalModal,
+        ProgressNode,
     },
     props: ['cID', 'aID', 'jID'],
     data () {

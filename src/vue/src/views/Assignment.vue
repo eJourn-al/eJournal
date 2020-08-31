@@ -104,8 +104,6 @@
 
                     <bonus-file-upload-input
                         ref="bounsPointsUpload"
-                        :acceptedFiletype="'*/*.csv'"
-                        :maxSizeBytes="$root.maxFileSizeBytes"
                         :endpoint="'assignments/' + $route.params.aID + '/add_bonus_points'"
                         :aID="$route.params.aID"
                         class="mt-2"
@@ -116,14 +114,14 @@
 
             <b-modal
                 ref="assignmentExportSpreadsheetModal"
-                title="Export to spreadsheet"
+                title="Export results"
                 size="lg"
                 hideFooter
                 noEnforceFocus
             >
                 <b-card class="no-hover">
                     <h2 class="theme-h2 multi-form">
-                        Export assignment results
+                        Export assignment results to spreadsheet
                     </h2>
                     Select which columns should be included in the exported file.
                     <hr/>
@@ -132,6 +130,49 @@
                         :filteredJournals="filteredJournals"
                         :assignmentJournals="assignmentJournals"
                         @spreadsheet-exported="hideModal('assignmentExportSpreadsheetModal')"
+                    />
+                </b-card>
+            </b-modal>
+
+            <b-modal
+                ref="postTeacherEntry"
+                title="Post teacher entries"
+                size="lg"
+                hideFooter
+                noEnforceFocus
+            >
+                <b-card class="no-hover">
+                    <h2 class="theme-h2 multi-form">
+                        Post teacher-initiated entries to student journals
+                    </h2>
+
+                    <hr/>
+                    <post-teacher-entry
+                        :aID="aID"
+                        :assignmentJournals="assignmentJournals"
+                        @teacher-entry-posted="hideModal('postTeacherEntry'); init()"
+                    />
+                </b-card>
+            </b-modal>
+
+            <b-modal
+                ref="manageTeacherEntries"
+                title="Manage teacher entries"
+                size="lg"
+                hideFooter
+                noEnforceFocus
+            >
+                <b-card class="no-hover">
+                    <h2 class="theme-h2 multi-form">
+                        Manage existing teacher entries
+                    </h2>
+                    <b>Note:</b> Changes will not be saved until you click 'save' at the bottom of this window!
+
+                    <hr/>
+                    <teacher-entries
+                        :aID="aID"
+                        :assignmentJournals="assignmentJournals"
+                        @teacher-entry-updated="hideModal('manageTeacherEntries'); init()"
                     />
                 </b-card>
             </b-modal>
@@ -360,20 +401,38 @@
                     <icon name="file-export"/>
                     Export results
                 </b-button>
+                <b-button
+                    v-if="$hasPermission('can_post_teacher_entries')"
+                    class="add-button multi-form full-width mb-2"
+                    @click="showModal('postTeacherEntry')"
+                >
+                    <icon name="plus"/>
+                    Post teacher entries
+                </b-button>
+                <b-button
+                    v-if="$hasPermission('can_post_teacher_entries') && assignment.has_teacher_entries"
+                    class="change-button multi-form full-width"
+                    @click="showModal('manageTeacherEntries')"
+                >
+                    <icon name="edit"/>
+                    Manage teacher entries
+                </b-button>
             </b-col>
         </b-row>
     </content-columns>
 </template>
 
 <script>
-import assignmentSpreadsheetExport from '@/components/assignment/AssignmentSpreadsheetExport.vue'
-import bonusFileUploadInput from '@/components/assets/file_handling/BonusFileUploadInput.vue'
-import breadCrumb from '@/components/assets/BreadCrumb.vue'
-import contentColumns from '@/components/columns/ContentColumns.vue'
-import loadWrapper from '@/components/loading/LoadWrapper.vue'
-import mainCard from '@/components/assets/MainCard.vue'
-import statisticsCard from '@/components/assignment/StatisticsCard.vue'
-import journalCard from '@/components/assignment/JournalCard.vue'
+import AssignmentSpreadsheetExport from '@/components/assignment/AssignmentSpreadsheetExport.vue'
+import BonusFileUploadInput from '@/components/assets/file_handling/BonusFileUploadInput.vue'
+import BreadCrumb from '@/components/assets/BreadCrumb.vue'
+import ContentColumns from '@/components/columns/ContentColumns.vue'
+import JournalCard from '@/components/assignment/JournalCard.vue'
+import LoadWrapper from '@/components/loading/LoadWrapper.vue'
+import MainCard from '@/components/assets/MainCard.vue'
+import PostTeacherEntry from '@/components/assignment/PostTeacherEntry.vue'
+import StatisticsCard from '@/components/assignment/StatisticsCard.vue'
+import TeacherEntries from '@/components/assignment/TeacherEntries.vue'
 
 import store from '@/Store.vue'
 import assignmentAPI from '@/api/assignment.js'
@@ -386,14 +445,16 @@ import { mapGetters, mapMutations } from 'vuex'
 export default {
     name: 'Assignment',
     components: {
-        assignmentSpreadsheetExport,
-        bonusFileUploadInput,
-        breadCrumb,
-        contentColumns,
-        loadWrapper,
-        mainCard,
-        statisticsCard,
-        journalCard,
+        AssignmentSpreadsheetExport,
+        BonusFileUploadInput,
+        BreadCrumb,
+        ContentColumns,
+        JournalCard,
+        LoadWrapper,
+        MainCard,
+        PostTeacherEntry,
+        StatisticsCard,
+        TeacherEntries,
     },
     props: {
         cID: {
@@ -462,7 +523,7 @@ export default {
         },
         canPerformActions () {
             return this.canPublishGradesAssignment || this.canManageLTI || this.canImportBonusPoints
-                || this.canExportResults
+                || this.canExportResults || this.$hasPermission('can_post_teacher_entries')
         },
         canPublishGradesAssignment  () {
             return this.$hasPermission('can_publish_grades') && this.assignmentJournals

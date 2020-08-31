@@ -10,7 +10,7 @@
         >
             <b-row>
                 <b-col
-                    col="3"
+                    xs="3"
                     class="text-center"
                 >
                     <icon
@@ -20,7 +20,7 @@
                     Day and week before
                 </b-col>
                 <b-col
-                    col="3"
+                    xs="3"
                     class="text-center"
                 >
                     <icon
@@ -30,7 +30,7 @@
                     Day before
                 </b-col>
                 <b-col
-                    col="3"
+                    xs="3"
                     class="text-center"
                 >
                     <icon
@@ -40,7 +40,7 @@
                     Week before
                 </b-col>
                 <b-col
-                    col="3"
+                    xs="3"
                     class="text-center"
                 >
                     <icon
@@ -97,7 +97,7 @@
         >
             <b-row>
                 <b-col
-                    col="3"
+                    xs="3"
                     class="text-center"
                 >
                     <icon
@@ -107,7 +107,7 @@
                     Immediately
                 </b-col>
                 <b-col
-                    col="3"
+                    xs="3"
                     class="text-center"
                 >
                     <icon
@@ -117,7 +117,7 @@
                     Daily digest
                 </b-col>
                 <b-col
-                    col="3"
+                    xs="3"
                     class="text-center"
                 >
                     <icon
@@ -127,7 +127,7 @@
                     Weekly digest
                 </b-col>
                 <b-col
-                    col="3"
+                    xs="3"
                     class="text-center"
                 >
                     <icon

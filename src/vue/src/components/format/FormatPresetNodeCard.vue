@@ -178,13 +178,15 @@
 </template>
 
 <script>
-import textEditor from '@/components/assets/TextEditor.vue'
-import tooltip from '@/components/assets/Tooltip.vue'
+import TextEditor from '@/components/assets/TextEditor.vue'
+import EntryFields from '@/components/entry/EntryFields.vue'
+import Tooltip from '@/components/assets/Tooltip.vue'
 
 export default {
     components: {
-        tooltip,
-        textEditor,
+        EntryFields,
+        Tooltip,
+        TextEditor,
     },
     props: ['newPreset', 'currentPreset', 'templates', 'assignmentDetails'],
     data () {

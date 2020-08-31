@@ -66,18 +66,16 @@
             />
             <hr class="full-width"/>
             <div class="timestamp">
-                <span v-if="entryNode.entry.last_edited_by == null">
-                    Submitted on: {{ $root.beautifyDate(entryNode.entry.creation_date) }}
-                    <template v-if="assignment && assignment.is_group_assignment">
-                        by {{ entryNode.entry.author }}
-                    </template>
-                </span>
-                <span v-else>
-                    Last edited: {{ $root.beautifyDate(entryNode.entry.last_edited) }}
-                    <template v-if="assignment && assignment.is_group_assignment">
-                        by {{ entryNode.entry.last_edited_by }}
-                    </template>
-                </span>
+                <template
+                    v-if="(new Date(entryNode.entry.last_edited).getTime() - new Date(entryNode.entry.creation_date)
+                        .getTime()) / 1000 < 3"
+                >
+                    Submitted:
+                </template>
+                <template v-else>
+                    Last edited:
+                </template>
+                {{ $root.beautifyDate(entryNode.entry.last_edited) }} by {{ entryNode.entry.last_edited_by }}
                 <b-badge
                     v-if="entryNode.due_date && new Date(entryNode.due_date) < new Date(entryNode.entry.last_edited)"
                     v-b-tooltip:hover="'This entry was submitted after the due date'"
@@ -125,8 +123,7 @@
                     class="mb-0"
                 >
                     <template
-                        slot="published"
-                        slot-scope="data"
+                        v-slot:cell(published)="data"
                     >
                         <icon
                             v-if="data.value"
@@ -140,8 +137,7 @@
                         />
                     </template>
                     <template
-                        slot="creation_date"
-                        slot-scope="data"
+                        v-slot:cell(creation_date)="data"
                     >
                         {{ $root.beautifyDate(data.value) }}
                     </template>

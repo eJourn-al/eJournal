@@ -364,7 +364,7 @@ class EntryAPITest(TestCase):
         # TODO: Test with file upload
         # TODO: Test added index
 
-    def test_teacher_entry(self):
+    def test_entry_in_teacher_journal(self):
         assignment = factory.Assignment()
         teacher_journal = assignment.assignmentparticipation_set.get(user=assignment.author).journal
         template = assignment.format.template_set.first()

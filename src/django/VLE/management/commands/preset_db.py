@@ -146,12 +146,16 @@ class Command(BaseCommand):
                 self.courses['Portfolio Academische Vaardigheden - Cohort 2']['instance']
             ],
             format__templates=False,
+            due_date=timezone.now() + relativedelta(years=1, days=1),
+            lock_date=timezone.now() + relativedelta(years=1, days=2),
         )
         self.colloquium = factory.Assignment(
             name='Colloquium',
             description='<p>This is the best colloquium logbook in the world</p>',
             courses=[self.courses['Portfolio Academische Vaardigheden - Cohort 1']['instance']],
             format__templates=False,
+            due_date=timezone.now() + relativedelta(years=1, days=1),
+            lock_date=timezone.now() + relativedelta(years=1, days=2),
         )
         self.group_assignment = factory.Assignment(
             name='Group Assignment',
@@ -160,6 +164,8 @@ class Command(BaseCommand):
             courses=[self.courses['Portfolio Academische Vaardigheden - Cohort 2']['instance']],
             is_group_assignment=True,
             format__templates=False,
+            due_date=timezone.now() + relativedelta(years=1, days=1),
+            lock_date=timezone.now() + relativedelta(years=1, days=2),
         )
 
         self.assignments = [self.logboek, self.colloquium, self.group_assignment]

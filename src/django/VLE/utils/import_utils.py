@@ -88,11 +88,9 @@ def import_entry(entry, journal, jir=None, grade_author=None,
         entry,
         node=copied_node,
         grade=_copy_grade_based_on_jir_action(entry, grade_author, grade_action),
-        vle_coupling=_select_vle_coupling_based_on_jir_action(grade_action, entry)
+        vle_coupling=_select_vle_coupling_based_on_jir_action(grade_action, entry),
+        jir=jir
     )
-
-    copied_entry.jir = jir
-    copied_entry.save()
 
     for comment in Comment.objects.filter(entry=entry, published=True):
         import_comment(comment, copied_entry)
@@ -212,7 +210,7 @@ def import_template(template, assignment, archived=None):
     return template
 
 
-def copy_entry(entry, node, grade=None, vle_coupling=None):
+def copy_entry(entry, node=None, grade=None, vle_coupling=None, teacher_entry=None, jir=None):
     """
     Create a copy of an entry instance
 
@@ -225,10 +223,14 @@ def copy_entry(entry, node, grade=None, vle_coupling=None):
         grade=grade,
         author=entry.author,
         last_edited_by=entry.last_edited_by,
-        vle_coupling=vle_coupling if vle_coupling else entry.vle_coupling
+        teacher_entry=teacher_entry,
+        vle_coupling=vle_coupling if vle_coupling else entry.vle_coupling,
+        jir=jir
     )
-    node.entry = entry
-    node.save()
+
+    if node:
+        node.entry = entry
+        node.save()
     # Last edited is set on creation, even when specified during initialization.
     entry.last_edited = last_edited
     entry.save()

@@ -16,7 +16,7 @@
     "@sentry/integrations": "^5.14.2",
     "axios": "^0.18.1",
     "bootstrap": "^4.4.1",
-    "bootstrap-vue": "2.0.0-rc.19",
+    "bootstrap-vue": "^2.16.0",
     "core-js": "^3.6.4",
     "detect-browser": "^4.8.0",
     "exceljs": "^3.8.2",

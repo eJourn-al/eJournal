@@ -96,12 +96,12 @@
                 </div>
                 <b-button
                     class="btn change-button multi-form mr-2"
-                    @click="$refs['file-upload'].$el.click()"
+                    @click="$refs[`file-upload-${comment.id}`].openFileUpload()"
                 >
                     <icon name="paperclip"/>
                     Attach file
                     <file-upload-input
-                        ref="file-upload"
+                        :ref="`file-upload-${comment.id}`"
                         :acceptedFiletype="'*/*'"
                         :maxSizeBytes="$root.maxFileSizeBytes"
                         :autoUpload="true"

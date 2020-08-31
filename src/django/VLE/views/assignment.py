@@ -18,7 +18,8 @@ import VLE.utils.import_utils as import_utils
 import VLE.utils.responses as response
 import VLE.validators as validators
 from VLE.models import Assignment, Course, Journal, PresetNode, Template, User
-from VLE.serializers import AssignmentSerializer, CourseSerializer, SmallAssignmentSerializer, TemplateSerializer
+from VLE.serializers import (AssignmentSerializer, CourseSerializer, SmallAssignmentSerializer, TeacherEntrySerializer,
+                             TemplateSerializer)
 from VLE.utils import file_handling, grading
 from VLE.utils.error_handling import VLEMissingRequiredKey, VLEParamWrongType
 
@@ -554,3 +555,28 @@ class AssignmentView(viewsets.ViewSet):
                 })
 
         return response.success({'participants': participants_without_journal})
+
+    @action(methods=['get'], detail=True)
+    def templates(self, request, pk):
+        """Get all templates (unlimited and preset-only) for an assignment.
+
+        Returns a list of templates."""
+        assignment = Assignment.objects.get(pk=pk)
+
+        request.user.check_permission('can_post_teacher_entries', assignment)
+
+        return response.success({'templates': TemplateSerializer(assignment.format.template_set.filter(
+            archived=False).order_by('name'), many=True).data})
+
+    @action(methods=['get'], detail=True)
+    def teacher_entries(self, request, pk):
+        """Get all teacher entries for an assignment.
+
+        Returns a list of teacher entries containing all grades and journals the entry is part of, as well as the
+        content of the entry."""
+        assignment = Assignment.objects.get(pk=pk)
+
+        request.user.check_permission('can_post_teacher_entries', assignment)
+
+        return response.success({'teacher_entries': TeacherEntrySerializer(assignment.teacherentry_set.all(),
+                                                                           many=True).data})

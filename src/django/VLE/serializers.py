@@ -14,7 +14,7 @@ from sentry_sdk import capture_message
 import VLE.permissions as permissions
 from VLE.models import (Assignment, AssignmentParticipation, Comment, Course, Entry, Field, FileContext, Format, Grade,
                         Group, Instance, Journal, JournalImportRequest, Node, Participation, Preferences, PresetNode,
-                        Role, Template, User)
+                        Role, TeacherEntry, Template, User)
 from VLE.utils import generic_utils as utils
 from VLE.utils.error_handling import VLEParticipationError, VLEProgrammingError
 
@@ -205,20 +205,21 @@ class AssignmentSerializer(serializers.ModelSerializer):
     journals = serializers.SerializerMethodField()
     active_lti_course = serializers.SerializerMethodField()
     lti_courses = serializers.SerializerMethodField()
+    has_teacher_entries = serializers.SerializerMethodField()
 
     class Meta:
         model = Assignment
         fields = (
             # Method fields
             'deadline', 'journal', 'stats', 'course', 'courses', 'course_count', 'journals', 'active_lti_course',
-            'lti_courses',
+            'lti_courses', 'has_teacher_entries',
             # Model fields
             'id', 'name', 'description', 'is_published', 'points_possible', 'unlock_date', 'due_date', 'lock_date',
             'is_group_assignment', 'remove_grade_upon_leaving_group', 'can_set_journal_name', 'can_set_journal_image',
             'can_lock_journal',
             # Not used / missing: active_lti_id, lti_id_set, assigned_groups, format
         )
-        read_only_fields = ('id', )
+        read_only_fields = ('id', 'has_teacher_entries')
 
     def get_is_group_assignment(self, assignment):
         return assignment.is_group_assignment
@@ -414,6 +415,9 @@ class AssignmentSerializer(serializers.ModelSerializer):
     def get_course_count(self, assignment):
         return assignment.courses.count()
 
+    def get_has_teacher_entries(self, assignment):
+        return assignment.teacherentry_set.exists()
+
 
 class AssignmentFormatSerializer(AssignmentSerializer):
     lti_count = serializers.SerializerMethodField()
@@ -599,6 +603,7 @@ class PresetNodeSerializer(serializers.ModelSerializer):
 
 class EntrySerializer(serializers.ModelSerializer):
     template = serializers.SerializerMethodField()
+    title = serializers.SerializerMethodField()
     content = serializers.SerializerMethodField()
     editable = serializers.SerializerMethodField()
     grade = serializers.SerializerMethodField()
@@ -609,25 +614,31 @@ class EntrySerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Entry
-        fields = ('id', 'creation_date', 'template', 'content', 'editable',
+        fields = ('id', 'creation_date', 'template', 'title', 'content', 'editable',
                   'grade', 'last_edited', 'comments', 'author', 'last_edited_by', 'jir')
         read_only_fields = ('id', 'template', 'creation_date', 'content', 'grade')
 
     def get_author(self, entry):
-        return entry.author.full_name
+        return entry.author.full_name if entry.author is not None else 'Unknown or deleted account'
 
     def get_last_edited_by(self, entry):
-        return entry.last_edited_by.full_name if entry.last_edited_by else None
+        return entry.last_edited_by.full_name if entry.last_edited_by else 'Unknown or deleted account'
 
     def get_template(self, entry):
         return TemplateSerializer(entry.template).data
+
+    def get_title(self, entry):
+        if (entry.teacher_entry and entry.teacher_entry.show_title_in_timeline):
+            return entry.teacher_entry.title
+
+        return entry.template.name
 
     def get_content(self, entry):
         content_dict = {}
 
         for content in entry.content_set.all():
             # Only include the actual content (so e.g. text).
-            if content.field.type == Field.FILE:
+            if content.field.type == Field.FILE and content.data:
                 try:
                     content_dict[content.field.id] = FileSerializer(FileContext.objects.get(pk=content.data)).data
                 except FileContext.DoesNotExist:
@@ -688,6 +699,50 @@ class GradeHistorySerializer(serializers.ModelSerializer):
             return grade.author.full_name
 
         return 'Unknown or deleted account'
+
+
+class TeacherEntrySerializer(serializers.ModelSerializer):
+    template = serializers.SerializerMethodField()
+    content = serializers.SerializerMethodField()
+    journal_ids = serializers.SerializerMethodField()
+    grades = serializers.SerializerMethodField()
+    grade_published = serializers.SerializerMethodField()
+
+    class Meta:
+        model = TeacherEntry
+        fields = ('id', 'title', 'template', 'content', 'journal_ids', 'grades', 'grade_published')
+        read_only_fields = ('id', 'title', 'template', 'content', 'journal_ids', 'grades', 'grade_published')
+
+    def get_template(self, teacher_entry):
+        return TemplateSerializer(teacher_entry.template).data
+
+    def get_content(self, teacher_entry):
+        content_dict = {}
+
+        for content in teacher_entry.content_set.all():
+            # Only include the actual content (so e.g. text).
+            if content.field.type == Field.FILE:
+                try:
+                    content_dict[content.field.id] = FileSerializer(FileContext.objects.get(pk=content.data)).data
+                except FileContext.DoesNotExist:
+                    capture_message(
+                        f'FILE content {content.pk} refers to unknown file in data: {content.data}', level='error')
+                    return None
+            else:
+                content_dict[content.field.id] = content.data
+
+        return content_dict
+
+    def get_journal_ids(self, teacher_entry):
+        return list(teacher_entry.entry_set.all().values_list('node__journal__pk', flat=True))
+
+    def get_grades(self, teacher_entry):
+        return {entry.node.journal.id: GradeSerializer(entry.grade).data['grade']
+                for entry in Entry.objects.filter(teacher_entry=teacher_entry).exclude(grade=None)}
+
+    def get_grade_published(self, teacher_entry):
+        return {entry.node.journal.id: GradeSerializer(entry.grade).data['published']
+                for entry in Entry.objects.filter(teacher_entry=teacher_entry).exclude(grade=None)}
 
 
 class TemplateSerializer(serializers.ModelSerializer):

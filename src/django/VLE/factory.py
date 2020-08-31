@@ -11,8 +11,8 @@ from django.conf import settings
 from django.utils import timezone
 
 import VLE.validators as validators
-from VLE.models import (Assignment, AssignmentParticipation, Comment, Content, Course, Entry, Field, Format, Grade,
-                        Group, Node, Participation, PresetNode, Role, Template, User)
+from VLE.models import (Assignment, Comment, Content, Course, Entry, Field, Format, Grade, Group, Node, Participation,
+                        PresetNode, Role, Template, User)
 
 
 def make_user(username, password=None, email=None, lti_id=None, profile_picture=settings.DEFAULT_PROFILE_PICTURE,
@@ -203,15 +203,11 @@ def make_node(journal, entry=None, type=Node.ENTRY, preset=None):
     return Node.objects.get_or_create(type=type, entry=entry, preset=preset, journal=journal)[0]
 
 
-def make_assignment_participation(assignment, author):
-    """Make a new assignment participation."""
-    return AssignmentParticipation.objects.create(assignment=assignment, user=author)
-
-
-def make_entry(template, author, node):
+def make_entry(template, author, node=None):
     entry = Entry.objects.create(template=template, author=author, node=node)
-    entry.node.entry = entry
-    entry.node.save()
+    if node:
+        entry.node.entry = entry
+        entry.node.save()
     return entry
 
 

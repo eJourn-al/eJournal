@@ -20,7 +20,7 @@ class MentorgesprekTemplateFactory(TemplateFactory):
 
     @factory.post_generation
     def gen_fields(self, create, extracted):
-        FieldFactory(type=Field.TEXT, title='title', template=self, required=True)
+        FieldFactory(type=Field.RICH_TEXT, title='Title', template=self, required=True)
 
 
 class TextTemplateFactory(TemplateFactory):
@@ -28,9 +28,9 @@ class TextTemplateFactory(TemplateFactory):
 
     @factory.post_generation
     def gen_fields(self, create, extracted):
-        FieldFactory(type=Field.TEXT, title='title', template=self, required=True)
-        FieldFactory(type=Field.TEXT, title='summary', template=self, required=True)
-        FieldFactory(type=Field.TEXT, title='optional', template=self, required=False)
+        FieldFactory(type=Field.TEXT, title='Title', template=self, required=True)
+        FieldFactory(type=Field.TEXT, title='Summary', template=self, required=True)
+        FieldFactory(type=Field.TEXT, title='Optional', template=self, required=False)
 
 
 class FilesTemplateFactory(TemplateFactory):

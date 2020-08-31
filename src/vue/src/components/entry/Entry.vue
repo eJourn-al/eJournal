@@ -80,18 +80,16 @@
             <template v-else>
                 <hr class="full-width"/>
                 <span class="timestamp">
-                    <span v-if="node.entry.last_edited_by == null">
-                        Submitted on: {{ $root.beautifyDate(node.entry.creation_date) }}
-                        <template v-if="assignment && assignment.is_group_assignment">
-                            by {{ node.entry.author }}
-                        </template>
-                    </span>
-                    <span v-else>
-                        Last edited: {{ $root.beautifyDate(node.entry.last_edited) }}
-                        <template v-if="assignment && assignment.is_group_assignment">
-                            by {{ node.entry.last_edited_by }}
-                        </template>
-                    </span>
+                    <template
+                        v-if="(new Date(node.entry.last_edited).getTime() - new Date(node.entry.creation_date)
+                            .getTime()) / 1000 < 3"
+                    >
+                        Submitted:
+                    </template>
+                    <template v-else>
+                        Last edited:
+                    </template>
+                    {{ $root.beautifyDate(node.entry.last_edited) }} by {{ node.entry.last_edited_by }}
                     <b-badge
                         v-if="node.due_date
                             && new Date(node.due_date) < new Date(node.entry.last_edited)"
@@ -138,10 +136,6 @@ export default {
     props: {
         template: {
             required: true,
-        },
-        assignment: {
-            required: false,
-            default: null,
         },
         node: {
             required: false,
@@ -211,7 +205,7 @@ export default {
                     journal_id: this.$route.params.jID,
                     template_id: this.template.id,
                     content: this.newEntryContent,
-                    node_id: this.node && this.node.id > 0 ? this.node.id : null,
+                    node_id: this.node && this.node.nID > 0 ? this.node.nID : null,
                 }, { customSuccessToast: 'Entry successfully posted.' })
                     .then((data) => {
                         this.requestInFlight = false

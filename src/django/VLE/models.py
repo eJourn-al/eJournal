@@ -14,6 +14,7 @@ from django.contrib.postgres.fields import ArrayField, CIEmailField, CITextField
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models import F, Q, Sum
+from django.db.models.deletion import CASCADE, SET_NULL
 from django.dispatch import receiver
 from django.utils import timezone
 from django.utils.timezone import now
@@ -822,6 +823,7 @@ class Role(CreateUpdateModel):
         'can_comment',
         'can_edit_staff_comment',
 
+        'can_post_teacher_entries',
         'can_manage_journal_import_requests',
     ]
     PERMISSIONS = COURSE_PERMISSIONS + ASSIGNMENT_PERMISSIONS
@@ -853,6 +855,7 @@ class Role(CreateUpdateModel):
     can_view_grade_history = models.BooleanField(default=False)
     can_have_journal = models.BooleanField(default=False)
     can_comment = models.BooleanField(default=False)
+    can_post_teacher_entries = models.BooleanField(default=False)
     can_edit_staff_comment = models.BooleanField(default=False)
     can_view_unpublished_assignment = models.BooleanField(default=False)
     can_manage_journal_import_requests = models.BooleanField(default=False)
@@ -879,6 +882,9 @@ class Role(CreateUpdateModel):
         if self.can_view_grade_history and not (self.can_view_all_journals and self.can_grade):
             raise ValidationError('A user needs to be able to view and grade journals in order to see a history\
                                    of grades.')
+
+        if self.can_post_teacher_entries and not (self.can_publish_grades and self.can_grade):
+            raise ValidationError('A user must be able to view and publish grades in order to post teacher entries.')
 
         if self.can_comment and not (self.can_view_all_journals or self.can_have_journal):
             raise ValidationError('A user requires a journal to comment on.')
@@ -1451,6 +1457,16 @@ class Journal(CreateUpdateModel, ComputedFieldsModel):
         return self.get_name()
 
 
+def CASCADE_IF_UNLIMITED_ENTRY_NODE_ELSE_SET_NULL(collector, field, sub_objs, using):
+    # NOTE: Either the function is not yet defined or the node type is not defined.
+    # Tag Node.FIELD, update hard coded if changed
+    unlimited_entry_nodes = [n for n in sub_objs if n.type == 'e']
+    other_nodes = [n for n in sub_objs if n.type != 'e']
+
+    CASCADE(collector, field, unlimited_entry_nodes, using)
+    SET_NULL(collector, field, other_nodes, using)
+
+
 class Node(CreateUpdateModel):
     """Node.
 
@@ -1502,7 +1518,7 @@ class Node(CreateUpdateModel):
     entry = models.OneToOneField(
         'Entry',
         null=True,
-        on_delete=models.SET_NULL,
+        on_delete=CASCADE_IF_UNLIMITED_ENTRY_NODE_ELSE_SET_NULL,
     )
 
     journal = models.ForeignKey(
@@ -1620,11 +1636,13 @@ class Entry(CreateUpdateModel):
     SENT_SUBMISSION = 'Submission is successfully received by VLE'
     NEEDS_GRADE_PASSBACK = 'Grade needs to be sent to VLE'
     LINK_COMPLETE = 'Everything is sent to VLE'
+    NO_LINK = 'Ignore VLE coupling (e.g. for teacher entries)'
     TYPES = (
         (NEEDS_SUBMISSION, 'entry_submission'),
         (SENT_SUBMISSION, 'entry_submitted'),
         (NEEDS_GRADE_PASSBACK, 'grade_submission'),
         (LINK_COMPLETE, 'done'),
+        (NO_LINK, 'no_link'),
     )
 
     # TODO Should not be nullable
@@ -1637,6 +1655,11 @@ class Entry(CreateUpdateModel):
         'Grade',
         on_delete=models.SET_NULL,
         related_name='+',
+        null=True,
+    )
+    teacher_entry = models.ForeignKey(
+        'TeacherEntry',
+        on_delete=models.CASCADE,
         null=True,
     )
 
@@ -1680,20 +1703,24 @@ class Entry(CreateUpdateModel):
         is_new = not self.pk
         author_id = self.__dict__.get('author_id', None)
         node_id = self.__dict__.get('node_id', None)
-
-        try:
-            node = Node.objects.get(pk=node_id) if node_id else self.node
-        except Node.DoesNotExist:
-            raise ValidationError('Saving entry without corresponding node')
-
         author = self.author if self.author else User.objects.get(pk=author_id) if author_id else None
-        if author:
-            if not node.journal.authors.filter(user=author).exists():
-                raise ValidationError('Saving entry created by user not part of journal.')
+
+        if author and not self.last_edited_by:
+            self.last_edited_by = author
+
+        if not isinstance(self, TeacherEntry):
+            try:
+                node = Node.objects.get(pk=node_id) if node_id else self.node
+            except Node.DoesNotExist:
+                raise ValidationError('Saving entry without corresponding node')
+
+            if (author and not node.journal.authors.filter(user=author).exists() and not self.teacher_entry and
+                    not self.jir):
+                raise ValidationError('Saving non-teacher entry created by user not part of journal')
 
         super(Entry, self).save(*args, **kwargs)
 
-        if is_new:
+        if is_new and not isinstance(self, TeacherEntry):
             for user in permissions.get_supervisors_of(self.node.journal):
                 Notification.objects.create(
                     type=Notification.NEW_ENTRY,
@@ -1705,11 +1732,45 @@ class Entry(CreateUpdateModel):
         return "Entry"
 
 
-@receiver(models.signals.pre_delete, sender=Entry)
-def delete_corresponding_node(sender, instance, **kwargs):
-    """Ensures an entries corresponding unlimited node is also deleted."""
-    if instance.node and instance.node.type == Node.ENTRY:
-        instance.node.delete()
+class TeacherEntry(Entry):
+    """TeacherEntry.
+
+    An entry posted by a teacher to multiple student journals.
+    """
+    assignment = models.ForeignKey(
+        'Assignment',
+        on_delete=models.CASCADE,
+    )
+    title = models.TextField(
+        null=False,
+    )
+    show_title_in_timeline = models.BooleanField(
+        default=True
+    )
+
+    # Teacher entries objects cannot directly contribute to journal grades. They should be added to each journal and
+    # are individually graded / grades passed back to the LMS from there.
+    # This allows editing and grade passback mechanics for students like usual.
+    grade = None
+    teacher_entry = None
+    vle_coupling = None
+
+    def save(self, *args, **kwargs):
+        is_new = not self.pk
+        self.grade = None
+        self.teacher_entry = None
+        self.vle_coupling = Entry.NO_LINK
+
+        if not self.title:
+            raise ValidationError('No valid title provided.')
+
+        if is_new and not self.template:
+            raise ValidationError('No valid template provided.')
+
+        if is_new and not self.author:
+            raise ValidationError('No author provided.')
+
+        return super(TeacherEntry, self).save(*args, **kwargs)
 
 
 class Grade(CreateUpdateModel):

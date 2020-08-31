@@ -38,8 +38,8 @@ class EntryView(viewsets.ViewSet):
             content -- the list of {tag, data} tuples to bind data to a template field.
         """
         journal_id, template_id, content_dict = utils.required_params(
-            request.data, "journal_id", "template_id", "content")
-        node_id, = utils.optional_params(request.data, "node_id")
+            request.data, 'journal_id', 'template_id', 'content')
+        node_id, = utils.optional_params(request.data, 'node_id')
 
         journal = Journal.objects.get(pk=journal_id, authors__user=request.user)
         assignment = journal.assignment

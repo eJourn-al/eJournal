@@ -28,8 +28,8 @@
             Unpublished
         </b-badge>
         <br/>
-        <span v-if="deadline.deadline.date">
-            <!-- Teacher deadline shows last submitted entry date  -->
+        <!-- Teacher deadline shows last submitted entry date  -->
+        <span v-if="$hasPermission('can_view_all_journals', 'assignment', deadline.id)">
             <span v-if="thingsToDo">
                 <icon
                     name="eye"
@@ -40,22 +40,22 @@
                     class="fill-grey shift-up-3"
                 /> {{ $root.beautifyDate(deadline.deadline.date) }}
             </span>
+        </span>
+        <span v-else-if="deadline.deadline.date">
             <!-- Student deadline shows last not submitted deadline -->
-            <span v-else>
-                <icon
-                    name="calendar"
-                    class="fill-grey shift-up-3 mr-1"
-                />
-                <span v-if="timeLeft[0] < 0">Due in {{ timeLeft[1] }}<br/></span>
-                <span
-                    v-else
-                    class="text-red"
-                >{{ timeLeft[1] }} late<br/></span>
-                <icon
-                    name="flag"
-                    class="fill-grey shift-up-3"
-                /> {{ deadline.deadline.name }}
-            </span>
+            <icon
+                name="calendar"
+                class="fill-grey shift-up-3 mr-1"
+            />
+            <span v-if="timeLeft[0] < 0">Due in {{ timeLeft[1] }}<br/></span>
+            <span
+                v-else
+                class="text-red"
+            >{{ timeLeft[1] }} late<br/></span>
+            <icon
+                name="flag"
+                class="fill-grey shift-up-3"
+            /> {{ deadline.deadline.name }}
         </span>
     </b-card>
 </template>
