@@ -4,14 +4,7 @@
         <number-badge
             v-if="thingsToDo"
             :absolute="false"
-            :badges="[
-                { value: filterOwnGroups ? deadline.stats.needs_marking_own_groups : deadline.stats.needs_marking,
-                  tooltip: 'needsMarking' },
-                { value: filterOwnGroups ? deadline.stats.unpublished_own_groups : deadline.stats.unpublished,
-                  tooltip: 'unpublished' },
-                { value: filterOwnGroups ? deadline.journal_import_requests_own_groups :
-                    deadline.journal_import_requests, tooltip: 'importRequests' },
-            ]"
+            :badges="badges"
             :displayZeroValues="false"
             class="float-right multi-form"
             keyPrefix="todo"
@@ -20,7 +13,7 @@
         <b class="field-heading">
             {{ deadline.name }}
         </b>
-        ({{ course.abbreviation }})
+        {{ courseAbbreviations }}
         <b-badge
             v-if="!deadline.is_published"
             class="ml-2 align-top"
@@ -71,7 +64,7 @@ export default {
         deadline: {
             required: true,
         },
-        course: {
+        courses: {
             required: true,
         },
         filterOwnGroups: {
@@ -80,6 +73,38 @@ export default {
         },
     },
     computed: {
+        badges () {
+            const badges = [
+                {
+                    value: this.filterOwnGroups ? this.deadline.stats.needs_marking_own_groups
+                        : this.deadline.stats.needs_marking,
+                    tooltip: 'needsMarking',
+                },
+                {
+                    value: this.filterOwnGroups ? this.deadline.stats.unpublished_own_groups
+                        : this.deadline.stats.unpublished,
+                    tooltip: 'unpublished',
+                },
+            ]
+
+            if (this.deadline.stats.import_requests) {
+                badges.push({
+                    value: this.filterOwnGroups ? this.deadline.stats.import_requests_own_groups
+                        : this.deadline.stats.import_requests,
+                    tooltip: 'importRequests',
+                })
+            }
+
+            return badges
+        },
+        courseAbbreviations () {
+            if (this.courses) {
+                const abbrList = this.courses.map(c => c.abbreviation)
+                return `(${abbrList.join(', ')})`
+            } else {
+                return `(${this.deadline.course.abbreviation})`
+            }
+        },
         timeLeft () {
             if (!this.deadline.deadline.date) { return '' }
             const dateNow = new Date()
@@ -135,11 +160,11 @@ export default {
             if (this.filterOwnGroups) {
                 return this.deadline.stats
                     && (this.deadline.stats.needs_marking_own_groups || this.deadline.stats.unpublished_own_groups
-                        || this.deadline.stats.journal_import_requests_own_groups)
+                        || this.deadline.stats.import_requests_own_groups)
             } else {
                 return this.deadline.stats
                     && (this.deadline.stats.needs_marking || this.deadline.stats.unpublished
-                        || this.deadline.stats.journal_import_requests)
+                        || this.deadline.stats.import_requests)
             }
         },
     },

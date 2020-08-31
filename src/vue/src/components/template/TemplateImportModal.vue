@@ -121,6 +121,7 @@
 import EntryFields from '@/components/entry/EntryFields.vue'
 
 import assignmentAPI from '@/api/assignment.js'
+import utils from '@/utils/generic_utils.js'
 
 export default {
     components: {
@@ -147,11 +148,7 @@ export default {
         courses () {
             return this.importableTemplates.map((importable) => {
                 const course = { ...importable.course }
-                if (course.startdate || course.enddate) {
-                    course.name += ` (${course.startdate ? course.startdate.substring(0, 4) : ''} - ${
-                        course.enddate ? course.enddate.substring(0, 4) : ''})`
-                }
-
+                course.name = utils.courseWithDatesDisplay(course)
                 return course
             })
         },

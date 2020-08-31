@@ -2,6 +2,7 @@ import re
 import test.factory as factory
 import test.utils.generic_utils as test_utils
 from test.utils import api
+from unittest import mock
 
 from dateutil.relativedelta import relativedelta
 from django.test import TestCase
@@ -211,13 +212,18 @@ class JournalImportRequestTest(TestCase):
         resp = api.get(self, 'journal_import_request', params=data, user=supervisor)['journal_import_requests']
 
         assert len(resp) == 2, 'All JIRs for the given target are serialized'
-        assert resp[0]['id'] == jir.pk and resp[1]['id'] == jir2.pk, 'The correct JIRs are serialized'
-        assert resp[0]['source']['journal']['id'] == jir.source.pk \
-            and resp[0]['target']['journal']['id'] == jir.target.pk, \
+        returned_ids = [resp[0]['id'], resp[1]['id']]
+        assert jir.pk in returned_ids and jir2.pk in returned_ids
+
+        jir_resp = resp[0] if resp[0]['id'] == jir.pk else resp[1]
+
+        assert jir_resp['id'] == jir.pk and resp[1]['id'] == jir2.pk, 'The correct JIRs are serialized'
+        assert jir_resp['source']['journal']['id'] == jir.source.pk \
+            and jir_resp['target']['journal']['id'] == jir.target.pk, \
             'The correct source and target journal are serialized'
-        assert resp[0]['source']['journal']['import_requests'] == 0, \
+        assert jir_resp['source']['journal']['import_requests'] is None, \
             'JIR import_requests (count) are only serialized for the target journal'
-        assert resp[0]['target']['journal']['import_requests'] == 2
+        assert jir_resp['target']['journal']['import_requests'] == 2
 
     def test_create_jir(self):
         source_journal = factory.Journal()
@@ -549,3 +555,64 @@ class JournalImportRequestTest(TestCase):
             'Total grade should not be increased as all new grades should be set to zero'
         created_entry = Entry.objects.filter(node__journal=jir.target).exclude(pk=target_entry.pk).first()
         assert created_entry.grade.grade == 0, 'Created grades should be set to zero'
+
+    def test_journal_serialize_jir(self):
+        jir = factory.JournalImportRequest()
+        assignment = jir.target.assignment
+        course = assignment.courses.first()
+        teacher = assignment.author
+        student = jir.author
+        ta = factory.Student()
+        role = course.role_set.get(name='TA')
+        factory.Participation(course=course, user=ta, role=role)
+        payload = {'assignment_id': assignment.pk, 'course_id': course.pk}
+
+        assert api.get(self, 'journals', params=payload, user=teacher)['journals'][0]['import_requests'] == 1, \
+            'Teacher (with manage jir permission) should be shown the import requests of the journal'
+        # TA should not be shown import requests by default
+        assert api.get(self, 'journals', params=payload, user=ta)['journals'][0]['import_requests'] is None
+
+        # If we provide TA with the permission to manage JIRs he should be shown the import requests
+        role.can_manage_journal_import_requests = True
+        role.save()
+        assert api.get(self, 'journals', params=payload, user=ta)['journals'][0]['import_requests'] == 1
+
+        resp = api.get(self, 'journals', params={'pk': jir.target.pk}, user=student)
+        assert resp['journal']['import_requests'] is None, 'Student should not be presented with import requests'
+
+    def test_jir_crash_recovery(self):
+        # Setup a JIR including entries for an all types template
+        course = factory.Course()
+        assignment_source = factory.Assignment(courses=[course], format__templates=[])
+        assignment_target = factory.Assignment(courses=[course], format__templates=[])
+        factory.TemplateAllTypes(format=assignment_source.format)
+        factory.TemplateAllTypes(format=assignment_target.format)
+        source = factory.Journal(assignment=assignment_source)
+        entry = Entry.objects.get(node__journal=source)
+        factory.TeacherComment(
+            entry=entry, n_att_files=1, n_rt_files=1, author=assignment_source.author, published=True)
+        student = source.authors.first().user
+        target = factory.Journal(assignment=assignment_target, ap__user=student)
+        jir = factory.JournalImportRequest(source=source, target=target)
+        data = {'pk': jir.pk, 'jir_action': JournalImportRequest.APPROVED_INC_GRADES}
+
+        pre_crash_nodes = list(Node.objects.values_list('pk', flat=True))
+        pre_crash_entries = list(Entry.objects.values_list('pk', flat=True))
+        pre_crash_fcs = list(FileContext.objects.values_list('pk', flat=True))
+        pre_crash_comments = list(Comment.objects.values_list('pk', flat=True))
+
+        def check_db_state_after_exception(self, raise_exception_for):
+            with mock.patch(raise_exception_for, side_effect=Exception()):
+                self.assertRaises(
+                    Exception, api.update, self, 'journal_import_request', params=data, user=course.author)
+
+            # Check if DB state is unchanged after a crash
+            assert list(Node.objects.values_list('pk', flat=True)) == pre_crash_nodes
+            assert list(Entry.objects.values_list('pk', flat=True)) == pre_crash_entries
+            assert list(FileContext.objects.values_list('pk', flat=True)) == pre_crash_fcs
+            assert list(Comment.objects.values_list('pk', flat=True)) == pre_crash_comments
+
+        check_db_state_after_exception(self, 'VLE.utils.import_utils.copy_node')
+        check_db_state_after_exception(self, 'VLE.utils.import_utils.copy_entry')
+        check_db_state_after_exception(self, 'VLE.utils.import_utils.import_comment')
+        check_db_state_after_exception(self, 'VLE.utils.import_utils.import_content')

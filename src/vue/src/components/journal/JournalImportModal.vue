@@ -73,7 +73,7 @@
 
 <script>
 import loadWrapper from '@/components/loading/LoadWrapper.vue'
-
+import utils from '@/utils/generic_utils.js'
 import assignmentAPI from '@/api/assignment.js'
 import courseAPI from '@/api/course.js'
 import jirAPI from '@/api/journal_import_request.js'
@@ -104,7 +104,12 @@ export default {
     },
     computed: {
         courses () {
-            return this.fetchedCourses.filter(c => this.fetchedAssignments.some(a => a.course.id === c.id))
+            const courses = this.fetchedCourses.filter(c => this.fetchedAssignments.some(a => a.course.id === c.id))
+            courses.map((c) => {
+                c.name = utils.courseWithDatesDisplay(c)
+                return c
+            })
+            return courses
         },
         assignments () {
             return this.fetchedAssignments.filter(a => a.course.id === this.selectedCourse.id)

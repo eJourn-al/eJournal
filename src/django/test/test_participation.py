@@ -81,8 +81,11 @@ class ParticipationAPITest(TestCase):
         # Check perfect name that is small
         resp = api.get(self, 'participations/unenrolled',
                        params={'course_id': self.course.pk, 'unenrolled_query': self.not_connected.username},
-                       user=self.teacher)
-        assert len(resp['participants']) == 1
+                       user=self.teacher)['participants']
+        assert len(resp) == 1, 'A single participant should be found (perfect match)'
+        resp = resp[0]
+        assert resp['username'] == self.not_connected.username, 'Username should be returned to display front end'
+        assert resp['full_name'] == self.not_connected.full_name, 'Username should be returned to display front end'
 
         # Check first and last name
         resp = api.get(self, 'participations/unenrolled',

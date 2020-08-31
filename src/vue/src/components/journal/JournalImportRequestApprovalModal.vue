@@ -88,6 +88,7 @@
 
 <script>
 import loadWrapper from '@/components/loading/LoadWrapper.vue'
+import utils from '@/utils/generic_utils.js'
 import journalCard from '@/components/assignment/JournalCard.vue'
 import dropdownButton from '@/components/assets/DropdownButton.vue'
 
@@ -114,12 +115,10 @@ export default {
         }
     },
     computed: {
-        // QUESTION:
-        // How to simply provide jirs as options to the multiselect with a display for jir.source.assignment.name?
         assignments () {
             const arr = []
             this.jirs.forEach(jir => arr.push({
-                name: `${jir.source.assignment.name}, ${this.getCourseName(jir.source.assignment.course)}`,
+                name: `${jir.source.assignment.name}, ${utils.courseWithDatesDisplay(jir.source.assignment.course)}`,
                 id: jir.id,
                 jir,
             }))
@@ -135,7 +134,13 @@ export default {
     created () {
         journalImportRequestAPI.list(this.$route.params.jID).then((jirs) => {
             this.jirs = jirs
-            if (jirs.length === 1) { this.selectedAssignment = { jir: jirs[0], name: jirs[0].target.assignment.name } }
+            if (jirs.length === 1) {
+                this.selectedAssignment = {
+                    jir: jirs[0],
+                    name: `${jirs[0].source.assignment.name}, `
+                        + `${utils.courseWithDatesDisplay(jirs[0].source.assignment.course)}`,
+                }
+            }
             this.loading = false
 
             if (this.autoShow) {
@@ -158,7 +163,11 @@ export default {
             ).then(() => {
                 this.$delete(this.jirs, this.jirs.findIndex(elem => elem.id === jir.id))
                 if (this.jirs.length === 1) {
-                    this.selectedAssignment = { name: this.jirs[0].source.assignment.name, jir: this.jirs[0] }
+                    this.selectedAssignment = {
+                        jir: this.jirs[0],
+                        name: `${this.jirs[0].target.assignment.name}, `
+                            + `${utils.courseWithDatesDisplay(this.jirs[0].source.assignment.course)}`,
+                    }
                 }
                 if (this.jirs.length === 0) {
                     this.selectedAssignment = null
@@ -178,18 +187,6 @@ export default {
             if (event.trigger !== 'event') {
                 this.$store.commit('preferences/ADD_DISMISSED_JIRS_TO_JOURNAL', Array.from(this.jirs, jir => jir.id))
             }
-        },
-        getCourseName (course) {
-            let name = course.name
-            if (course.startdate) {
-                name += ' ('
-                name += course.startdate.substring(0, 4)
-                if (course.enddate) {
-                    name += ` - ${course.enddate.substring(0, 4)}`
-                }
-                name += ')'
-            }
-            return name
         },
     },
 }

@@ -39,6 +39,7 @@ MEDIA_URL = 'media/'
 
 SECRET_KEY = os.environ['DJANGO_SECRET_KEY']
 
+EXPLICITLY_WITHOUT_CONTEXT = -1
 
 # Email settings
 EMAIL_BACKEND = 'anymail.backends.mailgun.EmailBackend'

@@ -12,6 +12,7 @@ from rest_framework import serializers
 from sentry_sdk import capture_message
 
 import VLE.permissions as permissions
+import VLE.utils.statistics as stats_utils
 from VLE.models import (Assignment, AssignmentParticipation, Comment, Course, Entry, Field, FileContext, Format, Grade,
                         Group, Instance, Journal, JournalImportRequest, Node, Participation, Preferences, PresetNode,
                         Role, TeacherEntry, Template, User)
@@ -53,7 +54,10 @@ class UserSerializer(serializers.ModelSerializer):
         if 'user' not in self.context or not self.context['user']:
             return None
 
-        if not (self.context['user'].is_supervisor_of(user) or self.context['user'] == user):
+        if not (self.context['user'].is_supervisor_of(user) or self.context['user'] == user or
+                # Usernames are required to add users to a course (not supervisor yet)
+                'course' in self.context and self.context['user'].participation_set.filter(
+                    role__can_add_course_users=True, course=self.context['course']).exists()):
             return None
 
         return user.username
@@ -341,37 +345,36 @@ class AssignmentSerializer(serializers.ModelSerializer):
             # Get the stats from only the course that it's linked to, when no courses are supplied.
             course = self._get_course(assignment)
 
-        all_users = User.objects.filter(
-            participation__course=course, participation__role__can_have_journal=True
-        )
-        own_group_users = all_users
-
-        own_participation = Participation.objects.filter(user=self.context['user'], course=course)
-        if own_participation.exists():
-            # Get all users that are in any of the request user's groups.
-            own_participation = own_participation.first()
-            own_group_users = all_users.filter(participation__groups__in=own_participation.groups.all())
-
         stats = {}
-        journal_set = Journal.objects.filter(assignment=assignment, authors__user__in=all_users)
+
+        # Upcoming specifically requests stats for all of the assignment's courses
+        if 'course' in self.context and self.context['course'] is settings.EXPLICITLY_WITHOUT_CONTEXT:
+            relevant_stat_users = stats_utils.get_user_lists_with_scopes(assignment, self.context['user'])
+        else:
+            # We are not dealing explicitly without context, and we have no specific course, stats should not be needed.
+            if course is None:
+                return None
+            relevant_stat_users = stats_utils.get_user_lists_with_scopes(
+                assignment, self.context['user'], course=course)
+
+        all_j = Journal.objects.filter(assignment=assignment, authors__user__in=relevant_stat_users['all'])
+        own_j = Journal.objects.filter(assignment=assignment, authors__user__in=relevant_stat_users['own'])
 
         # Grader stats
         if self.context['user'].has_permission('can_grade', assignment):
-            own_group = journal_set.filter(authors__user__in=own_group_users)
             stats.update({
-                'needs_marking': journal_set.aggregate(Sum('needs_marking'))['needs_marking__sum'] or 0,
-                'unpublished': journal_set.aggregate(Sum('unpublished'))['unpublished__sum'] or 0,
-                'needs_marking_own_groups': own_group.aggregate(Sum('needs_marking'))['needs_marking__sum'] or 0,
-                'unpublished_own_groups': own_group.aggregate(Sum('unpublished'))['unpublished__sum'] or 0,
+                'needs_marking': all_j.aggregate(Sum('needs_marking'))['needs_marking__sum'] or 0,
+                'unpublished': all_j.aggregate(Sum('unpublished'))['unpublished__sum'] or 0,
+                'needs_marking_own_groups': own_j.aggregate(Sum('needs_marking'))['needs_marking__sum'] or 0,
+                'unpublished_own_groups': own_j.aggregate(Sum('unpublished'))['unpublished__sum'] or 0,
             })
         if self.context['user'].has_permission('can_manage_journal_import_requests', assignment):
-            own_group = journal_set.filter(authors__user__in=own_group_users)
             stats.update({
-                'import_requests': journal_set.aggregate(Sum('import_requests'))['import_requests__sum'] or 0,
-                'import_requests_own_groups': own_group.aggregate(Sum('import_requests'))['import_requests__sum'] or 0,
+                'import_requests': all_j.aggregate(Sum('import_requests'))['import_requests__sum'] or 0,
+                'import_requests_own_groups': own_j.aggregate(Sum('import_requests'))['import_requests__sum'] or 0,
             })
         # Other stats
-        stats['average_points'] = journal_set.aggregate(Avg('grade'))['grade__avg']
+        stats['average_points'] = all_j.aggregate(Avg('grade'))['grade__avg']
 
         return stats
 
@@ -379,7 +382,8 @@ class AssignmentSerializer(serializers.ModelSerializer):
         return CourseSerializer(self._get_course(assignment)).data
 
     def _get_course(self, assignment):
-        if self.context.get('course', None) is None:
+        course = self.context.get('course', None)
+        if course is None or course == settings.EXPLICITLY_WITHOUT_CONTEXT:
             if self.context.get('user', None) is not None:
                 return assignment.get_active_course(self.context['user'])
             else:
@@ -392,7 +396,8 @@ class AssignmentSerializer(serializers.ModelSerializer):
         return self.context['course']
 
     def get_courses(self, assignment):
-        if 'course' in self.context and self.context['course']:
+        if 'course' in self.context and self.context['course'] \
+                and not self.context['course'] == settings.EXPLICITLY_WITHOUT_CONTEXT:
             return None
         return CourseSerializer(assignment.courses, many=True).data
 
@@ -458,18 +463,12 @@ class AssignmentFormatSerializer(AssignmentSerializer):
 
 
 class SmallAssignmentSerializer(AssignmentSerializer):
-    journal_import_requests = serializers.SerializerMethodField()
-
     class Meta:
         model = Assignment
         fields = (
             'id', 'name', 'is_group_assignment', 'is_published', 'points_possible', 'unlock_date', 'due_date',
-            'lock_date', 'deadline', 'journal', 'stats', 'course', 'journal_import_requests', 'active_lti_course')
+            'lock_date', 'deadline', 'journal', 'stats', 'course', 'courses', 'active_lti_course')
         read_only_fields = ('id', )
-
-    def get_journal_import_requests(self, assignment):
-        return JournalImportRequest.objects.filter(
-            target__assignment=assignment, state=JournalImportRequest.PENDING).count()
 
 
 class CommentSerializer(serializers.ModelSerializer):
@@ -521,6 +520,7 @@ class JournalSerializer(serializers.ModelSerializer):
     author_count = serializers.SerializerMethodField()
     groups = serializers.SerializerMethodField()
     usernames = serializers.SerializerMethodField()
+    import_requests = serializers.SerializerMethodField()
 
     class Meta:
         model = Journal
@@ -547,6 +547,12 @@ class JournalSerializer(serializers.ModelSerializer):
         return list(Participation.objects.filter(
             user__in=journal.authors.values('user'),
             course=self.context['course']).values_list('groups__pk', flat=True).distinct())
+
+    def get_import_requests(self, journal):
+        if 'user' in self.context and self.context['user'] and self.context['user'].has_permission(
+                'can_manage_journal_import_requests', journal.assignment):
+            return journal.import_requests
+        return None
 
 
 class FormatSerializer(serializers.ModelSerializer):

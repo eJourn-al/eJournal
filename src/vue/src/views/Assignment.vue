@@ -50,7 +50,11 @@
                     <option value="markingNeeded">
                         Sort by marking needed
                     </option>
-                    <option value="importRequests">
+                    <option
+                        v-if="$hasPermission('can_manage_journal_import_requests')
+                            && !loadingJournals && assignment.stats.import_requests"
+                        value="importRequests"
+                    >
                         Sort by import requests
                     </option>
                     <option value="points">
@@ -586,7 +590,6 @@ export default {
             }
 
             Promise.all(initialCalls).then((results) => {
-                this.loadingJournals = false
                 this.assignment = results[0]
                 this.assignmentJournals = results[0].journals
                 this.groups = results[1].sort((a, b) => b.name < a.name)
@@ -604,6 +607,7 @@ export default {
                 if (!this.groups || this.filteredJournals.length === 0) {
                     this.setJournalGroupFilter(null)
                 }
+                this.loadingJournals = false
             })
         },
         showModal (ref) {
@@ -675,7 +679,7 @@ export default {
                 needsMarking += filteredJournals[i].needs_marking
                 unpublished += filteredJournals[i].unpublished
                 points += filteredJournals[i].grade
-                importRequests += filteredJournals[i].import_requests
+                importRequests += ((filteredJournals[i].import_requests) ? filteredJournals[i].import_requests : 0)
             }
             this.stats = {
                 needsMarking,

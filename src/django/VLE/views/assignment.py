@@ -7,6 +7,7 @@ import csv
 
 import chardet
 from dateutil.relativedelta import relativedelta
+from django.conf import settings
 from django.db.models import Q
 from django.utils import timezone
 from rest_framework import viewsets
@@ -72,7 +73,7 @@ class AssignmentView(viewsets.ViewSet):
             request.user.check_participation(course)
             courses = [course]
         except (VLEMissingRequiredKey, VLEParamWrongType):
-            course = None
+            course = settings.EXPLICITLY_WITHOUT_CONTEXT
             courses = request.user.participations.all()
 
         query = Assignment.objects.filter(courses__in=courses).distinct()
@@ -313,7 +314,7 @@ class AssignmentView(viewsets.ViewSet):
             request.user.check_participation(course)
             courses = [course]
         except (VLEMissingRequiredKey, VLEParamWrongType):
-            course = None
+            course = settings.EXPLICITLY_WITHOUT_CONTEXT
             courses = request.user.participations.all()
 
         now = timezone.now()

@@ -195,12 +195,12 @@ export default {
         return {
             notificationPreferences: [
                 {
-                    name: 'New course',
+                    name: 'New courses',
                     key: 'new_course_notifications',
                     tooltip: 'Receive an email when you are added to a new course.',
                 },
                 {
-                    name: 'New assignment',
+                    name: 'New assignments',
                     key: 'new_assignment_notifications',
                     tooltip: 'Receive an email when a new assignment is published.',
                 },
@@ -210,7 +210,7 @@ export default {
                     tooltip: 'Receive an email when a new deadline is added to your journal.',
                 },
                 {
-                    name: 'New entry',
+                    name: 'New entries',
                     key: 'new_entry_notifications',
                     tooltip: 'Receive an email when a new entry is posted.',
                 },
@@ -220,14 +220,14 @@ export default {
                     tooltip: 'Receive an email when you receive a grade.',
                 },
                 {
-                    name: 'New comment',
+                    name: 'New comments',
                     key: 'new_comment_notifications',
                     tooltip: 'Receive an email when a new comment is posted.',
                 },
             ],
             reminderPreferences: [
                 {
-                    name: 'Deadline reminder',
+                    name: 'Deadline reminders',
                     key: 'upcoming_deadline_reminder',
                     tooltip: 'Receive an email in advance of an unfinished deadline',
                 },

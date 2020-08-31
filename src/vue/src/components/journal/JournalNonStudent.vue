@@ -178,7 +178,7 @@
                         <icon name="upload"/>
                         Publish all grades
                     </b-button>
-                    <div v-if="$hasPermission('can_grade') && !loadingNodes">
+                    <div v-if="$hasPermission('can_manage_journal_import_requests') && !loadingNodes">
                         <b-button
                             v-if="journal.import_requests"
                             v-b-modal="'journal-import-request-approval-modal'"

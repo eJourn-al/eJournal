@@ -23,4 +23,15 @@ export default {
             return false
         }
     },
+
+    courseWithDatesDisplay (course) {
+        let display = course.name
+
+        if (course.startdate || course.enddate) {
+            display += ` (${course.startdate ? course.startdate.substring(0, 4) : ''} - ${
+                course.enddate ? course.enddate.substring(0, 4) : ''})`
+        }
+
+        return display
+    },
 }

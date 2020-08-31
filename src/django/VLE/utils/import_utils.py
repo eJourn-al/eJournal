@@ -4,7 +4,7 @@ Model import helper functionality
 
 from django.core.files.base import ContentFile
 
-from VLE.models import Comment, Content, Entry, Field, FileContext, Grade, JournalImportRequest, Node
+from VLE.models import Comment, Entry, Field, FileContext, Grade, JournalImportRequest, Node
 from VLE.utils.error_handling import VLEProgrammingError
 
 
@@ -92,10 +92,10 @@ def import_entry(entry, journal, jir=None, grade_author=None,
         jir=jir
     )
 
-    for comment in Comment.objects.filter(entry=entry, published=True):
+    for comment in entry.comment_set.filter(published=True):
         import_comment(comment, copied_entry)
 
-    for content in Content.objects.filter(entry=entry):
+    for content in entry.content_set.all():
         import_content(content, copied_entry)
 
     return copied_entry

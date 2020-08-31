@@ -15,6 +15,7 @@ from django.test.utils import override_settings
 from django.utils import timezone
 
 import VLE.utils.generic_utils as utils
+import VLE.utils.statistics as stats_utils
 from VLE.models import (Assignment, AssignmentParticipation, Course, Entry, Field, Format, Journal,
                         JournalImportRequest, Node, Participation, PresetNode, Role, Template)
 from VLE.serializers import AssignmentSerializer
@@ -665,31 +666,250 @@ class AssignmentAPITest(TestCase):
             created_progress_node.lock_date.month == source_progress_node.lock_date.month, \
             'Deadline should shift 1 year but otherwise be similar'
 
-    def test_upcoming(self):
-        course2 = factory.Course(author=self.teacher)
-        factory.Assignment(courses=[self.course])
-        factory.Assignment(courses=[self.course, course2])
-        assignment = factory.Assignment()
+    def test_upcoming_basic(self):
+        course = factory.Course()
+        teacher = course.author
+        factory.Assignment(courses=[course])
 
-        resp = api.get(
-            self, 'assignments/upcoming', params={'course_id': self.course.pk}, user=self.teacher)['upcoming']
-        assert len(resp) == 2, 'All connected courses should be returned'
-        resp = api.get(self, 'assignments/upcoming', params={'course_id': course2.pk}, user=self.teacher)['upcoming']
-        assert len(resp) == 1, 'Not connected courses should not be returned'
+        # We create another course, any assignments linked to this course should not be returned
+        course2 = factory.Course(author=teacher)
+        factory.Assignment(courses=[course2])
 
-        # Connected assignment
-        course = assignment.courses.first()
-        factory.Participation(user=self.teacher, course=course)
-        # Not connected assignment
-        factory.Assignment()
+        def test_upcoming_for_a_specific_course(self):
+            resp = api.get(self, 'assignments/upcoming', params={'course_id': course.pk}, user=teacher)['upcoming']
+            assert len(resp) == 1, 'Only information regarding the provided course_id is returned'
+            resp = resp[0]
 
-        resp = api.get(self, 'assignments/upcoming', user=self.teacher)['upcoming']
-        assert len(resp) == 3, 'Without a course supplied, it should return all assignments connected to user'
+            assert resp['course']['name'] == course.name
+            assert resp['course']['abbreviation'] == course.abbreviation
+            assert 'stats' in resp, 'Stats are required to displayed stats specific to ones own and all groups'
 
-        assignment.lock_date = timezone.now()
-        assignment.save()
-        resp = api.get(self, 'assignments/upcoming', user=self.teacher)['upcoming']
-        assert len(resp) == 2, 'Past assignment should not be added'
+        def test_upcoming_without_course_id(self):
+            resp = api.get(self, 'assignments/upcoming', user=teacher)['upcoming']
+            assert len(resp) == 2, 'Without a course id supplied, both assignments should be returned'
+            assert all([len(r['courses']) == 1 for r in resp]), 'Each assignment is linked to a single course'
+
+        def test_locked_assignments_should_not_be_serialized(self):
+            assignment3 = factory.Assignment(courses=[course], author=teacher, lock_date=timezone.now())
+            resp = api.get(self, 'assignments/upcoming', user=teacher)['upcoming']
+            assert len(resp) == 2 and not any([ass['course']['name'] == assignment3.name for ass in resp]), \
+                'The locked assignment should not be serialized'
+
+        def test_upcoming_for_assignment_with_multiple_courses(self):
+            course = factory.Course()
+            course2 = factory.Course()
+            factory.Assignment(courses=[course, course2])
+
+            resp = api.get(self, 'assignments/upcoming', user=course.author)['upcoming']
+            abbrs = [course.abbreviation, course2.abbreviation]
+            assert len(resp) == 1 and len(resp[0]['courses']) == 2, 'One assignment linked to two courses'
+            assert all([c['abbreviation'] in abbrs for c in resp[0]['courses']]), \
+                'All the assignment\'s courses\' abbreviations are required for deadline display'
+
+        test_upcoming_for_a_specific_course(self)
+        test_upcoming_without_course_id(self)
+        test_locked_assignments_should_not_be_serialized(self)
+        test_upcoming_for_assignment_with_multiple_courses(self)
+
+    def test_upcoming_assignment_group_stats_with_shared_assignments(self):
+        def add_student_to_course_and_group(user, group):
+            p = factory.Participation(user=user, course=group.course, role=group.course.role_set.get(name='Student'))
+            p.groups.add(group)
+
+        # Setup assignment structure
+
+        pav1 = factory.Course(name='PAV1')
+        gr_pav1 = factory.Group(course=pav1)
+
+        # Add teacher to gr_pav1, and Student1
+        teacher_both_groups = pav1.author
+        Participation.objects.get(course=pav1, user=teacher_both_groups).groups.add(gr_pav1)
+        stu_in_gr_pav1 = factory.Student(full_name='Student in group PAV1')
+        add_student_to_course_and_group(stu_in_gr_pav1, gr_pav1)
+        student_ungrouped_in_pav1 = factory.Student(full_name='Student ungrouped in group PAV1')
+        factory.Participation(user=student_ungrouped_in_pav1, course=pav1, role=pav1.role_set.get(name='Student'))
+
+        pav2 = factory.Course(name='PAV2', author=teacher_both_groups)
+        gr_pav2 = factory.Group(course=pav2)
+
+        # Add teacher to gr_pav2, TA and Student2
+        Participation.objects.get(course=pav2, user=teacher_both_groups).groups.add(gr_pav2)
+        ta_only_in_gr_pav2 = factory.Student(full_name='Ta in group PAV2')
+        ta_role = pav2.role_set.get(name='TA')
+        ta_role.can_manage_journal_import_requests = True
+        ta_role.save()
+        factory.Participation(
+            course=pav2, user=ta_only_in_gr_pav2, role=ta_role).groups.add(gr_pav2)
+        stu_in_gr_pav2 = factory.Student(full_name='Student in group PAV2')
+        add_student_to_course_and_group(stu_in_gr_pav2, gr_pav2)
+        # Add an ungrouped student to PAV2
+        student_ungrouped_in_pav2 = factory.Student(full_name='Student ungrouped in group PAV2')
+        factory.Participation(user=student_ungrouped_in_pav2, course=pav2, role=pav2.role_set.get(name='Student'))
+
+        logboek = factory.Assignment(courses=[pav1, pav2], name='Logboek', format__templates=[{'type': Field.TEXT}])
+        journal_stu_in_gr_pav1 = factory.Journal(ap__user=stu_in_gr_pav1, assignment=logboek, entries__n=0)
+        journal_stu_in_gr_pav2 = factory.Journal(ap__user=stu_in_gr_pav2, assignment=logboek, entries__n=0)
+        journal_stu_ungrouped_pav1 = factory.Journal(
+            ap__user=student_ungrouped_in_pav1, assignment=logboek, entries__n=0)
+        journal_stu_ungrouped_pav2 = factory.Journal(
+            ap__user=student_ungrouped_in_pav2, assignment=logboek, entries__n=0)
+
+        # End structure, validate grouping of users
+
+        all_users = [teacher_both_groups, stu_in_gr_pav1, student_ungrouped_in_pav1, ta_only_in_gr_pav2,
+                     stu_in_gr_pav2, student_ungrouped_in_pav2]
+        assert logboek.assignmentparticipation_set.count() == len(all_users)
+        assert not logboek.assignmentparticipation_set.exclude(user__in=all_users).exists()
+        all_users = logboek.assignmentparticipation_set.values('user')
+
+        pav1_users = pav1.participation_set.values('user')
+
+        gr_pav1_users = [teacher_both_groups, stu_in_gr_pav1]
+        assert gr_pav1.participation_set.count() == len(gr_pav1_users)
+        assert not gr_pav1.participation_set.values('user').exclude(user__in=gr_pav1_users).exists()
+        gr_pav1_users = gr_pav1.participation_set.values('user')
+
+        pav2_users = pav2.participation_set.values('user')
+
+        gr_pav2_users = [teacher_both_groups, ta_only_in_gr_pav2, stu_in_gr_pav2]
+        assert gr_pav2.participation_set.count() == len(gr_pav2_users)
+        assert not gr_pav2.participation_set.values('user').exclude(user__in=gr_pav2_users).exists()
+        gr_pav2_users = gr_pav2.participation_set.values('user')
+
+        def test_stat_utils(self):
+            def compare_p_user_values(a, b, msg=''):
+                assert set(a.values_list('user__pk', flat=True).distinct()) \
+                    == set(b.values_list('user__pk', flat=True).distinct()), msg
+
+            # Assignment generic teacher stats
+            teacher_logboek_stats = stats_utils.get_user_lists_with_scopes(logboek, teacher_both_groups)
+            compare_p_user_values(
+                teacher_logboek_stats['all'], all_users, 'Teacher is part of all courses so all users are of interest')
+            compare_p_user_values(teacher_logboek_stats['own'], gr_pav1_users.union(gr_pav2_users).order_by('user__pk'),
+                                  'Teacher is part of all groups so all grouped users are of interest')
+            # PAV1 specific teacher stats
+            teacher_pav1_stats = stats_utils.get_user_lists_with_scopes(logboek, teacher_both_groups, course=pav1)
+            compare_p_user_values(
+                teacher_pav1_stats['all'], pav1_users, '''Despite teacher being part of all courses, when evaluating
+                from the perspective of pav1, all should yield only pav1 users part of logboek''')
+            compare_p_user_values(teacher_pav1_stats['own'], gr_pav1_users,
+                                  '''Own should only yield a subset of all's users which are part of the pav1 groups
+                                     teacher is a member of''')
+            # PAV2 specific teacher stats
+            teacher_pav2_stats = stats_utils.get_user_lists_with_scopes(logboek, teacher_both_groups, course=pav2)
+            compare_p_user_values(
+                teacher_pav2_stats['all'], pav2_users, '''Despite teacher being part of all courses, when evaluating
+                from the perspective of pav2, all should yield only pav2 users part of logboek''')
+            compare_p_user_values(teacher_pav2_stats['own'], gr_pav2_users,
+                                  '''Own should only yield a subset of all's users which are part of the pav2 groups
+                                     teacher is a member of''')
+
+            # Assignment generic ta_only_in_gr_pav2 stats
+            ta_logboek_stats = stats_utils.get_user_lists_with_scopes(logboek, ta_only_in_gr_pav2)
+            compare_p_user_values(
+                ta_logboek_stats['all'], pav2_users, 'TA is only part of pav2 so all should only yields those users')
+            compare_p_user_values(ta_logboek_stats['own'], gr_pav2_users,
+                                  'TA is only part of a group in pav2, so own should only yield those users')
+            # PAV1 specific ta_only_in_gr_pav2 stats
+            ta_logboek_stats = stats_utils.get_user_lists_with_scopes(logboek, ta_only_in_gr_pav2, course=pav1)
+            assert not ta_logboek_stats['all'].exists(), 'TA is not a member of PAV1 so results for PAV1 specific'
+            assert not ta_logboek_stats['own'].exists(), 'TA is not a member of PAV1 so results for PAV1 specific'
+            # PAV2 specific ta_only_in_gr_pav2 stats
+            ta_logboek_stats = stats_utils.get_user_lists_with_scopes(logboek, ta_only_in_gr_pav2, course=pav2)
+            compare_p_user_values(
+                ta_logboek_stats['all'], pav2_users, 'TA is only part of pav2 so all should only yields those users')
+            compare_p_user_values(ta_logboek_stats['own'], gr_pav2_users,
+                                  'TA is only part of a group in pav2, so own should only yield those users')
+
+        def test_returned_stats(self):
+            # Setup todos for PAV1
+            ungrouped_pav1_needs_marking = 7
+            ungrouped_pav1_outstanding_jirs = 5
+            for _ in range(ungrouped_pav1_needs_marking):
+                factory.UnlimitedEntry(node__journal=journal_stu_ungrouped_pav1)
+            for _ in range(ungrouped_pav1_outstanding_jirs):
+                factory.JournalImportRequest(target=journal_stu_ungrouped_pav1, author=student_ungrouped_in_pav1)
+
+            gr_pav1_needs_marking = 3
+            gr_pav1_outstanding_jirs = 2
+            # Group pav 1 should yield 3 needs marking, 1 jir to approve
+            for _ in range(gr_pav1_needs_marking):
+                factory.UnlimitedEntry(node__journal=journal_stu_in_gr_pav1)
+            for _ in range(gr_pav1_outstanding_jirs):
+                factory.JournalImportRequest(target=journal_stu_in_gr_pav1, author=stu_in_gr_pav1)
+
+            pav1_needs_marking = ungrouped_pav1_needs_marking + gr_pav1_needs_marking
+            pav1_oustanding_jirs = ungrouped_pav1_outstanding_jirs + gr_pav1_outstanding_jirs
+
+            # Setup todos for PAV2
+            ungrouped_pav2_needs_marking = 13
+            ungrouped_pav2_outstanding_jirs = 3
+            for _ in range(ungrouped_pav2_needs_marking):
+                factory.UnlimitedEntry(node__journal=journal_stu_ungrouped_pav2)
+            for _ in range(ungrouped_pav2_outstanding_jirs):
+                factory.JournalImportRequest(target=journal_stu_ungrouped_pav2, author=student_ungrouped_in_pav2)
+
+            gr_pav2_needs_marking = 5
+            gr_pav2_outstanding_jirs = 0
+            # Group pav 2 shield yield 5 entries need marking
+            for _ in range(gr_pav2_needs_marking):
+                factory.UnlimitedEntry(node__journal=journal_stu_in_gr_pav2)
+            for _ in range(gr_pav2_outstanding_jirs):
+                factory.JournalImportRequest(target=journal_stu_in_gr_pav2, author=stu_in_gr_pav2)
+
+            pav2_needs_marking = ungrouped_pav2_needs_marking + gr_pav2_needs_marking
+            pav2_outstanding_jirs = ungrouped_pav2_outstanding_jirs + gr_pav2_outstanding_jirs
+
+            all_needs_marking = pav1_needs_marking + pav2_needs_marking
+            all_outstanding_jirs = pav1_oustanding_jirs + pav2_outstanding_jirs
+
+            api_path = 'assignments/upcoming'
+            # Teacher assingment specific upcoming
+            stats = api.get(self, api_path, user=teacher_both_groups)['upcoming'][0]['stats']
+            assert stats['needs_marking'] == all_needs_marking
+            assert stats['needs_marking_own_groups'] == gr_pav1_needs_marking + gr_pav2_needs_marking
+            assert stats['import_requests'] == all_outstanding_jirs
+            assert stats['import_requests_own_groups'] == gr_pav1_outstanding_jirs + gr_pav2_outstanding_jirs
+            # Teacher pav1 specific upcoming
+            stats = api.get(
+                self, api_path, params={'course_id': pav1.pk}, user=teacher_both_groups)['upcoming'][0]['stats']
+            assert stats['needs_marking'] == pav1_needs_marking
+            assert stats['needs_marking_own_groups'] == gr_pav1_needs_marking
+            assert stats['import_requests'] == pav1_oustanding_jirs
+            assert stats['import_requests_own_groups'] == gr_pav1_outstanding_jirs
+            # Teacher pav2 specific upcoming
+            stats = api.get(
+                self, api_path, params={'course_id': pav2.pk}, user=teacher_both_groups)['upcoming'][0]['stats']
+            assert stats['needs_marking'] == pav2_needs_marking
+            assert stats['needs_marking_own_groups'] == gr_pav2_needs_marking
+            assert stats['import_requests'] == pav2_outstanding_jirs
+            assert stats['import_requests_own_groups'] == gr_pav2_outstanding_jirs
+
+            # ta_only_in_gr_pav2 assignment specific upcoming
+            stats = api.get(self, api_path, user=ta_only_in_gr_pav2)['upcoming'][0]['stats']
+            assert stats['needs_marking'] == pav2_needs_marking
+            assert stats['needs_marking_own_groups'] == gr_pav2_needs_marking
+            assert stats['import_requests'] == pav2_outstanding_jirs
+            assert stats['import_requests_own_groups'] == gr_pav2_outstanding_jirs
+            # ta_only_in_gr_pav2 pav2 specific upcoming
+            stats = api.get(
+                self, api_path, params={'course_id': pav2.pk}, user=ta_only_in_gr_pav2)['upcoming'][0]['stats']
+            assert stats['needs_marking'] == pav2_needs_marking
+            assert stats['needs_marking_own_groups'] == gr_pav2_needs_marking
+            assert stats['import_requests'] == pav2_outstanding_jirs
+            assert stats['import_requests_own_groups'] == gr_pav2_outstanding_jirs
+
+        def test_jir_stats_permission_serialization(self):
+            ta_role.can_manage_journal_import_requests = False
+            ta_role.save()
+
+            stats = api.get(self, 'assignments/upcoming', user=ta_only_in_gr_pav2)['upcoming'][0]['stats']
+            assert 'import_requests' not in stats
+            assert 'import_requests_own_groups' not in stats
+
+        test_stat_utils(self)
+        test_returned_stats(self)
+        test_jir_stats_permission_serialization(self)
 
     def test_lti_id_model_logic(self):
         # Test if a single lTI id can only be coupled to a singular assignment

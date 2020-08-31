@@ -45,7 +45,7 @@ def send_push_notification(notification_pk):
     if notification.assignment:
         context = '{}, {}'.format(notification.assignment.name, notification.course.name)
     else:
-        context = notification.course
+        context = notification.course.name
 
     email = EmailMultiAlternatives(
         subject='{} in {} - eJournal'.format(notification.title, context),

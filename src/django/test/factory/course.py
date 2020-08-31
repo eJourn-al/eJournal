@@ -14,8 +14,8 @@ class CourseFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = 'VLE.Course'
 
-    name = factory.Sequence(lambda x: "Academische Vaardigheden {}".format(x))
-    abbreviation = "AVI1"
+    name = factory.Sequence(lambda x: f"Academische Vaardigheden {x + 1}")
+    abbreviation = factory.Sequence(lambda x: f"AVI{x + 1}")
     startdate = factory.Faker('date_between', start_date="-10y", end_date="-1y")
     enddate = factory.Faker('date_between', start_date="+1y", end_date="+10y")
     author = factory.SubFactory('test.factory.user.TeacherFactory')

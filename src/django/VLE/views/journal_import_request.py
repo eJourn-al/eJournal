@@ -3,7 +3,7 @@ from rest_framework import viewsets
 import VLE.utils.generic_utils as utils
 import VLE.utils.import_utils as import_utils
 import VLE.utils.responses as response
-from VLE.models import Assignment, AssignmentParticipation, Entry, Journal, JournalImportRequest
+from VLE.models import Assignment, AssignmentParticipation, Entry, Journal, JournalImportRequest, Node
 from VLE.serializers import JournalImportRequestSerializer
 from VLE.utils import grading
 
@@ -80,8 +80,16 @@ class JournalImportRequestView(viewsets.ViewSet):
             if not source_entries.exists():
                 jir.state = jir.EMPTY_WHEN_PROCESSED
 
-        for source_entry in source_entries:
-            import_utils.import_entry(source_entry, jir.target, jir=jir)
+        entries_before = list(Entry.objects.filter(node__journal=jir.target).values_list('pk', flat=True))
+        nodes_before = list(Node.objects.filter(journal=jir.target).values_list('pk', flat=True))
+
+        try:
+            for source_entry in source_entries:
+                import_utils.import_entry(source_entry, jir.target, jir=jir)
+        except Exception as e:
+            Entry.objects.filter(node__journal=jir.target).exclude(pk__in=entries_before).delete()
+            Node.objects.filter(journal=jir.target).exclude(pk__in=nodes_before).delete()
+            raise e
 
         if jir_action == jir.APPROVED_INC_GRADES:
             grading.task_journal_status_to_LMS.delay(jir.target.pk)

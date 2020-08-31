@@ -16,11 +16,7 @@
                     <number-badge
                         v-if="$hasPermission('can_view_all_journals')
                             && (journal.needs_marking || journal.unpublished || journal.import_requests)"
-                        :badges="[
-                            { value: journal.needs_marking, tooltip: 'needsMarking' },
-                            { value: journal.unpublished, tooltip: 'unpublished' },
-                            { value: journal.import_requests, tooltip: 'importRequests' },
-                        ]"
+                        :badges="badges"
                         :displayZeroValues="false"
                         :keyPrefix="journal.id"
                     />
@@ -137,6 +133,18 @@ export default {
         canManageJournal () {
             return this.assignment.is_group_assignment && (this.assignment.can_set_journal_name
                 || this.assignment.can_set_journal_image || this.$hasPermission('can_manage_journals'))
+        },
+        badges () {
+            const badges = [
+                { value: this.journal.needs_marking, tooltip: 'needsMarking' },
+                { value: this.journal.unpublished, tooltip: 'unpublished' },
+            ]
+
+            if (this.$hasPermission('can_manage_journal_import_requests')) {
+                badges.push({ value: this.journal.import_requests, tooltip: 'importRequests' })
+            }
+
+            return badges
         },
     },
     methods: {
