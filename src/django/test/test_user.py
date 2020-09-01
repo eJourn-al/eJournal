@@ -4,15 +4,15 @@ from test.utils import api
 from test.utils.lti import gen_jwt_params
 
 import pytest
-from django.conf import settings
-from django.core.exceptions import ValidationError
-from django.test import TestCase
-from rest_framework.settings import api_settings
-
 import VLE.factory as creation_factory
 import VLE.permissions as permissions
 import VLE.validators as validators
+from rest_framework.settings import api_settings
 from VLE.models import Instance, Preferences, User
+
+from django.conf import settings
+from django.core.exceptions import ValidationError
+from django.test import TestCase
 
 
 class UserAPITest(TestCase):

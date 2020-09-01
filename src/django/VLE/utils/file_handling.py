@@ -8,10 +8,10 @@ import re
 import shutil
 import uuid
 
-from django.conf import settings
-
 import VLE.models
 from VLE.utils.error_handling import VLEBadRequest, VLEPermissionError
+
+from django.conf import settings
 
 
 def get_path(instance, filename):

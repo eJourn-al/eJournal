@@ -3,11 +3,11 @@ import test.utils.generic_utils as test_utils
 from test.utils.generic_utils import (check_equality_of_imported_file_context, check_equality_of_imported_rich_text,
                                       equal_models)
 
-from django.test import TestCase
-
 import VLE.utils.import_utils as import_utils
 from VLE.models import Comment, Content, Entry, Field, FileContext, JournalImportRequest
 from VLE.utils.error_handling import VLEProgrammingError
+
+from django.test import TestCase
 
 
 class ImportTest(TestCase):

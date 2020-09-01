@@ -1,8 +1,7 @@
-from rest_framework import viewsets
-
 import VLE.utils.generic_utils as utils
 import VLE.utils.import_utils as import_utils
 import VLE.utils.responses as response
+from rest_framework import viewsets
 from VLE.models import Assignment, AssignmentParticipation, Entry, Journal, JournalImportRequest, Node
 from VLE.serializers import JournalImportRequestSerializer
 from VLE.utils import grading

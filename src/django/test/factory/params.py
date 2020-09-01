@@ -1,6 +1,7 @@
 from test.factory.user import DEFAULT_PASSWORD
 
 import factory
+
 from django.conf import settings
 
 

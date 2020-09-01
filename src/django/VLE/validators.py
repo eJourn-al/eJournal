@@ -3,14 +3,14 @@ import os
 import re
 from datetime import datetime
 
+import VLE.utils.file_handling as file_handling
+from sentry_sdk import capture_message
+from VLE.models import Field, FileContext
+from VLE.utils.error_handling import VLEMissingRequiredField
+
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.core.validators import FileExtensionValidator, URLValidator
-from sentry_sdk import capture_message
-
-import VLE.utils.file_handling as file_handling
-from VLE.models import Field, FileContext
-from VLE.utils.error_handling import VLEMissingRequiredField
 
 
 def validate_user_file(in_memory_uploaded_file, user):

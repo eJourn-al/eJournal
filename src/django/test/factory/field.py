@@ -1,7 +1,6 @@
 import random
 
 import factory
-
 from VLE.models import Field, Template
 
 

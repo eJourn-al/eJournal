@@ -5,7 +5,7 @@ Faker==2.0.2 # Tests
 flake8==3.7.8 # Tests
 mccabe==0.6.1 # Tests, plugin for flake8
 pycodestyle==2.5.0 # Tests, flake8 tool
-isort==4.3.21 # Organization
+isort==5.4.2 # Organization
 autoflake==1.3.1 # remove unused imports
 pyflakes==2.1.1 # Tests
 pytz==2019.2 # Preset db script and tests

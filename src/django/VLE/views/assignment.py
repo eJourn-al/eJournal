@@ -6,23 +6,23 @@ In this file are all the assignment api requests.
 import csv
 
 import chardet
-from dateutil.relativedelta import relativedelta
-from django.conf import settings
-from django.db.models import Q
-from django.utils import timezone
-from rest_framework import viewsets
-from rest_framework.decorators import action
-
 import VLE.factory as factory
 import VLE.utils.generic_utils as utils
 import VLE.utils.import_utils as import_utils
 import VLE.utils.responses as response
 import VLE.validators as validators
+from dateutil.relativedelta import relativedelta
+from rest_framework import viewsets
+from rest_framework.decorators import action
 from VLE.models import Assignment, Course, Journal, PresetNode, Template, User
 from VLE.serializers import (AssignmentSerializer, CourseSerializer, SmallAssignmentSerializer, TeacherEntrySerializer,
                              TemplateSerializer)
 from VLE.utils import file_handling, grading
 from VLE.utils.error_handling import VLEMissingRequiredKey, VLEParamWrongType
+
+from django.conf import settings
+from django.db.models import Q
+from django.utils import timezone
 
 
 def day_neutral_datetime_increment(date, months=0):

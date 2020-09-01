@@ -3,17 +3,17 @@ journal.py.
 
 In this file are all the journal api requests.
 """
-from django.db.models import Q
-from rest_framework import viewsets
-from rest_framework.decorators import action
-
 import VLE.utils.generic_utils as utils
 import VLE.utils.grading as grading
 import VLE.utils.responses as response
 import VLE.validators as validators
+from rest_framework import viewsets
+from rest_framework.decorators import action
 from VLE.models import Assignment, AssignmentParticipation, Course, FileContext, Journal, User
 from VLE.serializers import AssignmentParticipationSerializer, JournalSerializer
 from VLE.utils import file_handling
+
+from django.db.models import Q
 
 
 class JournalView(viewsets.ViewSet):

@@ -5,19 +5,19 @@ Functions to convert certain data to other formats.
 """
 import datetime
 
-from django.conf import settings
-from django.db.models import Avg, Count, Min, Q, Sum
-from django.utils import timezone
-from rest_framework import serializers
-from sentry_sdk import capture_message
-
 import VLE.permissions as permissions
 import VLE.utils.statistics as stats_utils
+from rest_framework import serializers
+from sentry_sdk import capture_message
 from VLE.models import (Assignment, AssignmentParticipation, Comment, Course, Entry, Field, FileContext, Format, Grade,
                         Group, Instance, Journal, JournalImportRequest, Node, Participation, Preferences, PresetNode,
                         Role, TeacherEntry, Template, User)
 from VLE.utils import generic_utils as utils
 from VLE.utils.error_handling import VLEParticipationError, VLEProgrammingError
+
+from django.conf import settings
+from django.db.models import Avg, Count, Min, Q, Sum
+from django.utils import timezone
 
 
 class InstanceSerializer(serializers.ModelSerializer):

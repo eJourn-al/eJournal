@@ -1,14 +1,14 @@
 import filecmp
 import re
 
+import VLE.models
+import VLE.utils.file_handling as file_handling
 from deepdiff import DeepDiff
+from VLE.utils.error_handling import VLEProgrammingError
+
 from django.conf import settings
 from django.db import models
 from django.db.models.fields.related import ManyToManyField
-
-import VLE.models
-import VLE.utils.file_handling as file_handling
-from VLE.utils.error_handling import VLEProgrammingError
 
 
 def _model_instance_to_dict(instance, ignore=[]):

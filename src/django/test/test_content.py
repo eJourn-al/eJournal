@@ -1,13 +1,13 @@
 import os
 import test.factory as factory
 
-from django.core.exceptions import ValidationError
-from django.db import IntegrityError
-from django.test import TestCase
-
 import VLE.validators
 from VLE.models import Content, Field, FileContext, Journal
 from VLE.utils.error_handling import VLEProgrammingError
+
+from django.core.exceptions import ValidationError
+from django.db import IntegrityError
+from django.test import TestCase
 
 
 class ContentTest(TestCase):

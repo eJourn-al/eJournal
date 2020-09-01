@@ -3,11 +3,11 @@ timeline.py.
 
 Useful timeline functions.
 """
-from django.utils import timezone
-
 from VLE.models import Node
 from VLE.serializers import EntrySerializer, TemplateSerializer
 from VLE.utils import generic_utils as utils
+
+from django.utils import timezone
 
 
 def get_nodes(journal, author=None):

@@ -2,10 +2,10 @@
 Model import helper functionality
 """
 
-from django.core.files.base import ContentFile
-
 from VLE.models import Comment, Entry, Field, FileContext, Grade, JournalImportRequest, Node
 from VLE.utils.error_handling import VLEProgrammingError
+
+from django.core.files.base import ContentFile
 
 
 def _copy_grade_based_on_jir_action(entry, author, action=JournalImportRequest.APPROVED_WITH_GRADES_ZEROED):

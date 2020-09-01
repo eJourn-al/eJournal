@@ -7,9 +7,9 @@ Test the authentication calls.
 import test.factory as factory
 from test.utils import api
 
-from django.test import TestCase
-
 import VLE.models
+
+from django.test import TestCase
 
 
 class StatisticsTests(TestCase):

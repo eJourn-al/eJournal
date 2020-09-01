@@ -2,10 +2,10 @@ import test.factory as factory
 from test.utils import api
 from test.utils.response import in_response
 
-from django.test import TestCase
-
 import VLE.factory as nfac
 from VLE.models import Group, Participation
+
+from django.test import TestCase
 
 
 class GroupAPITest(TestCase):

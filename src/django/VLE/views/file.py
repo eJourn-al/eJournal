@@ -1,10 +1,9 @@
-from rest_framework import viewsets
-from rest_framework.decorators import action
-from rest_framework.permissions import AllowAny
-
 import VLE.utils.generic_utils as utils
 import VLE.utils.responses as response
 import VLE.validators as validators
+from rest_framework import viewsets
+from rest_framework.decorators import action
+from rest_framework.permissions import AllowAny
 from VLE.models import FileContext
 from VLE.serializers import FileSerializer
 

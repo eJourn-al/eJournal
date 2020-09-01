@@ -3,11 +3,10 @@ node.py.
 
 In this file are all the node api requests.
 """
-from rest_framework import viewsets
-
 import VLE.timeline as timeline
 import VLE.utils.generic_utils as utils
 import VLE.utils.responses as response
+from rest_framework import viewsets
 from VLE.models import Journal
 
 

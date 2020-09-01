@@ -1,7 +1,6 @@
 from test.factory.field import FieldFactory
 
 import factory
-
 from VLE.models import Field
 
 

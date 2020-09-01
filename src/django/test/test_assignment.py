@@ -4,8 +4,16 @@ from test.utils import api
 from test.utils.generic_utils import equal_models
 
 import pytest
+import VLE.utils.generic_utils as utils
+import VLE.utils.statistics as stats_utils
 from dateutil import parser
 from dateutil.relativedelta import relativedelta
+from VLE.models import (Assignment, AssignmentParticipation, Course, Entry, Field, Format, Journal,
+                        JournalImportRequest, Node, Participation, PresetNode, Role, Template)
+from VLE.serializers import AssignmentSerializer
+from VLE.utils.error_handling import VLEParticipationError, VLEProgrammingError
+from VLE.views.assignment import day_neutral_datetime_increment, set_assignment_dates
+
 from django.core.exceptions import ValidationError
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.db.models import Q
@@ -13,14 +21,6 @@ from django.db.utils import IntegrityError
 from django.test import TestCase
 from django.test.utils import override_settings
 from django.utils import timezone
-
-import VLE.utils.generic_utils as utils
-import VLE.utils.statistics as stats_utils
-from VLE.models import (Assignment, AssignmentParticipation, Course, Entry, Field, Format, Journal,
-                        JournalImportRequest, Node, Participation, PresetNode, Role, Template)
-from VLE.serializers import AssignmentSerializer
-from VLE.utils.error_handling import VLEParticipationError, VLEProgrammingError
-from VLE.views.assignment import day_neutral_datetime_increment, set_assignment_dates
 
 
 class AssignmentAPITest(TestCase):

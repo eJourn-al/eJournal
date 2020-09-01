@@ -3,15 +3,15 @@ import re
 import test.factory as factory
 from test.utils import api
 
+from VLE.models import Group, Node, Notification, Participation, Preferences, PresetNode, Template, User
+from VLE.tasks.beats import notifications
+
 from django.conf import settings
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
 from django.core import mail
 from django.test import TestCase
 from django.test.utils import override_settings
 from django.utils import timezone
-
-from VLE.models import Group, Node, Notification, Participation, Preferences, PresetNode, Template, User
-from VLE.tasks.beats import notifications
 
 
 class EmailAPITest(TestCase):

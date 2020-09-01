@@ -4,13 +4,13 @@ import test.utils.generic_utils as test_utils
 from test.utils import api
 from unittest import mock
 
-from dateutil.relativedelta import relativedelta
-from django.test import TestCase
-from django.utils import timezone
-
 import VLE.utils.generic_utils as utils
+from dateutil.relativedelta import relativedelta
 from VLE.models import (AssignmentParticipation, Comment, Content, Entry, Field, FileContext, JournalImportRequest,
                         Node, PresetNode)
+
+from django.test import TestCase
+from django.utils import timezone
 
 
 class JournalImportRequestTest(TestCase):

@@ -3,10 +3,9 @@ member.py.
 
 In this file are all the group member api requests.
 """
-from rest_framework import viewsets
-
 import VLE.utils.generic_utils as utils
 import VLE.utils.responses as response
+from rest_framework import viewsets
 from VLE.models import Group, Participation
 from VLE.serializers import ParticipationSerializer, UserSerializer
 

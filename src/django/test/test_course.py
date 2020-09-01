@@ -2,10 +2,10 @@ import test.factory as factory
 from test.utils import api
 from test.utils.response import is_response
 
+from VLE.models import Assignment, Course, Participation, Role, User
+
 from django.conf import settings
 from django.test import TestCase
-
-from VLE.models import Assignment, Course, Participation, Role, User
 
 
 class CourseAPITest(TestCase):

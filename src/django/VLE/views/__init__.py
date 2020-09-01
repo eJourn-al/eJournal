@@ -1,5 +1,4 @@
 from rest_framework import routers
-
 from VLE.views.assignment import AssignmentView
 from VLE.views.comment import CommentView
 from VLE.views.course import CourseView

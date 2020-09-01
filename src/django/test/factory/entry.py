@@ -2,10 +2,10 @@ import random
 import test.factory
 
 import factory
+import VLE.models
+
 from django.core.exceptions import ValidationError
 from django.utils import timezone
-
-import VLE.models
 
 
 def _set_template(self, create, extracted, **kwargs):

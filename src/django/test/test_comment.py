@@ -4,11 +4,11 @@ import string
 import test.factory as factory
 from test.utils import api
 
-from django.core.files.uploadedfile import SimpleUploadedFile
-from django.test import TestCase
-
 import VLE.factory as nfac
 from VLE.models import Comment, FileContext, Notification, Participation, User
+
+from django.core.files.uploadedfile import SimpleUploadedFile
+from django.test import TestCase
 
 
 def set_entry_comment_counts(obj):

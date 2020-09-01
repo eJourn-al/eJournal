@@ -1,13 +1,13 @@
 
 from celery import shared_task
-from django.conf import settings
-from django.utils import timezone
 from sentry_sdk import capture_exception, push_scope
-
 from VLE import factory
 from VLE.lti_grade_passback import GradePassBackRequest
 from VLE.models import AssignmentParticipation, Comment, Entry, Journal
 from VLE.utils.error_handling import LmsGradingResponseException
+
+from django.conf import settings
+from django.utils import timezone
 
 
 def publish_all_journal_grades(journal, publisher):

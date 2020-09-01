@@ -2,11 +2,11 @@ import time
 from urllib import parse
 
 import oauth2
-from django.conf import settings
-from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
-
 import VLE.views.lti as lti_view
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from VLE.models import User
+
+from django.conf import settings
 
 BASE_PARAMS = {
     'oauth_consumer_key': str(settings.LTI_KEY),

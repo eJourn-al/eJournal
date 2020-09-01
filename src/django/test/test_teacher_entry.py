@@ -4,12 +4,12 @@ from datetime import date, timedelta
 from test.utils import api
 from unittest import mock
 
-from django.db import transaction
-from django.test import TestCase
-
 from VLE.models import Entry, Field, Grade, Node, TeacherEntry
 from VLE.serializers import EntrySerializer
 from VLE.utils.error_handling import VLEPermissionError
+
+from django.db import transaction
+from django.test import TestCase
 
 
 class TeacherEntryAPITest(TestCase):

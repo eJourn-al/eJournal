@@ -3,9 +3,6 @@ entry.py.
 
 In this file are all the entry api requests.
 """
-from django.utils import timezone
-from rest_framework import viewsets
-
 import VLE.factory as factory
 import VLE.serializers as serialize
 import VLE.timeline as timeline
@@ -13,8 +10,11 @@ import VLE.utils.entry_utils as entry_utils
 import VLE.utils.file_handling as file_handling
 import VLE.utils.generic_utils as utils
 import VLE.utils.responses as response
+from rest_framework import viewsets
 from VLE.models import Entry, Field, FileContext, Journal, Node, Template
 from VLE.utils import grading
+
+from django.utils import timezone
 
 
 class EntryView(viewsets.ViewSet):

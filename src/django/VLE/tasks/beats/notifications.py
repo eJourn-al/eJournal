@@ -2,15 +2,15 @@ from __future__ import absolute_import, unicode_literals
 
 import datetime
 
+import VLE.models
 from celery import shared_task
+
 from django.conf import settings
 from django.core.mail import EmailMultiAlternatives
 from django.db.models import Q
 from django.template.loader import render_to_string
 from django.utils import timezone
 from django.utils.html import strip_tags
-
-import VLE.models
 
 
 def _generate_upcoming_deadline_notifications(node_query, preferences):

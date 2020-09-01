@@ -6,16 +6,16 @@ from datetime import date, timedelta
 from test.utils import api
 from test.utils.generic_utils import equal_models
 
-from django.conf import settings
-from django.core.exceptions import ValidationError
-from django.test import TestCase
 from faker import Faker
-
 from VLE.models import (Assignment, Comment, Content, Course, Entry, Field, FileContext, Format, Grade, Journal, Node,
                         PresetNode, Template)
 from VLE.utils import generic_utils as utils
 from VLE.utils.error_handling import VLEMissingRequiredField, VLEPermissionError
 from VLE.validators import validate_entry_content
+
+from django.conf import settings
+from django.core.exceptions import ValidationError
+from django.test import TestCase
 
 faker = Faker()
 

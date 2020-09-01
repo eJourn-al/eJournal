@@ -2,12 +2,12 @@ import test.factory as factory
 from test.utils import api
 
 from computedfields.models import update_dependent
+from VLE.models import (Assignment, AssignmentParticipation, Comment, Content, Course, Entry, FileContext, Journal,
+                        JournalImportRequest, Participation, Role, User)
+
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.test import TestCase
-
-from VLE.models import (Assignment, AssignmentParticipation, Comment, Content, Course, Entry, FileContext, Journal,
-                        JournalImportRequest, Participation, Role, User)
 
 
 class JournalAPITest(TestCase):

@@ -1,4 +1,5 @@
 import factory
+
 from django.conf import settings
 
 DEFAULT_PASSWORD = 'Pass123!'

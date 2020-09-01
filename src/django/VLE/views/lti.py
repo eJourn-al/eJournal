@@ -3,20 +3,20 @@ import enum
 
 import jwt
 import oauth2
-from django.conf import settings
-from django.http import QueryDict
-from django.shortcuts import redirect
-from django.utils import timezone
-from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import AllowAny
-from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
-
 import VLE.factory as factory
 import VLE.lti_launch as lti
 import VLE.utils.generic_utils as utils
 import VLE.utils.responses as response
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import AllowAny
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from VLE.models import User
 from VLE.utils.error_handling import VLEMissingRequiredKey
+
+from django.conf import settings
+from django.http import QueryDict
+from django.shortcuts import redirect
+from django.utils import timezone
 
 
 class LTI_STATES(enum.Enum):

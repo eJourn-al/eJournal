@@ -2,7 +2,6 @@ import test.factory
 from datetime import date
 
 import factory
-
 import VLE.models
 
 

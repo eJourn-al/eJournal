@@ -3,16 +3,16 @@ group.py.
 
 In this file are all the group api requests.
 """
-from django.db.models import Count
-from rest_framework import viewsets
-from rest_framework.decorators import action
-
 import VLE.factory as factory
 import VLE.utils.generic_utils as utils
 import VLE.utils.responses as response
+from rest_framework import viewsets
+from rest_framework.decorators import action
 from VLE.models import Assignment, Course, Group, Journal, Participation
 from VLE.serializers import GroupSerializer
 from VLE.utils.error_handling import VLEPermissionError
+
+from django.db.models import Count
 
 
 def check_can_view_groups(user, course):

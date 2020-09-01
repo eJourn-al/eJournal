@@ -1,12 +1,12 @@
 from urllib.parse import urljoin
 
 import oauth2
-from django.conf import settings
-
 import VLE.factory as factory
 import VLE.utils.generic_utils as utils
 import VLE.utils.grading as grading
 from VLE.models import Assignment, AssignmentParticipation, Course, Group, Instance, Journal, Participation, Role, User
+
+from django.conf import settings
 
 
 class OAuthRequestValidater(object):

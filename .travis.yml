@@ -7,7 +7,7 @@ before_install:
 install:
   - make setup-travis
   - pip install codecov
-script: bash -c 'source ./venv/bin/activate && isort -rc src/django/ -c && deactivate' && make test
+script: bash -c 'source ./venv/bin/activate && isort src/django/ -c && deactivate' && make test
 after_success:
   - codecov
 branches:

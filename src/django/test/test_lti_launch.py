@@ -11,12 +11,12 @@ from test.utils import api
 from test.utils.lti import get_new_lti_id, get_signature, lti_launch_response_to_access_token
 
 import oauth2
-from django.conf import settings
-from django.test import RequestFactory, TestCase
-
 import VLE.lti_launch as lti
 import VLE.views.lti as lti_view
 from VLE.models import Group, Instance, Journal, User
+
+from django.conf import settings
+from django.test import RequestFactory, TestCase
 
 REQUEST = {
     'oauth_consumer_key': str(settings.LTI_KEY),

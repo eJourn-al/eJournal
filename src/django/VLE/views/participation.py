@@ -1,12 +1,12 @@
-from django.db.models import Q
-from rest_framework import viewsets
-from rest_framework.decorators import action
-
 import VLE.factory as factory
 import VLE.utils.generic_utils as utils
 import VLE.utils.responses as response
+from rest_framework import viewsets
+from rest_framework.decorators import action
 from VLE.models import Course, Group, Participation, Role, User
 from VLE.serializers import ParticipationSerializer, UserSerializer
+
+from django.db.models import Q
 
 
 class ParticipationView(viewsets.ViewSet):
