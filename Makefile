@@ -32,7 +32,7 @@ test-back:
 	bash -c 'source ./venv/bin/activate && pycodestyle ./src/django --max-line-length=120 --exclude="./src/django/VLE/migrations","./src/django/VLE/settings*"'
 	bash -c 'source ./venv/bin/activate && flake8 --max-line-length=120 src/django --exclude="src/django/VLE/migrations/*","src/django/VLE/settings/*","src/django/VLE/settings.py","src/django/VLE/tasks/__init__.py" && deactivate'
 	bash -c "source ./venv/bin/activate && pytest -n auto --cov=VLE -vvl --cov-report term-missing --cov-config .coveragerc src/django/test ${TOTEST} && deactivate"
-	bash -c 'source ./venv/bin/activate && isort src/django/ && deactivate'
+	make isort
 
 test-front:
 	npm run lint --prefix ./src/vue
