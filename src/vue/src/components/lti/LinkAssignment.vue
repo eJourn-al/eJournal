@@ -52,7 +52,7 @@ import assignmentAPI from '@/api/assignment.js'
 
 export default {
     name: 'LinkAssignment',
-    props: ['lti', 'page', 'linkableAssignments'],
+    props: ['linkableAssignments'],
     data () {
         return {
             selectedCourse: null,
@@ -83,28 +83,20 @@ export default {
                 `This assignment is already linked to ${ltiCount > 1 ? `${ltiCount} ` : 'an'}`
                 + `other assignment${ltiCount > 1 ? 's' : ''} on the LMS (Canvas). Are you sure you want to`
                 + ' link this one as well? Grades will only be passed back to the new link.')) {
-                assignmentAPI.update(this.selectedAssignment.id, {
-                    lti_id: this.lti.ltiAssignID,
-                    points_possible: this.lti.ltiPointsPossible,
-                    is_published: this.lti.ltiAssignPublished,
-                    unlock_date: this.lti.ltiAssignUnlock ? this.lti.ltiAssignUnlock.slice(0, -6) : null,
-                    due_date: this.lti.ltiAssignDue ? this.lti.ltiAssignDue.slice(0, -6) : null,
-                    lock_date: this.lti.ltiAssignLock ? this.lti.ltiAssignLock.slice(0, -6) : null,
-                    course_id: this.page.cID,
-                })
-                    .then((assignment) => { this.$emit('handleAction', assignment.id) })
-                    .catch((error) => {
-                        if (error.response.status === 400
-                            && error.response.data.description.startsWith(
-                                'You cannot unpublish an assignment that already has submissions')) {
-                            this.$toasted.error(
-                                `The new assignment on the LMS (Canvas) is unpublished, but the existing eJournal
-                                assignment you are trying to link already contains entries. Publish the assignment on
-                                Canvas, then visit the assignment page there again to link it to eJournal.`,
-                                { duration: 12000 },
-                            )
-                        }
-                    })
+                assignmentAPI.update(this.selectedAssignment.id, { launch_id: this.$route.query.launch_id })
+                    .then((assignment) => { this.$emit('assignmentLinked', assignment) })
+                    // .catch((error) => {
+                    //     if (error.response.status === 400
+                    //         && error.response.data.description.startsWith(
+                    //             'You cannot unpublish an assignment that already has submissions')) {
+                    //         this.$toasted.error(
+                    //             `The new assignment on the LMS (Canvas) is unpublished, but the existing eJournal
+                    //             assignment you are trying to link already contains entries. Publish the assignment on
+                    //             Canvas, then visit the assignment page there again to link it to eJournal.`,
+                    //             { duration: 12000 },
+                    //         )
+                    //     }
+                    // })
             }
         },
     },

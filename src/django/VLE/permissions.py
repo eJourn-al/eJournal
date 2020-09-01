@@ -106,8 +106,7 @@ def _can_edit_entry(user, entry):
         not entry.node.journal.authors.filter(user=user).exists() or
         entry.node.journal.assignment.is_locked() or
         entry.is_graded() or
-        entry.is_locked() or
-        len(entry.node.journal.needs_lti_link) > 0
+        entry.is_locked()
     ):
         return False
 

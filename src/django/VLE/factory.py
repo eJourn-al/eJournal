@@ -54,7 +54,7 @@ def make_participation(user=None, course=None, role=None, groups=None):
     role -- role the user has on the course
     groups -- groups the user belongs to
     """
-    participation = Participation.objects.create(user=user, course=course, role=role)
+    participation = Participation.objects.get_or_create(user=user, course=course, role=role)[0]
     if groups:
         participation.groups.set(groups)
         participation.save()
@@ -62,7 +62,7 @@ def make_participation(user=None, course=None, role=None, groups=None):
     return participation
 
 
-def make_course(name, abbrev, startdate=None, enddate=None, author=None, active_lti_id=None):
+def make_course(*args, **kwargs):
     """Create a course.
 
     Arguments:
@@ -73,9 +73,7 @@ def make_course(name, abbrev, startdate=None, enddate=None, author=None, active_
     active_lti_id -- (optional) lti_id, this links an eJournal course to a VLE course, only the active id receives
         grade passback.
     """
-    course = Course(name=name, abbreviation=abbrev, startdate=startdate, enddate=enddate,
-                    author=author, active_lti_id=active_lti_id)
-    course.save()
+    course = Course.objects.create(**kwargs)
 
     if course.has_lti_link():
         make_lti_groups(course)
@@ -84,8 +82,8 @@ def make_course(name, abbrev, startdate=None, enddate=None, author=None, active_
     make_role_student('Student', course)
     make_role_ta('TA', course)
     role = make_role_teacher('Teacher', course)
-    if author is not None:
-        make_participation(author, course, role)
+    if kwargs.get('author'):
+        make_participation(kwargs.get('author'), course, role)
     return course
 
 
@@ -104,58 +102,24 @@ def make_course_group(name, course, lti_id=None):
     return course_group
 
 
-def make_assignment(name, description, author=None, format=None, active_lti_id=None,
-                    points_possible=10, is_published=None, unlock_date=None, due_date=None,
-                    lock_date=None, courses=[], is_group_assignment=False,
-                    can_set_journal_name=False, can_set_journal_image=False, can_lock_journal=False,
-                    remove_grade_upon_leaving_group=False):
-    """Make a new assignment.
-
-    Arguments:
-    name -- name of assignment
-    description -- description of the assignment
-    author -- author of assignment
-    format -- format of assignment
-    courseIDs -- ID of the courses the assignment belongs to
-    courses -- courses it belongs to
-    active_lti_id -- (optional) lti_id, this links an eJournal course to a VLE course, only the active id receives
-        grade passback.
-
-    On success, returns a new assignment.
-    """
+def make_assignment(*args, **kwargs):
+    """Make a new assignment."""
+    format = kwargs.get('format')
+    due_date = kwargs.get('due_date')
+    points_possible = kwargs.get('points_possible')
     if format is None:
         if due_date:
-            format = make_default_format(due_date, points_possible)
+            kwargs['format'] = make_default_format(due_date, points_possible)
         else:
-            format = make_default_format(timezone.now() + timedelta(days=365), points_possible)
+            kwargs['format'] = make_default_format(timezone.now() + timedelta(days=365), points_possible)
 
-    assign = Assignment(name=name, description=description, author=author, format=format,
-                        is_group_assignment=is_group_assignment, active_lti_id=active_lti_id,
-                        can_set_journal_name=can_set_journal_name, can_set_journal_image=can_set_journal_image,
-                        can_lock_journal=can_lock_journal,
-                        remove_grade_upon_leaving_group=remove_grade_upon_leaving_group)
-    if points_possible is not None:
-        assign.points_possible = points_possible
-    if is_published is not None:
-        assign.is_published = is_published
-    if unlock_date is not None:
-        if len(unlock_date.split(' ')) > 2:
-            unlock_date = unlock_date[:-1-len(unlock_date.split(' ')[2])]
-        assign.unlock_date = unlock_date
-    if due_date is not None:
-        if len(due_date.split(' ')) > 2:
-            due_date = due_date[:-1-len(due_date.split(' ')[2])]
-        assign.due_date = due_date
-    if lock_date is not None:
-        if len(lock_date.split(' ')) > 2:
-            lock_date = lock_date[:-1-len(lock_date.split(' ')[2])]
-        assign.lock_date = lock_date
-    assign.save()
+    courses = kwargs.pop('courses', [])
+    assignment = Assignment.objects.create(**kwargs)
 
     for course in courses:
-        assign.add_course(course)
+        assignment.add_course(course)
 
-    return assign
+    return assignment
 
 
 def make_lti_groups(course):

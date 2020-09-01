@@ -19,7 +19,6 @@
         />
         <div v-if="selectedCourse !== null">
             <hr/>
-
             <b-button
                 class="change-button float-right"
                 @click="linkCourse"
@@ -36,7 +35,7 @@ import courseAPI from '@/api/course.js'
 
 export default {
     name: 'LinkCourse',
-    props: ['lti', 'courses'],
+    props: ['courses'],
     data () {
         return {
             selectedCourse: null,
@@ -57,8 +56,8 @@ export default {
     },
     methods: {
         linkCourse () {
-            courseAPI.update(this.selectedCourse.id, { lti_id: this.lti.ltiCourseID })
-                .then((course) => { this.$emit('handleAction', course.id) })
+            courseAPI.update(this.selectedCourse.id, { launch_id: this.$route.query.launch_id })
+                .then((course) => { this.$emit('courseLinked', course) })
         },
     },
 }

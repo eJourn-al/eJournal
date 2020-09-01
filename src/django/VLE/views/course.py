@@ -7,6 +7,7 @@ from rest_framework import viewsets
 from rest_framework.decorators import action
 
 import VLE.factory as factory
+import VLE.lti1p3 as lti
 import VLE.serializers as serialize
 import VLE.utils.generic_utils as utils
 import VLE.utils.responses as response
@@ -52,10 +53,16 @@ class CourseView(viewsets.ViewSet):
         """
         request.user.check_permission('can_add_course')
 
-        name, abbr = utils.required_params(request.data, 'name', 'abbreviation')
-        startdate, enddate, active_lti_id = utils.optional_params(request.data, 'startdate', 'enddate', 'lti_id')
+        launch_id, = utils.optional_params(request.data, 'launch_id')
+        if launch_id:
+            message_launch = lti.utils.get_launch_from_id(launch_id, request)
+            course = lti.course.create_with_launch_data(message_launch.get_launch_data())
+            return response.created({'course': self.serializer_class(course, many=False).data})
 
-        course = factory.make_course(name, abbr, startdate, enddate, request.user, active_lti_id=active_lti_id)
+        name, abbr = utils.required_params(request.data, 'name', 'abbreviation')
+        startdate, enddate = utils.optional_params(request.data, 'startdate', 'enddate')
+
+        course = factory.make_course(name, abbr, startdate, enddate, request.user)
 
         serializer = self.serializer_class(course, many=False)
         return response.created({'course': serializer.data})
@@ -105,10 +112,11 @@ class CourseView(viewsets.ViewSet):
 
         request.user.check_permission('can_edit_course_details', course)
 
-        if 'lti_id' in request.data:
-            if course.active_lti_id:
-                return response.bad_request('Course already linked to LMS.')
-            request.data['active_lti_id'] = request.data.pop('lti_id')
+        launch_id, = utils.optional_params(request.data, 'launch_id')
+        if launch_id:
+            message_launch = lti.utils.get_launch_data_from_id(launch_id, request)
+            course = lti.course.update_with_launch_data(course, message_launch.get_launch_data())
+            return response.success({'course': self.serializer_class(course, many=False).data})
 
         request.data['startdate'], request.data['enddate'] = utils.optional_params(request.data, 'startdate', 'enddate')
         serializer = self.serializer_class(course, data=request.data, partial=True)

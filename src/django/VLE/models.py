@@ -305,7 +305,7 @@ class User(AbstractUser):
             raise ValidationError('A legitimate user requires an email adress.')
 
         if self._state.adding:
-            if self.is_test_student and settings.LTI_TEST_STUDENT_FULL_NAME not in self.full_name:
+            if self.is_test_student and settings.LTI_TEST_STUDENT_FULL_NAME.lower() != self.full_name.lower():
                 raise ValidationError('Test user\'s full name deviates on creation.')
         else:
             pre_save = User.objects.get(pk=self.pk)
@@ -426,7 +426,7 @@ class Course(CreateUpdateModel):
     name = models.TextField()
     abbreviation = models.TextField(
         max_length=10,
-        default='XXXX',
+        null=True,
     )
 
     author = models.ForeignKey(
@@ -442,10 +442,11 @@ class Course(CreateUpdateModel):
         through_fields=('course', 'user'),
     )
 
-    startdate = models.DateField(
+    # TODO LTI: migrate to datetime field
+    startdate = models.DateTimeField(
         null=True,
     )
-    enddate = models.DateField(
+    enddate = models.DateTimeField(
         null=True,
     )
 
@@ -453,6 +454,9 @@ class Course(CreateUpdateModel):
         null=True,
         unique=True,
         blank=True,
+    )
+    names_role_service = models.TextField(
+        null=True,
     )
 
     # These LTI assignments belong to this course.
@@ -737,6 +741,9 @@ class Assignment(CreateUpdateModel):
         models.TextField(),
         default=list,
     )
+    assignments_grades_service = models.TextField(
+        null=True,
+    )
 
     is_group_assignment = models.BooleanField(default=False)
     remove_grade_upon_leaving_group = models.BooleanField(default=False)
@@ -771,7 +778,7 @@ class Assignment(CreateUpdateModel):
                 pre_save = Assignment.objects.get(pk=self.pk)
                 active_lti_id_modified = pre_save.active_lti_id != self.active_lti_id
 
-                if pre_save.is_published and not self.is_published and pre_save.has_entries():
+                if pre_save.is_published and not self.is_published and not pre_save.can_be_unpublished():
                     raise ValidationError('Cannot unpublish an assignment that has entries.')
                 if pre_save.is_group_assignment != self.is_group_assignment:
                     if pre_save.has_entries():
@@ -888,6 +895,9 @@ class Assignment(CreateUpdateModel):
         course.add_assignment_lti_id(lti_id)
         course.save()
 
+    def can_be_unpublished(self):
+        return not self.has_entries()
+
     def has_entries(self):
         return Entry.objects.filter(node__journal__assignment=self).exists()
 
@@ -926,9 +936,6 @@ class AssignmentParticipation(CreateUpdateModel):
 
     sourcedid = models.TextField(null=True)
     grade_url = models.TextField(null=True)
-
-    def needs_lti_link(self):
-        return self.assignment.active_lti_id is not None and self.sourcedid is None
 
     def save(self, *args, **kwargs):
         is_new = self._state.adding
@@ -1043,16 +1050,6 @@ class Journal(CreateUpdateModel, ComputedFieldsModel):
     ])
     def needs_marking(self):
         return self.node_set.filter(entry__isnull=False, entry__grade__isnull=True).count()
-
-    @computed(ArrayField(models.TextField(), default=list), depends=[
-        ['authors', ['journal', 'sourcedid']],
-        ['authors.user', ['full_name']],
-        ['assignment', ['active_lti_id']],
-    ])
-    def needs_lti_link(self):
-        if not self.assignment.active_lti_id:
-            return list()
-        return list(self.authors.filter(sourcedid__isnull=True).values_list('user__full_name', flat=True))
 
     @computed(models.TextField(null=True), depends=[
         ['self', ['stored_name']],

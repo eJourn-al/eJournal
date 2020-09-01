@@ -5,9 +5,12 @@ import pprint
 import jwt
 import oauth2
 from django.conf import settings
-from django.http import QueryDict
+from django.http import HttpResponse, QueryDict
 from django.shortcuts import redirect
+from django.urls import reverse
 from django.utils import timezone
+from pylti1p3.contrib.django import DjangoCacheDataStorage, DjangoMessageLaunch, DjangoOIDCLogin
+from pylti1p3.deep_link_resource import DeepLinkResource
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
@@ -16,8 +19,25 @@ import VLE.factory as factory
 import VLE.lti_launch as lti
 import VLE.utils.generic_utils as utils
 import VLE.utils.responses as response
+from VLE.lti1p3 import claims, scopes
 from VLE.models import User
 from VLE.utils.error_handling import VLEMissingRequiredKey
+
+
+class ExtendedDjangoMessageLaunch(DjangoMessageLaunch):
+
+    def validate_nonce(self):
+        """
+        Probably it is bug on "https://lti-ri.imsglobal.org":
+        site passes invalid "nonce" value during deep links launch.
+        Because of this in case of iss == http://imsglobal.org just skip nonce validation.
+
+        """
+        iss = self.get_iss()
+        deep_link_launch = self.is_deep_link_launch()
+        if iss == "http://imsglobal.org" and deep_link_launch:
+            return self
+        return super(ExtendedDjangoMessageLaunch, self).validate_nonce()
 
 
 class LTI_STATES(enum.Enum):
@@ -113,21 +133,6 @@ def get_finish_state(user, assignment, lti_params):
         return LTI_STATES.FINISH_S.value
 
 
-def handle_test_student(user, params):
-    """Creates a test user if no user is proved and the params contain a blank email adress."""
-    if not user \
-       and 'custom_user_email' in params and params['custom_user_email'] == '' \
-       and 'custom_user_full_name' in params and params['custom_user_full_name'] == settings.LTI_TEST_STUDENT_FULL_NAME:
-        lti_id, username, full_name, email, course_id = utils.required_params(
-            params, 'user_id', 'custom_username', 'custom_user_full_name', 'custom_user_email', 'custom_course_id')
-        profile_picture = params.get('custom_user_image', settings.DEFAULT_PROFILE_PICTURE)
-        is_teacher = settings.ROLES['Teacher'] in lti.roles_to_list(params)
-
-        return factory.make_user(username, email=email, lti_id=lti_id, profile_picture=profile_picture,
-                                 is_teacher=is_teacher, full_name=full_name, is_test_student=True)
-    return user
-
-
 @api_view(['POST'])
 def get_lti_params_from_jwt(request):
     """Handle the controlflow for course/assignment create, connect and select.
@@ -185,53 +190,71 @@ def update_lti_groups(request):
         return response.bad_request('Course not found')
 
 
-@api_view(['POST'])
+    #
+    # print(message_launch_data)
+    # lineitem = message_launch_data.get(claims.GRADES).get('lineitem')
+    # lineitems = message_launch_data.get(claims.GRADES).get('lineitems')
+    # course_lti_id = message_launch_data.get(claims.COURSE).get('id')
+    # user_id = message_launch_data.get('sub')
+    # instance_name = message_launch_data.get(claims.TOOL).get('name')
+    #
+    # if not message_launch.has_ags():
+    #     raise LTIError(
+    #         'We do not have the required services for grading or retrieving assignment data. Please contact an admin.')
+    #
+    # ags = message_launch.get_ags()
+    # print('\n\n\nLINEITEMS\n\n', ags.find_lineitem_by_id(lineitem), '\n\n')
+    # print('\n\n\nLINEITEMS\n\n', ags.get_lineitems(), '\n\n')
+    # if not message_launch.has_nrps():
+    #     raise LTIError('We are unable to get the the members from the course. Please contact an admin.')
+    #
+    # nrps = message_launch.get_nrps()
+    # print(nrps.get_members())
+    # return HttpResponse('<body>done</body>')
+
+
+    # user = lti.get_user_lti(params)
+    # user = handle_test_student(user, params)
+    #
+    # params['exp'] = datetime.datetime.utcnow() + datetime.timedelta(minutes=15)
+    # lti_params = encode_lti_params(params)
+    #
+    # try:
+    #     if user is None:
+    #         query = QueryDict(mutable=True)
+    #         query['state'] = LTI_STATES.NO_USER.value
+    #         query['lti_params'] = lti_params
+    #         query['username'] = params['custom_username']
+    #         query['username_already_exists'] = User.objects.filter(username=params['custom_username']).exists()
+    #         query['full_name'] = params.get('custom_user_full_name', None)
+    #     else:
+    #         refresh = TokenObtainPairSerializer.get_token(user)
+    #         user.last_login = timezone.now()
+    #         user.save()
+    #         query = QueryDict.fromkeys(['lti_params'], lti_params, mutable=True)
+    #         query['jwt_access'] = str(refresh.access_token)
+    #         query['jwt_refresh'] = str(refresh)
+    #         query['state'] = LTI_STATES.LOGGED_IN.value
+    # except KeyError as err:
+    #     query = QueryDict.fromkeys(['state'], LTI_STATES.KEY_ERR.value, mutable=True)
+    #     query['description'] = 'The request is missing the following parameter: {0}.'.format(err)
+    #
+    # return redirect(lti.create_lti_query_link(query))
+
+
+def get_launch_url(request):
+    target_link_uri = request.POST.get('target_link_uri', request.GET.get('target_link_uri'))
+    if not target_link_uri:
+        raise Exception('Missing "target_link_uri" param')
+    return target_link_uri
+
+
+@api_view(['POST', 'GET'])
 @permission_classes((AllowAny, ))
-def lti_launch(request):
-    """Django view for the lti post request.
-
-    Verifies the given LTI parameters based on our secret, if a user can be found based on the verified parameters
-    a redirection link is send with corresponding JW access and refresh token to allow for a user login. If no user
-    can be found on our end, but the LTI parameters were verified nonetheless, we are dealing with a new user and
-    redirect with additional parameters that will allow for the creation of a new user.
-
-    If the parameters are not validated a redirection is send with the parameter state set to BAD_AUTH.
-    """
-    message_launch = ExtendedDjangoMessageLaunch(
-        request, settings.LTI_KEYS, launch_data_storage=get_launch_data_storage())
-    message_launch_data = message_launch.get_launch_data()
-    pprint.pprint(message_launch_data)
-    try:
-        lti.OAuthRequestValidater.check_signature(key, secret, request)
-    except (oauth2.Error, ValueError):
-        return redirect(lti.create_lti_query_link(QueryDict.fromkeys(['state'], LTI_STATES.BAD_AUTH.value)))
-
-    params = request.POST.dict()
-
-    user = lti.get_user_lti(params)
-    user = handle_test_student(user, params)
-
-    params['exp'] = datetime.datetime.utcnow() + datetime.timedelta(minutes=15)
-    lti_params = encode_lti_params(params)
-
-    try:
-        if user is None:
-            query = QueryDict(mutable=True)
-            query['state'] = LTI_STATES.NO_USER.value
-            query['lti_params'] = lti_params
-            query['username'] = params['custom_username']
-            query['username_already_exists'] = User.objects.filter(username=params['custom_username']).exists()
-            query['full_name'] = params.get('custom_user_full_name', None)
-        else:
-            refresh = TokenObtainPairSerializer.get_token(user)
-            user.last_login = timezone.now()
-            user.save()
-            query = QueryDict.fromkeys(['lti_params'], lti_params, mutable=True)
-            query['jwt_access'] = str(refresh.access_token)
-            query['jwt_refresh'] = str(refresh)
-            query['state'] = LTI_STATES.LOGGED_IN.value
-    except KeyError as err:
-        query = QueryDict.fromkeys(['state'], LTI_STATES.KEY_ERR.value, mutable=True)
-        query['description'] = 'The request is missing the following parameter: {0}.'.format(err)
-
-    return redirect(lti.create_lti_query_link(query))
+def lti_login(request):
+    oidc_login = DjangoOIDCLogin(request, settings.TOOL_CONF, launch_data_storage=DjangoCacheDataStorage())
+    target_link_uri = get_launch_url(request)
+    a = oidc_login\
+        .enable_check_cookies()\
+        .redirect(target_link_uri)
+    return a

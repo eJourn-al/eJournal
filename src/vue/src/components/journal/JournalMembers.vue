@@ -42,21 +42,6 @@
                     class="trash-icon"
                 />
             </div>
-            <b class="max-one-line">
-                <b-badge
-                    v-if="author.needs_lti_link"
-                    v-b-tooltip:hover="'This user has not yet visited the assignment in the LMS (Canvas) yet'"
-                    class="background-red"
-                >
-                    LTI
-                    <icon
-                        name="link"
-                        class="fill-white shift-up-2"
-                        scale="0.65"
-                    />
-                </b-badge>
-                {{ author.user.full_name }}
-            </b>
             <span
                 v-if="author.user.username"
                 class="max-one-line"

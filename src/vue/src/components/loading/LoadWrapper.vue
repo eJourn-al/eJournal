@@ -24,6 +24,10 @@ export default {
         loading: {
             required: true,
         },
+        timeBeforeShow: {
+            required: false,
+            default: 1000,
+        },
     },
     data () {
         return {
@@ -45,7 +49,7 @@ export default {
                     this.keepSpinning = false
                 }, 500)
             }
-        }, 1000)
+        }, this.timeBeforeShow)
     },
 }
 </script>

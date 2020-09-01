@@ -13,6 +13,7 @@ import os
 from collections import OrderedDict
 from datetime import timedelta
 
+import pytz
 import sentry_sdk
 from sentry_sdk.integrations.celery import CeleryIntegration
 from sentry_sdk.integrations.django import DjangoIntegration
@@ -130,7 +131,7 @@ MIDDLEWARE = [
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
-    'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    # 'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'VLE.utils.error_handling.ErrorMiddleware',
     'csp.middleware.CSPMiddleware',
 ]
@@ -177,6 +178,7 @@ AUTH_PASSWORD_VALIDATORS = [
 # https://docs.djangoproject.com/en/2.0/topics/i18n/
 LANGUAGE_CODE = 'en-us'
 TIME_ZONE = 'CET'
+TZ_INFO = pytz.timezone(TIME_ZONE)
 USE_I18N = True
 USE_L10N = True
 USE_TZ = False

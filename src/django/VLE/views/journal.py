@@ -7,10 +7,12 @@ from django.db.models import Q
 from rest_framework import viewsets
 from rest_framework.decorators import action
 
+import VLE.lti1p3 as lti
 import VLE.utils.generic_utils as utils
 import VLE.utils.grading as grading
 import VLE.utils.responses as response
 import VLE.validators as validators
+from VLE.lti1p3 import grading
 from VLE.models import Assignment, AssignmentParticipation, Course, FileContext, Journal, User
 from VLE.serializers import AssignmentParticipationSerializer, JournalSerializer
 from VLE.utils import file_handling
@@ -189,7 +191,8 @@ class JournalView(viewsets.ViewSet):
             req_data.pop('bonus_points', None)
             journal.bonus_points = bonus_points
             journal.save()
-            grading.task_journal_status_to_LMS.delay(journal.pk)
+            lti.grading.send_grade(journal.authors.first())
+            # grading.task_journal_status_to_LMS.delay(journal.pk)
             return response.success({'journal': JournalSerializer(journal, context={'user': request.user}).data})
 
         name, author_limit, image = utils.optional_typed_params(request.data, (str, 'name'), (int, 'author_limit'),

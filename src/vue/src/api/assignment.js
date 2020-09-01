@@ -35,14 +35,14 @@ export default {
         return auth.get(`assignments/${id}`, { lti: true }, connArgs)
     },
 
-    getImportable (connArgs = auth.DEFAULT_CONN_ARGS) {
-        return auth.get('assignments/importable', null, connArgs)
+    getImportable (data = null, connArgs = auth.DEFAULT_CONN_ARGS) {
+        return auth.get('assignments/importable', data, connArgs)
             .then(response => response.data.data)
     },
 
     import (id, data, connArgs = auth.DEFAULT_CONN_ARGS) {
         return auth.post(`assignments/${id}/copy/`, data, connArgs)
-            .then(response => response.data)
+            .then(response => response.data.assignment)
     },
 
     importTemplate (id, data, connArgs = auth.DEFAULT_CONN_ARGS) {

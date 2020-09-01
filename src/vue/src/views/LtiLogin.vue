@@ -6,7 +6,7 @@
             </h1>
             <b-card class="no-hover">
                 <h2 class="theme-h2 multi-form">
-                    Hi {{ lti.fullName ? lti.fullName : lti.username }}
+                    Hi {{ $route.query.name }}
                 </h2>
                 <template v-if="usernameAlreadyExists">
                     <p>
@@ -44,7 +44,7 @@
                         </a> to link it instead.
                     </p>
                     <register-user
-                        :lti="lti"
+                        :launchId="this.$route.query.launch_id"
                         class="mt-2"
                         @handleAction="userIntegrated"
                     />
@@ -91,18 +91,7 @@ export default {
 
             /* Possible states for the control flow */
             states: {
-                state: '',
-                key_error: '-2',
-                bad_auth: '-1',
-                no_user: '0',
-                logged_in: '1',
-            },
-
-            lti: {
-                ltiJWT: '',
-                fullName: '',
-                username: '',
-                email: '',
+                noUser: '0',
             },
 
             usernameAlreadyExists: false,
@@ -117,100 +106,41 @@ export default {
         },
     },
     mounted () {
-        if (this.$route.query.state === this.states.bad_auth) {
-            this.$router.push({
-                name: 'ErrorPage',
-                params: {
-                    code: '511',
-                    reasonPhrase: 'Network authorization required',
-                    description: `Invalid credentials from the LTI environment.
-                                  Please contact the system administrator.`,
-                },
-            })
-        } else if (this.$route.query.state === this.states.key_error) {
-            this.$router.push({
-                name: 'ErrorPage',
-                params: {
-                    code: '400',
-                    reasonPhrase: 'Missing parameter in LTI request',
-                    description: `${this.$route.query.description}
-                    Please contact the system administrator.`,
-                },
-            })
-        } else {
-            this.lti.ltiJWT = this.$route.query.lti_params
-
-            /* The LTI parameters are verified in our backend, and the corresponding user is logged in. */
-            if (this.$route.query.state === this.states.logged_in) {
-                this.$store.commit(
-                    'user/SET_JWT',
-                    { access: this.$route.query.jwt_access, refresh: this.$route.query.jwt_refresh },
-                )
-                this.$store.dispatch('user/populateStore').then(() => {
-                    this.userIntegrated()
-                }, (error) => {
-                    this.$router.push({
-                        name: 'ErrorPage',
-                        params: {
-                            code: error.response.status,
-                            reasonPhrase: error.response.statusText,
-                            description: 'Could not fetch all user data, please try again.',
-                        },
-                    })
-                })
-
+        if (this.$route.query.launch_state === this.states.noUser) {
             /* The LTI parameters are verified in our backend, however there is no corresponding user yet.
-               We must create/connect one. */
-            } else if (this.$route.query.state === this.states.no_user) {
-                this.$store.commit('user/LOGOUT') // Ensures no old user is loaded from local storage.
-                if (this.$route.query.full_name !== undefined) {
-                    this.lti.fullName = this.$route.query.full_name
-                }
-                if (this.$route.query.username !== undefined) {
-                    this.lti.username = this.$route.query.username
-                }
-                if (this.$route.query.email !== undefined) {
-                    this.lti.email = this.$route.query.email
-                }
-                if (this.$route.query.username_already_exists === 'True') {
-                    this.usernameAlreadyExists = true
-                }
-
-                this.handleUserIntegration = true
-            } else {
-                this.$router.push({
-                    name: 'ErrorPage',
-                    params: {
-                        code: '500',
-                        reasonPhrase: 'Internal Server Error',
-                        description: `Received invalid state from the server
-                                      when trying to integrate the new user.
-                                      Please contact the system administrator
-                                      for more information. Further integration
-                                      is not possible.`,
-                    },
-                })
+            We must create/connect one. */
+            this.$store.commit('user/LOGOUT') // Ensures no old user is loaded from local storage.
+            if (this.$route.query.username_already_exists === 'True') {
+                this.usernameAlreadyExists = true
             }
+
+            this.handleUserIntegration = true
+        } else {
+            /* The LTI parameters are verified in our backend, and the corresponding user is logged in. */
+            this.$store.commit(
+                'user/SET_JWT',
+                { access: this.$route.query.jwt_access, refresh: this.$route.query.jwt_refresh },
+            )
+            this.$store.dispatch('user/populateStore').then(this.userIntegrated)
         }
     },
     methods: {
-        userIntegrated () {
-            this.$router.push({
-                name: 'LtiLaunch',
-                query: {
-                    ltiJWT: this.lti.ltiJWT,
-                },
-            })
-        },
         showModal (ref) {
             this.$refs[ref].show()
         },
         hideModal (ref) {
             this.$refs[ref].hide()
         },
+        userIntegrated () {
+            this.$router.push({
+                name: 'LtiLaunch',
+                query: this.$route.query,
+            })
+        },
         handleLinked () {
-            userAPI.update(0, { jwt_params: this.lti.ltiJWT })
-                .then(() => {
+            userAPI.update(0, { launch_id: this.$route.query.launch_id })
+                .then((user) => {
+                    this.$route.query.launch_state = user.launch_state
                     /* This is required because between the login and the connect of lti user to our user
                       data can change. */
                     this.$store.dispatch('user/populateStore').then(() => {

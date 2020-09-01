@@ -24,6 +24,7 @@ from django.contrib import admin
 from django.urls import path
 from rest_framework_simplejwt.views import TokenRefreshView, TokenVerifyView
 
+from VLE.lti1p3 import launch
 from VLE.views import common, email, lti, user
 
 urlpatterns = [
@@ -42,8 +43,8 @@ urlpatterns = [
     path('send_feedback/', email.send_feedback, name='send_feedback'),
 
     # Launch from LMS, verifies jwt credentials and redirects to front end lti_launch point of entry
-    path('lti/launch', lti.lti_launch, name='lti_launch'),
-    path('lti/login', lti.lti_login, name='lti_login'),
+    path('lti/launch/', launch.lti_launch, name='lti_launch'),
+    url(r'^lti/login/$', lti.lti_login, name='lti_login'),
 
     # Launch from our front end
     path('get_lti_params_from_jwt/', lti.get_lti_params_from_jwt, name='get_lti_params_from_jwt'),

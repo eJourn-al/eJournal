@@ -111,11 +111,8 @@ export default {
             required: true,
         },
         cID: {
-            required: true,
-        },
-        lti: {
-            default: () => ({}),
             required: false,
+            default: null,
         },
     },
     data () {
@@ -160,22 +157,26 @@ export default {
                 assignmentAPI.import(this.selectedAssignment.id, {
                     course_id: this.cID,
                     months_offset: (!this.shiftImportDates || this.months === '') ? 0 : this.months,
-                    lti_id: this.lti.ltiAssignID,
-                }, { customSuccessToast: 'Assignment succesfully imported.' }).then((response) => {
+                    launch_id: this.$route.query.launch_id,
+                }, { customSuccessToast: 'Assignment succesfully imported.' }).then((assignment) => {
                     this.assignmentImportInFlight = false
 
                     this.$store.commit('user/IMPORT_ASSIGNMENT_PERMISSIONS', {
                         sourceAssignmentID: this.selectedAssignment.id,
-                        importAssignmentID: response.assignment_id,
+                        importAssignmentID: assignment.id,
                     })
 
-                    this.$router.push({
-                        name: 'FormatEdit',
-                        params: {
-                            cID: this.cID,
-                            aID: response.assignment_id,
-                        },
-                    })
+                    if (!this.$route.query.launch_id) {
+                        this.$router.push({
+                            name: 'FormatEdit',
+                            params: {
+                                cID: this.cID,
+                                aID: assignment.id,
+                            },
+                        })
+                    } else {
+                        this.$emit('assignmentImported', assignment)
+                    }
                 }).catch((error) => {
                     this.assignmentImportInFlight = false
                     throw error

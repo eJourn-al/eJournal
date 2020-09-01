@@ -5,6 +5,7 @@ A library with useful functions.
 """
 import base64
 import re
+import urllib
 from mimetypes import guess_extension
 
 from django.core.files.base import ContentFile
@@ -305,3 +306,10 @@ def base64ToContentFile(string, filename):
     mimetype = matches[0]
     extension = guess_extension(mimetype)
     return ContentFile(base64.b64decode(matches[1]), name='{}{}'.format(filename, extension))
+
+
+def build_url(baseurl, path, args_dict):
+    url_parts = list(urllib.parse.urlparse(baseurl))
+    url_parts[2] = path
+    url_parts[4] = urllib.parse.urlencode(args_dict)
+    return urllib.parse.urlunparse(url_parts)

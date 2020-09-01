@@ -55,7 +55,7 @@ class UserSerializer(serializers.ModelSerializer):
         if not (self.context['user'].is_supervisor_of(user) or self.context['user'] == user):
             return None
 
-        return user.username
+        return user.username if user.username != user.lti_id else 'unknown'
 
     def get_profile_picture(self, user):
         if 'user' not in self.context or not self.context['user']:
@@ -147,18 +147,14 @@ class GroupSerializer(serializers.ModelSerializer):
 
 class AssignmentParticipationSerializer(serializers.ModelSerializer):
     user = serializers.SerializerMethodField()
-    needs_lti_link = serializers.SerializerMethodField()
 
     class Meta:
         model = AssignmentParticipation
-        fields = ('id', 'journal', 'assignment', 'user', 'needs_lti_link')
+        fields = ('id', 'journal', 'assignment', 'user')
         read_only_fields = ('id', 'journal', 'assignment')
 
     def get_user(self, participation):
         return UserSerializer(participation.user, context=self.context).data
-
-    def get_needs_lti_link(self, participation):
-        return participation.needs_lti_link()
 
 
 class ParticipationSerializer(serializers.ModelSerializer):
@@ -504,7 +500,7 @@ class JournalSerializer(serializers.ModelSerializer):
         model = Journal
         fields = ('id', 'bonus_points', 'grade', 'name', 'image', 'author_limit',
                   'locked', 'author_count', 'full_names', 'groups',
-                  'grade', 'name', 'image', 'needs_lti_link', 'unpublished', 'needs_marking', 'usernames')
+                  'grade', 'name', 'image', 'unpublished', 'needs_marking', 'usernames')
         read_only_fields = ('id', 'assignment', 'authors', 'grade')
 
     def get_author_count(self, journal):

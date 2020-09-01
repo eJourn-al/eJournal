@@ -56,9 +56,8 @@ export default {
     mounted () {
         Sentry.withScope((scope) => {
             scope.setLevel('warning')
-            scope.setTag('notSetup', this.ltiState)
-            scope.setExtra('courseName', this.courseName)
-            scope.setExtra('assignmentName', this.assignmentName)
+            scope.setTag('not_setup', this.ltiState)
+            scope.setExtra('launch_id', this.$route.query.launch_id)
             Sentry.captureMessage('User requested access to content which was not yet setup.')
         })
     },

@@ -75,18 +75,26 @@ def send_author_status_to_LMS(journal, author, left_journal=False):
             'successful': False,
         }
 
-    if author.sourcedid is None:
-        return {
-            'description': '{} has no sourcedid'.format(author.to_string(user=author.user)),
-            'code_mayor': 'error',
-            'successful': False,
-        }
-    if author.grade_url is None:
-        return {
-            'description': '{} has no grade_url'.format(author.to_string(user=author.user)),
-            'code_mayor': 'error',
-            'successful': False,
-        }
+    gr = Grade()
+    gr.set_score_given(journal.grade)\
+         .set_score_maximum(assignment.points_possible)\
+         .set_timestamp(journal.published_nodes.last().entry.last_edited.strftime('%Y-%m-%dT%H:%M:%S+0000'))\
+         .set_activity_progress('Completed')\
+         .set_grading_progress('PendingManual')\
+         .set_user_id(external_user_id)
+
+    # if author.sourcedid is None:
+    #     return {
+    #         'description': '{} has no sourcedid'.format(author.to_string(user=author.user)),
+    #         'code_mayor': 'error',
+    #         'successful': False,
+    #     }
+    # if author.grade_url is None:
+    #     return {
+    #         'description': '{} has no grade_url'.format(author.to_string(user=author.user)),
+    #         'code_mayor': 'error',
+    #         'successful': False,
+    #     }
 
     course = journal.assignment.get_active_course(author.user)
     if not left_journal:

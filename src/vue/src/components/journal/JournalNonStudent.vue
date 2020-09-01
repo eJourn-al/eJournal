@@ -32,30 +32,6 @@
                 class="main-content-timeline-page"
             >
                 <bread-crumb v-if="$root.xl"/>
-                <b-alert
-                    v-if="!loadingNodes && journal.needs_lti_link.length > 0 && assignment.active_lti_course"
-                    show
-                >
-                    <span v-if="assignment.is_group_assignment">
-                        <b>Warning:</b> The following journal members have not visited the assignment in the active LMS
-                        (Canvas) course '{{ assignment.active_lti_course.name }}' yet:
-                        <ul>
-                            <li
-                                v-for="name in journal.needs_lti_link"
-                                :key="`lti-author-${name}`"
-                            >
-                                {{ name }}
-                            </li>
-                        </ul>
-                        This journal cannot be updated and grades cannot be passed back until each member visits the
-                        assignment at least once.
-                    </span>
-                    <span v-else>
-                        <b>Warning:</b> This student has not visited the assignment in the active LMS (Canvas) course
-                        '{{ assignment.active_lti_course.name }}' yet. They cannot update this journal and grades cannot
-                        be passed back until they visit the assignment at least once.
-                    </span>
-                </b-alert>
                 <load-wrapper :loading="loadingNodes">
                     <div v-if="nodes.length > currentNode && currentNode !== -1">
                         <div v-if="nodes[currentNode].type == 'e' || nodes[currentNode].type == 'd'">

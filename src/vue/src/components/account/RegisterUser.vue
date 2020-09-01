@@ -4,34 +4,43 @@
             @submit.prevent="onSubmit"
             @reset.prevent="onReset"
         >
-            <h2
-                v-if="!lti"
-                class="theme-h2 field-heading required"
-            >
-                Username
-            </h2>
-            <b-input
-                v-if="!lti"
-                v-model="form.username"
-                class="multi-form theme-input"
-                placeholder="Username"
-                maxlength="30"
-                required
-            />
-            <h2
-                v-if="!lti"
-                class="theme-h2 field-heading required"
-            >
-                Full name
-            </h2>
-            <b-input
-                v-if="!lti"
-                v-model="form.fullName"
-                class="multi-form theme-input"
-                placeholder="Full name"
-                maxlength="200"
-                required
-            />
+            <template v-if="!$route.query.launch_id">
+                <h2
+                    class="theme-h2 field-heading required"
+                >
+                    Username
+                </h2>
+                <b-input
+                    v-model="form.username"
+                    class="multi-form theme-input"
+                    placeholder="Username"
+                    maxlength="30"
+                    required
+                />
+                <h2
+                    class="theme-h2 field-heading required"
+                >
+                    Full name
+                </h2>
+                <b-input
+                    v-model="form.fullName"
+                    class="multi-form theme-input"
+                    placeholder="Full name"
+                    maxlength="200"
+                    required
+                />
+                <h2
+                    class="theme-h2 field-heading required"
+                >
+                    Email
+                </h2>
+                <b-input
+                    v-model="form.email"
+                    class="multi-form theme-input"
+                    placeholder="Email"
+                    required
+                />
+            </template>
             <h2 class="theme-h2 field-heading required">
                 New password
                 <tooltip
@@ -53,19 +62,6 @@
                 class="multi-form theme-input"
                 type="password"
                 placeholder="Repeat password"
-                required
-            />
-            <h2
-                v-if="!lti"
-                class="theme-h2 field-heading required"
-            >
-                Email
-            </h2>
-            <b-input
-                v-if="!lti"
-                v-model="form.email"
-                class="multi-form theme-input"
-                placeholder="Email"
                 required
             />
             <b-button
@@ -92,14 +88,12 @@ import tooltip from '@/components/assets/Tooltip.vue'
 
 import authAPI from '@/api/auth.js'
 import validation from '@/utils/validation.js'
-import statuses from '@/utils/constants/status_codes.js'
 
 export default {
     name: 'RegisterUser',
     components: {
         tooltip,
     },
-    props: ['lti'],
     data () {
         return {
             form: {
@@ -108,7 +102,6 @@ export default {
                 password2: '',
                 fullName: '',
                 email: '',
-                ltiJWT: '',
             },
             saveRequestInFlight: false,
         }
@@ -116,61 +109,47 @@ export default {
     methods: {
         onSubmit () {
             this.saveRequestInFlight = true
-            if (this.lti) {
-                this.form.username = this.lti.username
-                this.form.ltiJWT = this.lti.ltiJWT
-            }
 
             if (validation.validatePassword(this.form.password, this.form.password2)
-                && (this.lti || validation.validateEmail(this.form.email))) {
+                && (this.$route.query.launch_id || validation.validateEmail(this.form.email))) {
                 authAPI.register(
                     this.form.username,
                     this.form.password,
                     this.form.fullName,
                     this.form.email,
-                    this.form.ltiJWT,
+                    this.$route.query.launch_id,
                     {
-                        customSuccessToast: this.lti ? '' : `Registration successful! Please follow the instructions
-                        sent to ${this.form.email} to confirm your email address.`,
+                        customSuccessToast: this.$route.query.launch_id ? ''
+                            : `Registration successful! Please follow the
+                            instructions sent to ${this.form.email} to confirm your email address.`,
                     })
-                    .then(() => {
+                    .then((user) => {
+                        if (this.$route.query.launch_id) {
+                            this.$route.query.launch_state = user.launch_state
+                        }
                         this.$store.dispatch(
                             'user/login',
-                            { username: this.form.username, password: this.form.password },
+                            { username: user.username, password: this.form.password },
                         )
                             .then(() => {
                                 this.$emit('handleAction')
-                                this.saveRequestInFlight = false
-                            })
-                            .catch(() => {
-                                this.saveRequestInFlight = false
-                                this.$toasted.error('Error logging in with your newly created account, please contact '
-                                + 'a system administrator or try registering again.')
                             })
                     })
-                    .catch((error) => {
+                    .finally(() => {
                         this.saveRequestInFlight = false
-                        if (error.response.status === statuses.FORBIDDEN) {
-                            this.$router.push({
-                                name: 'ErrorPage',
-                                params: {
-                                    code: error.response.status,
-                                    reasonPhrase: error.response.statusText,
-                                    description: error.response.data.description,
-                                },
-                            })
-                        }
                     })
             } else {
                 this.saveRequestInFlight = false
             }
         },
         onReset () {
-            this.form.username = ''
-            this.form.password = ''
-            this.form.password2 = ''
-            this.form.fullName = ''
-            this.form.email = ''
+            this.form = {
+                username: '',
+                password: '',
+                password2: '',
+                fullName: '',
+                email: '',
+            }
         },
     },
 }

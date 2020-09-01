@@ -141,13 +141,13 @@ export default {
     DEFAULT_CONN_ARGS,
 
     /* Create a user and add it to the database. */
-    register (username, password, fullName, email, jwtParams = null, connArgs = DEFAULT_CONN_ARGS) {
+    register (username, password, fullName, email, launchId = null, connArgs = DEFAULT_CONN_ARGS) {
         return initRequest(connection.conn.post, improveUrl('users'), {
             username,
             password,
             full_name: fullName,
             email,
-            jwt_params: jwtParams,
+            launch_id: launchId,
         }, connArgs)
             .then(response => response.data.user)
     },

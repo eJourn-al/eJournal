@@ -75,3 +75,7 @@ fabric.properties
 *.dump
 
 zube_api_key.pem
+
+config/lti/cert_suite_private.key
+config/lti/lti_keys.json
+config/lti/*.key

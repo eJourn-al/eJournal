@@ -13,6 +13,7 @@ from rest_framework import viewsets
 from rest_framework.decorators import action
 
 import VLE.factory as factory
+import VLE.lti1p3 as lti
 import VLE.utils.generic_utils as utils
 import VLE.utils.responses as response
 import VLE.validators as validators
@@ -107,12 +108,18 @@ class AssignmentView(viewsets.ViewSet):
             success -- with the assignment data
 
         """
+        launch_id, = utils.optional_params(request.data, 'launch_id')
+        if launch_id:
+            launch_data = lti.utils.get_launch_data_from_id(launch_id, request)
+            assignment = lti.assignment.create_with_launch_data(launch_data)
+            return response.created({'assignment': AssignmentSerializer(assignment, many=False).data})
+
         name, description, course_id = utils.required_typed_params(
             request.data, (str, 'name'), (str, 'description'), (int, 'course_id'))
-        unlock_date, due_date, lock_date, lti_id, is_published, points_possible, is_group_assignment, \
+        unlock_date, due_date, lock_date, is_published, points_possible, is_group_assignment, \
             can_set_journal_name, can_set_journal_image, can_lock_journal, remove_grade_upon_leaving_group = \
             utils.optional_typed_params(
-                request.data, (str, 'unlock_date'), (str, 'due_date'), (str, 'lock_date'), (str, 'lti_id'),
+                request.data, (str, 'unlock_date'), (str, 'due_date'), (str, 'lock_date'),
                 (bool, 'is_published'), (float, 'points_possible'), (bool, 'is_group_assignment'),
                 (bool, 'can_set_journal_name'), (bool, 'can_set_journal_image'), (bool, 'can_lock_journal'),
                 (bool, 'remove_grade_upon_leaving_group'))
@@ -121,18 +128,12 @@ class AssignmentView(viewsets.ViewSet):
         request.user.check_permission('can_add_assignment', course)
 
         assignment = factory.make_assignment(
-            name, description, courses=[course], author=request.user, active_lti_id=lti_id,
+            name, description, courses=[course], author=request.user,
             points_possible=points_possible, unlock_date=unlock_date, due_date=due_date,
             lock_date=lock_date, is_published=is_published, is_group_assignment=is_group_assignment or False,
             can_set_journal_name=can_set_journal_name or False, can_set_journal_image=can_set_journal_image or False,
             can_lock_journal=can_lock_journal or False,
             remove_grade_upon_leaving_group=remove_grade_upon_leaving_group or False)
-
-        # Add new lti id to assignment
-        if lti_id is not None:
-            request.user.check_permission('can_add_assignment', course)
-            assignment.add_lti_id(lti_id, course)
-            request.data.pop('lti_id')
 
         file_handling.establish_rich_text(request.user, assignment.description, assignment=assignment)
         file_handling.remove_unused_user_files(request.user)
@@ -177,8 +178,11 @@ class AssignmentView(viewsets.ViewSet):
 
         serializer = AssignmentSerializer(
             assignment,
-            context={'user': request.user, 'course': course,
-                     'journals': request.user.has_permission('can_grade', assignment)}
+            context={
+                'user': request.user,
+                'course': course,
+                'journals': request.user.has_permission('can_grade', assignment)
+            }
         )
         return response.success({'assignment': serializer.data})
 
@@ -224,13 +228,13 @@ class AssignmentView(viewsets.ViewSet):
             request.data.pop('active_lti_course')
 
         # Add new lti id to assignment
-        lti_id, = utils.optional_typed_params(request.data, (str, 'lti_id'))
-        if lti_id is not None:
-            course_id, = utils.required_typed_params(request.data, (int, 'course_id'))
-            course = Course.objects.get(pk=course_id)
+        launch_id, = utils.optional_typed_params(request.data, (str, 'launch_id'))
+        if launch_id:
+            launch_data = lti.utils.get_launch_data_from_id(launch_id, request)
+            course = lti.course.get_with_launch_data(launch_data)
             request.user.check_permission('can_add_assignment', course)
-            assignment.add_lti_id(lti_id, course)
-            request.data.pop('lti_id')
+            assignment.add_lti_id(launch_data.get(lti.claims.ASSIGNMENT)['id'], course)
+            lti.assignment.update_with_launch_data(assignment, launch_data)
 
         # Update the other data
         serializer = AssignmentSerializer(
@@ -419,10 +423,16 @@ class AssignmentView(viewsets.ViewSet):
         Returns a list of tuples consisting of courses and importable assignments."""
         courses = Course.objects.filter(participation__user=request.user.id,
                                         participation__role__can_edit_assignment=True)
-
+        launch_id, = utils.optional_params(request.query_params, 'launch_id')
+        if launch_id:
+            launch_data = lti.utils.get_launch_data_from_id(launch_id, request)
+            course_lti_id = launch_data.get(lti.claims.COURSE).get('id')
+            lti_course = Course.objects.get(active_lti_id=course_lti_id)
         importable = []
         for course in courses:
             assignments = Assignment.objects.filter(courses=course)
+            if launch_id:
+                assignments = assignments.exclude(active_lti_id__in=lti_course.assignment_lti_id_set)
             if assignments:
                 importable.append({
                     'course': CourseSerializer(course).data,
@@ -478,12 +488,17 @@ class AssignmentView(viewsets.ViewSet):
         request -- request data
             course_id -- course id which will receive the assignment import
             months_offset -- number of months to shift all dates
-            years_offset -- number of years to shift all dates
         pk -- assignment import source ID
 
         """
-        course_id, months_offset = utils.required_typed_params(request.data, (int, 'course_id'), (int, 'months_offset'))
-        course = Course.objects.get(pk=course_id)
+        months_offset, = utils.required_typed_params(request.data, (int, 'months_offset'))
+        launch_id, = utils.optional_typed_params(request.data, (str, 'launch_id'))
+        if launch_id:
+            launch_data = lti.utils.get_launch_data_from_id(launch_id, request)
+            course = Course.objects.get(active_lti_id=launch_data.get(lti.claims.COURSE)['id'])
+        else:
+            course_id, = utils.required_typed_params(request.data, (int, 'course_id'))
+            course = Course.objects.get(pk=course_id)
         assignment_source = Assignment.objects.get(pk=pk)
 
         request.user.check_permission('can_add_assignment', course)
@@ -538,16 +553,18 @@ class AssignmentView(viewsets.ViewSet):
             utils.update_journals(journals, preset)
 
         # Add new lti id to new assignment
-        lti_id, = utils.optional_typed_params(request.data, (str, 'lti_id'))
-        if lti_id is not None:
-            assignment.add_lti_id(lti_id, course)
-            request.data.pop('lti_id')
+        launch_id, = utils.optional_typed_params(request.data, (str, 'launch_id'))
+        if launch_id:
+            launch_data = lti.utils.get_launch_data_from_id(launch_id, request)
+            assignment_lti_id = launch_data.get(lti.claims.ASSIGNMENT)['id']
+            assignment.add_lti_id(assignment_lti_id, course)
+            lti.assignment.update_with_launch_data(assignment, launch_data)
 
         # Update author also
         assignment.author = request.user
         assignment.save()
 
-        return response.success({'assignment_id': assignment.pk})
+        return response.success({'assignment': AssignmentSerializer(assignment, many=False).data})
 
     @action(methods=['get'], detail=True)
     def participants_without_journal(self, request, pk):

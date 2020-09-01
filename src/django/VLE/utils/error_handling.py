@@ -2,6 +2,7 @@ from smtplib import SMTPAuthenticationError
 
 import jwt
 from django.core.exceptions import ObjectDoesNotExist, ValidationError
+from pylti1p3.exception import LtiException
 
 import VLE.utils.responses as response
 
@@ -15,6 +16,7 @@ class VLEMissingRequiredKey(KeyError):
     def __init__(self, err):
         if isinstance(err, KeyError):
             super(VLEMissingRequiredKey, self).__init__(err)
+            self.keys = [err.args[0]]
         elif isinstance(err, list) or isinstance(err, tuple):
             self.keys = err
         else:
@@ -108,3 +110,10 @@ class ErrorMiddleware:
             return response.unauthorized(
                 'Invalid LTI parameters given. Please retry from your LTI instance or notify a server admin.',
                 exception=exception)
+        elif isinstance(exception, LtiException):
+            # TODO LTI: if during launch -> say setup needs to change. Else -> create Sentry issue and toast to frontend
+            raise exception
+            # return response.bad_request(str(exception.__dict__))
+            # return response.bad_request(
+            #     'The setup did not go as planned. Please retry from the LMS. If the error persists,'
+            #     + ' contact support@ejournal.app.')

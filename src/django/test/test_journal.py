@@ -118,24 +118,9 @@ class JournalAPITest(TestCase):
         # Test get
         journal_resp = api.get(self, 'journals', params={'pk': self.journal.pk}, user=self.student)['journal']
         assert not journal_resp['usernames'], 'students should not get other usernames'
-        assert not journal_resp['needs_lti_link'], 'student should not need an LTI link if it is not an LTI assignment'
         journal_resp = api.get(self, 'journals', params={'pk': self.journal.pk}, user=self.teacher)['journal']
         assert journal_resp['usernames'], 'teacher should get a list of usernames'
-        assert not journal_resp['needs_lti_link'], 'student should not need an LTI link if it is not an LTI assignment'
         api.get(self, 'journals', params={'pk': self.journal.pk}, user=factory.Teacher(), status=403)
-
-        lti_journal = factory.Journal(assignment=factory.LtiAssignment())
-        lti_ap = lti_journal.authors.first()
-
-        journal_resp = api.get(self, 'journals', params={'pk': lti_journal.pk}, user=lti_ap.user)['journal']
-        assert lti_journal.authors.first().user.full_name in journal_resp['needs_lti_link'], \
-            'student need an LTI link if it is an LTI assignment'
-
-        lti_ap.sourcedid = 'filled'
-        lti_ap.save()
-        journal_resp = api.get(self, 'journals', params={'pk': lti_journal.pk}, user=lti_ap.user)['journal']
-        assert lti_journal.authors.first().user.full_name not in journal_resp['needs_lti_link'], \
-            'student should not need an LTI link if student has a sources id'
 
     def test_journal_get_image(self):
         assert self.journal.image == settings.DEFAULT_PROFILE_PICTURE

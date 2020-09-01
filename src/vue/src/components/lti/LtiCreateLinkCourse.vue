@@ -1,56 +1,44 @@
 <template>
-    <div v-if="courses">
-        <h2 class="theme-h2 multi-form">
-            Configuring a Course
-        </h2>
-        <p>
-            You came here from a learning environment through an unconfigured
-            course. Do you want to create a new course on eJournal,
-            or link it to an existing one?
-        </p>
-        <hr/>
-        <div class="clearfix">
-            <p class="mb-1">
-                If you have not yet preconfigured this course on eJournal, click the button below
-                to create a new course. This will be linked to your learning environment, allowing for automatic
-                grade passback.
-            </p>
-            <b-button
-                class="add-button float-right"
-                @click="showModal('createCourseRef')"
-            >
-                <icon name="plus-square"/>
-                Create new course
-            </b-button>
-        </div>
-        <hr/>
-        <div class="clearfix">
-            <p class="mb-1">
-                If you have already set up a course on eJournal, you can link it to the course in
-                your learning environment by clicking the button below.
-            </p>
-            <b-button
-                class="change-button float-right"
-                @click="showModal('linkCourseRef')"
-            >
-                <icon name="link"/>
-                Link to existing course
-            </b-button>
-        </div>
-
-        <b-modal
-            ref="createCourseRef"
-            title="New Course"
-            size="lg"
-            hideFooter
-            noEnforceFocus
+    <div>
+        <load-wrapper
+            :loading="loadingCourses"
+            :timeBeforeShow="0"
         >
-            <create-course
-                :lti="lti"
-                @handleAction="handleCreation"
-            />
-        </b-modal>
-
+            <p>
+                You came here from a learning environment through an unconfigured
+                course. Do you want to create a new course on eJournal,
+                or link it to an existing one?
+            </p>
+            <hr/>
+            <div class="clearfix">
+                <p class="mb-1">
+                    If you have not yet preconfigured this course on eJournal, click the button below
+                    to create a new course. This will be linked to your learning environment, allowing for automatic
+                    grade passback.
+                </p>
+                <b-button
+                    class="add-button float-right"
+                    @click="createCourse"
+                >
+                    <icon name="plus-square"/>
+                    Create new course
+                </b-button>
+            </div>
+            <hr/>
+            <div class="clearfix">
+                <p class="mb-1">
+                    If you have already set up a course on eJournal, you can link it to the course in
+                    your learning environment by clicking the button below.
+                </p>
+                <b-button
+                    class="change-button float-right"
+                    @click="showModal('linkCourseRef')"
+                >
+                    <icon name="link"/>
+                    Link to existing course
+                </b-button>
+            </div>
+        </load-wrapper>
         <b-modal
             ref="linkCourseRef"
             title="Link Course"
@@ -59,42 +47,47 @@
             noEnforceFocus
         >
             <link-course
-                :lti="lti"
                 :courses="courses"
-                @handleAction="handleLinked"
+                @courseLinked="(course) => $emit('courseLinked', course)"
             />
         </b-modal>
     </div>
 </template>
 
 <script>
-import createCourse from '@/components/course/CreateCourse.vue'
 import linkCourse from '@/components/lti/LinkCourse.vue'
+import courseAPI from '@/api/course.js'
+import loadWrapper from '@/components/loading/LoadWrapper.vue'
 
 export default {
     name: 'LtiCreateLinkCourse',
     components: {
-        createCourse,
         linkCourse,
+        loadWrapper,
     },
-    props: ['lti', 'courses'],
+    data () {
+        return {
+            courses: [],
+            loadingCourses: true,
+        }
+    },
+    created () {
+        courseAPI.getLinkable().then((courses) => {
+            if (courses.length) {
+                this.courses = courses
+                this.loadingCourses = false
+            } else {
+                this.createCourse()
+            }
+        })
+    },
     methods: {
-        signal (msg) {
-            this.$emit('handleAction', msg)
+        createCourse () {
+            courseAPI.create({ launch_id: this.$route.query.launch_id })
+                .then((course) => { this.$emit('courseCreated', course) })
         },
         showModal (ref) {
             this.$refs[ref].show()
-        },
-        hideModal (ref) {
-            this.$refs[ref].hide()
-        },
-        handleCreation (cID) {
-            this.hideModal('createCourseRef')
-            this.signal(['courseCreated', cID])
-        },
-        handleLinked (cID) {
-            this.hideModal('linkCourseRef')
-            this.signal(['courseLinked', cID])
         },
     },
 }

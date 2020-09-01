@@ -40,21 +40,8 @@
                         - {{ journal.name }}
                     </template>
                 </bread-crumb>
-                <b-alert
-                    v-if="!loadingNodes && journal.needs_lti_link.length > 0 && assignment.active_lti_course"
-                    show
-                >
-                    <b>Warning:</b> You cannot update this journal until
-                    {{ assignment.is_group_assignment ? 'all group members' : 'you' }}
-                    visit the assignment though the LMS (Canvas) course
-                    '{{ assignment.active_lti_course.name }}' at least once.
-                </b-alert>
                 <load-wrapper :loading="loadingNodes">
-                    <div
-                        v-if="nodes.length > currentNode && currentNode !== -1"
-                        :class="{'input-disabled': !loadingNodes && journal.needs_lti_link.length > 0
-                            && assignment.active_lti_course}"
-                    >
+                    <div v-if="nodes.length > currentNode && currentNode !== -1">
                         <div v-if="nodes[currentNode].type == 'e'">
                             <entry-node
                                 ref="entry-template-card"

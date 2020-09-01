@@ -11,6 +11,7 @@ from rest_framework.permissions import AllowAny
 from rest_framework_simplejwt.views import TokenObtainPairView
 
 import VLE.factory as factory
+import VLE.lti1p3 as lti
 import VLE.lti_launch as lti_launch
 import VLE.permissions as permissions
 import VLE.utils.generic_utils as utils
@@ -20,21 +21,6 @@ from VLE.models import Entry, FileContext, Instance, Journal, Node, User
 from VLE.serializers import EntrySerializer, FileSerializer, OwnUserSerializer, UserSerializer
 from VLE.tasks import send_email_verification_link
 from VLE.utils import file_handling
-from VLE.views import lti
-
-
-def get_lti_params(request, *keys):
-    jwt_params, = utils.optional_params(request.data, 'jwt_params')
-    if jwt_params:
-        lti_params = lti.decode_lti_params(jwt_params)
-    else:
-        lti_params = {'empty': ''}
-    if 'custom_user_image' in lti_params and \
-       lti_params['custom_user_image'] == Instance.objects.get_or_create(pk=1)[0].default_lms_profile_picture:
-        lti_params['custom_user_image'] = settings.DEFAULT_PROFILE_PICTURE
-    values = utils.optional_params(lti_params, *keys)
-    values.append(settings.ROLES['Teacher'] in lti_launch.roles_to_list(lti_params))
-    return values
 
 
 class LoginView(TokenObtainPairView):
@@ -116,45 +102,41 @@ class UserView(viewsets.ViewSet):
         On success:
             success -- with the newly created user data
         """
+        launch_id, = utils.optional_params(request.data, 'launch_id')
+        password, = utils.required_params(request.data, 'password')
+        if launch_id:
+            launch_data = lti.utils.get_launch_data_from_id(launch_id, request)
+            user = lti.user.create_with_launch_data(launch_data, password)
+            return response.created({
+                'user': {
+                    **OwnUserSerializer(user, context={'user': request.user}).data,
+                    'launch_state': lti.utils.get_launch_state(launch_data),
+                }
+            })
 
-        lti_id, user_image, full_name, email, is_teacher = get_lti_params(
-            request, 'user_id', 'custom_user_image', 'custom_user_full_name', 'custom_user_email')
-        is_test_student = bool(lti_id) and not bool(email) and full_name == settings.LTI_TEST_STUDENT_FULL_NAME
+        # Check if instance allows standalone registration if user did not register through some LTI instance
+        if not Instance.objects.get_or_create(pk=1)[0].allow_standalone_registration:
+            return response.bad_request(
+                ('{} does not allow you to register through the website,' +
+                ' please use an LTI instance.').format(instance.name))
 
-        if lti_id is None:
-            # Check if instance allows standalone registration if user did not register through some LTI instance
-            try:
-                instance = Instance.objects.get(pk=1)
-                if not instance.allow_standalone_registration:
-                    return response.bad_request(('{} does not allow you to register through the website,' +
-                                                ' please use an LTI instance.').format(instance.name))
-            except Instance.DoesNotExist:
-                pass
+        username, full_name, email = utils.required_params(request.data, 'username', 'full_name', 'email')
 
-            full_name, email = utils.required_params(request.data, 'full_name', 'email')
-
-        username, password = utils.required_params(request.data, 'username', 'password')
-
-        if not is_test_student and email in ['', None]:
-            return response.bad_request('No email address is provided.')
-        if not is_test_student and full_name in ['', None]:
-            return response.bad_request('No full name is provided.')
         if email and User.objects.filter(email=email).exists():
             return response.bad_request('User with this email already exists.')
 
         if User.objects.filter(username=username).exists():
             return response.bad_request('User with this username already exists.')
 
-        if lti_id is not None and User.objects.filter(lti_id=lti_id).exists():
-            return response.bad_request('User with this lti id already exists.')
-
-        user = factory.make_user(username=username, email=email, lti_id=lti_id, full_name=full_name,
-                                 is_teacher=is_teacher, verified_email=bool(lti_id) and bool(email), password=password,
-                                 profile_picture=user_image if user_image else settings.DEFAULT_PROFILE_PICTURE,
-                                 is_test_student=is_test_student)
-
-        if lti_id is None:
-            send_email_verification_link.delay(user.pk)
+        user = factory.make_user(
+            username=username,
+            email=email,
+            full_name=full_name,
+            is_teacher=False,
+            verified_email=False,
+            password=password,
+        )
+        send_email_verification_link.delay(user.pk)
 
         return response.created({'user': OwnUserSerializer(user, context={'user': request.user}).data})
 
@@ -185,39 +167,18 @@ class UserView(viewsets.ViewSet):
             return response.forbidden()
 
         user = User.objects.get(pk=pk)
+        launch_id, = utils.optional_params(request.data, 'launch_id')
+        if launch_id:
+            launch_data = lti.utils.get_launch_data_from_id(launch_id, request)
+            user = lti.user.update_with_launch_data(user, launch_data)
+            return response.success({
+                'user': {
+                    **OwnUserSerializer(user, context={'user': request.user}).data,
+                    'launch_state': lti.utils.get_launch_state(launch_data),
+                }
+            })
 
-        lti_id, user_email, user_full_name, user_image, is_teacher = get_lti_params(
-            request, 'user_id', 'custom_user_email', 'custom_user_full_name', 'custom_user_image')
-
-        if user_image is not None:
-            user.profile_picture = user_image
-        if user_email:
-            if User.objects.filter(email=user_email).exclude(pk=user.pk).exists():
-                return response.bad_request(
-                    '{} is taken by another account. Link to that account or contact support.'.format(user_email))
-
-            user.email = user_email
-            user.verified_email = True
-        if user_full_name is not None:
-            user.full_name = user_full_name
-        if is_teacher:
-            user.is_teacher = is_teacher
-
-        if lti_id is not None:
-            if User.objects.filter(lti_id=lti_id).exists():
-                return response.bad_request('User with this lti id already exists.')
-            elif (bool(lti_id) and not bool(user_email) and user_full_name == settings.LTI_TEST_STUDENT_FULL_NAME or
-                  user.is_test_student):
-                return response.forbidden('You are not allowed to link a test account to an existing account.')
-            user.lti_id = lti_id
-
-        user.save()
-        if user.lti_id is not None:
-            pp, = utils.optional_params(request.data, 'profile_picture')
-            data = {'profile_picture': pp if pp else user.profile_picture}
-        else:
-            data = request.data
-        serializer = OwnUserSerializer(user, data=data, partial=True)
+        serializer = OwnUserSerializer(user, data=request.data, partial=True)
         if not serializer.is_valid():
             return response.bad_request()
         serializer.save()
