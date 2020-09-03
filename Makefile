@@ -61,6 +61,7 @@ setup:
 	@echo "This operation will clean old files, press enter to continue (ctrl+c to cancel)"
 	@read -r a
 	make setup-no-input
+	make run-preset-db
 setup-no-input:
 	@make clean
 
@@ -77,7 +78,8 @@ setup-no-input:
 	# Reinstall nodejs dependencies.
 	npm install --prefix ./src/vue
 
-	make preset-db-no-input
+	make postgres-init
+	make migrate-back
 	bash -c 'source ./venv/bin/activate && cd ./src/django && python manage.py migrate django_celery_results && deactivate'
 
 	@echo "DONE!"
@@ -102,7 +104,6 @@ setup-venv:
 	bash -c '\
 		source ./venv/bin/activate && \
 		pip install -r requirements/$(requirements_file) && \
-		isort -rc src/django/ && \
 		ansible-playbook ./config/provision-local.yml --ask-vault-pass && \
 		deactivate'
 
@@ -150,24 +151,19 @@ clean:
 	rm -rf ./venv
 	rm -rf ./src/vue/node_modules
 	@if [ $(shell id "postgres" > /dev/null 2>&1; echo $$?) -eq 0 ]; then \
-		make postgres-reset; \
+		make postgres-clean; \
 	fi
 
 ##### DATABSE COMMANDS #####
 
-postgres-reset:
+postgres-clean:
 	@sudo su -c "psql \
 	-c \"DROP DATABASE IF EXISTS $(postgres_db)\" \
 	-c \"DROP DATABASE IF EXISTS test_$(postgres_db)\" \
 	-c \"DROP USER IF EXISTS $(postgres_dev_user)\" \
 	" postgres
-	make postgres-init-development
-	make migrate-back
 
-postgres-drop-development-db:
-	@sudo su -c "psql -c \"DROP DATABASE IF EXISTS $(postgres_db)\"" postgres
-
-postgres-init-development:
+postgres-init:
 	@sudo su -c "psql \
 	-c \"CREATE DATABASE $(postgres_db)\" \
 	-c \"CREATE USER $(postgres_dev_user) WITH PASSWORD '$(postgres_dev_user_pass)'\" \
@@ -179,6 +175,10 @@ postgres-init-development:
 	-c \"alter role $(postgres_dev_user) superuser\" \
 	" postgres
 
+postgres-reset:
+	make postgres-clean
+	make postgres-init
+
 preset-db:
 	@echo "This operation will wipe the $(postgres_db) database, press enter to continue (ctrl+c to cancel)"
 	@read -r a
@@ -186,6 +186,10 @@ preset-db:
 preset-db-no-input:
 	rm -rf src/django/media/*
 	make postgres-reset
+	make migrate-back
+	make run-preset-db
+
+run-preset-db:
 	bash -c 'source ./venv/bin/activate && cd ./src/django && python manage.py preset_db && deactivate'
 
 migrate-back:
