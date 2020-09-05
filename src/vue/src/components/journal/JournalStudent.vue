@@ -93,7 +93,7 @@
                         :bonusPoints="journal.bonus_points"
                     />
                     <b-card
-                        v-else-if="nodes[currentNode].type == 'd' && currentNodeIsLocked"
+                        v-else-if="nodes[currentNode].type == 'd' && !nodes[currentNode].entry && currentNodeIsLocked"
                         :class="$root.getBorderClass($route.params.cID)"
                         class="no-hover"
                     >
