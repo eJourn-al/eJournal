@@ -5,7 +5,9 @@ from test.utils import api
 
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
+from django.utils import timezone
 
+import VLE.tasks.beats.cleanup
 from VLE.models import Content, Entry, Field, FileContext, PresetNode, Template, User
 from VLE.utils import file_handling
 from VLE.utils.error_handling import VLEBadRequest, VLEPermissionError
@@ -188,6 +190,8 @@ class FileHandlingTest(TestCase):
         post = self.create_params
         post['content'] = {self.img_field.pk: content_real}
         api.post(self, 'entries', params=post, user=self.student, status=201)
+        VLE.tasks.beats.cleanup.remove_unused_files(older_lte=timezone.now())
+
         assert self.student.filecontext_set.filter(pk=content_real['id']).exists(), 'real file should stay'
         assert not self.student.filecontext_set.filter(pk=content_fake['id']).exists(), 'fake file should be removed'
 
@@ -207,6 +211,7 @@ class FileHandlingTest(TestCase):
             self.rt_field.pk: "<p>hello!<img src='{}'/></p>".format(content_rt['download_url']),
         }
         entry_with_rt = api.post(self, 'entries', params=post, user=self.student, status=201)['entry']
+        VLE.tasks.beats.cleanup.remove_unused_files(older_lte=timezone.now())
         assert self.student.filecontext_set.filter(pk=content_real['id']).exists(), 'real file should stay'
         assert self.student.filecontext_set.filter(pk=content_rt['id']).exists(), 'rich text shoud stay'
         assert not self.student.filecontext_set.filter(pk=content_fake['id']).exists(), 'fake file should be removed'
@@ -221,6 +226,7 @@ class FileHandlingTest(TestCase):
         }
         patch['content'][list(patch['content'].keys())[0]] = content_new
         api.update(self, 'entries', params=patch, user=self.student)
+        VLE.tasks.beats.cleanup.remove_unused_files(older_lte=timezone.now())
         assert self.student.filecontext_set.filter(pk=content_new['id']).exists(), 'new file should exist'
         assert not self.student.filecontext_set.filter(pk=content_old['id']).exists(), 'old file should be removed'
 
@@ -236,6 +242,7 @@ class FileHandlingTest(TestCase):
         patch['content'][rt_field_id] = "<p>hello!<img src='{}' /><img src='{}' /></p>".format(
             content_new_rt['download_url'], content_new_rt2['download_url'])
         api.update(self, 'entries', params=patch, user=self.student)
+        VLE.tasks.beats.cleanup.remove_unused_files(older_lte=timezone.now())
         assert self.student.filecontext_set.filter(pk=content_new_rt['id']).exists(), 'new file should exist'
         assert self.student.filecontext_set.filter(pk=content_new_rt2['id']).exists(), 'new file should exist'
         assert not self.student.filecontext_set.filter(pk=content_old_rt['id']).exists(), 'old file should be removed'
@@ -255,6 +262,7 @@ class FileHandlingTest(TestCase):
             'files': [],
         }
         api.create(self, 'comments', params=params, user=self.student)
+        VLE.tasks.beats.cleanup.remove_unused_files(older_lte=timezone.now())
         assert self.student.filecontext_set.filter(pk=content_real['id']).exists(), 'real file should stay'
         assert not self.student.filecontext_set.filter(pk=content_fake['id']).exists(), 'fake file should be removed'
 
@@ -270,6 +278,7 @@ class FileHandlingTest(TestCase):
             self, 'users/set_profile_picture', params={'file': blank_image},
             content_type=MULTIPART_CONTENT, user=user, status=201)
         new = resp['download_url'].split('access_id=')[1]
+        VLE.tasks.beats.cleanup.remove_unused_files(older_lte=timezone.now())
         assert not FileContext.objects.filter(access_id=deleted).exists(), 'old journal image should be deleted'
         assert FileContext.objects.filter(access_id=new).exists(), 'new journal image should not be deleted'
 
@@ -283,6 +292,7 @@ class FileHandlingTest(TestCase):
         resp = api.update(
             self, 'journals', params={'image': blank_image, 'pk': journal.pk}, user=journal.authors.first().user)
         new = resp['journal']['image'].split('access_id=')[1]
+        VLE.tasks.beats.cleanup.remove_unused_files(older_lte=timezone.now())
         assert not FileContext.objects.filter(access_id=deleted).exists(), 'old journal image should be deleted'
         assert FileContext.objects.filter(access_id=new).exists(), 'new journal image should not be deleted'
 
@@ -324,6 +334,7 @@ class FileHandlingTest(TestCase):
                 }], 'removed_presets': [], 'removed_templates': [],
             }
             api.update(self, 'formats', params=update_params, user=self.teacher)
+            VLE.tasks.beats.cleanup.remove_unused_files(older_lte=timezone.now())
             assert FileContext.objects.filter(pk=description['id']).exists(), 'new file should exist'
             assert FileContext.objects.filter(pk=field_description['id']).exists(), 'new file should exist'
             assert FileContext.objects.filter(pk=preset_node_description['id']).exists(), \

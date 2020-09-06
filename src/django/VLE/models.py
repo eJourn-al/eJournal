@@ -138,11 +138,6 @@ class FileContext(CreateUpdateModel):
         on_delete=models.CASCADE,
         null=True
     )
-    course = models.ForeignKey(
-        'Course',
-        on_delete=models.CASCADE,
-        null=True
-    )
     journal = models.ForeignKey(
         'Journal',
         on_delete=models.CASCADE,
@@ -158,7 +153,8 @@ class FileContext(CreateUpdateModel):
         return '/files/{}/'.format(self.pk)
 
     def cascade_from_user(self, user):
-        return self.author is user and self.assignment is None and self.course is None and self.journal is None
+        return self.author is user and self.assignment is None and self.journal is None and self.content is None \
+            and self.comment is None
 
     def save(self, *args, **kwargs):
         if self._state.adding:

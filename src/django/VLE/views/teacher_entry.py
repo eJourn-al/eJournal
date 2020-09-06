@@ -106,9 +106,6 @@ class TeacherEntryView(viewsets.ViewSet):
             file_handling.establish_file(request.user, file.access_id, content=created_content,
                                          in_rich_text=created_content.field.type == Field.RICH_TEXT)
 
-        # Delete old user files
-        file_handling.remove_unused_user_files(request.user)
-
         self._copy_new_teacher_entry(teacher_entry, journal_ids, grades, publish_grade, request.user.pk, is_new=True)
 
         return response.created({

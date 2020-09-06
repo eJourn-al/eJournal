@@ -207,8 +207,7 @@ def update_presets(assignment, presets, new_ids):
         if id > 0:
             preset_node = VLE.models.PresetNode.objects.get(pk=id)
         else:
-            preset_node = VLE.models.PresetNode(format=format)
-            preset_node.type = type
+            preset_node = VLE.models.PresetNode(format=format, type=type)
 
         preset_node.description = description
         preset_node.unlock_date = unlock_date if unlock_date else None

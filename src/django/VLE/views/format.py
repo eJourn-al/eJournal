@@ -112,13 +112,12 @@ class FormatView(viewsets.ViewSet):
         utils.delete_presets(removed_presets)
         utils.archive_templates(removed_templates)
 
-        file_handling.establish_rich_text(request.user, assignment.description, assignment=assignment)
+        file_handling.establish_rich_text(author=request.user, rich_text=assignment.description, assignment=assignment)
         for field in Field.objects.filter(template__format=format):
-            file_handling.establish_rich_text(request.user, field.description, assignment=assignment)
+            file_handling.establish_rich_text(author=request.user, rich_text=field.description, assignment=assignment)
         for node in PresetNode.objects.filter(format=format):
-            file_handling.establish_rich_text(request.user, node.description, assignment=assignment)
+            file_handling.establish_rich_text(author=request.user, rich_text=node.description, assignment=assignment)
 
-        file_handling.remove_unused_user_files(request.user)
         serializer = FormatSerializer(format)
         assignment_details = AssignmentFormatSerializer(assignment, context={'user': request.user, 'course': course})
 

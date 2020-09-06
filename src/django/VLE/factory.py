@@ -331,3 +331,17 @@ def make_grade(entry, author, grade, published=False):
     entry.save()
 
     return grade
+
+
+def make_journal_image(file, journal, author):
+    validators.validate_user_file(file, author)
+
+    fc = VLE.models.FileContext.objects.create(
+        file=file,
+        file_name=file.name,
+        author=author,
+        journal=journal,
+        is_temp=False,
+    )
+    journal.stored_image = fc.download_url(access_id=True)
+    journal.save()
