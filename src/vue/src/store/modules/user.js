@@ -15,11 +15,27 @@ const getters = {
     fullName: state => state.fullName,
     ltiID: state => state.ltiID,
     permissions: state => state.permissions,
-    isTestStudent: state => state.is_test_student,
+    isTestStudent: state => state.isTestStudent,
     isSuperuser: state => state.isSuperuser,
     // We are not logged unless the store is populated as well
     loggedIn: state => state.jwtAccess !== null && state.uID !== null,
     storePopulated: state => state.uID !== null,
+    relevantUserSentryState (state) {
+        if (state.uID !== null) {
+            return {
+                id: state.uID,
+                username: state.username,
+                email: state.email,
+                verifiedEmail: state.verifiedEmail,
+                fullName: state.fullName,
+                ltiID: state.ltiID,
+                permissions: state.permissions,
+                isTestStudent: state.isTestStudent,
+                isSuperuser: state.isSuperuser,
+            }
+        }
+        return {}
+    },
 }
 
 const mutations = {
@@ -45,6 +61,7 @@ const mutations = {
         state.fullName = userData.full_name
         state.ltiID = userData.lti_id
         state.isSuperuser = userData.is_superuser
+        state.isTestStudent = userData.is_test_student
         state.permissions = permissions
     },
     [types.LOGOUT] (state) {
@@ -95,7 +112,7 @@ const actions = {
                 commit(types.SET_JWT, response.data)
 
                 dispatch('populateStore').then(() => {
-                    commit(`sentry/${types.SET_SENTRY_USER_SCOPE}`, { uID: state.uID }, { root: true })
+                    commit(`sentry/${types.SET_SENTRY_USER_SCOPE}`, state.relevantUserSentryState, { root: true })
                     resolve('JWT and store are set successfully.')
                 }, (error) => {
                     Vue.toasted.error(sanitization.escapeHtml(error.response.data.description))

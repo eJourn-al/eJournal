@@ -127,6 +127,11 @@ export default {
                     },
                 })
             } else if (response.state === this.states.bad_auth) {
+                this.$store.commit('sentry/CAPTURE_SCOPED_MESSAGE', {
+                    msg: 'Invalid credentials from the LTI environment',
+                    extra: { response },
+                    tags: { lti: response.state },
+                })
                 router.push({
                     name: 'ErrorPage',
                     params: {

@@ -11,7 +11,7 @@ import uuid
 from django.conf import settings
 
 import VLE.models
-from VLE.utils.error_handling import VLEBadRequest, VLEPermissionError
+import VLE.utils.error_handling
 
 
 def get_path(instance, filename):
@@ -75,9 +75,9 @@ def establish_file(author, identifier, course=None, assignment=None, journal=Non
         file_context = VLE.models.FileContext.objects.get(access_id=identifier)
 
     if file_context.author != author:
-        raise VLEPermissionError('You are not allowed to update files of other users')
+        raise VLE.utils.error_handling.VLEPermissionError('You are not allowed to update files of other users')
     if not file_context.is_temp:
-        raise VLEBadRequest('You are not allowed to update established files')
+        raise VLE.utils.error_handling.VLEBadRequest('You are not allowed to update established files')
 
     if comment:
         journal = comment.entry.node.journal

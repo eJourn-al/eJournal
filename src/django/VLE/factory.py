@@ -10,9 +10,8 @@ import requests
 from django.conf import settings
 from django.utils import timezone
 
+import VLE.models
 import VLE.validators as validators
-from VLE.models import (Assignment, Comment, Content, Course, Entry, Field, Format, Grade, Group, Node, Participation,
-                        PresetNode, Role, Template, User)
 
 
 def make_user(username, password=None, email=None, lti_id=None, profile_picture=settings.DEFAULT_PROFILE_PICTURE,
@@ -28,7 +27,7 @@ def make_user(username, password=None, email=None, lti_id=None, profile_picture=
     profile_picture -- profile picture of the user (default: none)
     is_superuser -- if the user needs all permissions, set this true (default: False)
     """
-    user = User(
+    user = VLE.models.User(
         username=username, email=email, lti_id=lti_id, is_superuser=is_superuser, is_teacher=is_teacher,
         verified_email=verified_email, is_staff=is_staff, full_name=full_name, profile_picture=profile_picture,
         is_test_student=is_test_student)
@@ -53,7 +52,7 @@ def make_participation(user=None, course=None, role=None, groups=None, notify_us
     role -- role the user has on the course
     groups -- groups the user belongs to
     """
-    participation = Participation(user=user, course=course, role=role)
+    participation = VLE.models.Participation(user=user, course=course, role=role)
     participation.save(notify_user=notify_user)
     if groups:
         participation.groups.set(groups)
@@ -73,8 +72,8 @@ def make_course(name, abbrev, startdate=None, enddate=None, author=None, active_
     active_lti_id -- (optional) lti_id, this links an eJournal course to a VLE course, only the active id receives
         grade passback.
     """
-    course = Course(name=name, abbreviation=abbrev, startdate=startdate, enddate=enddate,
-                    author=author, active_lti_id=active_lti_id)
+    course = VLE.models.Course(name=name, abbreviation=abbrev, startdate=startdate, enddate=enddate,
+                               author=author, active_lti_id=active_lti_id)
     course.save()
 
     if course.has_lti_link():
@@ -99,7 +98,7 @@ def make_course_group(name, course, lti_id=None):
     """
     if name is None:
         return None
-    course_group = Group(name=name, course=course, lti_id=lti_id)
+    course_group = VLE.models.Group(name=name, course=course, lti_id=lti_id)
     course_group.save()
     return course_group
 
@@ -129,11 +128,13 @@ def make_assignment(name, description, author=None, format=None, active_lti_id=N
         else:
             format = make_default_format(timezone.now() + timedelta(days=365), points_possible)
 
-    assign = Assignment(name=name, description=description, author=author, format=format,
-                        is_group_assignment=is_group_assignment, active_lti_id=active_lti_id,
-                        can_set_journal_name=can_set_journal_name, can_set_journal_image=can_set_journal_image,
-                        can_lock_journal=can_lock_journal,
-                        remove_grade_upon_leaving_group=remove_grade_upon_leaving_group)
+    assign = VLE.models.Assignment(
+        name=name, description=description, author=author, format=format,
+        is_group_assignment=is_group_assignment, active_lti_id=active_lti_id,
+        can_set_journal_name=can_set_journal_name, can_set_journal_image=can_set_journal_image,
+        can_lock_journal=can_lock_journal,
+        remove_grade_upon_leaving_group=remove_grade_upon_leaving_group
+    )
     if points_possible is not None:
         assign.points_possible = points_possible
     if is_published is not None:
@@ -165,17 +166,17 @@ def make_lti_groups(course):
             try:
                 name = group['Name']
                 lti_id = int(group['CanvasSectionID'])
-                if not Group.objects.filter(course=course, lti_id=lti_id).exists():
+                if not VLE.models.Group.objects.filter(course=course, lti_id=lti_id).exists():
                     make_course_group(name, course, lti_id)
             except (ValueError, KeyError):
                 continue
 
 
 def make_default_format(due_date=None, points_possible=10):
-    format = Format()
+    format = VLE.models.Format()
     format.save()
     template = make_entry_template('Entry', format)
-    make_field(template, 'Content', 0, Field.RICH_TEXT, True)
+    make_field(template, 'Content', 0, VLE.models.Field.RICH_TEXT, True)
     if due_date and points_possible and int(points_possible) > 0:
         make_progress_node(format, due_date, points_possible)
     return format
@@ -188,23 +189,23 @@ def make_progress_node(format, due_date, target):
     format -- format the node belongs to.
     due_date -- due_date of the node.
     """
-    node = PresetNode(type=Node.PROGRESS, due_date=due_date, target=target, format=format)
+    node = VLE.models.PresetNode(type=VLE.models.Node.PROGRESS, due_date=due_date, target=target, format=format)
     node.save()
     return node
 
 
-def make_node(journal, entry=None, type=Node.ENTRY, preset=None):
+def make_node(journal, entry=None, type=VLE.models.Node.ENTRY, preset=None):
     """Make a node.
 
     Arguments:
     journal -- journal the node belongs to.
     entry -- entry the node belongs to.
     """
-    return Node.objects.get_or_create(type=type, entry=entry, preset=preset, journal=journal)[0]
+    return VLE.models.Node.objects.get_or_create(type=type, entry=entry, preset=preset, journal=journal)[0]
 
 
 def make_entry(template, author, node=None):
-    entry = Entry.objects.create(template=template, author=author, node=node)
+    entry = VLE.models.Entry.objects.create(template=template, author=author, node=node)
     if node:
         entry.node.entry = entry
         entry.node.save()
@@ -213,27 +214,29 @@ def make_entry(template, author, node=None):
 
 def make_entry_template(name, format, preset_only=False):
     """Make an entry template."""
-    entry_template = Template(name=name, format=format, preset_only=preset_only)
+    entry_template = VLE.models.Template(name=name, format=format, preset_only=preset_only)
     entry_template.save()
     return entry_template
 
 
-def make_field(template, title, loc, type=Field.TEXT, required=True, description=None, options=None):
+def make_field(template, title, loc, type=VLE.models.Field.TEXT, required=True, description=None, options=None):
     """Make a field."""
-    field = Field(type=type,
-                  title=title,
-                  location=loc,
-                  template=template,
-                  required=required,
-                  description=description,
-                  options=options)
+    field = VLE.models.Field(
+        type=type,
+        title=title,
+        location=loc,
+        template=template,
+        required=required,
+        description=description,
+        options=options
+    )
     field.save()
     return field
 
 
 def make_content(entry, data, field=None):
     """Make content."""
-    content = Content(field=field, entry=entry, data=data)
+    content = VLE.models.Content(field=field, entry=entry, data=data)
     content.save()
     return content
 
@@ -245,8 +248,8 @@ def make_role_default_no_perms(name, course, *args, **kwargs):
     name -- name of the role (needs to be unique)
     can_... -- permission
     """
-    permissions = {permission: kwargs.get(permission, False) for permission in Role.PERMISSIONS}
-    role = Role.objects.create(
+    permissions = {permission: kwargs.get(permission, False) for permission in VLE.models.Role.PERMISSIONS}
+    role = VLE.models.Role.objects.create(
         name=name,
         course=course,
         **permissions
@@ -256,8 +259,8 @@ def make_role_default_no_perms(name, course, *args, **kwargs):
 
 def make_role_default_all_perms(name, course, *args, **kwargs):
     """Makes a role with all permissions set to true."""
-    permissions = {permission: kwargs.get(permission, True) for permission in Role.PERMISSIONS}
-    role = Role.objects.create(
+    permissions = {permission: kwargs.get(permission, True) for permission in VLE.models.Role.PERMISSIONS}
+    role = VLE.models.Role.objects.create(
         name=name,
         course=course,
         **permissions
@@ -299,7 +302,7 @@ def make_comment(entry, author, text, published):
     text -- content of the comment
     published -- publishment state of the comment
     """
-    return Comment.objects.create(
+    return VLE.models.Comment.objects.create(
         entry=entry,
         author=author,
         text=text,
@@ -317,9 +320,9 @@ def make_grade(entry, author, grade, published=False):
     grade -- the new grade
     published -- publishment state of the grade
     """
-    grade = Grade.objects.create(
+    grade = VLE.models.Grade.objects.create(
         entry=entry,
-        author=User.objects.get(pk=author),
+        author=VLE.models.User.objects.get(pk=author),
         grade=grade,
         published=published
     )

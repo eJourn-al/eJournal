@@ -19,7 +19,7 @@ from django.dispatch import receiver
 from django.utils import timezone
 from django.utils.timezone import now
 
-import VLE.permissions as permissions
+import VLE.permissions
 import VLE.utils.file_handling as file_handling
 from VLE.tasks.email import send_push_notification
 from VLE.utils import sanitization
@@ -248,11 +248,11 @@ class User(AbstractUser):
         Raises a VLEProgramming error when misused.
         """
         if obj is None:
-            return permissions.has_general_permission(self, permission)
+            return VLE.permissions.has_general_permission(self, permission)
         if isinstance(obj, Course):
-            return permissions.has_course_permission(self, permission, obj)
+            return VLE.permissions.has_course_permission(self, permission, obj)
         if isinstance(obj, Assignment):
-            return permissions.has_assignment_permission(self, permission, obj)
+            return VLE.permissions.has_assignment_permission(self, permission, obj)
         raise VLEProgrammingError("Permission object must be of type None, Course or Assignment.")
 
     def check_verified_email(self):
@@ -267,7 +267,7 @@ class User(AbstractUser):
         if self.is_superuser:
             return True
 
-        return permissions.is_user_supervisor_of(self, user)
+        return VLE.permissions.is_user_supervisor_of(self, user)
 
     def is_participant(self, obj):
         if self.is_superuser:
@@ -312,9 +312,9 @@ class User(AbstractUser):
         elif isinstance(obj, User):
             if self == obj:
                 return True
-            if permissions.is_user_supervisor_of(self, obj):
+            if VLE.permissions.is_user_supervisor_of(self, obj):
                 return True
-            if permissions.is_user_supervisor_of(obj, self):
+            if VLE.permissions.is_user_supervisor_of(obj, self):
                 return True
             if Journal.objects.filter(authors__user__in=[self]).filter(authors__user__in=[obj]).exists():
                 return True
@@ -322,7 +322,7 @@ class User(AbstractUser):
         return False
 
     def check_can_edit(self, obj):
-        if not permissions.can_edit(self, obj):
+        if not VLE.permissions.can_edit(self, obj):
             raise VLEPermissionError(message='You are not allowed to edit {}'.format(str(obj)))
 
     def to_string(self, user=None):
@@ -1721,7 +1721,7 @@ class Entry(CreateUpdateModel):
         super(Entry, self).save(*args, **kwargs)
 
         if is_new and not isinstance(self, TeacherEntry):
-            for user in permissions.get_supervisors_of(self.node.journal):
+            for user in VLE.permissions.get_supervisors_of(self.node.journal):
                 Notification.objects.create(
                     type=Notification.NEW_ENTRY,
                     user=user,
@@ -2008,7 +2008,7 @@ class Comment(CreateUpdateModel):
 
         if is_new:
             if self.published:
-                for user in permissions.get_supervisors_of(self.entry.node.journal).exclude(pk=self.author.pk):
+                for user in VLE.permissions.get_supervisors_of(self.entry.node.journal).exclude(pk=self.author.pk):
                     Notification.objects.create(
                         type=Notification.NEW_COMMENT,
                         user=user,

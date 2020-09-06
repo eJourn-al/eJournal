@@ -9,17 +9,34 @@ const mutations = {
     [types.SET_LAST_EVENT_ID] (state, { eventID }) {
         state.lastEvenID = eventID
     },
-    [types.SET_SENTRY_USER_SCOPE] (state, data) { // eslint-disable-line
+    [types.SET_SENTRY_USER_SCOPE] (_, data) {
         Sentry.configureScope((scope) => {
-            scope.setUser({
-                id: data.uID,
-            })
+            scope.setUser(data)
         })
     },
     [types.RESET_SENTRY] (state) {
         state.lastEvenID = null
         Sentry.configureScope((scope) => {
             scope.clear()
+        })
+    },
+    [types.CAPTURE_SCOPED_MESSAGE] (_, data) {
+        const msg = 'msg' in data ? data.msg : ''
+        const extra = 'extra' in data ? data.extra : {}
+        const tags = 'tags' in data ? data.tags : {}
+        const level = 'level' in data ? data.level : 'error'
+
+        Sentry.withScope((scope) => {
+            for (const [key, value] of Object.entries(extra)) { /* eslint-disable-line */
+                scope.setExtra(key, value)
+            }
+            console.log('2')
+            for (const [key, value] of Object.entries(tags)) { /* eslint-disable-line */
+                scope.setTag(key, value)
+            }
+            scope.setLevel(level)
+            /* User data is appended in the before send */
+            Sentry.captureMessage(msg)
         })
     },
 }

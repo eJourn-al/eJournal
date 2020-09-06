@@ -1,0 +1,18 @@
+---
+
+- include: prompts.yml
+  tags:
+  - deploy_back
+  - deploy_front
+
+- include: update_version.yml
+  tags:
+    - deploy_back
+    - deploy_front
+  when: new_release
+
+- include: git_tag.yml
+  tags:
+    - deploy_back
+    - deploy_front
+  when: new_release and prompt_for_git_tag

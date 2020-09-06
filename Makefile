@@ -61,6 +61,7 @@ setup:
 	@echo "This operation will clean old files, press enter to continue (ctrl+c to cancel)"
 	@read -r a
 	make setup-no-input
+	make setup-sentry-cli
 	make run-preset-db
 setup-no-input:
 	@make clean
@@ -91,7 +92,7 @@ setup-travis:
 
 	sudo pip3 install virtualenv
 	virtualenv -p python3 venv
-	bash -c 'source ./venv/bin/activate && pip install -r requirements/ci.txt && deactivate'
+	bash -c 'source ./venv/bin/activate && pip install -r requirements/ci.txt --use-feature=2020-resolver && deactivate'
 
 	# Reinstall nodejs dependencies.
 	npm install --prefix ./src/vue
@@ -103,9 +104,14 @@ setup-venv:
 	virtualenv -p python3 venv
 	bash -c '\
 		source ./venv/bin/activate && \
-		pip install -r requirements/$(requirements_file) && \
+		pip install -r requirements/$(requirements_file) --use-feature=2020-resolver && \
 		ansible-playbook ./config/provision-local.yml --ask-vault-pass && \
 		deactivate'
+
+setup-sentry-cli:
+	@if ! [ $(shell which 'sentry-cli' > /dev/null 2>&1; echo $$?) -eq 0 ]; then \
+		bash -c 'source ./venv/bin/activate && curl -sL https://sentry.io/get-cli/ | bash && deactivate'; \
+	fi
 
 ##### DEPLOY COMMANDS ######
 
@@ -140,6 +146,10 @@ run-ansible-preset_db:
 run-ansible-restore-latest:
 	bash -c 'source ./venv/bin/activate && \
 	ansible-playbook config/provision-servers.yml ${ansible_play_default_flags} ${become} ${vars} --tags "restore_latest"'
+
+run-ansible-release:
+	bash -c 'source ./venv/bin/activate && \
+	ansible-playbook config/release-local.yml ${ansible_play_default_flags} ${become} ${vars}'
 
 ##### MAKEFILE COMMANDS #####
 

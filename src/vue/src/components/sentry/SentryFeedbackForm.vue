@@ -93,7 +93,7 @@ export default {
     },
     methods: {
         sendSentryFeedback () {
-            connection.connSentry.post('/user-feedback/', {
+            connection.connSentry.post('user-feedback/', {
                 comments: this.description,
                 email: this.email,
                 event_id: this.sentryLastEventID,
