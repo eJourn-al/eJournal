@@ -3,6 +3,7 @@
         <b-modal
             ref="cropperModal"
             title="Edit profile picture"
+            static
             hideFooter
             noEnforceFocus
         >
