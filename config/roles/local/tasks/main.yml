@@ -8,6 +8,13 @@
     line: export {{ item.key }}='{{ item.value }}'
   loop: "{{ project_environment | dict2items }}"
 
+- name: Set code_version env variable in venv to last commit of current branch
+  lineinfile:
+    path: "../venv/bin/activate"
+    state: present
+    regexp: ^export CODE_VERSION=
+    line: 'export CODE_VERSION=$(git rev-parse HEAD)'
+
 - name: Check for an existing local backup directory
   local_action:
     module: stat

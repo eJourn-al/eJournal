@@ -1,0 +1,39 @@
+---
+
+# Ensures Sentry uses the most recent remote commit of the specified branch as the code version for a release IF
+# the semantic 'code_version' is already known to Sentry.
+
+- name: List all Sentry releases for the current environment (locally)
+  connection: local
+  become: no
+  local_action: "command sentry-cli releases list"
+  register: release_list_result
+
+- block:
+  - name: Retrieve the HASH for the most recent command of branch {{ git_branch }} (locally)
+    connection: local
+    become: no
+    local_action: "command git ls-remote {{ git_repo }} refs/heads/{{ git_branch }}"
+    register: result
+
+  - name: Ensure the HASH purely contains the HASH information
+    connection: local
+    become: no
+    set_fact:
+      code_version: "{{ result.stdout.split('\trefs/heads/')[0] }}"
+
+  - name: Set the (sentry) release version equal to the code version for all hosts
+    set_fact:
+      release_version: "{{ code_version }}"
+    delegate_to: "{{ item }}"
+    with_items: "{{ play_hosts }}"
+    run_once: yes
+
+  when: release_version in release_list_result.stdout
+
+- debug:
+    msg: Trigger sentry cli handler (locally)
+  connection: local
+  become: no
+  notify: sentry cli
+  changed_when: true
