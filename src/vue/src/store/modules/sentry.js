@@ -30,7 +30,6 @@ const mutations = {
             for (const [key, value] of Object.entries(extra)) { /* eslint-disable-line */
                 scope.setExtra(key, value)
             }
-            console.log('2')
             for (const [key, value] of Object.entries(tags)) { /* eslint-disable-line */
                 scope.setTag(key, value)
             }

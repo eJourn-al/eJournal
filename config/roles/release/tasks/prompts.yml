@@ -7,12 +7,6 @@
 - set_fact:
     new_release: "{{ prompt.user_input | bool }}"
 
-- debug:
-    msg: Trigger sentry cli handler
-  notify: sentry cli
-  changed_when: true
-  when: new_release
-
 - name: Prompt for new version number
   pause:
     prompt: "Release version x.x.x"
@@ -21,7 +15,6 @@
 - set_fact:
     new_release_version: "{{ prompt.user_input }}"
   when: new_release
-
 
 - name: Assert provided version is higher than known version.
   assert:
