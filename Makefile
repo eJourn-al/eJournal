@@ -245,7 +245,10 @@ fix-live-reload:
 		sudo tee /proc/sys/fs/inotify/max_user_watches'
 
 shell:
-	bash -c 'source ./venv/bin/activate && cd ./src/django && python manage.py shell'
+	@bash -c 'source ./venv/bin/activate \
+		&& export PYTHONSTARTUP="./shell_startup.py" \
+		&& cd ./src/django \
+		&& python manage.py shell'
 
 run-celery-worker-and-beat:
 	bash -c 'sudo rabbitmqctl purge_queue celery && source ./venv/bin/activate && cd  ./src/django && celery -A VLE worker -l info -B'
