@@ -1,6 +1,6 @@
 {
   "name": "ejournal",
-  "version": "v1.3.1",
+  "version": "v1.4.0",
   "description": "A blended learning application that provides an easy to manage graded journal system focused on education.",
   "author": "eJournal",
   "licence": "AGPL-3.0",
@@ -43,6 +43,7 @@
     "vuex-persistedstate": "^2.7.1"
   },
   "devDependencies": {
+    "@sentry/webpack-plugin": "^1.12.1",
     "@vue/cli-plugin-babel": "~4.2.3",
     "@vue/cli-plugin-eslint": "~4.2.3",
     "@vue/cli-service": "~4.2.3",

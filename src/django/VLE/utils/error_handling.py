@@ -2,6 +2,7 @@ from smtplib import SMTPAuthenticationError
 
 import jwt
 from django.core.exceptions import ObjectDoesNotExist, ValidationError
+from sentry_sdk import configure_scope
 
 import VLE.utils.responses as response
 
@@ -67,6 +68,15 @@ class ErrorMiddleware:
         return self.get_response(request)
 
     def process_exception(self, request, exception):
+        # Set user context for Sentry
+        if not request.user.is_anonymous:
+            import VLE.serializers
+            with configure_scope() as scope:
+                scope.user = {
+                    **VLE.serializers.OwnUserSerializer(request.user).data,
+                    'id': request.user.pk,
+                }
+
         # Generic exception
         if isinstance(exception, VLEBadRequest):
             return response.bad_request(str(exception), exception=exception)

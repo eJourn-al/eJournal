@@ -25,8 +25,4 @@
 - name: Build the vuejs files to be deployed (LOCALLY) (Should not require sudo...)
   local_action: shell npm run build --prefix ../src/vue
   become: no
-  environment:
-    API_URL: "{{ api_url }}"
-    SENTRY_DSN: "{{ sentry_dsn }}"
-    SENTRY_ORGANIZATION_SLUG: "{{ sentry_organization_slug }}"
-    SENTRY_PROJECT_SLUG: "{{ sentry_project_slug }}"
+  environment: "{{ project_environment }}"

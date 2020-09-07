@@ -107,9 +107,6 @@ class EntryView(viewsets.ViewSet):
         # Notify teacher on new entry
         grading.task_journal_status_to_LMS.delay(journal.pk)
 
-        # Delete old user files
-        file_handling.remove_unused_user_files(request.user)
-
         return response.created({
             'added': entry_utils.get_node_index(journal, node, request.user),
             'nodes': timeline.get_nodes(journal, request.user),
@@ -199,7 +196,6 @@ class EntryView(viewsets.ViewSet):
             file_handling.establish_file(request.user, file.access_id, content=old_content,
                                          in_rich_text=old_content.field.type == Field.RICH_TEXT)
 
-        file_handling.remove_unused_user_files(request.user)
         grading.task_journal_status_to_LMS.delay(journal.pk)
         entry.last_edited_by = request.user
         entry.last_edited = timezone.now()

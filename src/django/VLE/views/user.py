@@ -17,7 +17,7 @@ import VLE.utils.generic_utils as utils
 import VLE.utils.responses as response
 import VLE.validators as validators
 from VLE.models import Entry, FileContext, Instance, Journal, Node, User
-from VLE.serializers import EntrySerializer, FileSerializer, OwnUserSerializer, UserSerializer
+from VLE.serializers import EntrySerializer, OwnUserSerializer, UserSerializer
 from VLE.tasks import send_email_verification_link
 from VLE.utils import file_handling
 from VLE.views import lti
@@ -347,13 +347,11 @@ class UserView(viewsets.ViewSet):
             file_name=content_file.name,
             author=request.user,
             is_temp=False,
-            in_rich_text=True,
         )
         request.user.profile_picture = file.download_url(access_id=True)
         request.user.save()
-        file_handling.remove_unused_user_files(request.user)
 
-        return response.created(FileSerializer(file).data)
+        return response.created({'download_url': file.download_url(access_id=True)})
 
     def get_permissions(self):
         if self.request.path == '/users/' and self.request.method == 'POST':

@@ -29,8 +29,8 @@ postgres_dev_user_pass = password
 ##### TEST COMMANDS #####
 
 test-back:
-	bash -c 'source ./venv/bin/activate && pycodestyle ./src/django --max-line-length=120 --exclude="./src/django/VLE/migrations","./src/django/VLE/settings*"'
-	bash -c 'source ./venv/bin/activate && flake8 --max-line-length=120 src/django --exclude="src/django/VLE/migrations/*","src/django/VLE/settings/*","src/django/VLE/settings.py","src/django/VLE/tasks/__init__.py" && deactivate'
+	bash -c 'source ./venv/bin/activate && pycodestyle ./src/django --max-line-length=120 --exclude="./src/django/VLE/migrations","./src/django/VLE/settings*","./src/django/test/factory/__init__.py"'
+	bash -c 'source ./venv/bin/activate && flake8 --max-line-length=120 src/django --exclude="src/django/VLE/migrations/*","src/django/VLE/settings/*","src/django/VLE/settings.py","src/django/VLE/tasks/__init__.py","./src/django/test/factory/__init__.py" && deactivate'
 	bash -c "source ./venv/bin/activate && pytest -n auto --cov=VLE -vvl --cov-report term-missing --cov-config .coveragerc src/django/test ${TOTEST} && deactivate"
 	bash -c 'source ./venv/bin/activate && isort -rc src/django/ && deactivate'
 
@@ -61,6 +61,8 @@ setup:
 	@echo "This operation will clean old files, press enter to continue (ctrl+c to cancel)"
 	@read -r a
 	make setup-no-input
+	make setup-sentry-cli
+	make run-preset-db
 setup-no-input:
 	@make clean
 
@@ -77,7 +79,8 @@ setup-no-input:
 	# Reinstall nodejs dependencies.
 	npm install --prefix ./src/vue
 
-	make preset-db-no-input
+	make postgres-init
+	make migrate-back
 	bash -c 'source ./venv/bin/activate && cd ./src/django && python manage.py migrate django_celery_results && deactivate'
 
 	@echo "DONE!"
@@ -89,7 +92,7 @@ setup-travis:
 
 	sudo pip3 install virtualenv
 	virtualenv -p python3 venv
-	bash -c 'source ./venv/bin/activate && pip install -r requirements/ci.txt && deactivate'
+	bash -c 'source ./venv/bin/activate && pip install -r requirements/ci.txt --use-feature=2020-resolver && deactivate'
 
 	# Reinstall nodejs dependencies.
 	npm install --prefix ./src/vue
@@ -101,10 +104,14 @@ setup-venv:
 	virtualenv -p python3 venv
 	bash -c '\
 		source ./venv/bin/activate && \
-		pip install -r requirements/$(requirements_file) && \
-		isort -rc src/django/ && \
+		pip install -r requirements/$(requirements_file) --use-feature=2020-resolver && \
 		ansible-playbook ./config/provision-local.yml --ask-vault-pass && \
 		deactivate'
+
+setup-sentry-cli:
+	@if ! [ $(shell which 'sentry-cli' > /dev/null 2>&1; echo $$?) -eq 0 ]; then \
+		bash -c 'source ./venv/bin/activate && curl -sL https://sentry.io/get-cli/ | bash && deactivate'; \
+	fi
 
 ##### DEPLOY COMMANDS ######
 
@@ -140,6 +147,10 @@ run-ansible-restore-latest:
 	bash -c 'source ./venv/bin/activate && \
 	ansible-playbook config/provision-servers.yml ${ansible_play_default_flags} ${become} ${vars} --tags "restore_latest"'
 
+run-ansible-release:
+	bash -c 'source ./venv/bin/activate && \
+	ansible-playbook config/release-local.yml ${ansible_play_default_flags} ${become} ${vars}'
+
 ##### MAKEFILE COMMANDS #####
 
 default:
@@ -150,24 +161,19 @@ clean:
 	rm -rf ./venv
 	rm -rf ./src/vue/node_modules
 	@if [ $(shell id "postgres" > /dev/null 2>&1; echo $$?) -eq 0 ]; then \
-		make postgres-reset; \
+		make postgres-clean; \
 	fi
 
 ##### DATABSE COMMANDS #####
 
-postgres-reset:
+postgres-clean:
 	@sudo su -c "psql \
 	-c \"DROP DATABASE IF EXISTS $(postgres_db)\" \
 	-c \"DROP DATABASE IF EXISTS test_$(postgres_db)\" \
 	-c \"DROP USER IF EXISTS $(postgres_dev_user)\" \
 	" postgres
-	make postgres-init-development
-	make migrate-back
 
-postgres-drop-development-db:
-	@sudo su -c "psql -c \"DROP DATABASE IF EXISTS $(postgres_db)\"" postgres
-
-postgres-init-development:
+postgres-init:
 	@sudo su -c "psql \
 	-c \"CREATE DATABASE $(postgres_db)\" \
 	-c \"CREATE USER $(postgres_dev_user) WITH PASSWORD '$(postgres_dev_user_pass)'\" \
@@ -179,6 +185,10 @@ postgres-init-development:
 	-c \"alter role $(postgres_dev_user) superuser\" \
 	" postgres
 
+postgres-reset:
+	make postgres-clean
+	make postgres-init
+
 preset-db:
 	@echo "This operation will wipe the $(postgres_db) database, press enter to continue (ctrl+c to cancel)"
 	@read -r a
@@ -186,6 +196,10 @@ preset-db:
 preset-db-no-input:
 	rm -rf src/django/media/*
 	make postgres-reset
+	make migrate-back
+	make run-preset-db
+
+run-preset-db:
 	bash -c 'source ./venv/bin/activate && cd ./src/django && python manage.py preset_db && deactivate'
 
 migrate-back:
@@ -231,7 +245,10 @@ fix-live-reload:
 		sudo tee /proc/sys/fs/inotify/max_user_watches'
 
 shell:
-	bash -c 'source ./venv/bin/activate && cd ./src/django && python manage.py shell'
+	@bash -c 'source ./venv/bin/activate \
+		&& export PYTHONSTARTUP="./shell_startup.py" \
+		&& cd ./src/django \
+		&& python manage.py shell'
 
 run-celery-worker-and-beat:
 	bash -c 'sudo rabbitmqctl purge_queue celery && source ./venv/bin/activate && cd  ./src/django && celery -A VLE worker -l info -B'

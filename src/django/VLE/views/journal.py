@@ -7,13 +7,12 @@ from django.db.models import Q
 from rest_framework import viewsets
 from rest_framework.decorators import action
 
+import VLE.factory
 import VLE.utils.generic_utils as utils
 import VLE.utils.grading as grading
 import VLE.utils.responses as response
-import VLE.validators as validators
-from VLE.models import Assignment, AssignmentParticipation, Course, FileContext, Journal, User
+from VLE.models import Assignment, AssignmentParticipation, Course, Journal, User
 from VLE.serializers import AssignmentParticipationSerializer, JournalSerializer
-from VLE.utils import file_handling
 
 
 class JournalView(viewsets.ViewSet):
@@ -209,18 +208,7 @@ class JournalView(viewsets.ViewSet):
                         return response.forbidden('You are not allowed to change the journal image.')
 
                 content_file = utils.base64ToContentFile(image, 'profile_picture')
-                validators.validate_user_file(content_file, request.user)
-                file = FileContext.objects.create(
-                    file=content_file,
-                    file_name=content_file.name,
-                    author=request.user,
-                    journal=journal,
-                    is_temp=False,
-                    in_rich_text=True,
-                )
-                journal.stored_image = file.download_url(access_id=True)
-                journal.save()
-                file_handling.remove_unused_user_files(request.user)
+                VLE.factory.make_journal_image(content_file, journal, request.user)
             # Update author_limit if allowed
             if author_limit is not None:
                 if not request.user.has_permission('can_manage_journals', journal.assignment):

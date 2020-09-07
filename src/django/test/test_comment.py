@@ -94,7 +94,7 @@ class CommentAPITest(TestCase):
         api.get(self, 'comments', params={'entry_id': self.comment.entry.pk}, user=factory.Student(), status=403)
         api.get(self, 'comments', params={'entry_id': self.comment.entry.pk}, user=factory.Admin())
 
-    def test_create(self):
+    def test_create_comment(self):
         api.create(
             self, 'comments',
             params={'entry_id': self.comment.entry.pk, 'text': 'test-create-comment', 'files': []},

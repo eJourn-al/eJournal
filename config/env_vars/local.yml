@@ -15,8 +15,8 @@ db_port: 5432
 
 # Sentry settings
 sentry_dsn: ""
-sentry_organization_slug: ejournal
-sentry_project_slug: ejournal-test
+sentry_org: ejournal
+sentry_project: ejournal-test
 
 # LTI settings.
 lti_secret: 4339900ae5861f3086861ea492772864

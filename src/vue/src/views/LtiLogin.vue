@@ -118,6 +118,11 @@ export default {
     },
     mounted () {
         if (this.$route.query.state === this.states.bad_auth) {
+            this.$store.commit('sentry/CAPTURE_SCOPED_MESSAGE', {
+                msg: 'Invalid credentials from the LTI environment',
+                extra: { routeQuery: this.$route.query },
+                tags: { lti: this.$route.query.state },
+            })
             this.$router.push({
                 name: 'ErrorPage',
                 params: {

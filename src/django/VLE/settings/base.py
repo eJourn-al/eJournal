@@ -19,7 +19,8 @@ from sentry_sdk.integrations.django import DjangoIntegration
 
 sentry_sdk.init(
     dsn=None if 'TRAVIS' in os.environ else os.environ['SENTRY_DSN'],
-    integrations=[DjangoIntegration(), CeleryIntegration()]
+    integrations=[DjangoIntegration(), CeleryIntegration()],
+    release=os.environ['RELEASE_VERSION']
 )
 
 MiB = 2**20

@@ -137,8 +137,7 @@ class AssignmentView(viewsets.ViewSet):
             assignment.add_lti_id(lti_id, course)
             request.data.pop('lti_id')
 
-        file_handling.establish_rich_text(request.user, assignment.description, assignment=assignment)
-        file_handling.remove_unused_user_files(request.user)
+        file_handling.establish_rich_text(author=request.user, rich_text=assignment.description, assignment=assignment)
         serializer = AssignmentSerializer(
             assignment,
             context={'user': request.user, 'course': course,

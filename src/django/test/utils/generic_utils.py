@@ -7,8 +7,8 @@ from django.db import models
 from django.db.models.fields.related import ManyToManyField
 
 import VLE.models
+import VLE.utils.error_handling
 import VLE.utils.file_handling as file_handling
-from VLE.utils.error_handling import VLEProgrammingError
 
 
 def _model_instance_to_dict(instance, ignore=[]):
@@ -95,7 +95,7 @@ def check_equality_of_imported_rich_text(source_rt, target_rt, model):
     Also checks if the embedded FCs are actually copied but mostly equal.
     """
     if not any([model is handled_model for handled_model in [VLE.models.Content, VLE.models.Comment]]):
-        raise VLEProgrammingError('Validating RT of unhandled model')
+        raise VLE.utils.error_handling.VLEProgrammingError('Validating RT of unhandled model')
 
     fc_ignore_keys = ['last_edited', 'creation_date', 'update_date', 'id', 'access_id']
 

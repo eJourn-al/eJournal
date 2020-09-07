@@ -4,7 +4,15 @@ import test.factory
 import factory
 from django.core.exceptions import ValidationError
 
-from VLE.models import Field, Journal
+from VLE.models import Field, Journal, PresetNode
+
+
+def _fc_to_rt_img_element(fc):
+    return f'<img src="{fc.download_url(access_id=fc.access_id)}"/>'
+
+
+def _none_to_str(el):
+    return el if el else ''
 
 
 class FileContextFactory(factory.django.DjangoModelFactory):
@@ -42,7 +50,12 @@ class FileContextFactory(factory.django.DjangoModelFactory):
             raise ValidationError('FC created without underlying file.')
 
 
-class RichTextCommentFileContextFactory(FileContextFactory):
+class RichTextFileContextFactory(FileContextFactory):
+    in_rich_text = True
+    file = factory.django.FileField(filename=factory.Faker('file_name', category='image'))
+
+
+class RichTextCommentFileContextFactory(RichTextFileContextFactory):
     """
     Generates a FC which is embedded in the rich text of a comment
 
@@ -54,10 +67,8 @@ class RichTextCommentFileContextFactory(FileContextFactory):
         - File: By default an image type file.
         - Journal: By default attached to the journal of the comment.
     """
-    in_rich_text = True
     comment = factory.SubFactory('test.factory.comment.StudentCommentFactory')
     author = factory.SelfAttribute('comment.author')
-    file = factory.django.FileField(filename=factory.Faker('file_name', category='image'))
 
     @factory.post_generation
     def journal(self, create, extracted):
@@ -68,7 +79,7 @@ class RichTextCommentFileContextFactory(FileContextFactory):
         if not create:
             return
 
-        self.comment.text += '<img src="{}"/>'.format(self.download_url(access_id=self.access_id))
+        self.comment.text = _none_to_str(self.comment.text) + _fc_to_rt_img_element(self)
         self.comment.save()
 
 
@@ -123,7 +134,7 @@ class FileContentFileContextFactory(FileContextFactory):
         self.content.save()
 
 
-class RichTextContentFileContextFactory(FileContentFileContextFactory):
+class RichTextContentFileContextFactory(RichTextFileContextFactory):
     """
     Generates a FC embedded to the content of rich text field.
 
@@ -133,17 +144,145 @@ class RichTextContentFileContextFactory(FileContentFileContextFactory):
         - Content: VLE.models.Content whose field is of type RICH_TEXT
         - File: Image category
     """
-    in_rich_text = True
     content = factory.SubFactory('test.factory.content.ContentFactory', field__type=Field.RICH_TEXT)
     # Order is relevant, need content to be set first (since content is overwritten parent author would run first
     author = factory.SelfAttribute('content.entry.author')
-    file = factory.django.FileField(filename=factory.Faker('file_name', category='image'))
 
     @factory.post_generation
     def update_content_data(self, create, extracted):
         if not create:
             return
 
-        img_link = '<img src="{}"/>'.format(self.download_url(access_id=self.access_id))
-        self.content.data = self.content.data + img_link if self.content.data else img_link
+        self.content.data = _none_to_str(self.content.data) + _fc_to_rt_img_element(self)
         self.content.save()
+
+
+class JournalFileContextFactory(FileContextFactory):
+    """
+    Generates a FC attached to a journal (journal cover image).
+
+    Additional Default yields:
+        - Author: VLE.models.User who is the author of the FileContext, defautls to first journal author.
+        - Journal: VLE.models.Journal.
+    """
+    journal = factory.SubFactory('test.factory.journal.GroupJournalFactory')
+    file = factory.django.FileField(filename=factory.Faker('file_name', category='image'))
+
+    @factory.post_generation
+    def update_journal_stored_image(self, create, extracted):
+        if not create:
+            return
+
+        self.journal.stored_image = self.download_url(access_id=True)
+        self.journal.save()
+
+    @factory.post_generation
+    def validate(self, create, extracted):
+        if not create:
+            return
+
+        # Cover image not set by author of journal or supervisor of group assignment.
+        if not self.journal.authors.filter(user=self.author).exists() \
+                and not self.author.participation_set.filter(
+                    course__in=self.journal.assignment.courses, can_manage_journals=True):
+            raise ValidationError('Journal FileContext created by an author not part of its journal or supervisor.')
+
+
+class ProfilePictureFileContextFactory(FileContextFactory):
+    """
+    Generates a profile picture for a user.
+
+    Additional Default yields:
+        - Author: VLE.models.User, user who the profile picture belong to.
+    """
+    file = factory.django.FileField(filename=factory.Faker('file_name', category='image'))
+
+    @factory.post_generation
+    def update_profile_picture_download_link(self, create, extracted):
+        if not create:
+            return
+
+        self.author.profile_picture = self.download_url(access_id=True)
+        self.author.save()
+
+
+class RichTextAssignmentDescriptionFileContextFactory(RichTextFileContextFactory):
+    """
+    Generates a RT file embedded in the description of an assignment.
+
+    Additional Default yields:
+        - Author: VLE.models.User, user who created the FileContext, defaults to assignment author.
+        - Assignment: VLE.models.Assignment, assignment where the FC is embedded in the RT.
+    """
+    assignment = factory.SubFactory('test.factory.assignment.AssignmentFactory')
+    author = factory.SelfAttribute('assignment.author')
+
+    @factory.post_generation
+    def update_assignment_description(self, create, extracted):
+        if not create:
+            return
+
+        self.assignment.description = _none_to_str(self.assignment.description) + _fc_to_rt_img_element(self)
+        self.assignment.save()
+
+
+class RichTextFieldDescriptionFileContextFactory(RichTextFileContextFactory):
+    """
+    Generates a RT file embedded in the description of an NO_SUBMISSION field.
+
+    Additional Default yields:
+        - Author: VLE.models.User, user who created the FileContext, defaults to assignment author.
+        - Field: VLE.models.Field, NO_SUBMISSION type field and the upwards chain to an assignment.
+    """
+    assignment = factory.SubFactory('test.factory.assignment.AssignmentFactory')
+    author = factory.SelfAttribute('assignment.author')
+
+    @factory.post_generation
+    def field(self, create, extracted, **kwargs):
+        if not create:
+            return
+
+        if isinstance(extracted, Field):
+            extracted.description = _none_to_str(extracted.description) + _fc_to_rt_img_element(self)
+            extracted.save()
+        else:
+            field = test.factory.Field(**{
+                'template': self.assignment.format.template_set.first(),
+                **kwargs,
+                'type': Field.NO_SUBMISSION,
+            })
+            field.description = _none_to_str(field.description) + _fc_to_rt_img_element(self)
+            field.save()
+
+
+class RichTextPresetNodeDescriptionFileContextFactory(RichTextFileContextFactory):
+    """
+    Generates a RT file embedded in the description of a presetnode, defaults to PROGRESS.
+
+    Additional Default yields:
+        - Assignment: VLE.models.Assignment, assignment which the FC is linked to.
+        - Author: VLE.models.User, user who created the FileContext, defaults to assignment author.
+        - PresetNode: VLE.models.PresetNode, presetnode of which the RT description contains the FC.
+    """
+    assignment = factory.SubFactory('test.factory.assignment.AssignmentFactory')
+    author = factory.SelfAttribute('assignment.author')
+
+    @factory.post_generation
+    def preset(self, create, extracted, **kwargs):
+        if not create:
+            return
+
+        if isinstance(extracted, PresetNode):
+            if extracted.format.assignment != self.assignment:
+                raise ValidationError('Provided presetnode is not part of the set assignment.')
+
+            extracted.description = _none_to_str(extracted.description) + _fc_to_rt_img_element(self)
+            extracted.save()
+        else:
+            preset = test.factory.ProgressPresetNode(**{
+                'forced_template': self.assignment.format.template_set.first(),
+                **kwargs,
+                'format': self.assignment.format,
+            })
+            preset.description = _none_to_str(preset.description) + _fc_to_rt_img_element(self)
+            preset.save()

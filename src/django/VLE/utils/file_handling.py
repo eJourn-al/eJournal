@@ -11,7 +11,7 @@ import uuid
 from django.conf import settings
 
 import VLE.models
-from VLE.utils.error_handling import VLEBadRequest, VLEPermissionError
+import VLE.utils.error_handling
 
 
 def get_path(instance, filename):
@@ -29,8 +29,6 @@ def get_file_path(instance, filename):
         return '{}/journalfiles/{}/{}'.format(instance.author.id, instance.journal.id, filename)
     elif instance.assignment is not None:
         return '{}/assignmentfiles/{}/{}'.format(instance.author.id, instance.assignment.id, filename)
-    elif instance.course is not None:
-        return '{}/coursefiles/{}/{}'.format(instance.author.id, instance.course.id, filename)
     else:
         return '{}/userfiles/{}'.format(instance.author.id, filename)
 
@@ -66,59 +64,64 @@ def compress_all_user_data(user, extra_data_dict=None, archive_extension='zip'):
     return archive_ouput_path, '{}.{}'.format(archive_name, archive_extension)
 
 
-def establish_file(author, identifier, course=None, assignment=None, journal=None, content=None, comment=None,
-                   in_rich_text=False):
-    """establish files, after this they won't be removed."""
-    if str(identifier).isdigit():
-        file_context = VLE.models.FileContext.objects.get(pk=identifier)
-    else:
-        file_context = VLE.models.FileContext.objects.get(access_id=identifier)
-
-    if file_context.author != author:
-        raise VLEPermissionError('You are not allowed to update files of other users')
-    if not file_context.is_temp:
-        raise VLEBadRequest('You are not allowed to update established files')
-
+def _set_file_context(fc, assignment=None, journal=None, content=None, comment=None, in_rich_text=False):
     if comment:
         journal = comment.entry.node.journal
     if content:
         journal = content.entry.node.journal
     if journal:
         assignment = journal.assignment
-    if assignment:
-        if not course:
-            course = assignment.get_active_course(author)
 
-    file_context.comment = comment
-    file_context.content = content
-    file_context.journal = journal
-    file_context.assignment = assignment
-    file_context.course = course
-    file_context.is_temp = False
-    file_context.in_rich_text = in_rich_text
+    fc.comment = comment
+    fc.content = content
+    fc.journal = journal
+    fc.assignment = assignment
+    fc.is_temp = False
+    fc.in_rich_text = in_rich_text
 
-    # Move the file on filesystem to a permanent location
-    initial_path = file_context.file.path
-    file_context.file.name = get_file_path(file_context, file_context.file_name)
-    new_folder = os.path.join(settings.MEDIA_ROOT, get_file_path(file_context, ''))
+    if content and not in_rich_text:
+        content.data = str(fc.pk)
+        content.save()
 
-    new_path = os.path.join(settings.MEDIA_ROOT, file_context.file.name)
+
+def _move_newly_established_file_context_to_permanent_location(fc):
+    """
+    Once a file is no longer temporary and its context is set, it can be moved to a permanent location according
+    `get_file_path`.
+    """
+    initial_path = fc.file.path
+    fc.file.name = get_file_path(fc, fc.file_name)
+    new_folder = os.path.join(settings.MEDIA_ROOT, get_file_path(fc, ''))
+
+    new_path = os.path.join(settings.MEDIA_ROOT, fc.file.name)
 
     # Prevent potential name clash on filesystem
     while os.path.exists(str(new_path)):
         p = pathlib.Path(new_path)
         random_file_name = '{}-{}{}'.format(p.stem, uuid.uuid4(), p.suffix)
-        file_context.file.name = str(pathlib.Path(file_context.file.name).with_name(random_file_name))
+        fc.file.name = str(pathlib.Path(fc.file.name).with_name(random_file_name))
         new_path = p.with_name(random_file_name)
 
     os.makedirs(new_folder, exist_ok=True)
     os.rename(initial_path, str(new_path))
 
-    file_context.save()
 
-    if content and not in_rich_text:
-        content.data = str(file_context.pk)
-        content.save()
+def establish_file(author, identifier, assignment=None, journal=None, content=None, comment=None, in_rich_text=False):
+    """Sets the context of a temporary file, and moves it to a permanent location."""
+    if str(identifier).isdigit():
+        file_context = VLE.models.FileContext.objects.get(pk=identifier)
+    else:
+        file_context = VLE.models.FileContext.objects.get(access_id=identifier)
+
+    if file_context.author != author:
+        raise VLE.utils.error_handling.VLEPermissionError('You are not allowed to update files of other users')
+    if not file_context.is_temp:
+        raise VLE.utils.error_handling.VLEBadRequest('You are not allowed to update established files')
+
+    _set_file_context(file_context, assignment, journal, content, comment, in_rich_text)
+    _move_newly_established_file_context_to_permanent_location(file_context)
+
+    file_context.save()
 
     return file_context
 
@@ -138,52 +141,6 @@ def get_temp_files_from_rich_text(rich_text):
     return get_files_from_rich_text(rich_text).filter(is_temp=True)
 
 
-def establish_rich_text(author, rich_text, course=None, assignment=None, journal=None, comment=None, content=None):
+def establish_rich_text(author, rich_text, assignment=None, journal=None, comment=None, content=None):
     for file in get_temp_files_from_rich_text(rich_text):
-        establish_file(author, file.access_id, course, assignment, journal, content, comment, in_rich_text=True)
-
-
-def remove_unused_user_files(user):
-    """Deletes floating user files."""
-    # Remove temp files
-    VLE.models.FileContext.objects.filter(author=user, is_temp=True).delete()
-
-    # Remove overwritten files
-    for file in VLE.models.FileContext.objects.filter(author=user, content__isnull=False):
-        if file.content.field.type == VLE.models.Field.FILE:  # Check if file is replaced
-            if str(file.pk) != file.content.data:
-                file.delete()
-        # Remove rich_text files
-        elif file.content.field.type == VLE.models.Field.RICH_TEXT:  # Check if url is not in field anymore
-            if not file.content.data or str(file.access_id) not in file.content.data:
-                file.delete()
-    for file in VLE.models.FileContext.objects.filter(author=user, comment__isnull=False):
-        # Check if url is not in comment anymore
-        if not file.comment_files.filter(pk=file.comment.pk).exists() and \
-           (not file.comment.text or str(file.access_id) not in file.comment.text):
-            file.delete()
-    for file in VLE.models.FileContext.objects.filter(
-       author=user, journal__isnull=False, comment__isnull=True, content__isnull=True):
-        # Check if url is not the journal image anymore
-        if not file.journal.image or str(file.access_id) not in file.journal.image:
-            file.delete()
-    for file in VLE.models.FileContext.objects.filter(
-       author=user, course__isnull=True, assignment__isnull=True, journal__isnull=True):
-        # Check if url is not the profile picture
-        if not file.author.profile_picture or str(file.access_id) not in file.author.profile_picture:
-            file.delete()
-    for file in VLE.models.FileContext.objects.filter(author=user, assignment__isnull=False, journal__isnull=True):
-        # Check if url is not in assignment anymore
-        if not file.assignment.description or str(file.access_id) not in file.assignment.description:
-            found = False
-            for field in VLE.models.Field.objects.filter(template__format__assignment=file.assignment):
-                if field.description and str(file.access_id) in field.description:  # Nor is it in a field
-                    found = True
-                    break
-            if not found:
-                for node in VLE.models.PresetNode.objects.filter(format__assignment=file.assignment):
-                    if node.description and str(file.access_id) in node.description:  # Nor is it in a field
-                        found = True
-                        break
-            if not found:  # Only then delete the file
-                file.delete()
+        establish_file(author, file.access_id, assignment, journal, content, comment, in_rich_text=True)

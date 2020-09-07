@@ -2,7 +2,7 @@
 Utility functions in relation to generic statistics
 """
 
-from VLE.models import Course, Participation
+import VLE.models
 
 
 def get_user_lists_with_scopes(assignment, user, course=None):
@@ -27,8 +27,8 @@ def get_user_lists_with_scopes(assignment, user, course=None):
     if course is None:
         shared_courses = assignment.courses.filter(users=user)
     else:
-        shared_courses = Course.objects.filter(pk=course.pk, users=user)
-    p_all = Participation.objects.filter(
+        shared_courses = VLE.models.Course.objects.filter(pk=course.pk, users=user)
+    p_all = VLE.models.Participation.objects.filter(
         course__in=shared_courses,
         user__in=assignment.assignmentparticipation_set.values('user')
     )

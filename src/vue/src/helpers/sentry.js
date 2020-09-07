@@ -9,6 +9,16 @@ function beforeSend (event, hint) { // eslint-disable-line no-unused-vars
         store.commit('sentry/SET_LAST_EVENT_ID', { eventID: event.event_id })
     }
 
+    /* Set user context if missing, e.g. after store hydration.
+     * NOTE: Directly setting user context after store hydration is not possible as Sentry is then not fully
+     * initialized. */
+    if (!('user' in event) && store.getters['user/storePopulated']) {
+        /* Set user context for future sentry events. */
+        store.commit('sentry/SET_SENTRY_USER_SCOPE', store.getters['user/storePopulated'])
+        /* Set user context for the already generated event. */
+        event.user = store.getters['user/relevantUserSentryState']
+    }
+
     if (hint && hint.originalException) {
         const originalException = hint.originalException
 
@@ -22,6 +32,7 @@ function beforeSend (event, hint) { // eslint-disable-line no-unused-vars
 }
 
 export default function initSentry (Vue) {
+    /* NOTE: Release key is configured by the SentryWebpackPlugin */
     Sentry.init({
         dsn: CustomEnv.SENTRY_DSN,
         /* LogErrors: still call Vue's original logError function as well. */

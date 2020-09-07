@@ -10,6 +10,7 @@ from django.utils import timezone
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+from sentry_sdk import capture_exception
 
 import VLE.factory as factory
 import VLE.lti_launch as lti
@@ -198,10 +199,10 @@ def lti_launch(request):
     """
     secret = settings.LTI_SECRET
     key = settings.LTI_KEY
-
     try:
         lti.OAuthRequestValidater.check_signature(key, secret, request)
-    except (oauth2.Error, ValueError):
+    except (oauth2.Error, ValueError) as e:
+        capture_exception(e)
         return redirect(lti.create_lti_query_link(QueryDict.fromkeys(['state'], LTI_STATES.BAD_AUTH.value)))
 
     params = request.POST.dict()
@@ -229,6 +230,7 @@ def lti_launch(request):
             query['jwt_refresh'] = str(refresh)
             query['state'] = LTI_STATES.LOGGED_IN.value
     except KeyError as err:
+        capture_exception(err)
         query = QueryDict.fromkeys(['state'], LTI_STATES.KEY_ERR.value, mutable=True)
         query['description'] = 'The request is missing the following parameter: {0}.'.format(err)
 

@@ -63,8 +63,15 @@ from test.factory.field import VideoFieldFactory as VideoField  # noqa: F401
 from test.factory.file_context import AttachedCommentFileContextFactory as AttachedCommentFileContext  # noqa: F401
 from test.factory.file_context import FileContentFileContextFactory as FileContentFileContext  # noqa: F401
 from test.factory.file_context import FileContextFactory as FileContext  # noqa: F401
+from test.factory.file_context import JournalFileContextFactory as JournalFileContext  # noqa: F401
+from test.factory.file_context import ProfilePictureFileContextFactory as ProfilePictureFileContext  # noqa: F401
+from test.factory.file_context import \
+    RichTextAssignmentDescriptionFileContextFactory as RichTextAssignmentDescriptionFileContext  # noqa: F401, E501
 from test.factory.file_context import RichTextCommentFileContextFactory as RichTextCommentFileContext  # noqa: F401
 from test.factory.file_context import RichTextContentFileContextFactory as RichTextContentFileContext  # noqa: F401
+from test.factory.file_context import RichTextFieldDescriptionFileContextFactory as RichTextFieldDescriptionFileContext  # noqa: F401, E501
+from test.factory.file_context import \
+    RichTextPresetNodeDescriptionFileContextFactory as RichTextPresetNodeDescriptionFileContext  # noqa: F401, E501
 from test.factory.format import FormatFactory as Format  # noqa: F401
 from test.factory.grade import GradeFactory as Grade  # noqa: F401
 from test.factory.group import GroupFactory as Group  # noqa: F401

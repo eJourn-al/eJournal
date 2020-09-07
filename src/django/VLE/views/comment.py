@@ -20,11 +20,10 @@ def handle_comment_files(user, files, comment):
         file = FileContext.objects.get(pk=int(file_id))
         if not comment.files.filter(pk=file.pk).exists():
             comment.files.add(file)
-            file_handling.establish_file(user, file.access_id, comment=comment)
-    # Remove old files
+            file_handling.establish_file(author=user, identifier=file.access_id, comment=comment)
+    # Remove old attached files
     comment.files.exclude(pk__in=files).delete()
-    file_handling.establish_rich_text(user, comment.text, comment=comment)
-    file_handling.remove_unused_user_files(user)
+    file_handling.establish_rich_text(author=user, rich_text=comment.text, comment=comment)
 
 
 class CommentView(viewsets.ViewSet):
