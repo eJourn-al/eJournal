@@ -354,6 +354,7 @@ class TeacherEntryAPITest(TestCase):
         pre_crash_fcs = list(FileContext.objects.values_list('pk', flat=True))
         pre_crash_comments = list(Comment.objects.values_list('pk', flat=True))
 
+        # QUESTION: This action will generate a RT and FILE field temp FC, how should these temp files be handled?
         data = factory.TeacherEntryCreationParams(assignment=assignment)
 
         def check_db_state_after_exception(self, raise_exception_for):
