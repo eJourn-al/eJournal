@@ -90,8 +90,8 @@ def validate_entry_content(content, field):
     if field.type == VLE.models.Field.FILE:
         try:
             int(content['id'])
-        except (ValueError, KeyError):
-            raise ValidationError("The content['id'] of a field file should contain the pk of the related file")
+        except (ValueError, KeyError, TypeError):
+            raise ValidationError('The content of a field file should follow {field.pk: FileContext.pk}')
 
         # Ensures the FC still exists
         fc = VLE.models.FileContext.objects.get(pk=int(content['id']))
