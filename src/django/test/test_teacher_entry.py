@@ -7,7 +7,7 @@ from unittest import mock
 from django.db import transaction
 from django.test import TestCase
 
-from VLE.models import Entry, Field, Grade, Node, TeacherEntry
+from VLE.models import Comment, Entry, Field, FileContext, Grade, Node, TeacherEntry
 from VLE.serializers import EntrySerializer
 from VLE.utils.error_handling import VLEPermissionError
 
@@ -72,6 +72,14 @@ class TeacherEntryAPITest(TestCase):
 
             # Users without permission are not allowed to create (graded) teacher entries.
             api.create(self, 'teacher_entries', params=graded_create_params, user=self.student1, status=403)
+
+    def test_create_teacher_entry_params_factory(self):
+        assignment = factory.Assignment(author__preferences__can_post_teacher_entries=True)
+        factory.Journal(assignment=assignment)
+        teacher = assignment.author
+        params = factory.TeacherEntryCreationParams(assignment=assignment)
+
+        api.create(self, 'teacher_entries', params=params, user=teacher)
 
     def test_create_invalid_teacher_entry(self):
         invalid_template_params = deepcopy(self.valid_create_params)
@@ -329,3 +337,43 @@ class TeacherEntryAPITest(TestCase):
         api.delete(self, 'entries', params={
             'pk': Entry.objects.get(teacher_entry__pk=resp['id'], node__journal=journal3).id
         }, user=journal3.authors.first().user)
+
+    def test_teacher_entry_crash_recovery(self):
+        # Setup some earlier DB context
+        course = factory.Course(author__preferences__can_post_teacher_entries=True)
+        teacher = course.author
+        assignment = factory.Assignment(courses=[course], format__templates=[])
+        factory.TemplateAllTypes(format=assignment.format)
+        for _ in range(3):
+            journal = factory.Journal(assignment=assignment)
+        entry = Entry.objects.get(node__journal=journal)
+        factory.TeacherComment(entry=entry, n_att_files=1, n_rt_files=1, author=teacher, published=True)
+
+        pre_crash_nodes = list(Node.objects.values_list('pk', flat=True))
+        pre_crash_entries = list(Entry.objects.values_list('pk', flat=True))
+        pre_crash_fcs = list(FileContext.objects.values_list('pk', flat=True))
+        pre_crash_comments = list(Comment.objects.values_list('pk', flat=True))
+
+        data = factory.TeacherEntryCreationParams(assignment=assignment)
+
+        def check_db_state_after_exception(self, raise_exception_for):
+            with mock.patch(raise_exception_for, side_effect=Exception()):
+                self.assertRaises(
+                    Exception, api.create, self, 'teacher_entries', params=data, user=teacher)
+
+            # Check if DB state is unchanged after a crash
+            assert list(Node.objects.values_list('pk', flat=True)) == pre_crash_nodes
+            assert list(Entry.objects.values_list('pk', flat=True)) == pre_crash_entries
+            assert list(FileContext.objects.values_list('pk', flat=True)) == pre_crash_fcs
+            assert list(Comment.objects.values_list('pk', flat=True)) == pre_crash_comments
+
+        check_db_state_after_exception(self, 'VLE.views.teacher_entry._copy_new_teacher_entry')
+        check_db_state_after_exception(self, 'VLE.utils.import_utils.copy_node')
+        check_db_state_after_exception(self, 'VLE.utils.import_utils.copy_entry')
+        check_db_state_after_exception(self, 'VLE.utils.import_utils.import_comment')
+        check_db_state_after_exception(self, 'VLE.utils.import_utils.import_content')
+        check_db_state_after_exception(self, 'VLE.factory.make_content')
+        check_db_state_after_exception(self, 'VLE.utils.file_handling.get_files_from_rich_text')
+        check_db_state_after_exception(self, 'VLE.utils.file_handling.establish_file')
+        check_db_state_after_exception(self, 'VLE.factory.make_grade')
+        check_db_state_after_exception(self, 'VLE.utils.grading.task_journal_status_to_LMS')
