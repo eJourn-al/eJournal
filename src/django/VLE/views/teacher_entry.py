@@ -15,6 +15,25 @@ from VLE.models import Assignment, Field, FileContext, Journal, Node, TeacherEnt
 from VLE.utils import grading, import_utils
 
 
+def _copy_new_teacher_entry(teacher_entry, journal_ids, grades, publish_grade, author_id, is_new=False):
+    """Copies a teacher entry to journals. Only used for creating new entries, not updating existing ones."""
+    for journal_id in journal_ids:
+        journal = Journal.objects.get(pk=journal_id)
+        node = Node.objects.create(
+            type=Node.ENTRY,
+            journal=journal
+        )
+        copied_entry = import_utils.copy_entry(teacher_entry, node, teacher_entry=teacher_entry)
+
+        if journal_id in grades and grades[journal_id] is not None:
+            factory.make_grade(copied_entry, author_id, grades[journal_id],
+                               journal_id in publish_grade and publish_grade[journal_id])
+        for content in teacher_entry.content_set.all():
+            import_utils.import_content(content, copied_entry)
+
+        grading.task_journal_status_to_LMS.delay(journal_id)
+
+
 class TeacherEntryView(viewsets.ViewSet):
     """Entry view.
 
@@ -106,7 +125,7 @@ class TeacherEntryView(viewsets.ViewSet):
             file_handling.establish_file(request.user, file.access_id, content=created_content,
                                          in_rich_text=created_content.field.type == Field.RICH_TEXT)
 
-        self._copy_new_teacher_entry(teacher_entry, journal_ids, grades, publish_grade, request.user.pk, is_new=True)
+        _copy_new_teacher_entry(teacher_entry, journal_ids, grades, publish_grade, request.user.pk, is_new=True)
 
         return response.created({
             'teacher_entry': serialize.TeacherEntrySerializer(teacher_entry).data
@@ -170,7 +189,7 @@ class TeacherEntryView(viewsets.ViewSet):
                 # No new entry needs to be created for this journal in the next step.
                 journal_ids.remove(journal_id)
 
-        self._copy_new_teacher_entry(teacher_entry, journal_ids, grades, publish_grade, request.user.pk)
+        _copy_new_teacher_entry(teacher_entry, journal_ids, grades, publish_grade, request.user.pk)
 
         return response.success({
             'teacher_entry': serialize.TeacherEntrySerializer(teacher_entry).data
@@ -194,21 +213,3 @@ class TeacherEntryView(viewsets.ViewSet):
         teacher_entry.delete()
 
         return response.success(description='Successfully deleted teacher entry.')
-
-    def _copy_new_teacher_entry(self, teacher_entry, journal_ids, grades, publish_grade, author_id, is_new=False):
-        """Copies a teacher entry to journals. Only used for creating new entries, not updating existing ones."""
-        for journal_id in journal_ids:
-            journal = Journal.objects.get(pk=journal_id)
-            node = Node.objects.create(
-                type=Node.ENTRY,
-                journal=journal
-            )
-            copied_entry = import_utils.copy_entry(teacher_entry, node, teacher_entry=teacher_entry)
-
-            if journal_id in grades and grades[journal_id] is not None:
-                factory.make_grade(copied_entry, author_id, grades[journal_id],
-                                   journal_id in publish_grade and publish_grade[journal_id])
-            for content in teacher_entry.content_set.all():
-                import_utils.import_content(content, copied_entry)
-
-            grading.task_journal_status_to_LMS.delay(journal_id)
