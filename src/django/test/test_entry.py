@@ -364,6 +364,24 @@ class EntryAPITest(TestCase):
         # TODO: Test with file upload
         # TODO: Test added index
 
+    def test_create_entry_params_factory(self):
+        fcs_before = list(FileContext.objects.values_list('pk', flat=True))
+
+        course = factory.Course()
+        assignment = factory.Assignment(courses=[course], format__templates=[])
+        template = factory.TemplateAllTypes(format=assignment.format)
+        journal = factory.Journal(assignment=assignment)
+        student = journal.authors.first().user
+
+        data = factory.UnlimitedEntryCreationParams(journal=journal)
+        assert data['journal_id'] == journal.pk
+        assert data['template_id'] == template.pk
+
+        new_temp_fcs = FileContext.objects.filter(is_temp=True).exclude(pk__in=fcs_before)
+        assert all([fc.author == student for fc in new_temp_fcs]) and new_temp_fcs.exists()
+
+        api.create(self, 'entries', params=data, user=student)
+
     def test_entry_in_teacher_journal(self):
         assignment = factory.Assignment()
         teacher_journal = assignment.assignmentparticipation_set.get(user=assignment.author).journal

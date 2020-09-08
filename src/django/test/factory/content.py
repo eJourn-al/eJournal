@@ -30,6 +30,27 @@ def _from_file_to_file(from_file):
     return ''
 
 
+def gen_valid_non_file_data(field):
+    if field.type not in Field.TYPES_WITHOUT_FILE_CONTEXT:
+        raise VLEProgrammingError('Field type with possible FC association called')
+
+    if field.type == Field.TEXT:
+        return factory.Faker('text').generate()
+    if field.type == Field.VIDEO:
+        # According to our current validators this can be any url
+        return 'https://www.youtube.com/watch?v=lJMNA7UcpxE'
+    if field.type == Field.URL:
+        return factory.Faker('url').generate()
+    if field.type == Field.DATE:
+        return factory.Faker('time', pattern=Field.ALLOWED_DATE_FORMAT).generate()
+    if field.type == Field.DATETIME:
+        return factory.Faker('time', pattern=Field.ALLOWED_DATETIME_FORMAT).generate()
+    if field.type == Field.SELECTION:
+        return random.choice(json.loads(field.options))
+    if field.type == Field.NO_SUBMISSION:
+        raise VLEProgrammingError('Content should never be generated for a no submission field')
+
+
 class ContentFactory(factory.django.DjangoModelFactory):
     """
     Generates valid content for the selected (:model:`VLE.Field`): type
@@ -58,8 +79,8 @@ class ContentFactory(factory.django.DjangoModelFactory):
         if extracted:
             self.data = extracted
         else:
-            if self.field.type == Field.TEXT:
-                self.data = factory.Faker('text').generate()
+            if self.field.type in Field.TYPES_WITHOUT_FILE_CONTEXT:
+                self.data = gen_valid_non_file_data(self.field)
             elif self.field.type == Field.RICH_TEXT:
                 from_file = ''
                 filename = factory.Faker('file_name', category='image').generate()
@@ -96,21 +117,6 @@ class ContentFactory(factory.django.DjangoModelFactory):
                     file__from_file=from_file,
                     author=self.entry.author
                 )
-            elif self.field.type == Field.VIDEO:
-                # According to our current validators this can be any url
-                self.data = 'https://www.youtube.com/watch?v=lJMNA7UcpxE'
-            elif self.field.type == Field.URL:
-                self.data = factory.Faker('url').generate()
-            elif self.field.type == Field.DATE:
-                self.data = factory.Faker('time', pattern=Field.ALLOWED_DATE_FORMAT).generate()
-            elif self.field.type == Field.DATETIME:
-                self.data = factory.Faker('time', pattern=Field.ALLOWED_DATETIME_FORMAT).generate()
-            elif self.field.type == Field.SELECTION:
-                self.data = random.choice(json.loads(self.field.options))
-            elif self.field.type == Field.NO_SUBMISSION:
-                raise VLEProgrammingError('Content should never be generated for a no submission field')
-
-        self.save()
 
     @factory.post_generation
     def validate(self, create, extracted, **kwargs):

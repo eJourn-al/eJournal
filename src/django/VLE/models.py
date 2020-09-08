@@ -1877,6 +1877,9 @@ class Field(CreateUpdateModel):
     DATETIME = 'dt'
     SELECTION = 's'
     NO_SUBMISSION = 'n'
+
+    TYPES_WITHOUT_FILE_CONTEXT = [TEXT, VIDEO, URL, DATE, DATETIME, SELECTION, NO_SUBMISSION]
+
     TYPES = (
         (TEXT, 'text'),
         (RICH_TEXT, 'rich text'),
