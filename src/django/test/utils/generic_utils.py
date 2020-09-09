@@ -1,5 +1,6 @@
 import filecmp
 import re
+from collections.abc import Iterable
 
 from deepdiff import DeepDiff
 from django.conf import settings
@@ -67,6 +68,20 @@ def _equal_dicts(d1, d2, ignore_keys=[], exclude_regex_paths=[], return_diff=Fal
 def instance_conrete_fields_dict(instance):
     concrete_fields = instance._meta.concrete_fields
     return {field.name: field.value_from_object(instance) for field in concrete_fields}
+
+
+def equal_model_iterators(m1, m2, ignore_keys=[], exclude_regex_paths=[]):
+    # Compare lengths of iterators
+    if sum(1 for _ in m1) != sum(1 for _ in m2):
+        if settings.ENVIRONMENT == 'LOCAL':
+            print(f'incorrent lengths: m1: {sum(1 for _ in m1)}, m2: {sum(1 for _ in m2)}')
+        return False
+    # Compare models of iterators
+    return all(equal_models(
+            x, y,
+            ignore_keys=ignore_keys, exclude_regex_paths=exclude_regex_paths
+        ) for x, y in zip(m1, m2)
+    )
 
 
 def equal_models(m1, m2, ignore_keys=[], exclude_regex_paths=[], return_diff=False):
