@@ -347,15 +347,18 @@ class TeacherEntryAPITest(TestCase):
         for _ in range(3):
             journal = factory.Journal(assignment=assignment)
         entry = Entry.objects.get(node__journal=journal)
+        factory.Grade(entry=entry, author=teacher)
         factory.TeacherComment(entry=entry, n_att_files=1, n_rt_files=1, author=teacher, published=True)
 
         pre_crash_nodes = list(Node.objects.values_list('pk', flat=True))
         pre_crash_entries = list(Entry.objects.values_list('pk', flat=True))
+        pre_crash_grades = list(Grade.objects.values_list('pk', flat=True))
         pre_crash_fcs = list(FileContext.objects.values_list('pk', flat=True))
         pre_crash_comments = list(Comment.objects.values_list('pk', flat=True))
 
         # QUESTION: This action will generate a RT and FILE field temp FC, how should these temp files be handled?
         data = factory.TeacherEntryCreationParams(assignment=assignment)
+        temp_files = list(FileContext.objects.filter(author=teacher, is_temp=True).values_list('pk', flat=True))
 
         def check_db_state_after_exception(self, raise_exception_for):
             with mock.patch(raise_exception_for, side_effect=Exception()):
@@ -365,7 +368,10 @@ class TeacherEntryAPITest(TestCase):
             # Check if DB state is unchanged after a crash
             assert list(Node.objects.values_list('pk', flat=True)) == pre_crash_nodes
             assert list(Entry.objects.values_list('pk', flat=True)) == pre_crash_entries
-            assert list(FileContext.objects.values_list('pk', flat=True)) == pre_crash_fcs
+            assert list(Grade.objects.values_list('pk', flat=True)) == pre_crash_grades
+            assert list(FileContext.objects.exclude(pk__in=temp_files).values_list('pk', flat=True)) == pre_crash_fcs
+            assert list(FileContext.objects.filter(author=teacher, is_temp=True)) == temp_files, \
+                'Teacher can reuse earlier uploaded temporary files, despite a crash occurring'
             assert list(Comment.objects.values_list('pk', flat=True)) == pre_crash_comments
 
         check_db_state_after_exception(self, 'VLE.views.teacher_entry._copy_new_teacher_entry')
