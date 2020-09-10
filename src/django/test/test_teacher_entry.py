@@ -2,7 +2,7 @@ import test.factory as factory
 from copy import deepcopy
 from datetime import date, timedelta
 from test.utils import api
-from test.utils.generic_utils import equal_model_iterators
+from test.utils.generic_utils import _model_instance_to_dict, equal_models, zip_equal
 from unittest import mock
 
 from django.db import transaction
@@ -14,31 +14,31 @@ from VLE.utils.error_handling import VLEPermissionError
 
 
 class TeacherEntryAPITest(TestCase):
-    def setUp(self):
-        self.assignment = factory.Assignment(format__templates=[])
-        self.journal1 = factory.Journal(assignment=self.assignment)
-        self.student1 = self.journal1.authors.first().user
-        self.journal2 = factory.Journal(assignment=self.assignment)
-        self.teacher = self.assignment.author
-        self.format = self.assignment.format
-        self.template = factory.TextTemplate(format=self.format)
+    # def setUp(self):
+    #     self.assignment = factory.Assignment(format__templates=[])
+    #     self.journal1 = factory.Journal(assignment=self.assignment)
+    #     self.student1 = self.journal1.authors.first().user
+    #     self.journal2 = factory.Journal(assignment=self.assignment)
+    #     self.teacher = self.assignment.author
+    #     self.format = self.assignment.format
+    #     self.template = factory.TextTemplate(format=self.format)
 
-        self.valid_create_params = {
-            'title': 'Teacher initated entry title',
-            'show_title_in_timeline': True,
-            'assignment_id': self.assignment.id,
-            'template_id': self.template.id,
-            'journal_ids': [self.journal1.id],
-            'content': {},
-            'grades': {
-                self.journal1.id: 1,
-            },
-            'publish_grade': {
-                self.journal1.id: True,
-            },
-        }
-        fields = self.template.field_set.all()
-        self.valid_create_params['content'] = {str(field.id): 'test data' for field in fields}
+    #     self.valid_create_params = {
+    #         'title': 'Teacher initated entry title',
+    #         'show_title_in_timeline': True,
+    #         'assignment_id': self.assignment.id,
+    #         'template_id': self.template.id,
+    #         'journal_ids': [self.journal1.id],
+    #         'content': {},
+    #         'grades': {
+    #             self.journal1.id: 1,
+    #         },
+    #         'publish_grade': {
+    #             self.journal1.id: True,
+    #         },
+    #     }
+    #     fields = self.template.field_set.all()
+    #     self.valid_create_params['content'] = {str(field.id): 'test data' for field in fields}
 
     def test_create_graded_teacher_entry(self):
         graded_create_params = deepcopy(self.valid_create_params)
@@ -351,11 +351,14 @@ class TeacherEntryAPITest(TestCase):
         factory.Grade(entry=entry, author=teacher)
         factory.TeacherComment(entry=entry, n_att_files=1, n_rt_files=1, author=teacher, published=True)
 
-        pre_crash_nodes = Node.objects.order_by('pk')
-        pre_crash_entries = Entry.objects.order_by('pk')
-        pre_crash_grades = Grade.objects.order_by('pk')
+        def all_to_dict(model):
+            return [_model_instance_to_dict(i) for i in model.objects.all()]
+
+        pre_crash_nodes = all_to_dict(Node)
+        pre_crash_entries = all_to_dict(Entry)
+        pre_crash_grades = all_to_dict(Grade)
+        pre_crash_comments = all_to_dict(Comment)
         pre_crash_fcs = list(FileContext.objects.values_list('pk', flat=True))
-        pre_crash_comments = list(Comment.objects.values_list('pk', flat=True))
 
         # QUESTION: This action will generate a RT and FILE field temp FC, how should these temp files be handled?
         data = factory.TeacherEntryCreationParams(assignment=assignment)
@@ -367,14 +370,14 @@ class TeacherEntryAPITest(TestCase):
                     Exception, api.create, self, 'teacher_entries', params=data, user=teacher)
 
             # Check if DB state is unchanged after a crash
-            assert equal_model_iterators(Node.objects.order_by('pk'), pre_crash_nodes)
-            assert equal_model_iterators(Entry.objects.order_by('pk'), pre_crash_entries)
-            assert equal_model_iterators(Grade.objects.order_by('pk'), pre_crash_grades)
+            assert all([equal_models(pre, post) for pre, post in zip_equal(pre_crash_nodes, all_to_dict(Node))])
+            assert all([equal_models(pre, post) for pre, post in zip_equal(pre_crash_entries, all_to_dict(Entry))])
+            assert all([equal_models(pre, post) for pre, post in zip_equal(pre_crash_grades, all_to_dict(Grade))])
+            assert all([equal_models(pre, post) for pre, post in zip_equal(pre_crash_comments, all_to_dict(Comment))])
             assert list(FileContext.objects.exclude(pk__in=temp_files).values_list('pk', flat=True)) == pre_crash_fcs
             assert list(FileContext.objects.filter(author=teacher, is_temp=True).values_list('pk', flat=True)) \
                 == temp_files, \
                 'Teacher can reuse earlier uploaded temporary files, despite a crash occurring'
-            assert list(Comment.objects.values_list('pk', flat=True)) == pre_crash_comments
 
         check_db_state_after_exception(self, 'VLE.views.teacher_entry._copy_new_teacher_entry')
         check_db_state_after_exception(self, 'VLE.utils.import_utils.copy_node')
