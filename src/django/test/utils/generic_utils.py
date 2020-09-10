@@ -1,6 +1,6 @@
 import filecmp
 import re
-from collections.abc import Iterable
+from itertools import zip_longest
 
 from deepdiff import DeepDiff
 from django.conf import settings
@@ -10,6 +10,24 @@ from django.db.models.fields.related import ManyToManyField
 import VLE.models
 import VLE.utils.error_handling
 import VLE.utils.file_handling as file_handling
+
+
+def zip_equal(*iterables):
+    """
+    Zip and raise exception if lengths are not equal.
+
+    Params:
+        iterables: Iterable objects
+    Return:
+        A new iterator outputting tuples where one element comes from each iterable
+    """
+    filler = object()
+
+    for combo in zip_longest(*iterables, fillvalue=filler):
+        if any(filler is c for c in combo):
+            raise ValueError('Iterables have different lengths. Iterable(s) #{} (of 0..{}) ran out first.'.format(
+                             [i for i, c in enumerate(combo) if c is filler], len(combo) - 1))
+    yield combo
 
 
 def _model_instance_to_dict(instance, ignore=[]):
@@ -68,20 +86,6 @@ def _equal_dicts(d1, d2, ignore_keys=[], exclude_regex_paths=[], return_diff=Fal
 def instance_conrete_fields_dict(instance):
     concrete_fields = instance._meta.concrete_fields
     return {field.name: field.value_from_object(instance) for field in concrete_fields}
-
-
-def equal_model_iterators(m1, m2, ignore_keys=[], exclude_regex_paths=[]):
-    # Compare lengths of iterators
-    if sum(1 for _ in m1) != sum(1 for _ in m2):
-        if settings.ENVIRONMENT == 'LOCAL':
-            print(f'incorrent lengths: m1: {sum(1 for _ in m1)}, m2: {sum(1 for _ in m2)}')
-        return False
-    # Compare models of iterators
-    return all(equal_models(
-            x, y,
-            ignore_keys=ignore_keys, exclude_regex_paths=exclude_regex_paths
-        ) for x, y in zip(m1, m2)
-    )
 
 
 def equal_models(m1, m2, ignore_keys=[], exclude_regex_paths=[], return_diff=False):
