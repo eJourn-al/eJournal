@@ -14,31 +14,31 @@ from VLE.utils.error_handling import VLEPermissionError
 
 
 class TeacherEntryAPITest(TestCase):
-    # def setUp(self):
-    #     self.assignment = factory.Assignment(format__templates=[])
-    #     self.journal1 = factory.Journal(assignment=self.assignment)
-    #     self.student1 = self.journal1.authors.first().user
-    #     self.journal2 = factory.Journal(assignment=self.assignment)
-    #     self.teacher = self.assignment.author
-    #     self.format = self.assignment.format
-    #     self.template = factory.TextTemplate(format=self.format)
+    def setUp(self):
+        self.assignment = factory.Assignment(format__templates=[])
+        self.journal1 = factory.Journal(assignment=self.assignment)
+        self.student1 = self.journal1.authors.first().user
+        self.journal2 = factory.Journal(assignment=self.assignment)
+        self.teacher = self.assignment.author
+        self.format = self.assignment.format
+        self.template = factory.TextTemplate(format=self.format)
 
-    #     self.valid_create_params = {
-    #         'title': 'Teacher initated entry title',
-    #         'show_title_in_timeline': True,
-    #         'assignment_id': self.assignment.id,
-    #         'template_id': self.template.id,
-    #         'journal_ids': [self.journal1.id],
-    #         'content': {},
-    #         'grades': {
-    #             self.journal1.id: 1,
-    #         },
-    #         'publish_grade': {
-    #             self.journal1.id: True,
-    #         },
-    #     }
-    #     fields = self.template.field_set.all()
-    #     self.valid_create_params['content'] = {str(field.id): 'test data' for field in fields}
+        self.valid_create_params = {
+            'title': 'Teacher initated entry title',
+            'show_title_in_timeline': True,
+            'assignment_id': self.assignment.id,
+            'template_id': self.template.id,
+            'journal_ids': [self.journal1.id],
+            'content': {},
+            'grades': {
+                self.journal1.id: 1,
+            },
+            'publish_grade': {
+                self.journal1.id: True,
+            },
+        }
+        fields = self.template.field_set.all()
+        self.valid_create_params['content'] = {str(field.id): 'test data' for field in fields}
 
     def test_create_graded_teacher_entry(self):
         graded_create_params = deepcopy(self.valid_create_params)
