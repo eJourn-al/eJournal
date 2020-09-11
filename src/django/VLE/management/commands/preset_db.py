@@ -13,7 +13,8 @@ from django.core.management.base import BaseCommand
 from faker import Faker
 
 import VLE.factory as factory
-from VLE.models import Assignment, AssignmentParticipation, Course, Field, FileContext, Journal, Node, Template, User, Instance
+from VLE.models import (Assignment, AssignmentParticipation, Course, Field, FileContext, Instance, Journal, Node,
+                        Template, User)
 from VLE.utils import file_handling
 
 faker = Faker()
