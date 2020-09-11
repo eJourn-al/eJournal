@@ -11,8 +11,7 @@ https://docs.djangoproject.com/en/2.0/ref/settings/
 """
 import os
 
-from pylti1p3.tool_config import ToolConfJsonFile
-
+from VLE.lti1p3.tool_conf import eToolConfJsonFile
 from VLE.settings.base import *
 
 ENVIRONMENT = 'LOCAL'
@@ -75,4 +74,4 @@ else:
     }
 
 DEBUG = True
-TOOL_CONF = ToolConfJsonFile(os.path.join(BASE_DIR, '../..', 'config/lti', 'lti_keys.json'))
+TOOL_CONF = eToolConfJsonFile(os.path.join(BASE_DIR, '../..', 'config/lti', 'lti_keys.json'))

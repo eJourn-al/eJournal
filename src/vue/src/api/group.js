@@ -30,6 +30,14 @@ export default {
             .then(response => response.data.groups)
     },
 
+    getLMS (cID, connArgs = auth.DEFAULT_CONN_ARGS) {
+        return auth.get('groups/LMS', { course_id: cID }, connArgs)
+            .then((response) => {
+                console.log(response)
+                window.open(response.data.redirect_uri, '_blank')
+            })
+    },
+
     getMembers (gID, connArgs = auth.DEFAULT_CONN_ARGS) {
         return auth.get('members', { group_id: gID }, connArgs)
             .then(response => response.data.members)

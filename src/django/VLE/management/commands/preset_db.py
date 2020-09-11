@@ -13,7 +13,7 @@ from django.core.management.base import BaseCommand
 from faker import Faker
 
 import VLE.factory as factory
-from VLE.models import Assignment, AssignmentParticipation, Course, Field, FileContext, Journal, Node, Template, User
+from VLE.models import Assignment, AssignmentParticipation, Course, Field, FileContext, Journal, Node, Template, User, Instance
 from VLE.utils import file_handling
 
 faker = Faker()
@@ -328,8 +328,9 @@ class Command(BaseCommand):
         for a in assign_examples:
             format = self.formats[a["format"]]
             faker.date_time_between(start_date="now", end_date="+1y", tzinfo=None)
-            assignment = factory.make_assignment(a["name"], a["description"], a["author"], format, courses=a["courses"],
-                                                 is_published=True, is_group_assignment=a["is_group_assignment"])
+            assignment = factory.make_assignment(
+                name=a["name"], description=a["description"], author=a["author"], format=format, courses=a["courses"],
+                is_published=True, is_group_assignment=a["is_group_assignment"])
             self.assignments.append(assignment)
 
         journal = factory.make_journal(self.assignments[2], author_limit=3)
@@ -497,11 +498,20 @@ class Command(BaseCommand):
 
         This only contains the 'useful data'. For random data, execute demo_db as well.
         """
+        # Earlier migrations might have already created an instance
+        instance = Instance.objects.get_or_create(pk=1)[0]
+        Instance.objects.filter(pk=1).update(
+            lms_name='Canvas',
+            lms_url='http://canvas.docker',
+            lti_client_id='10000000000001',
+            api_client_id='10000000000002',
+            lti_deployment_ids='1:b82229c6e10bcb87beb1f1b287faee560ddc3109'
+        )
         self.gen_users()
         self.gen_courses()
         self.gen_format()
         self.gen_assignments()
         self.gen_journals()
-        self.gen_entries(Assignment.objects.get(name='Logboek'))
-        self.gen_entries(Assignment.objects.get(name='Colloquium'))
+        # self.gen_entries(Assignment.objects.get(name='Logboek'))
+        # self.gen_entries(Assignment.objects.get(name='Colloquium'))
         self.gen_content()

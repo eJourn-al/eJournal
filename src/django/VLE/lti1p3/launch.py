@@ -1,15 +1,17 @@
+import requests
 from django.conf import settings
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse
 from django.shortcuts import redirect
 from django.urls import reverse
 from pylti1p3.contrib.django import DjangoCacheDataStorage
 from pylti1p3.deep_link_resource import DeepLinkResource
+from pylti1p3.service_connector import ServiceConnector
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
 import VLE.lti1p3 as lti
-from VLE.lti1p3 import assignment, course, members, user, utils
+from VLE.lti1p3 import assignment, course, groups, members, user, utils
 from VLE.models import Assignment, Course, Instance, Journal, User
 from VLE.utils.error_handling import VLEBadRequest
 from VLE.utils.generic_utils import build_url
@@ -50,6 +52,7 @@ def handle_no_user_connected_to_launch_data(message_launch_data, launch_id):
         'launch_id': launch_id,
         'username_already_exists': already_exists,
         'name': message_launch_data.get('name', username),
+        # TODO LTI: add journal & course & assignment id to this list
     }
     return redirect(build_url(settings.BASELINK, 'LtiLogin', response_data))
 
@@ -95,28 +98,81 @@ def handle_all_connected_to_launch_data(message_launch_data, launch_id, user, co
     return redirect(build_url(settings.BASELINK, 'LtiLogin', response_data))
 
 
-@api_view(['POST', 'GET'])
+@api_view(['GET'])
 @permission_classes((AllowAny, ))
-def lti_launch(request):
-    if request.method == 'POST':
-        api_scopes_authorized = False
-        message_launch = lti.utils.ExtendedDjangoMessageLaunch(
-            request, settings.TOOL_CONF, launch_data_storage=DjangoCacheDataStorage())
-        launch_id = message_launch.get_launch_id()
+def launch_configuration(request):
+    if Instance.objects.get(pk=1).lms_name == 'Canvas':
+        return JsonResponse({
+            'title': 'eJournal',
+            'scopes': [
+                'https://purl.imsglobal.org/spec/lti-ags/scope/lineitem',
+                'https://purl.imsglobal.org/spec/lti-ags/scope/lineitem.readonly',
+                'https://purl.imsglobal.org/spec/lti-ags/scope/result.readonly',
+                'https://purl.imsglobal.org/spec/lti-nrps/scope/contextmembership.readonly',
+                'https://purl.imsglobal.org/spec/lti-ags/scope/score',
+                'https://canvas.instructure.com/lti/public_jwk/scope/update',
+                'https://canvas.instructure.com/lti/data_services/scope/create',
+                'https://canvas.instructure.com/lti/data_services/scope/show',
+                'https://canvas.instructure.com/lti/data_services/scope/update',
+                'https://canvas.instructure.com/lti/data_services/scope/list',
+                'https://canvas.instructure.com/lti/data_services/scope/destroy',
+                'https://canvas.instructure.com/lti/data_services/scope/list_event_types',
+                'https://canvas.instructure.com/lti/feature_flags/scope/show',
+                'https://canvas.instructure.com/lti/account_lookup/scope/show'
+            ],
+            'extensions': [
+                {
+                    'platform': 'canvas.instructure.com',
+                    'settings': {
+                        'platform': 'canvas.instructure.com',
+                        'placements': [
+                            {
+                                'placement': 'assignment_selection',
+                                'message_type': 'LtiDeepLinkingRequest',
+                                'target_link_uri': settings.LTI_LAUNCH_URL,
+                            }
+                        ]
+                    },
+                    'privacy_level': 'public'
+                }
+            ],
+            'public_jwk': {},
+            'description': 'eJournal development',
+            'custom_fields': {
+                'username': '$User.username',
+                'course_id': '$Canvas.course.id',
+                'course_name': '$Canvas.course.name',
+                'course_start': '$Canvas.course.startAt',
+                'section_ids': '$Canvas.course.sectionIds',
+                'group_context_id': '$Canvas.group.contextIds',
+                'assignment_id': '$Canvas.assignment.id',
+                'assignment_lti_id': '$com.instructure.Assignment.lti.id',
+                'assignment_unlock': '$Canvas.assignment.unlockAt',
+                'assignment_due': '$Canvas.assignment.dueAt',
+                'assignment_lock': '$Canvas.assignment.lockAt',
+                'assignment_points': '$Canvas.assignment.pointsPossible',
+                'assignment_publish': '$Canvas.assignment.published'
+            },
+            'public_jwk_url': 'https://www.ejournal.app/jwk.json',
+            'target_link_uri': settings.LTI_LAUNCH_URL,
+            'oidc_initiation_url': settings.LTI_LOGIN_URL
+        })
     else:
-        # Path after authorization
-        # TODO LTI: throw error if status does not exist
-        api_scopes_authorized = True
-        launch_id = request.query_params['state']
-        message_launch = lti.utils.get_launch_from_id(launch_id, request)
+        return responses.bad_request('No LMS was selected')
+
+
+@api_view(['POST'])
+@permission_classes((AllowAny, ))
+def launch(request):
+    message_launch = lti.utils.ExtendedDjangoMessageLaunch(
+        request, settings.TOOL_CONF, launch_data_storage=DjangoCacheDataStorage())
+    launch_id = message_launch.get_launch_id()
 
     message_launch_data = message_launch.get_launch_data()
 
     # Check if it is an initial assignment setup
     if message_launch.is_deep_link_launch():
         # TODO LTI: find out how we can detect if we already are authorized to access these scopes, if not, request them, else go directly to HttpResponse
-        # if not api_scopes_authorized:
-        #     return redirect("http://canvas.docker/login/oauth2/auth?response_type=code&redirect_uri=http%3A%2F%2F127.0.0.1:8000/lti/launch/&scope=url%3AGET%7C%2Fapi%2Fv1%2Fcourses%2F%3Acourse_id%2Fsections&client_id=10000000000002&state={}".format(launch_id))
 
         launch_url = request.build_absolute_uri(reverse('lti_launch'))
         resource = eDeepLinkResource()
@@ -142,6 +198,7 @@ def lti_launch(request):
         if not assignment:
             return handle_no_assignment_connected_to_launch_data(message_launch_data, launch_id, user, course)
 
+        print(user, assignment)
         journal = Journal.objects.filter(authors__user=user, assignment=assignment).first()
         return handle_all_connected_to_launch_data(
             message_launch_data, launch_id, user, course, assignment, journal, request)

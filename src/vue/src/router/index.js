@@ -9,6 +9,7 @@ import JoinJournal from '@/views/JoinJournal.vue'
 import Assignment from '@/views/Assignment.vue'
 import Course from '@/views/Course.vue'
 import Profile from '@/views/Profile.vue'
+import Admin from '@/views/Admin.vue'
 import Guest from '@/views/Guest.vue'
 import Login from '@/views/Login.vue'
 import PasswordRecovery from '@/views/PasswordRecovery.vue'
@@ -66,6 +67,10 @@ const router = new Router({
         path: '/LtiLogin',
         name: 'LtiLogin',
         component: LtiLogin,
+    }, {
+        path: '/Admin',
+        name: 'Admin',
+        component: Admin,
     }, {
         path: '/AssignmentsOverview',
         name: 'AssignmentsOverview',

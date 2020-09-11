@@ -308,8 +308,9 @@ def base64ToContentFile(string, filename):
     return ContentFile(base64.b64decode(matches[1]), name='{}{}'.format(filename, extension))
 
 
-def build_url(baseurl, path, args_dict):
+def build_url(baseurl, path, args_dict=None):
     url_parts = list(urllib.parse.urlparse(baseurl))
     url_parts[2] = path
-    url_parts[4] = urllib.parse.urlencode(args_dict)
+    if args_dict is not None:
+        url_parts[4] = urllib.parse.urlencode(args_dict)
     return urllib.parse.urlunparse(url_parts)

@@ -46,6 +46,15 @@
                     <icon name="sync-alt"/>
                     Sync from DataNose
                 </b-button>
+                <b-button
+                    v-if="course.lti_linked"
+                    class="lti-sync multi-form mr-2"
+                    type="submit"
+                    @click.prevent.stop="getLMSGroups()"
+                >
+                    <icon name="sync-alt"/>
+                    Sync from LMS
+                </b-button>
             </b-card>
         </div>
     </div>
@@ -93,6 +102,9 @@ export default {
     methods: {
         getDataNoseGroups () {
             groupAPI.getDataNose(this.course.id, { customSuccessToast: 'Successfully syncronized from DataNose.' })
+        },
+        getLMSGroups () {
+            groupAPI.getLMS(this.course.id, { customSuccessToast: 'Successfully syncronized from DataNose.' })
         },
         createUserGroup () {
             groupAPI.create({ name: this.form.groupName, course_id: this.course.id, lti_id: this.course.lti_id },

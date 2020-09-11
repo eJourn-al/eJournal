@@ -117,7 +117,12 @@ export default {
             this.hideModal(ref)
         },
         handleEdit () {
-            // TODO: Open EditHome
+            this.$router.push({
+                name: 'Admin',
+                params: {
+                    cID: this.cID,
+                },
+            })
         },
         hideModal (ref) {
             this.$refs[ref].hide()

@@ -3,16 +3,19 @@ group.py.
 
 In this file are all the group api requests.
 """
+from django.conf import settings
 from django.db.models import Count
+from django.shortcuts import redirect
 from rest_framework import viewsets
 from rest_framework.decorators import action
 
 import VLE.factory as factory
 import VLE.utils.generic_utils as utils
 import VLE.utils.responses as response
-from VLE.models import Assignment, Course, Group, Journal, Participation
+from VLE.models import Assignment, Course, Group, Instance, Journal, Participation
 from VLE.serializers import GroupSerializer
 from VLE.utils.error_handling import VLEPermissionError
+from VLE.utils.generic_utils import build_url
 
 
 def check_can_view_groups(user, course):
@@ -168,3 +171,19 @@ class GroupView(viewsets.ViewSet):
         serializer = GroupSerializer(queryset, many=True, context={'user': request.user, 'course': course})
 
         return response.success({'groups': serializer.data})
+
+    @action(['get'], detail=False)
+    def LMS(self, request):
+        course_id, = utils.required_typed_params(request.query_params, (int, 'course_id'))
+        instance = Instance.objects.get(pk=1)
+        return response.success({'redirect_uri': build_url(
+            instance.lms_url,
+            'login/oauth2/auth',
+            {
+                'response_type': 'code',
+                'redirect_uri': build_url(settings.API_URL, 'lms/authenticate/'),  # TODO LTI: change to API_URL
+                'scope': 'url:GET|/api/v1/courses/:course_id/sections url:GET|/api/v1/courses/:course_id/users',
+                'client_id': instance.api_client_id,
+                'state': 'sync-groups-{}'.format(course_id)
+            }
+        )})

@@ -35,15 +35,81 @@ class CreateUpdateModel(models.Model):
 
 class Instance(CreateUpdateModel):
     """Global settings for the running instance."""
+    SUPPORTED_LMS = {
+        None: None,
+        'Canvas': {
+            'iss': 'https://canvas.instructure.com',
+            'auth_login_url': '{lms_url}/api/lti/authorize_redirect',
+            'auth_token_url': '{lms_url}/login/oauth2/token',
+            'key_set_url': '{lms_url}/api/lti/security/jwks',
+            'default_profile_picture': 'https://canvas.instructure.com/images/messages/avatar-50.png',
+        },
+    }
     allow_standalone_registration = models.BooleanField(
         default=True
     )
     name = models.TextField(
-        default='eJournal'
+        null=True
     )
-    default_lms_profile_picture = models.TextField(
-        default=settings.DEFAULT_LMS_PROFILE_PICTURE
+
+    lms_name = models.TextField(
+        null=True,
+        blank=True,
+        choices=[(i, i) for i in SUPPORTED_LMS.keys()],
     )
+    lms_url = models.TextField(
+        null=True,
+    )
+    lti_client_id = models.TextField(
+        null=True,
+        blank=True,
+        unique=True,
+    )
+    lti_deployment_ids = models.TextField(
+        null=True,
+        blank=True,
+        unique=True,
+    )
+    api_client_id = models.TextField(
+        null=True,
+        blank=True,
+        unique=True,
+    )
+    api_client_secret = models.TextField(
+        null=True,
+        blank=True,
+        unique=True,
+    )
+
+    @property
+    def default_lms_profile_picture(self):
+        return self.SUPPORTED_LMS[self.lms_name]['default_profile_picture'] if self.lms_name else None
+
+    @property
+    def auth_login_url(self):
+        if self.lms_name:
+            return self.SUPPORTED_LMS[self.lms_name]['auth_login_url'].format(lms_url=self.lms_url)
+
+    @property
+    def auth_token_url(self):
+        if self.lms_name:
+            return self.SUPPORTED_LMS[self.lms_name]['auth_token_url'].format(lms_url=self.lms_url)
+
+    @property
+    def key_set_url(self):
+        if self.lms_name:
+            return self.SUPPORTED_LMS[self.lms_name]['key_set_url'].format(lms_url=self.lms_url)
+
+    @property
+    def iss(self):
+        if self.lms_name:
+            return self.SUPPORTED_LMS[self.lms_name]['iss']
+
+
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+        # TODO LTI: validate that lms_url is http://[url] without a slash at the end
+        settings.TOOL_CONF.update_config()
 
     def to_string(self, user=None):
         return self.name

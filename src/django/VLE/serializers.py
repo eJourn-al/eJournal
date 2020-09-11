@@ -21,7 +21,12 @@ from VLE.utils.error_handling import VLEParticipationError, VLEProgrammingError
 class InstanceSerializer(serializers.ModelSerializer):
     class Meta:
         model = Instance
-        fields = ('allow_standalone_registration', 'name')
+        fields = (
+            # Platform settings
+            'allow_standalone_registration', 'name',
+            # LMS settings
+            'lms_name', 'lms_url', 'api_client_id', 'api_client_secret', 'lti_client_id', 'lti_deployment_ids',
+        )
 
 
 class UserSerializer(serializers.ModelSerializer):
