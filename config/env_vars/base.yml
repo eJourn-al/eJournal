@@ -22,6 +22,7 @@ virtualenv_python_version: python3.6
 
 # Backup settings
 run_backups: true
+copy_backups_to_local_machine: false
 backup_dir: "/backup"
 maintenance_dir: "/var/www/maintenance/{{ application_name }}"
 media_backup_dir: "{{ backup_dir }}/media"

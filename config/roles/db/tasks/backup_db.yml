@@ -27,3 +27,4 @@
     src: "{{ db_backup_dir }}/{{ application_name }}-{{ ansible_date_time.epoch }}.sql.gz"
     dest: "{{ local_backup_dir }}/"
     flat: yes
+  when: copy_backups_to_local_machine
