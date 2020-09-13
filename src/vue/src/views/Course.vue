@@ -13,10 +13,7 @@
                 v-for="a in assignments"
                 :key="a.id"
             >
-                <b-link
-                    :to="$root.assignmentRoute(a)"
-                    tag="b-button"
-                >
+                <b-link :to="$root.assignmentRoute(a)">
                     <assignment-card
                         :assignment="a"
                         :uniqueName="!assignments.some(a2 =>
