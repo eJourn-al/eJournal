@@ -12,7 +12,7 @@ from django.test import TestCase
 from faker import Faker
 
 from VLE.models import (Assignment, Comment, Content, Course, Entry, Field, FileContext, Format, Grade, Journal, Node,
-                        PresetNode, Template)
+                        PresetNode, Template, User)
 from VLE.utils import generic_utils as utils
 from VLE.utils.error_handling import VLEMissingRequiredField, VLEPermissionError
 from VLE.validators import validate_entry_content
@@ -100,6 +100,18 @@ class EntryAPITest(TestCase):
             'Creating an entry in an assignment with templates does not create any extra'
         assert assignment.format.template_set.filter(pk=entry.template.pk).exists(), \
             'The selected template is chosen from the assignment format'
+
+    def test_entry_factory_user_generation(self):
+        journal = factory.Journal()
+
+        users_before = list(User.objects.values_list('pk', flat=True))
+        factory.UnlimitedEntry(node__journal=journal)
+        assert User.objects.exclude(pk__in=users_before).count() == 0, 'No additional user is created'
+
+        users_before = list(User.objects.values_list('pk', flat=True))
+        factory.UnlimitedEntry(node__journal=journal, grade__grade=1)
+        assert User.objects.exclude(pk__in=users_before).count() == 0, \
+            'No additional user is created, the grade author should default to the assignment author'
 
     def test_entry_validation(self):
         # An entry cannot be instantiated without a node

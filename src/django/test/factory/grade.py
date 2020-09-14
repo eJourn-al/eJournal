@@ -34,3 +34,10 @@ class GradeFactory(factory.django.DjangoModelFactory):
 
         self.entry.grade = self
         self.entry.save()
+
+    @factory.post_generation
+    def clean_notifications(self, create, extracted, **kwargs):
+        """
+        Save is called once more after all post genmethods have run, which will generate a grade notification.
+        """
+        VLE.models.Notification.objects.filter(grade=self).delete()

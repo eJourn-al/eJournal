@@ -51,10 +51,33 @@ class AssignmentParticipationFactory(factory.django.DjangoModelFactory):
 
     @factory.post_generation
     def add_user_to_missing_courses(self, create, extracted):
-        if not create:
+        if not create or extracted is False:
             return
 
         for course in self.assignment.courses.all():
             if not VLE.models.Participation.objects.filter(course=course, user=self.user).exists():
                 role = VLE.models.Role.objects.get(course=course, name='Student')
                 ParticipationFactory(course=course, user=self.user, role=role)
+
+    @factory.post_generation
+    def fix_new_assignment_notification(self, create, extracted):
+        """
+        When an AP is created a new assignment notification is generated, however, the user is not yet added to
+        all relevant courses (on first save), the can view course check will fail for most users. Resulting in a
+        notification object without corresponding course set. In our send_digest_notifications we group notifications
+        based on course, and the generated notification without course is dropped from the digest.
+        """
+        if not create:
+            return
+
+        # If the user has notifications set to "PUSH" correcting afterwards will achieve nothing
+        unsent_new_assignment_notification = VLE.models.Notification.objects.filter(
+            type=VLE.models.Notification.NEW_ASSIGNMENT,
+            assignment=self.assignment,
+            user=self.user,
+            sent=False,
+        )
+        if unsent_new_assignment_notification.exists():
+            unsent_new_assignment_notification = unsent_new_assignment_notification.first()
+            unsent_new_assignment_notification.course = self.assignment.get_active_course(self.user)
+            unsent_new_assignment_notification.save()

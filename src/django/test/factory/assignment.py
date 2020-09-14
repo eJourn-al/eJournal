@@ -4,15 +4,18 @@ import test.factory
 import factory
 from django.utils import timezone
 
-from VLE.models import Participation, Role, User
+from VLE.models import AssignmentParticipation, Participation, Role, User
 
 
 def _add_courses(self, create, extracted, **kwargs):
     if extracted or extracted == []:
         for course in extracted:
-            self.add_course(course)
+            self.courses.add(course)
     else:
-        self.add_course(test.factory.Course())
+        if self.author:
+            self.courses.add(test.factory.Course(**{**kwargs, 'author': self.author}))
+        else:
+            self.courses.add(test.factory.Course(**kwargs))
 
 
 class AssignmentFactory(factory.django.DjangoModelFactory):
@@ -54,9 +57,9 @@ class AssignmentFactory(factory.django.DjangoModelFactory):
 
     @factory.post_generation
     def author(self, create, extracted, **kwargs):
-        if not extracted and not kwargs:
-            extracted = self.courses.first().author if self.courses.exists() else extracted
-        test.factory.rel_factory(self, create, extracted, 'author', User, test.factory.Teacher, **kwargs)
+        default = self.courses.first().author if self.courses.exists() else None
+        test.factory.rel_factory(self, create, extracted, 'author', User, test.factory.Teacher,
+                                 default=default, **kwargs)
 
     @factory.post_generation
     def make_author_teacher_in_all_courses(self, create, extracted, **kwargs):
@@ -67,6 +70,15 @@ class AssignmentFactory(factory.django.DjangoModelFactory):
             if not Participation.objects.filter(course=course, user=self.author).exists():
                 teacher_role = Role.objects.get(course=course, name='Teacher')
                 test.factory.Participation(course=course, user=self.author, role=teacher_role)
+
+    @factory.post_generation
+    def create_assignment_participations_for_all_courses_users(self, create, extracted, **kwargs):
+        if not create or extracted is False:
+            return
+
+        existing = AssignmentParticipation.objects.filter(assignment=self).values('user')
+        for user in User.objects.filter(pk__in=self.courses.values('users')).exclude(pk__in=existing):
+            AssignmentParticipation.objects.create(assignment=self, user=user)
 
 
 class LtiAssignmentFactory(AssignmentFactory):

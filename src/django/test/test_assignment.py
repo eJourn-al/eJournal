@@ -208,7 +208,7 @@ class AssignmentAPITest(TestCase):
             factory.JournalImportRequest(target=journal)
             for i in range(n_graded_entries):
                 entry = factory.UnlimitedEntry(
-                    node__journal=journal, grade=factory.Grade(grade=5, published=False, author=self.teacher))
+                    node__journal=journal, grade__grade=5, grade__published=False, grade__author=self.teacher)
 
         student = journal.authors.first().user
         resp = api.get(self, 'assignments', params={'pk': assignment.pk, 'course_id': self.course.pk},

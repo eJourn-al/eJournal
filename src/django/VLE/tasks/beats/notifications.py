@@ -9,6 +9,7 @@ from django.db.models import Q
 from django.template.loader import render_to_string
 from django.utils import timezone
 from django.utils.html import strip_tags
+from sentry_sdk import capture_exception
 
 import VLE.models
 
@@ -121,8 +122,12 @@ def add_notifications_to_content(content, notifications, period, name):
                     VLE.models.Notification.BATCHED_TYPES[notification.type]: getattr(
                         notification, VLE.models.Notification.BATCHED_TYPES[notification.type]).pk
                 }
+                # Add any additional batched notifications to sending
+                sending += notifications.filter(**filter).exclude(pk=notification.pk).values_list('pk', flat=True)
+
                 # See if there are also other notifications
                 count = 1 + notifications.filter(**filter).count()
+
                 # Include them in the send as a batched notification
                 notifications.filter(**filter).update(sent=True)
                 if count > 1:
@@ -197,7 +202,8 @@ def send_digest_notifications():
     period = [VLE.models.Preferences.DAILY]
     if datetime.datetime.today().weekday() == 0:
         period.append(VLE.models.Preferences.WEEKLY)
-    sending = []
+    sending = dict()
+    failed = dict()
 
     # Loop over all users that potentially have a new notification
     for user in VLE.models.Notification.objects.filter(
@@ -210,7 +216,7 @@ def send_digest_notifications():
             VLE.models.Notification.objects.filter(user=user, sent=False),
             period
         )
-        sending += user_sending
+        sending[user.pk] = user_sending
 
         # If there is nothing to be sent, dont send an email
         if not user_sending:
@@ -238,11 +244,18 @@ def send_digest_notifications():
         )
 
         email.attach_alternative(html_content, 'text/html')
-        email.send()
+
+        try:
+            email.send()
+        except Exception as e:
+            failed[user.pk] = sending[user.pk]
+            VLE.models.Notification.objects.filter(pk__in=sending[user.pk]).update(sent=False)
+            del sending[user.pk]
+            capture_exception(e)
 
     return {
-        'description': 'Sent notification nrs {}'.format(sending),
-        'successful': True,
+        'sent_notifications': sending,
+        'failed_notifications': failed,
     }
 
 
