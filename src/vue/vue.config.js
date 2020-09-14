@@ -23,6 +23,7 @@ module.exports = {
                     SENTRY_DSN: JSON.stringify(process.env.SENTRY_DSN),
                     SENTRY_ORG: JSON.stringify(process.env.SENTRY_ORG),
                     SENTRY_PROJECT: JSON.stringify(process.env.SENTRY_PROJECT),
+                    CODE_VERSION: JSON.stringify(process.env.CODE_VERSION),
                 },
             }),
             new webpack.ProvidePlugin({

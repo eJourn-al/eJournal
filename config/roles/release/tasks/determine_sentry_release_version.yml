@@ -10,7 +10,7 @@
   register: release_list_result
 
 - block:
-  - name: Retrieve the HASH for the most recent command of branch {{ git_branch }} (locally)
+  - name: Retrieve the HASH for the most recent commit of branch {{ git_branch }} (locally)
     connection: local
     become: no
     local_action: "command git ls-remote {{ git_repo }} refs/heads/{{ git_branch }}"
@@ -21,6 +21,14 @@
     become: no
     set_fact:
       code_version: "{{ result.stdout.split('\trefs/heads/')[0] }}"
+
+  - block:
+      - name: "Exit if commit not found (unpublished branch)"
+        debug:
+          msg: "Unpublished branch, can't find commit hash on remote for release version"
+
+      - meta: end_play
+    when: not code_version
 
   - name: Set the (sentry) release version equal to the code version for all hosts
     set_fact:

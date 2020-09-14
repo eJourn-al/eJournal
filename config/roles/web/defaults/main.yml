@@ -62,3 +62,4 @@ project_environment:
   MAILGUN_API_KEY: "{{ mailgun_api_key }}"
   MAILGUN_SENDER_DOMAIN: "{{ mailgun_sender_domain }}"
   RELEASE_VERSION: "{{ release_version }}"
+  CODE_VERSION: "{{ code_version }}"

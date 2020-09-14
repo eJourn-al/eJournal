@@ -30,6 +30,12 @@
 - include: setup_virtualenv.yml
   tags: virtualenv
 
+- include: setup_virtualenv_postactivate_script.yml
+  tags:
+    - virtualenv
+    - deploy_back
+    - deploy_front
+
 - include: setup_frontend_file_structure.yml
   tags: deploy_front
 
