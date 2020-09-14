@@ -7,6 +7,7 @@ import VLE.factory as factory
 import VLE.utils.generic_utils as utils
 import VLE.utils.grading as grading
 from VLE.models import Assignment, AssignmentParticipation, Course, Group, Instance, Journal, Participation, Role, User
+from VLE.utils.authentication import set_sentry_user_scope
 
 
 class OAuthRequestValidater(object):
@@ -70,6 +71,7 @@ def get_user_lti(request):
     users = User.objects.filter(lti_id=lti_user_id)
     if users.exists():
         user = users.first()
+        set_sentry_user_scope(user)
         if 'custom_user_image' in request and \
            request['custom_user_image'] != Instance.objects.get_or_create(pk=1)[0].default_lms_profile_picture:
             user.profile_picture = request['custom_user_image']
