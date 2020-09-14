@@ -237,19 +237,22 @@
                 v-for="journal in filteredJournals"
                 :key="journal.id"
             >
-                <journal-card
-                    :journal="journal"
-                    :assignment="assignment"
-                    @click.native="$router.push({
+                <b-link
+                    :to="{
                         name: 'Journal',
                         params: {
                             cID: $route.params.cID,
                             aID: assignment.id,
                             jID: journal.id
                         }
-                    })"
-                    @journal-deleted="journalDeleted(journal)"
-                />
+                    }"
+                >
+                    <journal-card
+                        :journal="journal"
+                        :assignment="assignment"
+                        @journal-deleted="journalDeleted(journal)"
+                    />
+                </b-link>
             </div>
             <main-card
                 v-if="assignmentJournals.length === 0"

@@ -40,3 +40,4 @@ env:
     - MAILGUN_SENDER_DOMAIN="placeholder"
     - API_URL="http://localhost:8000"
     - RELEASE_VERSION="1.0.0"
+    - CODE_VERSION="937aa7be86b36e1d30444336c073bbf6a4e72b2f"

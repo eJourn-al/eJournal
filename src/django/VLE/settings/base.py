@@ -32,6 +32,7 @@ DATA_UPLOAD_MAX_MEMORY_SIZE = USER_MAX_FILE_SIZE_BYTES
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 BASELINK = os.environ['BASELINK']
 API_URL = os.environ['API_URL']
+CODE_VERSION = os.environ['CODE_VERSION']
 
 STATIC_URL = '/static/'
 DEFAULT_PROFILE_PICTURE = '/unknown-profile.png'
@@ -103,7 +104,7 @@ INSTALLED_APPS = [
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
-        'rest_framework_simplejwt.authentication.JWTAuthentication',
+        'VLE.utils.authentication.SentryContextAwareJWTAuthentication',
     ),
     'DEFAULT_PERMISSION_CLASSES': (
         'rest_framework.permissions.IsAuthenticated',

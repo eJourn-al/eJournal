@@ -1,5 +1,6 @@
 import datetime
 import test.factory as factory
+from unittest import mock
 
 from django.core import mail
 from django.test import TestCase
@@ -301,3 +302,71 @@ class NotificationTest(TestCase):
         n = Notification.objects.filter(type=Notification.NEW_COURSE).last()
         assert n.assignment is None
         assert n.course == course
+
+    def test_notifications_generated_via_factories(self):
+        course = factory.Course()
+        journal = factory.Journal(entries__n=0, assignment__courses=[course])
+        assignment = journal.assignment
+        student = journal.authors.first().user
+        teacher = journal.assignment.author
+        entry1 = factory.UnlimitedEntry(node__journal=journal, grade__grade=1)
+        entry2 = factory.UnlimitedEntry(node__journal=journal)
+
+        assert Notification.objects.count() == 5, '''
+            Expected notifications:
+                - NEW ASSIGNMENT: student
+                - NEW COURSE: student
+                - NEW GRADE: student
+                - NEW ENTRY 2x: teacher
+            Teacher receives no new assignment/course notifications since he is the author of the course and assignemnt.
+        '''
+        # Check if all the generated notifications are correctly linked
+        Notification.objects.get(type=Notification.NEW_COURSE, user=student, course=course)
+        Notification.objects.get(type=Notification.NEW_ASSIGNMENT, user=student, assignment=assignment, course=course)
+        Notification.objects.get(
+            type=Notification.NEW_GRADE, user=student, grade=entry1.grade, course=course, assignment=assignment)
+
+        Notification.objects.get(
+            type=Notification.NEW_ENTRY, user=teacher, entry=entry1, course=course, assignment=assignment)
+        Notification.objects.get(
+            type=Notification.NEW_ENTRY, user=teacher, entry=entry2, course=course, assignment=assignment)
+
+    def test_batched_notifications_are_returned_by_send_digest_notifications(self):
+        daily = {preference['name']: Preferences.DAILY for _, preference in Notification.TYPES.items()}
+
+        course = factory.Course(author__preferences=daily)
+        journal = factory.Journal(ap__user__preferences=daily, entries__n=2, assignment__courses=[course])
+        teacher = journal.assignment.author
+
+        batched_entry_notification1 = Notification.objects.filter(user=teacher, type=Notification.NEW_ENTRY).first()
+        batched_entry_notification2 = Notification.objects.filter(user=teacher, type=Notification.NEW_ENTRY).last()
+        assert batched_entry_notification1 != batched_entry_notification2
+
+        result = send_digest_notifications()
+        assert batched_entry_notification1.pk in result['sent_notifications'][teacher.pk]
+        assert batched_entry_notification2.pk in result['sent_notifications'][teacher.pk]
+
+    def test_error_during_digest_email_send(self):
+        daily = {preference['name']: Preferences.DAILY for _, preference in Notification.TYPES.items()}
+
+        course = factory.Course(author__preferences=daily)
+        journal = factory.Journal(ap__user__preferences=daily, entries__n=0, assignment__courses=[course])
+        student = journal.authors.first().user
+        teacher = journal.assignment.author
+
+        factory.UnlimitedEntry(node__journal=journal, grade__grade=1)
+        factory.UnlimitedEntry(node__journal=journal)
+
+        n_teacher = Notification.objects.filter(user=teacher)
+        n_student = Notification.objects.filter(user=student)
+
+        # Digest are send for each users in order of their pks, we mock that the student send will throw an exception.
+        # However the teacher notifications will be sent just fine.
+        with mock.patch.object(mail.EmailMessage, 'send', side_effect=[None, Exception()]) as email_send_mock:
+            result = send_digest_notifications()
+
+            assert email_send_mock.called
+            assert all([n.pk in result['sent_notifications'][teacher.pk] for n in n_teacher])
+            assert all([n.pk in result['failed_notifications'][student.pk] for n in n_student])
+            assert Notification.objects.filter(user=student, sent=False).count() \
+                == len(result['failed_notifications'][student.pk]), 'Student notifications remain and are unsent.'

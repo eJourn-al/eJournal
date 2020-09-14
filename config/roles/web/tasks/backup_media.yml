@@ -30,4 +30,4 @@
     src: "{{ media_backup_dir }}/{{ application_name }}-media-{{ ansible_date_time.epoch }}.tgz"
     dest: "{{ local_backup_dir }}/"
     flat: yes
-  when: mediadir.stat.exists
+  when: mediadir.stat.exists and copy_backups_to_local_machine

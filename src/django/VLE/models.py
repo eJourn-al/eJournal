@@ -1111,21 +1111,13 @@ class Assignment(CreateUpdateModel):
                         journal = Journal.objects.create(assignment=self)
                         journal.add_author(ap)
 
-        # Send notifications once an assignment is published
-        if (is_new or not was_published) and self.is_published:
-            for ap in AssignmentParticipation.objects.filter(assignment=self):
-                if ap.user.has_permission('can_have_journal', self):
-                    Notification.objects.create(
-                        type=Notification.NEW_ASSIGNMENT,
-                        user=ap.user,
-                        assignment=self,
-                    )
-        # Delete notifications if a teacher unpublishes an assignment after publishing
-        elif was_published and not self.is_published:
-            Notification.objects.filter(
-                type=Notification.NEW_ASSIGNMENT,
-                assignment=self,
-            ).delete()
+        # When an assignment is published, create a new assignment notification for each of the assignment's users
+        if self.is_published and not was_published:
+            for ap in self.assignmentparticipation_set.exclude(user=self.author):
+                ap.create_new_assignment_notification()
+        # When an assignment is unpublished, remove any respctive new assignment notifications
+        elif not self.is_published and was_published:
+            self.notification_set.filter(type=Notification.NEW_ASSIGNMENT).delete()
 
     def get_active_lti_course(self):
         """"Query for retrieving the course which matches the active lti id of the assignment."""
@@ -1248,6 +1240,16 @@ class AssignmentParticipation(CreateUpdateModel):
             if self.assignment.is_published and not self.assignment.is_group_assignment and not self.journal:
                 journal = Journal.objects.create(assignment=self.assignment)
                 journal.add_author(self)
+
+            if self.assignment.is_published and self.user != self.assignment.author:
+                self.create_new_assignment_notification()
+
+    def create_new_assignment_notification(self):
+        Notification.objects.create(
+            type=Notification.NEW_ASSIGNMENT,
+            user=self.user,
+            assignment=self.assignment,
+        )
 
     def to_string(self, user=None):
         if user is None or not (user == self.user or user.is_supervisor_of(self.user)):

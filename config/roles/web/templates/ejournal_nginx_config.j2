@@ -34,6 +34,12 @@ server {
     location = /maintenance_on.html {
         root {{ maintenance_dir }}/;
     }
+
+    location = /index.html {
+        expires -1;
+        add_header Pragma "no-cache";
+        add_header Cache-Control "no-store, must-revalidate";
+    }
 }
 
 upstream {{ ejournal_backend_domain }}_wsgi_server {

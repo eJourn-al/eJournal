@@ -42,6 +42,9 @@
                    role_attr_flags=SUPERUSER
                    state=present
 
+- name: Restart the django application so any updated environment variables are loaded
+  supervisorctl: name={{ application_name }} state=restarted
+
 - name: Run Django database migrations
   django_manage:
     command: migrate

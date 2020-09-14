@@ -65,14 +65,4 @@
     owner: "{{ gunicorn_user }}"
     group: "{{ gunicorn_group }}"
     mode: 0664
-    state: '{{ "file" if  p.stat.exists else "touch" }}'
-
-- name: Create the virtualenv postactivate script to set environment variables
-  template: src=virtualenv_postactivate.j2
-            dest={{ virtualenv_path }}/bin/postactivate
-            owner={{ gunicorn_user }}
-            group={{ gunicorn_group }}
-            mode=0640
-            backup=yes
-  notify: restart application
-  tags: deploy_back
+    state: '{{ "file" if p.stat.exists else "touch" }}'

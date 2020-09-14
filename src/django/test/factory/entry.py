@@ -51,12 +51,14 @@ def _grade(self, create, extracted, **kwargs):
     if not create:
         return
 
-    if isinstance(extracted, VLE.models.Grade) or extracted is None and not kwargs:
+    if isinstance(extracted, VLE.models.Grade):
+        if extracted.entry != self:
+            raise ValidationError('Grade assigned to entry is already linked to a different entry.')
         self.grade = extracted
-    else:
+    elif kwargs:
         self.grade = test.factory.Grade(**{**kwargs, 'entry': self})
-
-    self.save()
+    else:
+        self.grade = None
 
 
 def _gen_content(self, create, extracted, **kwargs):

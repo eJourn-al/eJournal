@@ -20,6 +20,7 @@ from VLE.models import Entry, FileContext, Instance, Journal, Node, User
 from VLE.serializers import EntrySerializer, OwnUserSerializer, UserSerializer
 from VLE.tasks import send_email_verification_link
 from VLE.utils import file_handling
+from VLE.utils.authentication import set_sentry_user_scope
 from VLE.views import lti
 
 
@@ -42,7 +43,9 @@ class LoginView(TokenObtainPairView):
         result = super(LoginView, self).post(request)
         if result.status_code == 200:
             username, = utils.required_params(request.data, 'username')
-            User.objects.filter(username=username).update(last_login=timezone.now())
+            user = User.objects.filter(username=username)
+            set_sentry_user_scope(user.first())
+            user.update(last_login=timezone.now())
         return result
 
 

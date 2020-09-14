@@ -128,6 +128,7 @@ const actions = {
         connection.interceptors.response.use((response) => {
             /* Do anything with the response before further handling. */
             commit(types.CLOSE_API_CALL)
+            commit(`user/${types.SET_BACKEND_CODE_VERSION}`, response.data.code_version, { root: true })
             return response
         }, (error) => {
             /* Do anything with the response error before further handling. */

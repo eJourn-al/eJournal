@@ -4,3 +4,4 @@
   connection: local
   become: no
   local_action: "shell sentry-cli releases set-commits {{ release_version }} --auto"
+  environment: "{{ project_environment }}"

@@ -86,6 +86,26 @@ class JournalAPITest(TestCase):
         ap = AssignmentParticipation.objects.get(journal=lti_journal, assignment=lti_journal.assignment, user=user)
         assert ap.grade_url and ap.sourcedid, 'Lti journal requires a non empty grade_url and sourcedid'
 
+    def test_journal_factory_assignment_author_chain(self):
+        users_before = list(User.objects.values_list('pk', flat=True))
+        journals_before = list(Journal.objects.values_list('pk', flat=True))
+        journal = factory.Journal()
+        assert User.objects.exclude(pk__in=users_before).count() == 2, 'Only a student and a teacher user are generated'
+        assert Journal.objects.exclude(pk__in=journals_before).count() == 1, '1 journal for the student is generated'
+
+        assignment = journal.assignment
+        users_before = list(User.objects.values_list('pk', flat=True))
+        factory.Journal(assignment=assignment)
+        assert User.objects.exclude(pk__in=users_before).count() == 1, 'Only a student is generated'
+
+        users_before = list(User.objects.values_list('pk', flat=True))
+        factory.Journal(assignment__author=assignment.author)
+        assert User.objects.exclude(pk__in=users_before).count() == 2, 'A student is generated and a course author'
+
+        users_before = list(User.objects.values_list('pk', flat=True))
+        factory.Journal(assignment__author=assignment.author, assignment__courses=[])
+        assert User.objects.exclude(pk__in=users_before).count() == 1, 'Only a student is generated'
+
     def test_journal_authors_course_participation(self):
         assignment = factory.Assignment()
         course = assignment.courses.first()

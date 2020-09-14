@@ -17,12 +17,22 @@ const getters = {
     permissions: state => state.permissions,
     isTestStudent: state => state.isTestStudent,
     isSuperuser: state => state.isSuperuser,
+    backendCodeVersion: state => state.backendCodeVersion,
+    refreshedForCodeVersion: state => state.refreshedForCodeVersion,
+    refreshTriggerDueToCodeVersion: state => state.refreshTriggerDueToCodeVersion,
     // We are not logged unless the store is populated as well
     loggedIn: state => state.jwtAccess !== null && state.uID !== null,
     storePopulated: state => state.uID !== null,
     relevantUserSentryState (state) {
+        let relevantState = {
+            backendCodeVersion: state.backendCodeVersion,
+            refreshedForCodeVersion: state.refreshedForCodeVersion,
+            refreshTriggerDueToCodeVersion: state.refreshTriggerDueToCodeVersion,
+        }
+
         if (state.uID !== null) {
-            return {
+            relevantState = {
+                ...relevantState,
                 id: state.uID,
                 username: state.username,
                 email: state.email,
@@ -34,7 +44,8 @@ const getters = {
                 isSuperuser: state.isSuperuser,
             }
         }
-        return {}
+
+        return relevantState
     },
 }
 
@@ -88,6 +99,15 @@ const mutations = {
     },
     [types.SET_PROFILE_PICTURE] (state, dataURL) {
         state.profilePicture = dataURL
+    },
+    [types.SET_BACKEND_CODE_VERSION] (state, val) {
+        state.backendCodeVersion = val
+    },
+    [types.SET_REFRESHED_FOR_CODE_VERSION] (state, val) {
+        state.refreshedForCodeVersion = val
+    },
+    [types.SET_REFRESH_TRIGGERED_DUE_TO_CODE_VERSION] (state, val) {
+        state.refreshTriggerDueToCodeVersion = val
     },
     [types.UPDATE_PERMISSIONS] (state, data) {
         const permissions = data.permissions
@@ -201,6 +221,9 @@ export default {
         ltiID: null,
         permissions: null,
         isSuperuser: false,
+        backendCodeVersion: null,
+        refreshedForCodeVersion: null,
+        refreshTriggerDueToCodeVersion: false,
     },
     getters,
     mutations,

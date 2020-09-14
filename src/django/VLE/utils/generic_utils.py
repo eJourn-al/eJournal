@@ -195,6 +195,9 @@ def update_presets(assignment, presets, new_ids):
     Arguments:
     assignment -- the assignment to update the presets in.
     presets -- a list of JSON-serialized presets.
+    new_ids -- dictionary that indicates to which template the preset node is now pointing towards
+        key: old template id
+        value: new template id
     """
     format = assignment.format
     for preset in presets:
@@ -221,7 +224,7 @@ def update_presets(assignment, presets, new_ids):
                 raise VLE.utils.error_handling.VLEBadRequest(
                     'Progress goal needs to be between 0 and the maximum amount for the assignment: {}'
                     .format(assignment.points_possible))
-        elif preset_node.type == VLE.models.ENTRYDEADLINE:
+        elif preset_node.type == VLE.models.Node.ENTRYDEADLINE:
             if template['id'] in new_ids:
                 preset_node.forced_template = VLE.models.Template.objects.get(pk=new_ids[template['id']])
             else:

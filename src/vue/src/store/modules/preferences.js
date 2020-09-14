@@ -78,7 +78,8 @@ const mutations = {
         state.journal.sortBy = sortByOption
     },
     [types.SWITCH_JOURNAL_ASSIGNMENT] (state, aID) {
-        if (aID !== state.journal.aID) {
+        // aID might be a string or integer depening on how it is loaded
+        if (aID != state.journal.aID) { // eslint-disable-line eqeqeq
             state.journal.aID = aID
             state.journal.sortAscending = true
             state.journal.groupFilter = null

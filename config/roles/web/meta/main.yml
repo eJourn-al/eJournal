@@ -1,6 +1,7 @@
 ---
 
 dependencies:
+  - role: release
   - role: nginx
   - role: certbot
     vars:

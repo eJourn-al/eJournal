@@ -1,11 +1,14 @@
 import test.factory as factory
 from test.utils import api
 
+from dateutil.relativedelta import relativedelta
 from django.db.utils import IntegrityError
 from django.test import TestCase
+from django.utils import timezone
 
-import VLE.serializers as serialize
 from VLE.models import Assignment, Course, Entry, Field, Format, Group, Journal, Template
+from VLE.serializers import PresetNodeSerializer, TemplateSerializer
+from VLE.utils import generic_utils as utils
 from VLE.utils.error_handling import VLEProgrammingError
 
 
@@ -23,7 +26,7 @@ class FormatAPITest(TestCase):
                 'description': 'description1',
                 'is_published': True
             },
-            'templates': serialize.TemplateSerializer(self.format.template_set.filter(archived=False), many=True).data,
+            'templates': TemplateSerializer(self.format.template_set.filter(archived=False), many=True).data,
             'removed_presets': [],
             'removed_templates': [],
             'presets': []
@@ -178,3 +181,53 @@ class FormatAPITest(TestCase):
         resp = api.update(self, 'formats', params={'pk': self.assignment.pk, **self.update_dict},
                           user=self.teacher)
         assert resp['assignment_details']['description'] == 'Rest'
+
+    def test_update_presets(self):
+        should_be_updated = {
+            'description': 'newly updated description',
+            'unlock_date': timezone.now() + relativedelta(days=1),
+        }
+        assignment = factory.Assignment()
+        entrydeadline = factory.DeadlinePresetNode(
+            forced_template=assignment.format.template_set.first(),
+            format=assignment.format,
+        )
+        progress = factory.ProgressPresetNode(
+            format=assignment.format,
+            target=5,
+        )
+        presets = PresetNodeSerializer([entrydeadline, progress], many=True).data
+
+        # Update the entry data
+        presets[0].update(should_be_updated)
+        utils.update_presets(assignment, presets, {})
+        entrydeadline.refresh_from_db()
+        for key, value in should_be_updated.items():
+            assert getattr(entrydeadline, key) == value
+            assert getattr(progress, key) != value
+
+        # Update the template of the entry
+        presets = PresetNodeSerializer([entrydeadline, progress], many=True).data
+        new_template = factory.Template(format=assignment.format)
+
+        utils.update_presets(assignment, presets, {entrydeadline.forced_template.pk: new_template.pk})
+        entrydeadline.refresh_from_db()
+        assert entrydeadline.forced_template == new_template, 'Template should be updated'
+
+        # Unrelated template should not be updated
+        presets = PresetNodeSerializer([entrydeadline, progress], many=True).data
+        other_template = factory.Template(format=assignment.format)
+        utils.update_presets(assignment, presets, {other_template.pk: new_template.pk})
+        entrydeadline.refresh_from_db()
+        assert entrydeadline.forced_template == new_template, 'Template should not get changed to the other template'
+
+        # Presets with ID < 0 should be newly created
+        journal = factory.Journal(assignment=assignment)
+        old_node_count = journal.node_set.count()
+        old_preset_count = assignment.format.presetnode_set.count()
+        presets = PresetNodeSerializer([entrydeadline, progress], many=True).data
+        presets[1]['id'] = '-1'
+        utils.update_presets(assignment, presets, {})
+        journal.refresh_from_db()
+        assert old_preset_count + 1 == assignment.format.presetnode_set.count(), 'Format should have a new node'
+        assert old_node_count + 1 == journal.node_set.count(), 'New node should also be added to all connected journals'

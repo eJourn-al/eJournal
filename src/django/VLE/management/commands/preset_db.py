@@ -242,8 +242,8 @@ class Command(BaseCommand):
         for a in self.assignments:
             # NOTE: carefull to use a.journal_set or query via AP, both will yield teacher journals
             for j in Journal.objects.filter(assignment=a):
-                grade = random.choice([factory.Grade(grade=random.randint(0, 3)), None])
-                factory.UnlimitedEntry(node__journal=j, grade=grade, gen_content__from_file=True)
+                entry = factory.UnlimitedEntry(node__journal=j, gen_content__from_file=True)
+                random.choice([factory.Grade(grade=random.randint(0, 3), entry=entry), None])
 
                 # Colloquium holds some preset nodes
                 if a.name == 'Colloquium':

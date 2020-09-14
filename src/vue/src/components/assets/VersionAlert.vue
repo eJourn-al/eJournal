@@ -14,6 +14,7 @@
         </a>.
     </b-alert>
 </template>
+
 <script>
 export default {
     data () {
@@ -32,5 +33,4 @@ export default {
         },
     },
 }
-
 </script>
