@@ -44,7 +44,7 @@
                     :max="numPages"
                     type="number"
                     min="1"
-                    class="theme-input"
+                    class="theme-input inline"
                     @input="validatePageInput"
                 />
                 / {{ numPages }}
@@ -194,10 +194,6 @@ export default {
         padding: 5px
         &:hover
             cursor: pointer
-    .theme-input
-        width: 4em
-        font-size: 0.9em
-        padding: 0.1em !important
 
 .pdf-controls
     margin: 5px

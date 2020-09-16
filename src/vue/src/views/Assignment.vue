@@ -335,7 +335,7 @@
                                 v-model="newJournalCount"
                                 type="number"
                                 min="2"
-                                class="theme-input"
+                                class="theme-input inline"
                                 required
                             />
                             times
@@ -723,17 +723,3 @@ export default {
     },
 }
 </script>
-
-<style lang="sass">
-.create-journals-repeat
-    font-weight: bold
-    color: grey
-    margin-bottom: 10px
-    display: inline-block
-    .theme-input
-        display: inline-block
-        width: 4em
-    svg
-        margin-top: -5px
-        fill: grey
-</style>

@@ -84,7 +84,7 @@
                             id="months"
                             v-model="months"
                             type="number"
-                            class="theme-input"
+                            class="theme-input inline"
                         />
                         months
                     </div>
@@ -189,9 +189,6 @@ export default {
     color: grey
     margin-bottom: 10px
     display: inline-block
-    .theme-input
-        display: inline-block
-        width: 4em
     svg
         margin-top: -5px
         fill: grey
