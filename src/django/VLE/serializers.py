@@ -105,16 +105,17 @@ class OwnUserSerializer(serializers.ModelSerializer):
         perms['general'] = VLE.permissions.serialize_general_permissions(user)
 
         for course in courses:
-            perms['course' + str(course.id)] = VLE.permissions.serialize_course_permissions(user, course)
+            if user.can_view(course):
+                perms[f'course{course.id}'] = VLE.permissions.serialize_course_permissions(user, course)
 
         assignments = set()
         for course in courses:
             for assignment in course.assignment_set.all():
-                if user.has_permission('can_grade', assignment) or user.has_permission('can_have_journal', assignment):
+                if user.can_view(assignment):
                     assignments.add(assignment)
 
         for assignment in assignments:
-            perms['assignment' + str(assignment.id)] = VLE.permissions.serialize_assignment_permissions(
+            perms[f'assignment{assignment.pk}'] = VLE.permissions.serialize_assignment_permissions(
                 user, assignment)
 
         return perms
@@ -511,9 +512,7 @@ class RoleSerializer(serializers.ModelSerializer):
     class Meta:
         model = VLE.models.Role
         # Get name, course, and all permissions
-        fields = ('id', 'name', 'course', ) + \
-            tuple(permission.name for permission in VLE.models.Role._meta.get_fields(include_parents=False)
-                  if permission.name in VLE.models.Role.PERMISSIONS)
+        fields = ('id', 'name', 'course', ) + tuple(VLE.models.Role.PERMISSIONS)
         read_only_fields = ('id', 'course')
 
 

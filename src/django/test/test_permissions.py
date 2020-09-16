@@ -319,3 +319,7 @@ class PermissionTests(TestCase):
         assert not permissions.is_user_supervisor_of(middle_user, low_user)
         assert not permissions.is_user_supervisor_of(low_user, high_user)
         assert not permissions.is_user_supervisor_of(low_user, middle_user)
+
+    def test_all_permissions_are_in_model(self):
+        assert set(p.name for p in Role._meta.get_fields(include_parents=False) if p.name.startswith('can_')) == \
+            set(Role.PERMISSIONS), 'All permission fields should be in Role.PERMISSIONS and the other way around'
