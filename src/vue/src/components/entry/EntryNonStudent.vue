@@ -64,8 +64,8 @@
                 :content="entryNode.entry.content"
                 :edit="false"
             />
-            <hr class="full-width"/>
-            <div class="timestamp">
+            <div class="full-width timestamp">
+                <hr class="full-width"/>
                 <template
                     v-if="(new Date(entryNode.entry.last_edited).getTime() - new Date(entryNode.entry.creation_date)
                         .getTime()) / 1000 < 3"
@@ -160,7 +160,9 @@
         <h2 class="theme-h2 mb-2">
             {{ entryNode.template.name }}
         </h2>
-        <b>No submission for this student</b>
+        <span class="text-grey text-condensed">
+            No submission for this student
+        </span>
     </b-card>
 </template>
 

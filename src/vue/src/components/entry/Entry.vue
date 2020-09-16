@@ -77,41 +77,42 @@
                 <icon name="paper-plane"/>
                 Post
             </b-button>
-            <template v-else>
+            <div
+                v-else
+                class="full-width timestamp"
+            >
                 <hr class="full-width"/>
-                <span class="timestamp">
-                    <template
-                        v-if="(new Date(node.entry.last_edited).getTime() - new Date(node.entry.creation_date)
-                            .getTime()) / 1000 < 3"
-                    >
-                        Submitted:
-                    </template>
-                    <template v-else>
-                        Last edited:
-                    </template>
-                    {{ $root.beautifyDate(node.entry.last_edited) }} by {{ node.entry.last_edited_by }}
-                    <b-badge
-                        v-if="node.due_date
-                            && new Date(node.due_date) < new Date(node.entry.last_edited)"
-                        v-b-tooltip:hover="'This entry was submitted after the due date'"
-                        class="late-submission-badge"
-                    >
-                        LATE
-                    </b-badge>
-                    <b-badge
-                        v-if="node.entry.jir"
-                        v-b-tooltip:hover="
-                            `This entry has been imported from the assignment
-                            ${node.entry.jir.source.assignment.name}
-                            (${node.entry.jir.source.assignment.course.abbreviation}), approved by
-                            ${node.entry.jir.processor.full_name}`
-                        "
-                        class="imported-entry-badge"
-                    >
-                        IMPORTED
-                    </b-badge>
-                </span>
-            </template>
+                <template
+                    v-if="(new Date(node.entry.last_edited).getTime() - new Date(node.entry.creation_date)
+                        .getTime()) / 1000 < 3"
+                >
+                    Submitted:
+                </template>
+                <template v-else>
+                    Last edited:
+                </template>
+                {{ $root.beautifyDate(node.entry.last_edited) }} by {{ node.entry.last_edited_by }}
+                <b-badge
+                    v-if="node.due_date
+                        && new Date(node.due_date) < new Date(node.entry.last_edited)"
+                    v-b-tooltip:hover="'This entry was submitted after the due date'"
+                    class="late-submission-badge"
+                >
+                    LATE
+                </b-badge>
+                <b-badge
+                    v-if="node.entry.jir"
+                    v-b-tooltip:hover="
+                        `This entry has been imported from the assignment
+                        ${node.entry.jir.source.assignment.name}
+                        (${node.entry.jir.source.assignment.course.abbreviation}), approved by
+                        ${node.entry.jir.processor.full_name}`
+                    "
+                    class="imported-entry-badge"
+                >
+                    IMPORTED
+                </b-badge>
+            </div>
         </b-card>
         <comments
             v-if="node && node.entry"

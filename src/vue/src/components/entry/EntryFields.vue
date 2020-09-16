@@ -134,6 +134,12 @@
             </a>
             <span v-else-if="field.type == 's'">{{ content[field.id] }}</span>
         </div>
+        <i
+            v-if="displayFields && displayFields.length === 0"
+            class="text-grey"
+        >
+            This entry has no content.
+        </i>
     </div>
 </template>
 
