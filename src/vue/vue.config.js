@@ -1,7 +1,6 @@
 const path = require('path')
 const webpack = require('webpack') // eslint-disable-line import/no-extraneous-dependencies
 const currentRelease = require('./build/current-release')
-const supportedBrowsers = require('./build/supported-browsers')
 const SentryWebpackPlugin = require('@sentry/webpack-plugin')
 
 module.exports = {
@@ -16,7 +15,6 @@ module.exports = {
         plugins: [
             new webpack.DefinePlugin({
                 CurrentRelease: JSON.stringify(currentRelease),
-                SupportedBrowsers: JSON.stringify(supportedBrowsers),
                 CustomEnv: {
                     API_URL: JSON.stringify(process.env.API_URL),
                     SENTRY_URL: JSON.stringify(process.env.SENTRY_URL),
