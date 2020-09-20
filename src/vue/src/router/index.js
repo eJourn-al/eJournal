@@ -4,6 +4,7 @@ import { detect as detectBrowser } from 'detect-browser'
 import store from '@/store'
 import routerConstraints from '@/utils/constants/router_constraints.js'
 import Home from '@/views/Home.vue'
+import AdminPanel from '@/views/AdminPanel.vue'
 import Journal from '@/views/Journal.vue'
 import JoinJournal from '@/views/JoinJournal.vue'
 import Assignment from '@/views/Assignment.vue'
@@ -37,6 +38,10 @@ const router = new Router({
         name: 'Home',
         component: Home,
     }, {
+        path: '/AdminPanel',
+        name: 'AdminPanel',
+        component: AdminPanel,
+    }, {
         path: '/Login',
         name: 'Login',
         component: Login,
@@ -54,6 +59,11 @@ const router = new Router({
         path: '/Register',
         name: 'Register',
         component: Register,
+    }, {
+        path: '/Register/:username/:token',
+        name: 'Register',
+        component: Register,
+        props: true,
     }, {
         path: '/Profile',
         name: 'Profile',
@@ -173,6 +183,9 @@ router.beforeEach((to, from, next) => {
     }
 
     if (loggedIn && routerConstraints.UNAVAILABLE_WHEN_LOGGED_IN.has(to.name)) {
+        next({ name: 'Home' })
+    } else if (loggedIn && to.name === 'AdminPanel' && !store.getters['user/isSuperuser']) {
+        router.app.$toasted.error('You are not allowed to access that page.')
         next({ name: 'Home' })
     } else if (!loggedIn && !routerConstraints.PERMISSIONLESS_CONTENT.has(to.name)) {
         store.dispatch('user/validateToken')

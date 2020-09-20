@@ -39,7 +39,7 @@
                     <span v-if="assignment.is_group_assignment">
                         <b>Warning:</b> The following journal members have not visited the assignment in the active LMS
                         (Canvas) course '{{ assignment.active_lti_course.name }}' yet:
-                        <ul>
+                        <ul class="pt-1 pb-1 mb-0">
                             <li
                                 v-for="name in journal.needs_lti_link"
                                 :key="`lti-author-${name}`"

@@ -24,7 +24,7 @@
             </span>
         </div>
 
-        <bread-crumb :currentPage="'Assignments'"/>
+        <bread-crumb/>
 
         <input
             v-model="searchValue"

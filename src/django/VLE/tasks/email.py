@@ -101,6 +101,38 @@ def send_email_verification_link(user_pk):
 
 
 @shared_task
+def send_invite_email(user_pk):
+    """Sends an invite link to join the platform to the users email adress."""
+    user = VLE.models.User.objects.get(pk=user_pk)
+
+    email_data = {}
+    email_data['heading'] = 'Welcome to eJournal!'
+    token_generator = PasswordResetTokenGenerator()
+    token = token_generator.make_token(user)
+    email_data['main_content'] = """
+    You have been invited to eJournal by TODO INSTANCE NAME. Please click the button below to activate your account."""
+    email_data['full_name'] = user.full_name
+    email_data['extra_content'] = 'Username: {}'.format(user.username)
+    email_data['button_url'] = '{}/Register/{}/{}'.format(settings.BASELINK, user.username, token)
+    email_data['button_text'] = 'Activate account'
+    email_data['profile_url'] = '{}/Profile'.format(settings.BASELINK)
+
+    html_content = render_to_string('call_to_action.html', {'email_data': email_data})
+    text_content = strip_tags(html_content)
+
+    email = EmailMultiAlternatives(
+        subject='Complete your registration for eJournal at TODO INSTANCE NAME',
+        body=text_content,
+        from_email='eJournal | Noreply<noreply@{}>'.format(settings.EMAIL_SENDER_DOMAIN),
+        headers={'Content-Type': 'text/plain'},
+        to=[user.email]
+    )
+
+    email.attach_alternative(html_content, 'text/html')
+    email.send()
+
+
+@shared_task
 def send_password_recovery_link(user_pk):
     user = VLE.models.User.objects.get(pk=user_pk)
 

@@ -1,10 +1,6 @@
 <template>
     <content-columns>
-        <bread-crumb
-            slot="main-content-column"
-            :currentPage="'Courses'"
-            @edit-click="handleEdit()"
-        />
+        <bread-crumb slot="main-content-column"/>
 
         <load-wrapper
             slot="main-content-column"
@@ -73,7 +69,6 @@ import breadCrumb from '@/components/assets/BreadCrumb.vue'
 import loadWrapper from '@/components/loading/LoadWrapper.vue'
 import mainCard from '@/components/assets/MainCard.vue'
 import createCourse from '@/components/course/CreateCourse.vue'
-import editHome from '@/components/home/EditHome.vue'
 import deadlineDeck from '@/components/assets/DeadlineDeck.vue'
 
 import courseAPI from '@/api/course.js'
@@ -86,7 +81,6 @@ export default {
         loadWrapper,
         mainCard,
         createCourse,
-        editHome,
         deadlineDeck,
     },
     data () {
@@ -115,9 +109,6 @@ export default {
             }
 
             this.hideModal(ref)
-        },
-        handleEdit () {
-            // TODO: Open EditHome
         },
         hideModal (ref) {
             this.$refs[ref].hide()

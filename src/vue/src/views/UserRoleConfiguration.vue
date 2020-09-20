@@ -1,8 +1,8 @@
 <template>
-    <content-single-table-column>
+    <content-single-wide-column>
         <bread-crumb/>
         <b-card class="no-hover">
-            <table class="table table-bordered table-hover">
+            <table class="role-config-table table-bordered table-hover">
                 <thead>
                     <tr>
                         <th/>
@@ -102,19 +102,19 @@
                 </b-button>
             </b-card>
         </b-modal>
-    </content-single-table-column>
+    </content-single-wide-column>
 </template>
 
 <script>
 import breadCrumb from '@/components/assets/BreadCrumb.vue'
-import contentSingleTableColumn from '@/components/columns/ContentSingleTableColumn.vue'
+import contentSingleWideColumn from '@/components/columns/TEST.vue'
 import roleAPI from '@/api/role.js'
 import commonAPI from '@/api/common.js'
 
 export default {
     name: 'UserRoleConfiguration',
     components: {
-        contentSingleTableColumn,
+        contentSingleWideColumn,
         breadCrumb,
     },
     props: {
@@ -286,16 +286,15 @@ export default {
 </script>
 
 <style lang="sass">
-.select-center
-    text-align: center
-.table th
-    text-align: center
-.table td
-    text-align: center
-    align-items: center
-    .custom-checkbox
-        margin: 0px
-        padding-left: 2em
-.permission-column
-    text-align: left !important
+.role-config-table
+    th
+        text-align: center
+    td
+        text-align: center
+        align-items: center
+        .custom-checkbox
+            margin: 0px
+            padding-left: 2em
+    .permission-column
+        text-align: left !important
 </style>

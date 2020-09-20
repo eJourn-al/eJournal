@@ -77,6 +77,7 @@ export default {
                     Home: 'Courses',
                     FormatEdit: 'Assignment Editor',
                     CourseEdit: 'Course Editor',
+                    AdminPanel: 'Admin Panel',
                     AssignmentsOverview: 'Assignments',
                     UserRoleConfiguration: 'Permission Manager',
                     JoinJournal: 'Join a Journal',
@@ -157,8 +158,7 @@ export default {
         canEdit () {
             const pageName = this.$route.name
 
-            if ((pageName === 'Home' && this.$hasPermission('can_edit_institute_details'))
-                || (pageName === 'Course' && this.$hasPermission('can_edit_course_details'))
+            if ((pageName === 'Course' && this.$hasPermission('can_edit_course_details'))
                 || (pageName === 'Assignment' && this.$hasPermission('can_edit_assignment'))) {
                 return true
             }
