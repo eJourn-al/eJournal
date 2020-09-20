@@ -1,7 +1,7 @@
 <template>
     <div>
         <h4 class="theme-h4 mb-2">
-            <span>Groups</span>
+            Groups
         </h4>
         <group-card
             v-for="g in groups"
@@ -30,7 +30,7 @@
                         required
                     />
                     <b-button
-                        class="add-button float-right"
+                        class="green-button float-right"
                         type="submit"
                     >
                         <icon name="plus-square"/>

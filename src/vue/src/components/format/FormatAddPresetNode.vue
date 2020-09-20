@@ -18,7 +18,7 @@
                     >
                         <b-button
                             :class="{'selected': currentPreset.type === 'd'}"
-                            class="change-button preset-type-button float-left mr-3 mt-2 no-hover"
+                            class="orange-button preset-type-button float-left mr-3 mt-2 no-hover"
                         >
                             <icon
                                 name="calendar"
@@ -38,7 +38,7 @@
                     >
                         <b-button
                             :class="{'selected': currentPreset.type === 'p'}"
-                            class="change-button preset-type-button float-left mr-3 mt-2 no-hover"
+                            class="orange-button preset-type-button float-left mr-3 mt-2 no-hover"
                         >
                             <icon
                                 name="flag-checkered"
@@ -74,7 +74,7 @@
                 </b-alert>
 
                 <b-button
-                    class="add-button float-right"
+                    class="green-button float-right"
                     @click="addPreset"
                 >
                     <icon name="plus"/>

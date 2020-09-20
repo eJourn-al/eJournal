@@ -51,22 +51,22 @@
                             AIG: {
                                 text: 'Approve including grades',
                                 icon: 'check',
-                                class: 'add-button',
+                                class: 'green-button',
                             },
                             AEG: {
                                 text: 'Approve excluding grades',
                                 icon: 'check',
-                                class: 'add-button',
+                                class: 'green-button',
                             },
                             AWGZ: {
                                 text: 'Approve with grades zeroed',
                                 icon: 'check',
-                                class: 'change-button',
+                                class: 'orange-button',
                             },
                             DEC: {
                                 text: 'Decline',
                                 icon: 'times',
-                                class: 'delete-button',
+                                class: 'red-button',
                             },
                         }"
                         class="float-right"

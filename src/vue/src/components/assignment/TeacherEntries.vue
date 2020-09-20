@@ -16,14 +16,14 @@
             />
             <b-button
                 v-if=" selectedTeacherEntry && showTeacherEntryContent"
-                class="delete-button ml-2"
+                class="red-button ml-2"
                 @click="showTeacherEntryContent = false"
             >
                 <icon name="eye-slash"/>
             </b-button>
             <b-button
                 v-else-if="selectedTeacherEntry"
-                class="add-button ml-2"
+                class="green-button ml-2"
                 @click="showTeacherEntryContent = true"
             >
                 <icon name="eye"/>
@@ -133,7 +133,7 @@
             </b-table-simple>
 
             <b-button
-                class="delete-button float-left clearfix mr-2 mt-2"
+                class="red-button float-left clearfix mr-2 mt-2"
                 :class="{ 'input-disabled': requestInFlight }"
                 @click="deleteTeacherEntry"
             >
@@ -141,7 +141,7 @@
                 Delete
             </b-button>
             <b-button
-                class="add-button float-right clearfix ml-2 mt-2"
+                class="green-button float-right clearfix ml-2 mt-2"
                 :class="{ 'input-disabled': requestInFlight }"
                 @click="saveTeacherEntry"
             >

@@ -12,7 +12,7 @@
                         >
                             <b-button
                                 v-if="!undeleteableRoles.includes(role)"
-                                class="delete-button"
+                                class="red-button"
                                 @click="deleteRole(role)"
                             >
                                 {{ role }}
@@ -24,7 +24,7 @@
                         </th>
                         <th>
                             <b-button
-                                class="add-button"
+                                class="green-button"
                                 @click="modalShow = !modalShow"
                             >
                                 <icon name="plus-square"/>
@@ -59,7 +59,7 @@
         <transition name="fade">
             <b-button
                 v-if="isChanged"
-                class="add-button fab"
+                class="green-button fab"
                 @click="update()"
             >
                 <icon
@@ -87,14 +87,14 @@
                     @keyup.enter.native="addRole"
                 />
                 <b-button
-                    class="delete-button float-left"
+                    class="red-button float-left"
                     @click="modalShow = false"
                 >
                     <icon name="ban"/>
                     Cancel
                 </b-button>
                 <b-button
-                    class="add-button float-right"
+                    class="green-button float-right"
                     @click="addRole"
                 >
                     <icon name="user-plus"/>

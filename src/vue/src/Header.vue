@@ -264,6 +264,7 @@ export default {
         padding: 0.375rem 0.75rem !important
         min-width: 100%
         width: auto
+        justify-content: left
     @include sm-max
         position: absolute
         top: -65px
@@ -276,7 +277,7 @@ export default {
     background: $theme-dark-blue !important
     border: none !important
     border-radius: 0px 0px 5px 5px !important
-    padding: 5px !important
+    padding: 10px 5px 5px 5px !important
     @include sm-max
         padding-top: 60px !important
 

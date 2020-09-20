@@ -1,7 +1,7 @@
 <template>
     <div>
         <h4 class="theme-h4 mb-2 mt-4">
-            <span>Grading</span>
+            Grading
         </h4>
         <b-card
             :class="$root.getBorderClass($route.params.uID)"
@@ -14,12 +14,12 @@
                         {
                             value: true,
                             icon: 'check',
-                            class: 'add-button',
+                            class: 'green-button',
                         },
                         {
                             value: false,
                             icon: 'times',
-                            class: 'delete-button',
+                            class: 'red-button',
                         },
                     ]"
                     class="float-right"
@@ -40,12 +40,12 @@
                         {
                             value: true,
                             icon: 'check',
-                            class: 'add-button',
+                            class: 'green-button',
                         },
                         {
                             value: false,
                             icon: 'times',
-                            class: 'delete-button',
+                            class: 'red-button',
                         },
                     ]"
                     class="float-right"

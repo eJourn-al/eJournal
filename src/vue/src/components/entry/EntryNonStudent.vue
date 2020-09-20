@@ -30,12 +30,12 @@
                         s: {
                             text: 'Save grade',
                             icon: 'save',
-                            class: 'add-button',
+                            class: 'green-button',
                         },
                         p: {
                             text: 'Save & publish grade',
                             icon: 'save',
-                            class: 'add-button',
+                            class: 'green-button',
                         },
                     }"
                     @click="commitGrade"
@@ -79,6 +79,7 @@
                 <b-badge
                     v-if="entryNode.due_date && new Date(entryNode.due_date) < new Date(entryNode.entry.last_edited)"
                     v-b-tooltip:hover="'This entry was submitted after the due date'"
+                    pill
                     class="late-submission-badge"
                 >
                     LATE
@@ -90,6 +91,7 @@
                         ${entryNode.entry.jir.source.assignment.name}
                         (${entryNode.entry.jir.source.assignment.course.abbreviation}), approved by
                         ${entryNode.entry.jir.processor.full_name}`"
+                    pill
                     class="imported-entry-badge"
                 >
                     IMPORTED

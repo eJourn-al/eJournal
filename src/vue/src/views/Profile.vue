@@ -5,7 +5,7 @@
         <notification-card/>
         <grading-card v-if="$root.canGradeForSomeCourse"/>
         <h4 class="theme-h4 mb-2 mt-4">
-            <span>Password</span>
+            Password
         </h4>
         <password-card ref="passData"/>
         <custom-footer/>

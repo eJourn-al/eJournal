@@ -10,7 +10,7 @@
         />
         <b-button
             v-if="!autoUpload"
-            class="add-button float-right"
+            class="green-button float-right"
             :class="{ 'input-disabled': !file }"
             @click="uploadFile"
         >

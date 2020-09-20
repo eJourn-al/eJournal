@@ -160,7 +160,7 @@
             </b-table-simple>
 
             <b-button
-                class="add-button float-right ml-2 mt-2"
+                class="green-button float-right ml-2 mt-2"
                 :class="{ 'input-disabled': requestInFlight }"
                 @click="createTeacherEntry"
             >

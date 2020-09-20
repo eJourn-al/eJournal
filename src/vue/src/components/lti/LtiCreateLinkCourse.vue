@@ -16,7 +16,7 @@
                 grade passback.
             </p>
             <b-button
-                class="add-button float-right"
+                class="green-button float-right"
                 @click="showModal('createCourseRef')"
             >
                 <icon name="plus-square"/>
@@ -30,7 +30,7 @@
                 your learning environment by clicking the button below.
             </p>
             <b-button
-                class="change-button float-right"
+                class="orange-button float-right"
                 @click="showModal('linkCourseRef')"
             >
                 <icon name="link"/>

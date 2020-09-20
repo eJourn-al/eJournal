@@ -2,7 +2,7 @@
     <div class="reset-wrapper">
         <b-button
             v-if="value"
-            class="delete-button reset-button"
+            class="red-button reset-button"
             @click="$emit('input', null)"
         >
             <icon name="trash"/>

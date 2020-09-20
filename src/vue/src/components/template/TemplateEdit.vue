@@ -3,7 +3,7 @@
         <div class="d-flex">
             <b-button
                 :class="{'active': mode === 'edit'}"
-                class="multi-form change-button flex-basis-100"
+                class="multi-form orange-button flex-basis-100"
                 @click="mode = 'edit'"
             >
                 <icon name="edit"/>
@@ -11,7 +11,7 @@
             </b-button>
             <b-button
                 :class="{'active': mode === 'preview'}"
-                class="multi-form add-button flex-basis-100"
+                class="multi-form green-button flex-basis-100"
                 @click="mode='preview'"
             >
                 <icon name="eye"/>
@@ -32,7 +32,7 @@
                 class="template-availability"
             >
                 <b-button
-                    class="delete-button"
+                    class="red-button"
                     @click.stop
                     @click="togglePresetOnly"
                 >
@@ -50,7 +50,7 @@
                 class="template-availability"
             >
                 <b-button
-                    class="add-button"
+                    class="green-button"
                     @click.stop
                     @click="togglePresetOnly"
                 >
@@ -80,7 +80,7 @@
                 <div class="invisible"/>
             </draggable>
             <b-button
-                class="add-button full-width"
+                class="green-button full-width"
                 @click="addField"
             >
                 <icon name="plus"/>

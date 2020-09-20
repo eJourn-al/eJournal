@@ -26,7 +26,7 @@
                     placeholder="Email verification token"
                 />
                 <b-button
-                    class="float-right multi-form add-button"
+                    class="float-right multi-form green-button"
                     type="submit"
                 >
                     <icon name="save"/>

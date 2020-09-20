@@ -29,7 +29,7 @@
             />
             <b-button
                 v-if="$hasPermission('can_add_course')"
-                class="add-button"
+                class="green-button"
                 @click="showModal('createCourseRef')"
             >
                 <icon name="plus"/>

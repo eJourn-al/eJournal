@@ -90,7 +90,7 @@
                     </div>
 
                     <b-button
-                        class="change-button float-right"
+                        class="orange-button float-right"
                         type="submit"
                     >
                         <icon name="file-import"/>

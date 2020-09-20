@@ -10,15 +10,20 @@
             keyPrefix="todo"
         />
 
-        <b class="field-heading">
-            {{ deadline.name }}
+        <b class="field-heading align-top">
+            <!-- {{ deadline.name }} -->
+            Logboek Academia
         </b>
-        {{ courseAbbreviations }}
+        <span class="align-middle">
+            {{ courseAbbreviations }}
+        </span>
         <b-badge
             v-if="!deadline.is_published"
-            class="ml-2 align-top"
+            v-b-tooltip:hover="'This assignment is not yet published'"
+            pill
+            class="background-medium-grey text-grey align-middle"
         >
-            Unpublished
+            <icon name="eye-slash"/>
         </b-badge>
         <br/>
         <!-- Teacher deadline shows last submitted entry date  -->

@@ -43,14 +43,14 @@
             :class="{
                 'input-disabled': journal.author_count > 0,
             }"
-            class="delete-button"
+            class="red-button"
             @click="deleteJournal"
         >
             <icon name="trash"/>
             Delete journal
         </b-button>
         <b-button
-            class="add-button float-right"
+            class="green-button float-right"
             @click="updateJournal"
         >
             <icon name="save"/>

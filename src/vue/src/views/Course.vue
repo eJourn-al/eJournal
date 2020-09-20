@@ -22,7 +22,7 @@
                     >
                         <b-button
                             v-if="$hasPermission('can_edit_assignment', 'assignment', a.id)"
-                            class="change-button float-right"
+                            class="orange-button float-right"
                             @click.prevent.stop="editAssignment(a)"
                         >
                             <icon name="edit"/>
@@ -39,7 +39,7 @@
             />
             <b-button
                 v-if="$hasPermission('can_add_assignment', 'course', cID)"
-                class="add-button mr-2 mb-2"
+                class="green-button mr-2 mb-2"
                 @click="showModal('createAssignmentRef')"
             >
                 <icon name="plus"/>
@@ -48,7 +48,7 @@
             <b-button
                 v-if="$hasPermission('can_add_assignment', 'course', cID)"
                 v-b-modal="'course-assignment-import-modal'"
-                class="change-button mb-2"
+                class="orange-button mb-2"
             >
                 <icon name="file-import"/>
                 Import Assignment

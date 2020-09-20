@@ -49,7 +49,7 @@
                     />
 
                     <b-button
-                        class="change-button float-right"
+                        class="orange-button float-right"
                         :class="{ 'input-disabled': !selectedAssignment }"
                         @click="importJournal(selectedAssignment)"
                     >

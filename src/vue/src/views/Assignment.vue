@@ -218,7 +218,7 @@
                     on your LMS at least once.<br/>
                     <hr/>
                     <b-button
-                        class="add-button d-block float-right"
+                        class="green-button d-block float-right"
                         :class="{'input-disabled': assignment.active_lti_course.cID === newActiveLTICourse}"
                         @click="saveNewActiveLTICourse"
                     >
@@ -269,7 +269,7 @@
             />
             <b-button
                 v-if="$hasPermission('can_manage_journals') && assignment.is_group_assignment"
-                class="multi-form add-button"
+                class="multi-form green-button"
                 @click="showModal('createJournalModal')"
             >
                 <icon name="plus"/>
@@ -343,7 +343,7 @@
 
                         <b-button
                             type="submit"
-                            class="add-button d-block float-right"
+                            class="green-button d-block float-right"
                             :class="{'input-disabled': newJournalRequestInFlight}"
                         >
                             <icon name="plus-square"/>
@@ -377,7 +377,7 @@
                 </h3>
                 <b-button
                     v-if="canPublishGradesAssignment"
-                    class="add-button multi-form full-width"
+                    class="green-button multi-form full-width"
                     @click="publishGradesAssignment"
                 >
                     <icon name="upload"/>
@@ -386,7 +386,7 @@
                 </b-button>
                 <b-button
                     v-if="canManageLTI"
-                    class="add-button multi-form full-width"
+                    class="green-button multi-form full-width"
                     @click="showModal('manageLTIModal')"
                 >
                     <icon name="graduation-cap"/>
@@ -394,7 +394,7 @@
                 </b-button>
                 <b-button
                     v-if="canImportBonusPoints"
-                    class="change-button multi-form full-width"
+                    class="orange-button multi-form full-width"
                     @click="showModal('bonusPointsModal')"
                 >
                     <icon name="star"/>
@@ -402,7 +402,7 @@
                 </b-button>
                 <b-button
                     v-if="canExportResults"
-                    class="add-button multi-form full-width"
+                    class="green-button multi-form full-width"
                     @click="showModal('assignmentExportSpreadsheetModal')"
                 >
                     <icon name="file-export"/>
@@ -410,7 +410,7 @@
                 </b-button>
                 <b-button
                     v-if="$hasPermission('can_post_teacher_entries')"
-                    class="add-button multi-form full-width mb-2"
+                    class="green-button multi-form full-width mb-2"
                     @click="showModal('postTeacherEntry')"
                 >
                     <icon name="plus"/>
@@ -418,7 +418,7 @@
                 </b-button>
                 <b-button
                     v-if="$hasPermission('can_post_teacher_entries') && assignment.has_teacher_entries"
-                    class="change-button multi-form full-width"
+                    class="orange-button multi-form full-width"
                     @click="showModal('manageTeacherEntries')"
                 >
                     <icon name="edit"/>

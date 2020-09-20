@@ -42,21 +42,21 @@
         @include sm-max
             width: 100%
 
-.add-button
+.green-button
     svg
         color: $theme-green !important
     &:hover:not(.no-hover), &.active, &.fab, &:focus
         background-color: $theme-green !important
         border-color: $theme-green !important
 
-.delete-button
+.red-button
     svg
         color: $theme-red !important
     &:hover:not(.no-hover), &.active, &.fab, &:focus
         background-color: $theme-red !important
         border-color: $theme-red !important
 
-.change-button
+.orange-button
     svg
         color: $theme-orange !important
     &:hover:not(.no-hover), &.active, &.fab, &:focus
@@ -68,6 +68,14 @@
         background-color: $theme-dark-blue !important
         border-color: $theme-dark-blue !important
 
+.blue-filled-button
+    border-color: $theme-blue !important
+    &, svg
+        color: white !important
+    background-color: $theme-blue !important
+    &:hover:not(.no-hover), &.active, &.fab, &:focus
+        background-color: darken($theme-blue, 5%) !important
+
 .preset-type-button
     width: 75px
     height: 75px
@@ -77,8 +85,3 @@
             color: white !important
         background-color: $theme-dark-blue !important
         border-color: $theme-dark-blue !important
-
-.big-button-text
-    font-weight: bold
-    font-size: 20px
-    text-align: center

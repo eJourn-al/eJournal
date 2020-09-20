@@ -95,7 +95,7 @@
                     </div>
                 </div>
                 <b-button
-                    class="btn change-button multi-form mr-2"
+                    class="btn orange-button multi-form mr-2"
                     @click="$refs[`file-upload-${comment.id}`].openFileUpload()"
                 >
                     <icon name="paperclip"/>
@@ -152,7 +152,7 @@
                 <template v-else>
                     <b-button
                         v-if="comment.can_edit"
-                        class="multi-form delete-button"
+                        class="multi-form red-button"
                         @click="resetComment()"
                     >
                         <icon name="ban"/>
@@ -161,7 +161,7 @@
                     <b-button
                         v-if="comment.can_edit"
                         :class="disableSend"
-                        class="ml-2 add-button float-right"
+                        class="ml-2 green-button float-right"
                         @click="editComment()"
                     >
                         <icon name="save"/>

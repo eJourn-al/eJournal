@@ -7,52 +7,41 @@
 
 <template>
     <div class="breadcrumb-container">
-        <div>
-            <div v-if="crumbs.length > 1">
-                <h4 class="theme-h4">
-                    <span>
-                        <span
-                            v-for="crumb in crumbs.slice(0, -1)"
-                            :key="crumb.route"
-                        >
-                            <b-link
-                                :to="{ name: crumb.routeName }"
-                                tag="b-button"
-                            >
-                                {{ crumb.displayName }}
-                            </b-link> /
-                        </span>
-                        <span>
-                            <b-link
-                                :to="{ name: crumbs[crumbs.length-2].routeName }"
-                                tag="b-button"
-                            >
-                                <icon
-                                    name="level-up-alt"
-                                    class="shift-up-2 action-icon"
-                                />
-                            </b-link>
-                        </span>
-                    </span>
-                </h4>
-                <br/>
-            </div>
-            <h1 class="theme-h1">
-                <span class="title">
-                    {{ crumbs.slice(-1)[0].displayName }}
-                    <slot/>
-                </span>
-                <b-button
-                    v-if="canEdit()"
-                    class="change-button edit-button"
-                    @click="editClick()"
-                >
-                    <icon name="edit"/>
-                    Edit
-                </b-button>
-            </h1>
-        </div>
-        <version-alert/>
+        <h4
+            v-if="crumbs.length > 1"
+            class="theme-h4"
+        >
+            <b-link
+                v-for="crumb in crumbs.slice(0, -1)"
+                :key="crumb.route"
+                :to="{ name: crumb.routeName }"
+                class="crumb"
+            >
+                {{ crumb.displayName }}
+            </b-link>
+            <b-link :to="{ name: crumbs[crumbs.length-2].routeName }">
+                <icon
+                    name="level-up-alt"
+                    class="shift-up-2 action-icon"
+                />
+            </b-link>
+        </h4>
+        <h1 class="theme-h1">
+            <span class="title">
+                {{ crumbs.slice(-1)[0].displayName }}
+                <slot/>
+            </span>
+            <b-button
+                v-if="canEdit()"
+                class="orange-button edit-button"
+                pill
+                @click="editClick()"
+            >
+                <icon name="edit"/>
+                Edit
+            </b-button>
+        </h1>
+        <version-alert class="d-block"/>
     </div>
 </template>
 
@@ -172,6 +161,8 @@ export default {
 <style lang="sass">
 .breadcrumb-container
     padding-right: 10px
+    .crumb:after
+        content: ' / '
     .alert
         margin-right: -10px
     .title
@@ -179,5 +170,4 @@ export default {
     .edit-button
         font-size: 0.667em
         vertical-align: middle
-        border-radius: 2em !important
 </style>

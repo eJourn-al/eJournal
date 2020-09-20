@@ -1,7 +1,7 @@
 <template>
     <div>
         <h4 class="theme-h4 mb-2">
-            <span>Manage course details</span>
+            Manage course details
         </h4>
         <b-card
             class="no-hover multi-form"
@@ -59,7 +59,7 @@
                 </b-row>
                 <b-button
                     v-if="$hasPermission('can_edit_course_details')"
-                    class="add-button float-right"
+                    class="green-button float-right"
                     type="submit"
                 >
                     <icon name="save"/>

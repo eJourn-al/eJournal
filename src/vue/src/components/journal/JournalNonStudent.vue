@@ -160,7 +160,7 @@
                             Bonus points
                         </div>
                         <b-button
-                            class="add-button"
+                            class="green-button"
                             @click="commitBonus"
                         >
                             <icon
@@ -172,7 +172,7 @@
                     </div>
                     <b-button
                         v-if="$hasPermission('can_publish_grades')"
-                        class="add-button mb-2 full-width"
+                        class="green-button mb-2 full-width"
                         @click="publishGradesJournal"
                     >
                         <icon name="upload"/>
@@ -182,7 +182,7 @@
                         <b-button
                             v-if="journal.import_requests"
                             v-b-modal="'journal-import-request-approval-modal'"
-                            class="multi-form change-button mb-2 full-width"
+                            class="multi-form orange-button mb-2 full-width"
                         >
                             <icon name="file-import"/>
                             Manage Import Requests

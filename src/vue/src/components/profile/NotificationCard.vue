@@ -62,22 +62,22 @@
                         {
                             value: 'p',
                             icon: 'bell',
-                            class: 'add-button',
+                            class: 'green-button',
                         },
                         {
                             value: 'd',
                             icon: 'clock',
-                            class: 'add-button',
+                            class: 'green-button',
                         },
                         {
                             value: 'w',
                             icon: 'calendar',
-                            class: 'add-button',
+                            class: 'green-button',
                         },
                         {
                             value: 'o',
                             icon: 'times',
-                            class: 'delete-button',
+                            class: 'red-button',
                         },
                     ]"
                     class="float-right"
@@ -149,22 +149,22 @@
                         {
                             value: 'p',
                             icon: 'bell',
-                            class: 'add-button',
+                            class: 'green-button',
                         },
                         {
                             value: 'd',
                             icon: 'clock',
-                            class: 'add-button',
+                            class: 'green-button',
                         },
                         {
                             value: 'w',
                             icon: 'calendar',
-                            class: 'add-button',
+                            class: 'green-button',
                         },
                         {
                             value: 'o',
                             icon: 'times',
-                            class: 'delete-button',
+                            class: 'red-button',
                         },
                     ]"
                     class="float-right"

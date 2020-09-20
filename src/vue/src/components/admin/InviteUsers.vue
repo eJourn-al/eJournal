@@ -1,7 +1,7 @@
 <template>
     <div>
         Invite new users to eJournal by entering their details in the fields below.
-        Invited users will receive an email to activate their account.
+        Invited users will receive an email to activate their account and set up a password.
         <b-table-simple
             responsive
             striped
@@ -133,7 +133,7 @@
             :class="{
                 'input-disabled': requestInFlight || usersToInviteFiltered.length === 0,
             }"
-            class="add-button float-right mb-2"
+            class="green-button float-right mb-2"
             @click="inviteUsers"
         >
             <icon name="paper-plane"/>

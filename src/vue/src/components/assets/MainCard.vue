@@ -6,7 +6,12 @@
         <h2 class="theme-h2">
             {{ line1 }}
         </h2>
-        {{ line2 }}
+        <b-badge
+            pill
+            class="background-medium-grey text-grey"
+        >
+            {{ line2 }}
+        </b-badge>
     </b-card>
 </template>
 
