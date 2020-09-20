@@ -7,7 +7,7 @@
             striped
             noSortReset
             sortBy="name"
-            class="mt-2 mb-0 table-striped"
+            class="mt-2 mb-2 table-striped"
         >
             <b-thead>
                 <b-tr class="text-align-left">
@@ -31,7 +31,7 @@
                     v-for="(user, index) in usersToInvite"
                     :key="index"
                 >
-                    <b-td>
+                    <b-td class="align-middle">
                         <input
                             v-model="user.full_name"
                             type="text"
@@ -39,7 +39,7 @@
                             placeholder="Name"
                         />
                     </b-td>
-                    <b-td>
+                    <b-td class="align-middle">
                         <input
                             v-model="user.username"
                             type="text"
@@ -47,7 +47,7 @@
                             placeholder="Username"
                         />
                     </b-td>
-                    <b-td>
+                    <b-td class="align-middle">
                         <input
                             v-model="user.email"
                             type="text"
@@ -55,12 +55,12 @@
                             placeholder="Email"
                         />
                     </b-td>
-                    <b-td>
+                    <b-td class="align-middle">
                         <b-form-checkbox
                             v-model="user.is_teacher"
                         />
                     </b-td>
-                    <b-td>
+                    <b-td class="align-middle">
                         <icon
                             name="trash"
                             class="trash-icon"
