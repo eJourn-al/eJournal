@@ -64,6 +64,9 @@ class AdminView(viewsets.ViewSet):
                                .values_list('email', flat=True).distinct())
         if existing_emails:
             return response.bad_request({'existing_emails': existing_emails})
+        invalid_emails = [user['email'] for user in users]
+        if existing_emails:
+            return response.bad_request({'existing_emails': existing_emails})
 
         created_user_ids = []
         try:

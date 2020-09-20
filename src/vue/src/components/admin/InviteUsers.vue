@@ -71,10 +71,13 @@
             </b-tbody>
         </b-table-simple>
         <span
-            class="text-grey ml-3 cursor-pointer unselectable"
+            class="text-grey ml-3 cursor-pointer unselectable darken-on-hover"
             @click="addRow"
         >
-            <icon name="plus"/>
+            <icon
+                name="plus"
+                class="shift-up-3"
+            />
             Add row
         </span>
         <b-card
@@ -151,7 +154,7 @@ export default {
                 email: null,
                 is_teacher: false,
             }],
-            errorLogs: '',
+            errorLogs: null,
             requestInFlight: false,
         }
     },
@@ -170,7 +173,16 @@ export default {
                 customSuccessToast: 'Successfully invited users.',
                 customErrorToast: 'Some user details were invalid. No invites sent.',
             })
-                .then(() => { this.requestInFlight = false })
+                .then(() => {
+                    this.requestInFlight = false
+                    this.errorLogs = null
+                    this.usersToInvite = [{
+                        full_name: null,
+                        username: null,
+                        email: null,
+                        is_teacher: false,
+                    }]
+                })
                 .catch((error) => {
                     if (typeof error.response.data.description === 'object') {
                         this.errorLogs = error.response.data.description
