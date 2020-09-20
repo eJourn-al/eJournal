@@ -5,14 +5,15 @@
     margin-bottom: 8px
     text-align: left
     background-color: white
-    border-width: 2px 2px 2px 0px
+    border-width: 2px 2px 2px 2px
     border-color: $theme-dark-grey
     transition: all 0.3s cubic-bezier(.25,.8,.25,1) !important
     border-radius: 5px !important
     .card-body
         position: relative
         border-radius: 3px !important
-        border-left: 8px solid $theme-blue
+        // QUESTION: How about this change?
+        // border-left: 8px solid $theme-blue
     .card
         border-left-width: 2px
         .card-body
@@ -22,8 +23,6 @@
     &:hover:not(.no-hover)
         cursor: pointer
         background-color: $theme-light-grey !important
-    .active
-        background-color: $theme-medium-grey
 .card-body
     padding: 10px
 

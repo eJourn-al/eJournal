@@ -2,11 +2,14 @@
 @import '~sass/modules/breakpoints.sass'
 @import '~sass/modules/keyframe-prefixes.sass'
 
+@import '~bootstrap/scss/bootstrap.scss'
+@import '~bootstrap-vue/src/index.scss'
+
+@import '~sass/partials/colors.sass'
 @import '~sass/partials/shadows.sass'
 @import '~sass/partials/buttons.sass'
 @import '~sass/partials/alerts.sass'
 @import '~sass/partials/cards.sass'
-@import '~sass/partials/colors.sass'
 @import '~sass/partials/columns.sass'
 @import '~sass/partials/entries.sass'
 @import '~sass/partials/forms.sass'
@@ -18,13 +21,12 @@
 @import '~sass/partials/paragraph.sass'
 @import '~sass/partials/select.sass'
 @import '~sass/partials/tours.sass'
-
 @import '~sass/vendor/fonts.sass'
 
 body
     color: $theme-dark-blue
     /* Background pattern from Toptal Subtle Patterns */
-    background-image: url(/background.png)
+    // background-image: url(/background.png)
     font-family: 'Roboto', sans-serif
     font-size: 1em
     -webkit-font-smoothing: antialiased
@@ -115,11 +117,6 @@ a
     white-space: nowrap
     overflow: hidden
 
-ul
-    padding-top: 5px
-    padding-bottom: 5px
-    margin-bottom: 0px
-
 .no-left-radius
     border-top-left-radius: 0 !important
     border-bottom-left-radius: 0 !important
@@ -127,3 +124,6 @@ ul
 .no-right-radius
     border-top-right-radius: 0 !important
     border-bottom-right-radius: 0 !important
+
+ul
+    margin-bottom: 0px

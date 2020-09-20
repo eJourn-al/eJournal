@@ -65,6 +65,13 @@
                     <icon name="edit"/>
                     Assignments
                 </b-nav-item>
+                <b-nav-item
+                    v-if="$store.getters['user/isSuperuser']"
+                    :to="{ name : 'AdminPanel' }"
+                >
+                    <icon name="user-shield"/>
+                    Admin Panel
+                </b-nav-item>
             </b-navbar-nav>
         </b-collapse>
 
@@ -247,40 +254,31 @@ export default {
 
 #nav-dropdown-options
     .profile-picture-container
+        float: right
         border-radius: 50% !important
         width: 50px
         height: 50px
-        @include md-max
-            position: absolute
-            top: 10px
-            right: 10px
     a
         padding: 0px !important
     a.btn
         padding: 0.375rem 0.75rem !important
-        width: 100%
-    @include md-max
-        position: absolute
-        top: 0px
-        right: 0px
+        min-width: 100%
         width: auto
-
-        a.nav-link
-            text-align: right !important
+    @include sm-max
+        position: absolute
+        top: -65px
+        right: 15px
+        margin-top: 75px
 
 .dropdown-menu
     @extend .theme-shadow
+    float: right
     background: $theme-dark-blue !important
     border: none !important
     border-radius: 0px 0px 5px 5px !important
-    padding: 5px 5px
-    margin-top: 10px
-    .btn
-        justify-content: left
-        svg
-            margin-left: 0px
-    @include md-max
-        margin-top: 70px
+    padding: 5px !important
+    @include sm-max
+        padding-top: 60px !important
 
 .spinner
     background: white

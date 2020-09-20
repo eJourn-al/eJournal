@@ -1,7 +1,5 @@
 import Vue from 'vue'
 import BootstrapVue from 'bootstrap-vue'
-import 'bootstrap/dist/css/bootstrap.css'
-import 'bootstrap-vue/dist/bootstrap-vue.css'
 import 'flatpickr/dist/flatpickr.css' // eslint-disable-line import/no-extraneous-dependencies
 import 'flatpickr/dist/themes/material_blue.css' // eslint-disable-line import/no-extraneous-dependencies
 import 'intro.js/introjs.css'
