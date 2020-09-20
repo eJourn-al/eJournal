@@ -8,7 +8,7 @@
         </h2>
         <b-badge
             pill
-            class="background-medium-grey text-grey"
+            class="background-blue"
         >
             {{ line2 }}
         </b-badge>

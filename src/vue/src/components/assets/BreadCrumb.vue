@@ -22,7 +22,7 @@
             <b-link :to="{ name: crumbs[crumbs.length-2].routeName }">
                 <icon
                     name="level-up-alt"
-                    class="shift-up-2 action-icon"
+                    class="shift-up-2 cursor-pointer"
                 />
             </b-link>
         </h4>

@@ -122,6 +122,7 @@
                             Published
                             <tooltip tip="Make the grade visible to students"/>
                         </b-th>
+                        <b-th/>
                     </b-tr>
                 </b-thead>
                 <b-tbody>
@@ -129,13 +130,13 @@
                         v-for="journal in selectedJournals"
                         :key="journal.id"
                     >
-                        <b-td>
+                        <b-td class="align-middle">
                             {{ journal.name }}
                         </b-td>
-                        <b-td>
+                        <b-td class="align-middle">
                             {{ journal.usernames }}
                         </b-td>
-                        <b-td>
+                        <b-td class="align-middle">
                             <b-form-input
                                 v-model="grades[journal.id]"
                                 type="number"
@@ -145,10 +146,10 @@
                                 size="3"
                             />
                         </b-td>
-                        <b-td>
+                        <b-td class="align-middle">
                             <b-form-checkbox v-model="publishGrade[journal.id]"/>
                         </b-td>
-                        <b-td>
+                        <b-td class="align-middle">
                             <icon
                                 name="trash"
                                 class="trash-icon"
@@ -276,7 +277,6 @@ export default {
 </script>
 
 <style lang="sass">
-.teacher-entry-grade
+input.theme-input.teacher-entry-grade
     width: 4em
-    display: inline-block
 </style>

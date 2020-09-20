@@ -2,46 +2,55 @@
     <content-single-wide-column>
         <bread-crumb/>
         <b-card class="no-hover">
-            <table class="role-config-table table-bordered table-hover">
-                <thead>
-                    <tr>
-                        <th/>
-                        <th
+            <b-alert
+                v-if="isChanged"
+                show
+            >
+                <b>Note</b>: changes are not saved.
+            </b-alert>
+            <b-table-simple
+                striped
+                responsive
+                class="role-config-table"
+            >
+                <b-thead>
+                    <b-tr>
+                        <b-th/>
+                        <b-th
                             v-for="role in roles"
                             :key="`th-${role}`"
                         >
-                            <b-button
+                            {{ role }}
+                            <icon
                                 v-if="!undeleteableRoles.includes(role)"
-                                class="red-button"
-                                @click="deleteRole(role)"
-                            >
-                                {{ role }}
-                                <icon name="trash"/>
-                            </b-button>
-                            <span v-else>
-                                {{ role }}
-                            </span>
-                        </th>
-                        <th>
-                            <b-button
-                                class="green-button"
+                                name="trash"
+                                class="trash-icon"
+                                @click.native="deleteRole(role)"
+                            />
+                        </b-th>
+                        <b-th>
+                            <span
+                                class="darken-on-hover text-grey cursor-pointer unselectable"
                                 @click="modalShow = !modalShow"
                             >
-                                <icon name="plus-square"/>
+                                <icon
+                                    name="plus"
+                                    class="shift-up-3"
+                                />
                                 Add Role
-                            </b-button>
-                        </th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr
+                            </span>
+                        </b-th>
+                    </b-tr>
+                </b-thead>
+                <b-tbody>
+                    <b-tr
                         v-for="permission in permissions"
                         :key="permission"
                     >
-                        <td class="permission-column">
+                        <b-td class="permission-column">
                             <b>{{ formatPermissionString(permission) }}</b>
-                        </td>
-                        <td
+                        </b-td>
+                        <b-td
                             v-for="role in roles"
                             :key="`${role}-${permission}`"
                         >
@@ -50,10 +59,15 @@
                                 :class="{ 'input-disabled': essentialPermission(role, permission) }"
                                 inline
                             />
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
+                        </b-td>
+                        <b-td>
+                            <b-form-checkbox
+                                class="input-disabled"
+                            />
+                        </b-td>
+                    </b-tr>
+                </b-tbody>
+            </b-table-simple>
         </b-card>
 
         <transition name="fade">
