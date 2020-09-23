@@ -90,10 +90,11 @@
             </div>
             <main-card
                 v-if="computedAssignments.length === 0"
-                line1="No assignments found"
-                line2="You currently do not participate in any assignments."
+                text="No assignments found"
                 class="no-hover border-dark-grey"
-            />
+            >
+                You currently do not participate in any assignments.
+            </main-card>
         </load-wrapper>
     </content-single-column>
 </template>

@@ -256,17 +256,19 @@
             </div>
             <main-card
                 v-if="assignmentJournals.length === 0"
-                line1="No journals for this assignment"
-                :line2="assignment.is_group_assignment ? 'Create journals by using the button below.' :
-                    'No participants with a journal'"
+                text="No journals for this assignment"
                 class="no-hover border-dark-grey"
-            />
+            >
+                {{ assignment.is_group_assignment ? 'Create journals by using the button below.' :
+                    'No participants with a journal' }}
+            </main-card>
             <main-card
                 v-else-if="filteredJournals.length === 0"
-                line1="No journals found"
-                line2="There are no journals that match your search query."
+                text="No journals found"
                 class="no-hover border-dark-grey"
-            />
+            >
+                There are no journals that match your search query.
+            </main-card>
             <b-button
                 v-if="$hasPermission('can_manage_journals') && assignment.is_group_assignment"
                 class="multi-form green-button"

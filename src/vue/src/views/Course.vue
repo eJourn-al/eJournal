@@ -33,10 +33,11 @@
             </div>
             <main-card
                 v-if="assignments !== null && assignments.length === 0"
-                line1="No assignments found"
-                line2="This course currently does not have any assignments."
+                text="No assignments found"
                 class="no-hover border-dark-grey"
-            />
+            >
+                This course currently does not have any assignments.
+            </main-card>
             <b-button
                 v-if="$hasPermission('can_add_assignment', 'course', cID)"
                 class="green-button mr-2 mb-2"
