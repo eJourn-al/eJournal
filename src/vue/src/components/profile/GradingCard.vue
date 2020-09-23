@@ -1,7 +1,7 @@
 <template>
     <div>
         <h4 class="theme-h4 mb-2 mt-4">
-            Grading
+            <span>Grading</span>
         </h4>
         <b-card
             :class="$root.getBorderClass($route.params.uID)"

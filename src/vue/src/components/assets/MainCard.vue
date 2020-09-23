@@ -7,6 +7,7 @@
             {{ line1 }}
         </h2>
         <b-badge
+            v-if="line2"
             pill
             class="background-blue"
         >

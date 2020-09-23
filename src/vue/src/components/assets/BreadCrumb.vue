@@ -11,22 +11,27 @@
             v-if="crumbs.length > 1"
             class="theme-h4"
         >
-            <b-link
-                v-for="crumb in crumbs.slice(0, -1)"
-                :key="crumb.route"
-                :to="{ name: crumb.routeName }"
-                class="crumb"
-            >
-                {{ crumb.displayName }}
-            </b-link>
-            <b-link :to="{ name: crumbs[crumbs.length-2].routeName }">
-                <icon
-                    name="level-up-alt"
-                    class="shift-up-2 cursor-pointer"
-                />
-            </b-link>
+            <span>
+                <b-link
+                    v-for="crumb in crumbs.slice(0, -1)"
+                    :key="crumb.route"
+                    :to="{ name: crumb.routeName }"
+                    class="crumb"
+                >
+                    {{ crumb.displayName }}
+                </b-link>
+                <b-link :to="{ name: crumbs[crumbs.length-2].routeName }">
+                    <icon
+                        name="level-up-alt"
+                        class="shift-up-2 cursor-pointer"
+                    />
+                </b-link>
+            </span>
         </h4>
-        <h1 class="theme-h1">
+        <h1
+            v-if="crumbs.length > 0 && crumbs.slice(-1)[0].displayName"
+            class="theme-h1"
+        >
             <span class="title">
                 {{ crumbs.slice(-1)[0].displayName }}
                 <slot/>

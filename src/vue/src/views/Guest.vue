@@ -4,11 +4,11 @@
             <span>Welcome to {{ name ? name : 'eJournal' }}</span>
         </h1><br/>
         <h4 class="theme-h4 multi-form">
-            Let's get started
+            <span>Let's get started</span>
         </h4>
         <login-form @handleAction="handleLoginSucces"/>
         <h4 class="theme-h4 multi-form mt-4">
-            About eJournal
+            <span>About eJournal</span>
         </h4>
         <b-row>
             <b-col

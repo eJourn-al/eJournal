@@ -1,7 +1,7 @@
 <template>
     <div>
         <h4 class="theme-h4 mb-2">
-            Manage course details
+            <span>Manage course details</span>
         </h4>
         <b-card
             class="no-hover multi-form"

@@ -146,7 +146,9 @@
                 </b-table>
                 <div v-else>
                     <h4 class="theme-h4">
-                        No grades available
+                        <span>
+                            No grades available
+                        </span>
                     </h4>
                     <hr class="m-0 mb-1"/>
                     This entry has not yet been graded.

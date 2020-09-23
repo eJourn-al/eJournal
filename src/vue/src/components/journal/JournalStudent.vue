@@ -54,7 +54,7 @@
                         v-if="nodes[currentNode] && nodes[currentNode].type == 'a'"
                     >
                         <h4 class="theme-h4 mb-2 d-block">
-                            New entry
+                            <span>New entry</span>
                         </h4>
                         <b-form-select
                             v-if="nodes[currentNode].templates.length > 1"

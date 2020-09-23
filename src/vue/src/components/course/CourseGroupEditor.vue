@@ -1,7 +1,7 @@
 <template>
     <div>
         <h4 class="theme-h4 mb-2">
-            Groups
+            <span>Groups</span>
         </h4>
         <group-card
             v-for="g in groups"
