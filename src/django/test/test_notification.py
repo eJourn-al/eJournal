@@ -194,6 +194,7 @@ class NotificationTest(TestCase):
     def test_node_notification(self):
         pass
 
+    @override_settings(CELERY_TASK_ALWAYS_EAGER=True, CELERY_TASK_EAGER_PROPAGATES=True)
     def test_digest(self):
         """Test digesting of emails.
 

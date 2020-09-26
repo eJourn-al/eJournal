@@ -14,7 +14,6 @@ from django.test import TestCase
 from django.test.utils import override_settings
 from django.utils import timezone
 
-import VLE.utils.generic_utils as utils
 import VLE.utils.statistics as stats_utils
 from VLE.models import (Assignment, AssignmentParticipation, Course, Entry, Field, Format, Journal,
                         JournalImportRequest, Node, Participation, PresetNode, Role, Template)
@@ -954,9 +953,8 @@ class AssignmentAPITest(TestCase):
         assert resp[0]['deadline']['date'] is None, \
             'Default no deadline for a teacher be shown'
 
-        progress = factory.ProgressPresetNode(
+        factory.ProgressPresetNode(
             format=assignment.format, due_date=timezone.now() + datetime.timedelta(days=3), target=7)
-        utils.update_journals(assignment.journal_set.distinct(), progress)
 
         resp = api.get(self, 'assignments/upcoming', user=journal.authors.first().user)['upcoming']
         assert resp[0]['deadline']['name'] == '0/7 points', \

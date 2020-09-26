@@ -157,7 +157,6 @@ class GroupView(viewsets.ViewSet):
 
     @action(['get'], detail=False)
     def datanose(self, request):
-        """"""
         course_id, = utils.required_typed_params(request.query_params, (int, 'course_id'))
         course = Course.objects.get(pk=course_id)
         check_can_view_groups(request.user, course)

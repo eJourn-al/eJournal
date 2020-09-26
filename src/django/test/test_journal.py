@@ -295,6 +295,55 @@ class JournalAPITest(TestCase):
         assert journal.unpublished == 2
         assert journal.needs_marking == 0
 
+    def test_computed_groups(self):
+        course = factory.Course()
+        course2 = factory.Course()
+        g_assignment = factory.Assignment(group_assignment=True, courses=[course, course2])
+        g_journal = factory.GroupJournal(entries__n=0, add_users=[factory.Student()], assignment=g_assignment)
+        student = g_journal.authors.first().user
+        student2 = g_journal.authors.last().user
+        Participation.objects.filter(user=student, course=course2).delete()
+        student_course_participation = Participation.objects.get(user=student, course=course)
+        Participation.objects.filter(user=student2, course=course).delete()
+        student2_course2_participation = Participation.objects.get(user=student2, course=course2)
+        student_ap = g_journal.authors.get(user=student)
+
+        assert g_journal.groups == [], 'By default a journal holds no groups'
+
+        group = factory.Group(course=course)
+        group2 = factory.Group(course=course2)
+
+        student_course_participation.groups.add(group)
+        g_journal.refresh_from_db()
+        assert g_journal.groups == [group.pk], 'Added group appears in the computed property'
+
+        student2_course2_participation.groups.add(group2)
+        g_journal.refresh_from_db()
+        assert group.pk in g_journal.groups and group2.pk in g_journal.groups, \
+            'Added group appears in the computed property for all authors'
+
+        student_course_participation.groups.remove(group)
+        g_journal.refresh_from_db()
+        assert g_journal.groups == [group2.pk], \
+            'Removing a student from a group also removes the group pk from the journal computed group property'
+
+        course2.delete()
+        g_journal.refresh_from_db()
+        assert g_journal.groups == [], \
+            'Removing a course from an assignment should also remove the respective groups from a journal'
+
+        student_course_participation.groups.add(group)
+        g_journal.refresh_from_db()
+        assert g_journal.groups == [group.pk], 'Journal groups once again holds a single value'
+        student_ap.delete()
+        g_journal.refresh_from_db()
+        assert g_journal.groups == [], 'Removing a user from a journal updates the computed property'
+
+        student_ap = factory.AssignmentParticipation(assignment=g_assignment, user=student, journal=g_journal)
+        g_journal.refresh_from_db()
+        assert g_journal.groups == [group.pk], \
+            'Adding a user to a journal updates the journal\'s groups computed property'
+
     def test_get_journal(self):
         payload = {'assignment_id': self.assignment.pk, 'course_id': self.course.pk}
         # Test list
