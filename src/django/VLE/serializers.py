@@ -79,6 +79,13 @@ class UserSerializer(serializers.ModelSerializer):
             return None
 
 
+class UserOverviewSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = VLE.models.User
+        fields = ('username', 'full_name', 'email', 'is_teacher', 'is_active')
+        read_only_fields = ('username', 'full_name', 'email', 'is_teacher', 'is_active')
+
+
 class OwnUserSerializer(serializers.ModelSerializer):
     permissions = serializers.SerializerMethodField()
 

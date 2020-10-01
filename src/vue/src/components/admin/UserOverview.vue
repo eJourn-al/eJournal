@@ -24,50 +24,46 @@
             </b-tr>
         </b-thead>
         <b-tbody>
-            <b-tr>
-                <b-td>
-                    Engel Hamer
+            <b-tr
+                v-for="(user, i) in users"
+                :key="i"
+            >
+                <b-td class="align-middle">
+                    {{ user.full_name }}
                 </b-td>
-                <b-td>
-                    ehamer1
+                <b-td class="align-middle">
+                    {{ user.username }}
                 </b-td>
-                <b-td>
-                    e.hamer@uva.nl
+                <b-td class="align-middle">
+                    {{ user.email }}
                 </b-td>
-                <b-td>
+                <b-td class="align-middle">
                     <icon
+                        v-if="user.is_active"
+                        name="check"
+                        class="text-green"
+                    />
+                    <icon
+                        v-else
                         name="history"
                         class="text-yellow"
                     />
                 </b-td>
-                <b-td>
-                    <icon
-                        name="trash"
-                        class="trash-icon"
-                    />
-                </b-td>
-            </b-tr>
-            <b-tr>
-                <b-td>
-                    Lars van Hijfte
-                </b-td>
-                <b-td>
-                    lhijfte
-                </b-td>
-                <b-td>
-                    l.vanhijfte@uva.nl
-                </b-td>
-                <b-td>
-                    <icon
-                        name="check"
-                        class="text-green"
-                    />
-                </b-td>
-                <b-td>
-                    <icon
-                        name="trash"
-                        class="trash-icon"
-                    />
+                <b-td class="align-middle">
+                    <b-dropdown
+                        lazy
+                        noCaret
+                        variant="link"
+                    >
+                        <icon
+                            slot="button-content"
+                            name="ellipsis-v"
+                            class="trash-icon"
+                        />
+                        <b-dropdown-item-button @click="removeUser(user)">
+                            Remove
+                        </b-dropdown-item-button>
+                    </b-dropdown>
                 </b-td>
             </b-tr>
         </b-tbody>
@@ -75,16 +71,22 @@
 </template>
 
 <script>
-// import adminAPI from '@/api/admin.js'
+import adminAPI from '@/api/admin.js'
 
 export default {
     data () {
         return {
-
+            users: [],
         }
     },
+    created () {
+        adminAPI.getAllUsers()
+            .then((users) => { this.users = users })
+    },
     methods: {
-
+        removeUser (user) {
+            this.$toasted.info(`TODO: Remove user ${user.full_name}`)
+        },
     },
 }
 </script>

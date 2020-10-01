@@ -6,12 +6,13 @@ In this file are all the admin api requests.
 from rest_framework import viewsets
 from rest_framework.decorators import action
 from sentry_sdk import capture_message
+from django.core.paginator import Paginator
 
 import VLE.factory as factory
 import VLE.utils.generic_utils as utils
 import VLE.utils.responses as response
 from VLE.models import Instance, User
-from VLE.serializers import InstanceSerializer
+from VLE.serializers import InstanceSerializer, UserOverviewSerializer
 from VLE.tasks import send_invite_email
 
 
@@ -113,3 +114,20 @@ class AdminView(viewsets.ViewSet):
         serializer.save()
 
         return response.success({'instance': serializer.data})
+
+    @action(methods=['post'], detail=False)
+    def get_all_users(self, request):
+        """Get all users on the instance.
+
+        TODO: paginate (since the user count can be thousands)
+
+        Arguments:
+        TODO
+        """
+        if not request.user.is_superuser:
+            return response.forbidden('You are not allowed to get all users.')
+
+        users = UserOverviewSerializer(User.objects.all(), context={'user': request.user}, many=True).data
+        return response.success({'users': users})
+
+

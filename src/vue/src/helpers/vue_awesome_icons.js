@@ -85,6 +85,7 @@ import 'vue-awesome/icons/play'
 import 'vue-awesome/icons/file-export'
 import 'vue-awesome/icons/file-import'
 import 'vue-awesome/icons/filter'
+import 'vue-awesome/icons/ellipsis-v'
 
 /* eslint-enable import/extensions */
 

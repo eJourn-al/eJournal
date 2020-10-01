@@ -2,7 +2,7 @@
     <content-wide-column>
         <bread-crumb/>
         <b-card
-            class="no-hover border-dark-grey"
+            class="no-hover no-left-border"
             noBody
         >
             <b-tabs

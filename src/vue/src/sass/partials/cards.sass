@@ -9,7 +9,7 @@
     border-color: $theme-dark-grey
     transition: all 0.3s cubic-bezier(.25,.8,.25,1) !important
     border-radius: 5px !important
-    .card-body
+    &:not(.no-left-border) .card-body
         position: relative
         border-radius: 3px !important
         // QUESTION: How about only doing this for course, assignment and journal cards?

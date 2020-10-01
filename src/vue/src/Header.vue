@@ -252,46 +252,46 @@ export default {
         min-height: 70px
         height: auto
 
-#nav-dropdown-options
-    .profile-picture-container
+    #nav-dropdown-options
+        .profile-picture-container
+            float: right
+            border-radius: 50% !important
+            width: 50px
+            height: 50px
+        a
+            padding: 0px !important
+        a.btn
+            padding: 0.375rem 0.75rem !important
+            min-width: 100%
+            width: auto
+            justify-content: left
+        @include sm-max
+            position: absolute
+            top: -65px
+            right: 15px
+            margin-top: 75px
+
+    .dropdown-menu
+        @extend .theme-shadow
         float: right
-        border-radius: 50% !important
-        width: 50px
-        height: 50px
-    a
-        padding: 0px !important
-    a.btn
-        padding: 0.375rem 0.75rem !important
-        min-width: 100%
-        width: auto
-        justify-content: left
-    @include sm-max
-        position: absolute
-        top: -65px
-        right: 15px
-        margin-top: 75px
+        background: $theme-dark-blue !important
+        border: none !important
+        border-radius: 0px 0px 5px 5px !important
+        padding: 10px 5px 5px 5px !important
+        @include sm-max
+            padding-top: 60px !important
 
-.dropdown-menu
-    @extend .theme-shadow
-    float: right
-    background: $theme-dark-blue !important
-    border: none !important
-    border-radius: 0px 0px 5px 5px !important
-    padding: 10px 5px 5px 5px !important
-    @include sm-max
-        padding-top: 60px !important
-
-.spinner
-    background: white
-    color: $theme-dark-blue
-    position: fixed
-    bottom: 0px
-    left: 0px
-    width: 1.5em
-    height: 1.5em
-    border-radius: 0px 5px 0px 0px !important
-    display: flex
-    align-items: center
-    justify-content: center
+    .spinner
+        background: white
+        color: $theme-dark-blue
+        position: fixed
+        bottom: 0px
+        left: 0px
+        width: 1.5em
+        height: 1.5em
+        border-radius: 0px 5px 0px 0px !important
+        display: flex
+        align-items: center
+        justify-content: center
 
 </style>
