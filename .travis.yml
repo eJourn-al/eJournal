@@ -10,6 +10,8 @@ install:
 script: bash -c 'source ./venv/bin/activate && isort -rc src/django/ -c && deactivate' && make test
 after_success:
   - codecov
+git:
+  submodules: false
 branches:
   only:
     - master

@@ -162,7 +162,6 @@ class AssignmentView(viewsets.ViewSet):
 
         On success:
             success -- with the assignment data
-
         """
         if 'lti' in request.query_params:
             assignment = Assignment.objects.get(lti_id_set__contains=[pk])

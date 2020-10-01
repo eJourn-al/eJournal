@@ -35,6 +35,7 @@ venv_activate = source ./venv/bin/activate
 test-back:
 	${venv_activate} \
 	&& flake8 ./src/django \
+	&& ./src/django/manage.py check --fail-level=WARNING \
 	&& pytest ${TOTEST} src/django/test/
 	make isort
 
@@ -193,7 +194,7 @@ preset-db-no-input:
 	make run-preset-db
 
 run-preset-db:
-	${venv_activate} && cd ./src/django && python manage.py preset_db
+	${venv_activate} && cd ./src/django && python manage.py preset_db $(n_performance_students)
 
 migrate-back:
 	${venv_activate} && cd ./src/django && python manage.py makemigrations VLE && python manage.py migrate

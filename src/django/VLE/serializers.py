@@ -21,6 +21,7 @@ class InstanceSerializer(serializers.ModelSerializer):
     class Meta:
         model = VLE.models.Instance
         fields = ('allow_standalone_registration', 'name')
+        read_only_fields = ('id',)
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -332,7 +333,9 @@ class AssignmentSerializer(serializers.ModelSerializer):
                 ).distinct(), many=True,
                 context={
                     **self.context,
-                    'can_view_usernames': self.context['user'].has_permission('can_view_all_journals', assignment)
+                    'can_view_usernames': self.context['user'].has_permission('can_view_all_journals', assignment),
+                    'can_manage_journal_import_requests': self.context['user'].has_permission(
+                        'can_manage_journal_import_requests', assignment)
                 }).data
         else:
             return None
@@ -362,21 +365,33 @@ class AssignmentSerializer(serializers.ModelSerializer):
         all_j = VLE.models.Journal.objects.filter(assignment=assignment, authors__user__in=relevant_stat_users['all'])
         own_j = VLE.models.Journal.objects.filter(assignment=assignment, authors__user__in=relevant_stat_users['own'])
 
+        all_j_stats = all_j.aggregate(
+            average_points=Avg('grade'),
+            needs_marking=Sum('needs_marking'),
+            unpublished=Sum('unpublished'),
+            import_requests=Sum('import_requests'),
+        )
+        own_j_stats = own_j.aggregate(
+            needs_marking=Sum('needs_marking'),
+            unpublished=Sum('unpublished'),
+            import_requests=Sum('import_requests'),
+        )
+
         # Grader stats
         if self.context['user'].has_permission('can_grade', assignment):
             stats.update({
-                'needs_marking': all_j.aggregate(Sum('needs_marking'))['needs_marking__sum'] or 0,
-                'unpublished': all_j.aggregate(Sum('unpublished'))['unpublished__sum'] or 0,
-                'needs_marking_own_groups': own_j.aggregate(Sum('needs_marking'))['needs_marking__sum'] or 0,
-                'unpublished_own_groups': own_j.aggregate(Sum('unpublished'))['unpublished__sum'] or 0,
+                'needs_marking': all_j_stats['needs_marking'] or 0,
+                'unpublished': all_j_stats['unpublished'] or 0,
+                'needs_marking_own_groups': own_j_stats['needs_marking'] or 0,
+                'unpublished_own_groups': own_j_stats['unpublished'] or 0,
             })
         if self.context['user'].has_permission('can_manage_journal_import_requests', assignment):
             stats.update({
-                'import_requests': all_j.aggregate(Sum('import_requests'))['import_requests__sum'] or 0,
-                'import_requests_own_groups': own_j.aggregate(Sum('import_requests'))['import_requests__sum'] or 0,
+                'import_requests': all_j_stats['import_requests'] or 0,
+                'import_requests_own_groups': own_j_stats['import_requests'] or 0,
             })
         # Other stats
-        stats['average_points'] = all_j.aggregate(Avg('grade'))['grade__avg']
+        stats['average_points'] = all_j_stats['average_points']
 
         return stats
 
@@ -470,7 +485,7 @@ class SmallAssignmentSerializer(AssignmentSerializer):
         fields = (
             'id', 'name', 'is_group_assignment', 'is_published', 'points_possible', 'unlock_date', 'due_date',
             'lock_date', 'deadline', 'journal', 'stats', 'course', 'courses', 'active_lti_course')
-        read_only_fields = ('id', )
+        read_only_fields = fields
 
 
 class CommentSerializer(serializers.ModelSerializer):
@@ -524,14 +539,21 @@ class JournalSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = VLE.models.Journal
-        fields = ('id', 'bonus_points', 'grade', 'name', 'image', 'author_limit',
-                  'locked', 'author_count', 'full_names', 'groups', 'import_requests',
-                  'grade', 'name', 'image', 'needs_lti_link', 'unpublished', 'needs_marking', 'usernames')
+        fields = (
+            # Normal fields
+            'id', 'bonus_points', 'author_limit', 'locked',
+            # Computed fields
+            'grade', 'name', 'image', 'needs_lti_link', 'unpublished', 'needs_marking', 'full_names', 'groups',
+            # Serialized fields
+            'author_count', 'import_requests', 'usernames'
+        )
         read_only_fields = ('id', 'assignment', 'authors', 'grade', 'import_requests')
 
     def get_author_count(self, journal):
         # If annotated in the query, get that, else query here
-        return journal.__dict__.get('author_count', journal.authors.count())
+        if ('author_count' in journal.__dict__):
+            return journal.__dict__.get('author_count')
+        return journal.authors.count()
 
     def get_usernames(self, journal):
         # If annotated that it is allowed, immediatly get it, else check for can_view_all_journals
@@ -544,12 +566,11 @@ class JournalSerializer(serializers.ModelSerializer):
     def get_groups(self, journal):
         if 'course' not in self.context:
             return None
-        return list(VLE.models.Participation.objects.filter(
-            user__in=journal.authors.values('user'),
-            course=self.context['course']).values_list('groups__pk', flat=True).distinct())
+        return journal.groups
 
     def get_import_requests(self, journal):
-        if 'user' in self.context and self.context['user'] and self.context['user'].has_permission(
+        if self.context.get('can_manage_journal_import_requests', False) or \
+            'user' in self.context and self.context['user'] and self.context['user'].has_permission(
                 'can_manage_journal_import_requests', journal.assignment):
             return journal.import_requests
         return None
@@ -771,6 +792,7 @@ class FileSerializer(serializers.ModelSerializer):
     class Meta:
         model = VLE.models.FileContext
         fields = ('download_url', 'file_name', 'id', )
+        read_only_fields = fields
 
     def get_download_url(self, file):
         # Get access_id if file is in rich text
@@ -781,6 +803,7 @@ class FieldSerializer(serializers.ModelSerializer):
     class Meta:
         model = VLE.models.Field
         fields = ('id', 'type', 'title', 'description', 'options', 'location', 'required', )
+        read_only_fields = fields
 
 
 class JournalImportRequestSerializer(serializers.ModelSerializer):

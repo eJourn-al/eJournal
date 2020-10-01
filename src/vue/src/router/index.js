@@ -141,10 +141,20 @@ const router = new Router({
     }],
 })
 
+// Minimal supported browser versions
+const SUPPORTED_BROWSERS = {
+    chrome: 78,
+    safari: 11,
+    firefox: 68,
+    'edge-chromium': 79,
+    edge: 79,
+    ie: 12,
+}
+
 /* Obtain browser user agent data. */
 const browser = detectBrowser()
-let browserUpdateNeeded = (browser && browser.name && browser.version && SupportedBrowsers[browser.name]
-    && parseInt(browser.version.split('.')[0], 10) < SupportedBrowsers[browser.name])
+let browserUpdateNeeded = (browser && browser.name && browser.version && SUPPORTED_BROWSERS[browser.name]
+    && parseInt(browser.version.split('.')[0], 10) < SUPPORTED_BROWSERS[browser.name])
 
 router.beforeEach((to, from, next) => {
     const loggedIn = store.getters['user/loggedIn']

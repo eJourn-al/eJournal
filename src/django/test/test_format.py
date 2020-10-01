@@ -6,7 +6,7 @@ from django.db.utils import IntegrityError
 from django.test import TestCase
 from django.utils import timezone
 
-from VLE.models import Assignment, Course, Entry, Field, Format, Group, Journal, Template
+from VLE.models import Assignment, Course, Entry, Field, Format, Group, Journal, Node, PresetNode, Template
 from VLE.serializers import PresetNodeSerializer, TemplateSerializer
 from VLE.utils import generic_utils as utils
 from VLE.utils.error_handling import VLEProgrammingError
@@ -188,16 +188,21 @@ class FormatAPITest(TestCase):
             'unlock_date': timezone.now() + relativedelta(days=1),
         }
         assignment = factory.Assignment()
-        entrydeadline = factory.DeadlinePresetNode(
+        # This should not use the factory, as that kills the testing of updating presets
+        entrydeadline = PresetNode.objects.create(
             forced_template=assignment.format.template_set.first(),
             format=assignment.format,
+            type=Node.ENTRYDEADLINE,
+            due_date=timezone.now()
         )
-        progress = factory.ProgressPresetNode(
+        # This should not use the factory, as that kills the testing of updating presets
+        progress = PresetNode.objects.create(
             format=assignment.format,
+            type=Node.PROGRESS,
+            due_date=timezone.now(),
             target=5,
         )
         presets = PresetNodeSerializer([entrydeadline, progress], many=True).data
-
         # Update the entry data
         presets[0].update(should_be_updated)
         utils.update_presets(assignment, presets, {})

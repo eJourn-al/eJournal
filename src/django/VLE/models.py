@@ -917,7 +917,6 @@ class Participation(CreateUpdateModel):
     The user is now linked to the course, and has a set of permissions
     associated with its role.
     """
-
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     course = models.ForeignKey(Course, on_delete=models.CASCADE)
     role = models.ForeignKey(
@@ -1405,6 +1404,13 @@ class Journal(CreateUpdateModel, ComputedFieldsModel):
     ])
     def usernames(self):
         return ', '.join(self.authors.values_list('user__username', flat=True))
+
+    @computed(ArrayField(models.IntegerField(), default=list), depends=[
+        ['authors.user.participation_set', ['groups']],
+    ])
+    def groups(self):
+        return list(Group.objects.filter(participation__user__in=self.authors.values('user'))
+                    .values_list('pk', flat=True).distinct())
 
     def add_author(self, author):
         self.authors.add(author)
