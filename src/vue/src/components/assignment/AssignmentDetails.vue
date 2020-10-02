@@ -241,14 +241,13 @@
 </template>
 
 <script>
-import textEditor from '@/components/assets/TextEditor.vue'
 import tooltip from '@/components/assets/Tooltip.vue'
 import RadioButton from '@/components/assets/RadioButton.vue'
 
 export default {
     name: 'AssignmentDetails',
     components: {
-        textEditor,
+        textEditor: () => import(/* webpackChunkName: 'text-editor' */ '@/components/assets/TextEditor.vue'),
         tooltip,
         RadioButton,
     },

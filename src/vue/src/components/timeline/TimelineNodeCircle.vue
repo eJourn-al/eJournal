@@ -178,7 +178,6 @@ export default {
 </script>
 
 <style lang="sass">
-@import '~sass/modules/colors.sass'
 @import '~sass/partials/shadows.sass'
 
 .timeline-node-circle-border

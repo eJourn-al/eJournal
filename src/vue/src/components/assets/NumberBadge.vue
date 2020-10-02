@@ -20,6 +20,8 @@
 </template>
 
 <script>
+import themeColors from 'sass/modules/colors.sass'
+
 export default {
     props: {
         absolute: {
@@ -46,15 +48,15 @@ export default {
     data () {
         return {
             colorsStyles: [
-                { 'background-color': '#22648A' }, // $theme-blue
-                { 'background-color': '#FFFFFF', color: '#252C39' },
-                { 'background-color': '#252C39' }, // $theme-dark-blue
-                { 'background-color': '#E8A723' }, // $theme-yellow
-                { 'background-color': '#E64769' }, // $theme-pink
-                { 'background-color': '#473E62' }, // $theme-purple
-                { 'background-color': '#007E33' }, // $theme-green
-                { 'background-color': '#CC0000' }, // $theme-red
-                { 'background-color': '#FF8800' }, // $theme-orange
+                { 'background-color': themeColors.blue },
+                { 'background-color': '#FFFFFF', color: themeColors.darkblue },
+                { 'background-color': themeColors.darkblue },
+                { 'background-color': themeColors.yellow },
+                { 'background-color': themeColors.pink },
+                { 'background-color': themeColors.purple },
+                { 'background-color': themeColors.green },
+                { 'background-color': themeColors.red },
+                { 'background-color': themeColors.orange },
             ],
         }
     },
@@ -95,8 +97,6 @@ export default {
 </script>
 
 <style lang="sass">
-@import '~sass/modules/colors.sass'
-
 .absolute
     position: absolute
     right: 0px

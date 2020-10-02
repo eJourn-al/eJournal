@@ -26,8 +26,6 @@ export default {
 </script>
 
 <style lang="sass">
-@import "~sass/modules/colors.sass"
-
 .theme-radio-button
     border-radius: 5px
     .btn.radio-button-option, .btn-secondary.radio-button-option

@@ -57,8 +57,6 @@ export default {
 </script>
 
 <style lang="sass">
-@import '~sass/modules/colors.sass'
-
 .node-container
     height: 100px
     .time-line

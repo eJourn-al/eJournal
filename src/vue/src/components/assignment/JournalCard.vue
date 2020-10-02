@@ -157,8 +157,6 @@ export default {
 
 <style lang="sass">
 @import '~sass/partials/shadows.sass'
-@import '~sass/modules/breakpoints.sass'
-@import '~sass/modules/colors.sass'
 
 .journal-card
     .portrait-wrapper

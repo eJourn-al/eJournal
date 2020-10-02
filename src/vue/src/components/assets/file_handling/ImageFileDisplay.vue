@@ -76,8 +76,6 @@ export default {
 </script>
 
 <style lang="sass">
-@import '~sass/modules/colors.sass'
-
 .closed
     -webkit-transition: height, .6s linear
 

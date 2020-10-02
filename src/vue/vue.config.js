@@ -3,8 +3,52 @@ const webpack = require('webpack') // eslint-disable-line import/no-extraneous-d
 const currentRelease = require('./build/current-release')
 const SentryWebpackPlugin = require('@sentry/webpack-plugin')
 
+CHUNKS_WHICH_SHOULD_NOT_BE_PREFETCHED = [
+    'exceljs',
+    'pdf',
+    'sortable',
+    'draggable',
+    'croppa',
+    'intro',
+]
+
 module.exports = {
+    chainWebpack: config => {
+        if (config.plugins.has('prefetch')) {
+            config.plugin('prefetch').tap(options => {
+                options[0].fileBlacklist = options[0].fileBlacklist || []
+
+                options[0].fileBlacklist.push(/.+?\.map$/)
+                CHUNKS_WHICH_SHOULD_NOT_BE_PREFETCHED.forEach((chunkName) => {
+                    options[0].fileBlacklist.push(new RegExp(`.*${chunkName}.+?\.js$`))
+                })
+
+                return options
+            })
+        }
+    },
     configureWebpack: {
+        /* Splits all vendors into dedicated chunks */
+        optimization: {
+            runtimeChunk: 'single',
+            splitChunks: {
+                chunks: 'all',
+                maxInitialRequests: Infinity,
+                minSize: 0,
+                cacheGroups: {
+                    vendor: {
+                        test: /[\\/]node_modules[\\/]/,
+                        name(module) {
+                            /* Get the name, e.g. node_modules/packageName/not/this.js or node_modules/packageName */
+                            const packageName = module.context.match(/[\\/]node_modules[\\/](.*?)([\\/]|$)/)[1]
+
+                            /* NPM package names are URL-safe, but some servers don't like @ symbols */
+                            return `npm.${packageName.replace('@', '')}`
+                        },
+                    },
+                },
+            },
+        },
         resolve: {
             alias: {
                 '@': path.resolve(__dirname, './src'),
@@ -35,5 +79,16 @@ module.exports = {
             })
             : []
         ),
+    },
+
+    css: {
+        loaderOptions: {
+            sass: {
+                prependData: `
+                    @import "~sass/modules/colors.sass"
+                    @import "~sass/modules/breakpoints.sass"
+                `
+            }
+        }
     },
 }

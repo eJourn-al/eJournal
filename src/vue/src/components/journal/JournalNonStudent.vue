@@ -421,7 +421,6 @@ export default {
 </script>
 
 <style lang="sass">
-@import '~sass/modules/colors.sass'
 @import '~sass/partials/shadows.sass'
 
 .grade-section.bonus-section

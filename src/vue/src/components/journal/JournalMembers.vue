@@ -208,8 +208,6 @@ export default {
 </script>
 
 <style lang="sass">
-@import '~sass/modules/colors.sass'
-
 .members
     .members-header
         border-bottom: 2px solid $theme-dark-grey

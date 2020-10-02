@@ -18,7 +18,7 @@ from django.core.wsgi import get_wsgi_application
 
 logging.basicConfig(stream=sys.stderr)
 
-os.environ.setdefault("DJANGO_SETTINGS_MODULE", "VLE.settings.development")
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "VLE.settings.production")
 path = '{{DIR}}'
 if path not in sys.path:
     sys.path.append(path)

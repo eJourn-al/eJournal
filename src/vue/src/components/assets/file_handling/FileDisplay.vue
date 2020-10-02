@@ -16,11 +16,10 @@
 <script>
 import fileDownloadButton from '@/components/assets/file_handling/FileDownloadButton.vue'
 import imageFileDisplay from '@/components/assets/file_handling/ImageFileDisplay.vue'
-import pdfDisplay from '@/components/assets/PdfDisplay.vue'
 
 export default {
     components: {
-        pdfDisplay,
+        pdfDisplay: () => import(/* webpackChunkName: 'pdf-display' */ '@/components/assets/PdfDisplay.vue'),
         fileDownloadButton,
         imageFileDisplay,
     },

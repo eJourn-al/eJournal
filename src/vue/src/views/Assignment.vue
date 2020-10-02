@@ -430,7 +430,6 @@
 </template>
 
 <script>
-import AssignmentSpreadsheetExport from '@/components/assignment/AssignmentSpreadsheetExport.vue'
 import BonusFileUploadInput from '@/components/assets/file_handling/BonusFileUploadInput.vue'
 import BreadCrumb from '@/components/assets/BreadCrumb.vue'
 import ContentColumns from '@/components/columns/ContentColumns.vue'
@@ -448,6 +447,9 @@ import gradeAPI from '@/api/grade.js'
 import participationAPI from '@/api/participation.js'
 import journalAPI from '@/api/journal.js'
 import { mapGetters, mapMutations } from 'vuex'
+
+const AssignmentSpreadsheetExport = () => import(
+    /* webpackChunkName: 'assignment-spreadsheet-export' */ '@/components/assignment/AssignmentSpreadsheetExport.vue')
 
 export default {
     name: 'Assignment',

@@ -66,6 +66,7 @@ setup:
 	@read -r a
 	make setup-no-input
 	make setup-sentry-cli
+	make update-submodules
 	make run-preset-db
 setup-no-input:
 	@make clean
@@ -115,6 +116,15 @@ setup-sentry-cli:
 	@if ! [ $(shell which 'sentry-cli' > /dev/null 2>&1; echo $$?) -eq 0 ]; then \
 		${venv_activate} && curl -sL https://sentry.io/get-cli/ | bash; \
 	fi
+
+update-submodules:
+	git submodule update --remote --merge
+
+output-webpack-config:
+	${venv_activate} && cd ./src/vue && vue inspect > webpack_config_output.js
+
+output-vue-build-report:
+	${venv_activate} && npm run build-report --prefix ./src/vue
 
 ##### DEPLOY COMMANDS ######
 

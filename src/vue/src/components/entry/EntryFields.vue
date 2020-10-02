@@ -145,15 +145,14 @@
 
 <script>
 import fileUploadInput from '@/components/assets/file_handling/FileUploadInput.vue'
-import textEditor from '@/components/assets/TextEditor.vue'
 import urlInput from '@/components/assets/UrlInput.vue'
 import fileDisplay from '@/components/assets/file_handling/FileDisplay.vue'
 import sandboxedIframe from '@/components/assets/SandboxedIframe.vue'
 
 export default {
     components: {
+        textEditor: () => import(/* webpackChunkName: 'text-editor' */ '@/components/assets/TextEditor.vue'),
         fileUploadInput,
-        textEditor,
         urlInput,
         fileDisplay,
         sandboxedIframe,

@@ -54,9 +54,6 @@ export default {
 </script>
 
 <style lang="sass">
-@import '~sass/modules/colors.sass'
-@import '~sass/modules/breakpoints.sass'
-
 .feedback-wrapper
     position: fixed
     bottom: 0px

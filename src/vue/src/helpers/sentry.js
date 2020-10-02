@@ -1,5 +1,5 @@
 import * as Sentry from '@sentry/browser'
-import * as Integrations from '@sentry/integrations'
+import { Vue as SentryVueIntegration } from '@sentry/integrations'
 import store from '@/store/index.js'
 
 
@@ -36,7 +36,7 @@ export default function initSentry (Vue) {
     Sentry.init({
         dsn: CustomEnv.SENTRY_DSN,
         /* LogErrors: still call Vue's original logError function as well. */
-        integrations: [new Integrations.Vue({ Vue, attachProps: true, logErrors: true })],
+        integrations: [new SentryVueIntegration({ Vue, attachProps: true, logErrors: true })],
         beforeSend,
     })
 }

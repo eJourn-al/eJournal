@@ -178,19 +178,17 @@ import dropdownButton from '@/components/assets/DropdownButton.vue'
 import fileDownloadButton from '@/components/assets/file_handling/FileDownloadButton.vue'
 import fileUploadInput from '@/components/assets/file_handling/FileUploadInput.vue'
 import sandboxedIframe from '@/components/assets/SandboxedIframe.vue'
-import textEditor from '@/components/assets/TextEditor.vue'
 
 import commentAPI from '@/api/comment.js'
-
 import auth from '@/api/auth.js'
 
 export default {
     components: {
+        textEditor: () => import(/* webpackChunkName: 'text-editor' */ '@/components/assets/TextEditor.vue'),
         dropdownButton,
         fileDownloadButton,
         fileUploadInput,
         sandboxedIframe,
-        textEditor,
     },
     props: {
         passedComment: {
@@ -284,8 +282,6 @@ export default {
 </script>
 
 <style lang="sass">
-@import '~sass/modules/colors.sass'
-
 .comment-card
     display: flex
     .profile-picture-sm

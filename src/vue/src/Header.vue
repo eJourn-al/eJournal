@@ -195,8 +195,6 @@ export default {
 </script>
 
 <style lang="sass">
-@import '~sass/modules/colors.sass'
-@import '~sass/modules/breakpoints.sass'
 @import '~sass/partials/shadows.sass'
 
 #header

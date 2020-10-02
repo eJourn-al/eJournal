@@ -14,6 +14,8 @@
 </template>
 
 <script>
+import themeColors from 'sass/modules/colors.sass'
+
 export default {
     name: 'SandboxedIframe',
     props: {
@@ -51,7 +53,7 @@ export default {
             const css = `
 body {
     font-family: 'Roboto', sans-serif;
-    color: #252C39;
+    color: ${themeColors.darkblue};
     word-wrap: break-word;
 }
 
@@ -64,7 +66,7 @@ body *:last-child{
 }
 
 p a {
-    color: #22648A;
+    color: ${themeColors.blue};
 }
 
 img {
