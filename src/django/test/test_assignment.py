@@ -422,37 +422,6 @@ class AssignmentAPITest(TestCase):
         data = api.get(self, 'assignments/importable', user=teacher)['data']
         assert len(data) == 0, 'A teacher requires can_edit_assignment to see importable assignments.'
 
-    def test_template_import(self):
-        a1 = factory.Assignment()
-        teacher = a1.author
-        a2 = factory.Assignment(courses=[a1.courses.first()])
-
-        api.post(
-            self, 'assignments/{}/copytemplate'.format(a1.pk),
-            params={'template_id': a2.format.template_set.first().pk},
-            user=teacher)
-        assert Assignment.objects.get(pk=a1.pk).format.template_set.count() == \
-            Assignment.objects.get(pk=a2.pk).format.template_set.count(), 'No new templates should be created'
-        assert Field.objects.count() == \
-            Field.objects.count(), 'Nor any fields should be created'
-
-        # Check teacher needs access to both assignments
-        api.post(
-            self, 'assignments/{}/copytemplate'.format(a1.pk),
-            params={'template_id': factory.Assignment().format.template_set.first().pk},
-            user=teacher, status=403)
-        api.post(
-            self, 'assignments/{}/copytemplate'.format(factory.Assignment().pk),
-            params={'template_id': a2.format.template_set.first().pk},
-            user=teacher, status=403)
-
-        # Check student cannot import
-        journal = factory.Journal(assignment=a1)
-        api.post(
-            self, 'assignments/{}/copytemplate'.format(a1.pk),
-            params={'template_id': a2.format.template_set.first().pk},
-            user=journal.authors.first().user, status=403)
-
     def test_assignment_import(self):
         start2018_2019 = datetime.datetime(year=2018, month=9, day=1)
         start2019_2020 = datetime.datetime(year=2019, month=9, day=1)
@@ -1198,11 +1167,18 @@ class AssignmentAPITest(TestCase):
         templates = api.get(self, 'assignments/{}/templates'.format(assignment.pk), user=teacher)['templates']
         assert len(templates) == 2
 
-        # Users without the ability to post teacher entries can (and need) not retrieve templates this way.
+        # Users without the ability to post teacher entries or edit assignment can (and need) not retrieve templates
+        # this way.
         r = Participation.objects.get(course=course, user=teacher).role
         r.can_post_teacher_entries = False
         r.save()
+        templates = api.get(self, 'assignments/{}/templates'.format(assignment.pk), user=teacher, status=200)
+        r.can_edit_assignment = False
+        r.save()
         templates = api.get(self, 'assignments/{}/templates'.format(assignment.pk), user=teacher, status=403)
+        r.can_post_teacher_entries = True
+        r.save()
+        templates = api.get(self, 'assignments/{}/templates'.format(assignment.pk), user=teacher, status=200)
 
     # LMS should be called, however, as there is nothing in ejournal.app to catch it, it will crash
     # TODO: create a valid testing env to improve this testing, set CELERY_TASK_EAGER_PROPAGATES=True

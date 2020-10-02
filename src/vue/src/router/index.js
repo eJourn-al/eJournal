@@ -1,7 +1,7 @@
 import Vue from 'vue'
 import Router from 'vue-router'
 import { detect as detectBrowser } from 'detect-browser'
-import store from '@/store'
+import store from '@/store/index.js'
 import routerConstraints from '@/utils/constants/router_constraints.js'
 import Home from '@/views/Home.vue'
 import Journal from '@/views/Journal.vue'

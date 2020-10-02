@@ -433,35 +433,6 @@ class AssignmentView(viewsets.ViewSet):
         return response.success({'data': importable})
 
     @action(methods=['post'], detail=True)
-    def copytemplate(self, request, pk):
-        """Import a template.
-
-        Arguments:
-        request -- request data
-            template_id -- template to import
-        pk -- assignment to import to
-        """
-        assignment = Assignment.objects.get(pk=pk)
-        request.user.check_permission('can_edit_assignment', assignment)
-
-        template_id, = utils.required_typed_params(request.data, (int, 'template_id'))
-        template = Template.objects.get(pk=template_id)
-        request.user.check_permission('can_edit_assignment', template.format.assignment)
-
-        import_utils.import_template(template, assignment)
-
-        template_data = TemplateSerializer(template, context={'user': request.user}).data
-        template_data.pop('id')
-        template_data.pop('archived')
-        template_data.pop('format', None)
-        template.delete()
-
-        for field in template_data['field_set']:
-            field.pop('id')
-
-        return response.success({'template': template_data})
-
-    @action(methods=['post'], detail=True)
     def copy(self, request, pk):
         """Import an assignment format.
         Users should have edit rights for the assignment import source.
@@ -562,7 +533,9 @@ class AssignmentView(viewsets.ViewSet):
         Returns a list of templates."""
         assignment = Assignment.objects.get(pk=pk)
 
-        request.user.check_permission('can_post_teacher_entries', assignment)
+        if not (request.user.has_permission('can_post_teacher_entries', assignment) or
+                request.user.has_permission('can_edit_assignment', assignment)):
+            return response.forbidden('You are not allowed to view all templates for this assignment.')
 
         return response.success({'templates': TemplateSerializer(assignment.format.template_set.filter(
             archived=False).order_by('name'), many=True).data})

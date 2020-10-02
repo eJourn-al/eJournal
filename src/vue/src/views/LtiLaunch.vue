@@ -37,7 +37,7 @@ import loadSpinner from '@/components/loading/LoadSpinner.vue'
 import ltiCreateLinkCourse from '@/components/lti/LtiCreateLinkCourse.vue'
 import ltiCreateLinkAssignment from '@/components/lti/LtiCreateLinkAssignment.vue'
 import ltiAPI from '@/api/lti.js'
-import router from '@/router'
+import router from '@/router/index.js'
 import courseAPI from '@/api/course.js'
 import assignmentAPI from '@/api/assignment.js'
 

@@ -438,6 +438,10 @@ class AssignmentSerializer(serializers.ModelSerializer):
         return assignment.courses.count()
 
     def get_has_teacher_entries(self, assignment):
+        if 'user' not in self.context or not self.context['user'] or not self.context['user'].has_permission(
+            'can_post_teacher_entries', assignment
+        ):
+            return False
         return assignment.teacherentry_set.exists()
 
 
