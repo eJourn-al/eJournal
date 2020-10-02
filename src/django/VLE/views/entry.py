@@ -69,41 +69,7 @@ class EntryView(viewsets.ViewSet):
             node = factory.make_node(journal)
             entry = factory.make_entry(template, request.user, node)
 
-        try:
-            files_to_establish = []
-            for field_id, content in content_dict.items():
-                field = Field.objects.get(pk=field_id)
-                if content is not None and field.type == field.FILE:
-                    content, = utils.required_typed_params(content, (str, 'id'))
-
-                created_content = factory.make_content(node.entry, content, field)
-
-                if field.type == field.FILE:
-                    if field.required and not content:
-                        raise FileContext.DoesNotExist
-                    if content:
-                        files_to_establish.append(
-                            (FileContext.objects.get(pk=int(content)), created_content))
-
-                # Establish all files in the rich text editor
-                if field.type == Field.RICH_TEXT:
-                    files_to_establish += [
-                        (f, created_content) for f in file_handling.get_temp_files_from_rich_text(content)]
-
-        # If anything fails during creation of the entry, delete the entry
-        except Exception as e:
-            entry.delete()
-
-            # If it is a file issue, raise with propper response, else respond with the exception that was raised
-            if type(e) == FileContext.DoesNotExist:
-                return response.bad_request('One of your files was not correctly uploaded, please try again.')
-            else:
-                raise e
-
-        for (file, created_content) in files_to_establish:
-            file_handling.establish_file(request.user, file.access_id, content=created_content,
-                                         in_rich_text=created_content.field.type == Field.RICH_TEXT)
-
+        entry_utils.create_entry_content(content_dict, entry, request.user)
         # Notify teacher on new entry
         grading.task_journal_status_to_LMS.delay(journal.pk)
 
@@ -161,6 +127,7 @@ class EntryView(viewsets.ViewSet):
                 new_content, = utils.required_typed_params(new_content, (str, 'id'))
 
             old_content = entry.content_set.filter(field=field)
+
             changed = False
             if old_content.exists():
                 old_content = old_content.first()
@@ -193,8 +160,9 @@ class EntryView(viewsets.ViewSet):
                         (f, old_content) for f in file_handling.get_temp_files_from_rich_text(new_content)]
 
         for (file, old_content) in files_to_establish:
-            file_handling.establish_file(request.user, file.access_id, content=old_content,
-                                         in_rich_text=old_content.field.type == Field.RICH_TEXT)
+            if file.is_temp:
+                file_handling.establish_file(request.user, file.access_id, content=old_content,
+                                             in_rich_text=old_content.field.type == Field.RICH_TEXT)
 
         grading.task_journal_status_to_LMS.delay(journal.pk)
         entry.last_edited_by = request.user

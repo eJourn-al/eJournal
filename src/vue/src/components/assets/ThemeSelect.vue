@@ -26,7 +26,7 @@
         @input="newValue => $emit('input', newValue)"
         @open="() => { isOpen = true }"
         @close="() => { isOpen = false }"
-        @select="(selectedOption, id) => $emit('select', (selectedOption, id))"
+        @select="(e) => $emit('select', e)"
     >
         <span slot="limit">
             {{ (value && value.length) ? value.length : 'No' }} {{ multiSelectText }}

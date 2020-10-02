@@ -4,9 +4,11 @@ Entry utilities.
 A library with utilities related to entries.
 """
 import VLE.timeline as timeline
+import VLE.utils.generic_utils as utils
 import VLE.validators as validators
 from VLE import factory
-from VLE.models import Field, Node
+from VLE.models import Field, FileContext, Node
+from VLE.utils import file_handling
 from VLE.utils.error_handling import VLEBadRequest, VLEMissingRequiredField
 
 
@@ -55,3 +57,42 @@ def add_entry_to_node(node, template, author):
     node.entry = entry
     node.save()
     return entry
+
+
+def create_entry_content(content_dict, entry, user):
+    try:
+        files_to_establish = []
+        for field_id, content in content_dict.items():
+            field = Field.objects.get(pk=field_id)
+            if content is not None and field.type == field.FILE:
+                content, = utils.required_typed_params(content, (str, 'id'))
+
+            created_content = factory.make_content(entry, content, field)
+
+            if field.type == field.FILE:
+                if field.required and not content:
+                    raise FileContext.DoesNotExist
+                if content:
+                    files_to_establish.append(
+                        (FileContext.objects.get(pk=int(content)), created_content))
+
+            # Establish all files in the rich text editor
+            if field.type == Field.RICH_TEXT:
+                files_to_establish += [
+                    (f, created_content) for f in file_handling.get_temp_files_from_rich_text(content)]
+
+    # If anything fails during creation of the entry, delete the entry
+    except Exception as e:
+        entry.delete()
+
+        # If it is a file issue, raise with propper response, else respond with the exception that was raised
+        if type(e) == FileContext.DoesNotExist:
+            raise VLEBadRequest('One of your files was not correctly uploaded, please try again.')
+        else:
+            raise e
+
+    for (file, created_content) in files_to_establish:
+        if file.is_temp:
+            file_handling.establish_file(
+                user, file.access_id, content=created_content,
+                in_rich_text=created_content.field.type == Field.RICH_TEXT)

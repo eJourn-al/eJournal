@@ -167,7 +167,8 @@ def import_content(content, entry):
     content.entry = entry
     content.save()
 
-    for old_fc in FileContext.objects.filter(content=source_content_pk, is_temp=False):
+    files = FileContext.objects.filter(content=source_content_pk, is_temp=False)
+    for old_fc in files:
         new_fc = FileContext.objects.create(
             file=ContentFile(old_fc.file.file.read(), name=old_fc.file_name),
             file_name=old_fc.file_name,
@@ -186,8 +187,8 @@ def import_content(content, entry):
                 raise VLEProgrammingError(
                     'Invalid content {} fc {} combo encountered during content import'.format(content.pk, old_fc.pk))
             content.data = str(new_fc.pk)
-
-    content.save()
+    if files.exists():
+        content.save()
 
     return content
 

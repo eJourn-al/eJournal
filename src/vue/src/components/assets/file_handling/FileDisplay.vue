@@ -34,7 +34,7 @@ export default {
             if (!this.file) {
                 return null
             }
-            const extension = this.file.file_name.split('.').pop()
+            const extension = this.file.file_name.split('.').pop().toLowerCase()
             if (this.$root.fileTypes.img.includes(extension)) {
                 return 'img'
             } else if (this.$root.fileTypes.pdf.includes(extension)) {

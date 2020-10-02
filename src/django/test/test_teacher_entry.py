@@ -1,14 +1,16 @@
+
 import test.factory as factory
 from copy import deepcopy
 from datetime import date, timedelta
 from test.utils import api
 from unittest import mock
 
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.db import transaction
 from django.test import TestCase
 
-from VLE.models import Entry, Field, Grade, Node, TeacherEntry
-from VLE.serializers import EntrySerializer
+from VLE.models import Entry, Field, FileContext, Grade, Node, TeacherEntry
+from VLE.serializers import EntrySerializer, FileSerializer
 from VLE.utils.error_handling import VLEPermissionError
 
 
@@ -20,21 +22,19 @@ class TeacherEntryAPITest(TestCase):
         self.journal2 = factory.Journal(assignment=self.assignment)
         self.teacher = self.assignment.author
         self.format = self.assignment.format
-        self.template = factory.TextTemplate(format=self.format)
+        self.template = factory.TextTemplate(format=self.format, preset_only=False)
 
         self.valid_create_params = {
             'title': 'Teacher initated entry title',
             'show_title_in_timeline': True,
             'assignment_id': self.assignment.id,
             'template_id': self.template.id,
-            'journal_ids': [self.journal1.id],
+            'journals': [{
+                'journal_id': self.journal1.id,
+                'grade': 1,
+                'published': True,
+            }],
             'content': {},
-            'grades': {
-                self.journal1.id: 1,
-            },
-            'publish_grade': {
-                self.journal1.id: True,
-            },
         }
         fields = self.template.field_set.all()
         self.valid_create_params['content'] = {str(field.id): 'test data' for field in fields}
@@ -43,9 +43,10 @@ class TeacherEntryAPITest(TestCase):
         graded_create_params = deepcopy(self.valid_create_params)
 
         for publish_state in [False, True]:
-            graded_create_params['publish_grade']: {
-                self.journal1.id: publish_state,
-            }
+            for journal in graded_create_params['journals']:
+                journal['published'] = publish_state
+            self.journal1.refresh_from_db()
+            before_grade = self.journal1.grade
 
             # Check valid entry creation
             resp = api.create(self, 'teacher_entries', params=graded_create_params,
@@ -56,9 +57,18 @@ class TeacherEntryAPITest(TestCase):
             assert resp['id'] != resp2['id'], 'Multiple creations should lead to different ids'
 
             journal1_entry = Entry.objects.filter(teacher_entry__pk=resp['id'], node__journal=self.journal1)
+            journal1_entry2 = Entry.objects.filter(teacher_entry__pk=resp2['id'], node__journal=self.journal1)
             assert journal1_entry.exists(), 'Teacher entry should be added to student journal'
-
+            assert journal1_entry2.exists(), 'Teacher entry should be added to student journal'
             journal1_entry = journal1_entry.first()
+            journal1_entry2 = journal1_entry2.first()
+            self.journal1.refresh_from_db()
+            if publish_state:
+                assert before_grade + journal1_entry.grade.grade + journal1_entry2.grade.grade == \
+                    self.journal1.grade
+            else:
+                assert before_grade == self.journal1.grade
+
             assert journal1_entry.id != resp['id'], 'Student entry should not be same as teacher entry'
             assert journal1_entry.author == self.teacher, \
                 'Teacher should be author of teacher entry in student journal'
@@ -81,13 +91,13 @@ class TeacherEntryAPITest(TestCase):
         api.create(self, 'teacher_entries', params=invalid_template_params, user=self.teacher, status=404)
 
         invalid_journal_params = deepcopy(self.valid_create_params)
-        invalid_journal_params['journal_ids'].append(factory.Journal().id)
+        invalid_journal_params['journals'].append({'journal_id': factory.Journal().id})
 
         # Teacher entry cannot be added to journal which is not part of assignment.
-        api.create(self, 'teacher_entries', params=invalid_journal_params, user=self.teacher, status=404)
+        api.create(self, 'teacher_entries', params=invalid_journal_params, user=self.teacher, status=400)
 
         negative_grade_params = deepcopy(self.valid_create_params)
-        negative_grade_params['grades'][self.journal2.id] = -1
+        negative_grade_params['journals'][-1]['grade'] = -1
 
         # Teacher entry cannot have grade lower than 0.
         api.create(self, 'teacher_entries', params=negative_grade_params, user=self.teacher, status=400)
@@ -131,18 +141,51 @@ class TeacherEntryAPITest(TestCase):
             assert teacher_entry_count == TeacherEntry.objects.count(), 'Failed request should not leave teacher entry'
 
     def test_create_ungraded_teacher_entry(self):
+        template_all = factory.TemplateAllTypes(format=self.format, preset_only=False)
+        file = FileContext.objects.create(
+            file=SimpleUploadedFile('file.png', b'image_content', content_type='image/png'),
+            file_name='image.png',
+            author=self.teacher,
+            is_temp=True,
+            in_rich_text=False
+        )
         ungraded_create_params = deepcopy(self.valid_create_params)
-        ungraded_create_params['grades'] = {}
-        ungraded_create_params['publish_grade'] = {}
+        ungraded_create_params['template_id'] = template_all.pk
+        ungraded_create_params['journals'] = [{
+            'journal_id': journal['journal_id']
+        } for journal in ungraded_create_params['journals']]
+        values = {
+            Field.FILE: FileSerializer(file).data,
+            Field.TEXT: 'text',
+            Field.RICH_TEXT: '<p> RICH </p>',
+            Field.VIDEO: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+            Field.URL: 'https://ejournal.app',
+            Field.DATE: '2019-10-10',
+            Field.DATETIME: '2019-10-10T12:12:00',
+            Field.SELECTION: 'a',
+        }
+        ungraded_create_params['content'] = {
+            field.pk: values.pop(field.type)
+            for field in template_all.field_set.exclude(type=Field.NO_SUBMISSION).exclude()
+            if field.type in values
+        }
 
         resp = api.create(self, 'teacher_entries', params=ungraded_create_params, user=self.teacher)['teacher_entry']
 
         journal1_entry = Entry.objects.filter(teacher_entry__pk=resp['id'], node__journal__authors__user=self.student1)
         assert journal1_entry.exists(), \
             'Teacher entry should be added to student journal'
+        assert not journal1_entry.first().content_set.exists()
 
         # Student should be able to edit ungraded teacher entry.
         self.student1.check_can_edit(journal1_entry.first())
+
+        params = {
+            'pk': journal1_entry.first().pk,
+            'content': ungraded_create_params['content'].copy()
+        }
+        api.update(self, 'entries', params=params.copy(), user=self.student1)
+        assert journal1_entry.first().content_set.exists()
 
     def test_update_teacher_entry(self):
         resp = api.create(self, 'teacher_entries', params=self.valid_create_params, user=self.teacher)['teacher_entry']
@@ -151,11 +194,12 @@ class TeacherEntryAPITest(TestCase):
 
         valid_update_params = {
             'pk': resp['id'],
-            'journal_ids': [self.journal1.id, self.journal2.id],
-            'grades': {
-                self.journal1.id: 2,
-            },
-            'publish_grade': {},
+            'journals': [{
+                'journal_id': self.journal1.id,
+                'grade': 2
+            }, {
+                'journal_id': self.journal2.id
+            }]
         }
 
         # Upgrade grade for journal1, add entry to journal2 without grade.
@@ -176,8 +220,7 @@ class TeacherEntryAPITest(TestCase):
         assert grade_count_before == Grade.objects.count(), 'No new grades created'
 
         # Remove journal 1 from journal ids.
-        valid_update_params['journal_ids'].pop(0)
-
+        valid_update_params['journals'].pop(0)
         api.update(self, 'teacher_entries', params=valid_update_params, user=self.teacher)
 
         assert not Entry.objects.filter(teacher_entry__pk=resp['id'], node__journal=self.journal1).exists(), \
@@ -189,21 +232,23 @@ class TeacherEntryAPITest(TestCase):
         api.update(self, 'teacher_entries', params=valid_update_params, user=self.student1, status=403)
 
         invalid_journal_params = deepcopy(valid_update_params)
-        invalid_journal_params['journal_ids'].append(factory.Journal().id)
+        invalid_journal_params['journals'].append({
+            'journal_id': factory.Journal().id
+        })
 
         # Teacher entry cannot be added to journal which is not part of assignment.
-        api.update(self, 'teacher_entries', params=invalid_journal_params, user=self.teacher, status=404)
+        api.update(self, 'teacher_entries', params=invalid_journal_params, user=self.teacher, status=400)
 
         negative_grade_params = deepcopy(valid_update_params)
-        negative_grade_params['grades'][self.journal2.id] = -1
+        negative_grade_params['journals'][-1]['grade'] = -1
 
         # Teacher entry cannot have grade lower than 0.
         api.update(self, 'teacher_entries', params=negative_grade_params, user=self.teacher, status=400)
 
         remove_grade_params = deepcopy(valid_update_params)
-        remove_grade_params['grades'] = {self.journal2.id: 5}
+        remove_grade_params['journals'][-1]['grade'] = 2
         api.update(self, 'teacher_entries', params=remove_grade_params, user=self.teacher)
-        remove_grade_params['grades'] = {}
+        remove_grade_params['journals'][-1]['grade'] = None
 
         # It shall not be possible to completely remove a grade for an existing entry.
         api.update(self, 'teacher_entries', params=remove_grade_params, user=self.teacher, status=400)
@@ -268,18 +313,18 @@ class TeacherEntryAPITest(TestCase):
         teacher_entries = api.get(self, 'assignments/teacher_entries', params={'pk': self.assignment.pk},
                                   user=self.teacher)['teacher_entries']
         teacher_entry = next(teacher_entry for teacher_entry in teacher_entries if teacher_entry['id'] == resp['id'])
-
         assert 'title' in teacher_entry and teacher_entry['title'] == 'Teacher initated entry title', \
             'Teacher entry title should be serialized'
         assert 'template' in teacher_entry and teacher_entry['template']['id'] == self.template.id, \
             'Teacher entry template should be serialized'
         assert 'content' in teacher_entry and isinstance(teacher_entry['content'], dict), \
             'Teacher entry content dictionary should be serialized'
-        assert 'journal_ids' in teacher_entry and self.journal1.id in teacher_entry['journal_ids'], \
+        assert 'journals' in teacher_entry and \
+            self.journal1.id in map(lambda j: j['journal_id'], teacher_entry['journals']), \
             'Journals which a teacher entry is part of should be serialized'
-        assert 'grades' in teacher_entry and teacher_entry['grades'][str(self.journal1.id)] == 1, \
+        assert 1 in map(lambda j: j['grade'], teacher_entry['journals']), \
             'Entry grades for all entries that belong to a teacher entry should be serialized'
-        assert 'grade_published' in teacher_entry and teacher_entry['grade_published'][str(self.journal1.id)], \
+        assert any(map(lambda j: j['published'], teacher_entry['journals'])), \
             'Published state for all entry grades for entries that belong to a teacher entry should be serialized'
 
     def test_delete_teacher_entry(self):
@@ -287,13 +332,13 @@ class TeacherEntryAPITest(TestCase):
         journal4 = factory.Journal(assignment=self.assignment, entries__n=0)
 
         create_params = deepcopy(self.valid_create_params)
-        create_params['journal_ids'] = [journal3.id, journal4.id]
-        create_params['grades'] = {
-            journal4.id: 1,
-        }
-        create_params['publish_grade'] = {
-            journal4.id: True,
-        }
+        create_params['journals'] = [{
+            'journal_id': journal3.id
+        }, {
+            'journal_id': journal4.id,
+            'grade': 1,
+            'published': True
+        }]
 
         node_count_before = Node.objects.count()
         entry_count_before = Entry.objects.count()
