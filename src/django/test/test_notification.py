@@ -7,7 +7,7 @@ from django.test import TestCase
 from django.test.utils import override_settings
 
 import VLE.factory
-from VLE.models import Notification, Preferences, User, gen_url
+from VLE.models import JournalImportRequest, Notification, Preferences, Role, User, gen_url
 from VLE.permissions import get_supervisors_of
 from VLE.tasks.beats.notifications import send_digest_notifications
 from VLE.tasks.email import send_push_notification
@@ -18,7 +18,7 @@ class NotificationTest(TestCase):
     def check_send_push_notification(self, notification):
         outbox_len = len(mail.outbox)
 
-        if getattr(notification.user.preferences, Notification.TYPES[notification.type]['name']) == Preferences.PUSH:
+        if notification.email_preference == Preferences.PUSH:
             send_push_notification(notification.pk)
             assert len(mail.outbox) == outbox_len, 'No actual mail should be sent, as it is already pushed'
         else:
@@ -78,6 +78,11 @@ class NotificationTest(TestCase):
         assert assignment.author in supervisors
         assert journal.authors.first().user not in supervisors
         assert other_journal.authors.first().user not in supervisors
+
+        Role.objects.filter(course=connected_course2).update(can_add_assignment=False)
+        supervisors = get_supervisors_of(journal, with_permissions=['can_add_assignment', 'can_grade'])
+        assert connected_course1.author in supervisors
+        assert connected_course2.author not in supervisors, 'course2 author doesnt have the can_view_comments'
 
     @override_settings(CELERY_TASK_ALWAYS_EAGER=True, CELERY_TASK_EAGER_PROPAGATES=True)
     def test_comment_notification(self):
@@ -371,3 +376,74 @@ class NotificationTest(TestCase):
             assert all([n.pk in result['failed_notifications'][student.pk] for n in n_student])
             assert Notification.objects.filter(user=student, sent=False).count() \
                 == len(result['failed_notifications'][student.pk]), 'Student notifications remain and are unsent.'
+
+    def test_do_not_create_unwanted_notifications(self):
+        own_group = factory.Teacher(preferences__group_only_notifications=True)
+        entry = factory.UnlimitedEntry(node__journal__assignment__author=own_group)
+        assert Notification.objects.filter(user=own_group, type=Notification.NEW_ENTRY).exists(), \
+            'Even when group only notifications is on, NEW_ENTRY notification should be generated outside of group ' +\
+            'if there are no users in any group'
+        course = entry.node.journal.assignment.courses.first()
+        group = factory.Group(course=course)
+        for p in course.participation_set.all():
+            p.groups.add(group)
+
+        entry = factory.UnlimitedEntry(node__journal=entry.node.journal, author=entry.author)
+        assert Notification.objects.filter(user=own_group, type=Notification.NEW_ENTRY).exists(), \
+            'When group only notifications is on, NEW_ENTRY notification should be generated inside of group'
+        Notification.objects.all().delete()
+
+        entry = factory.UnlimitedEntry(node__journal=entry.node.journal)
+        assert Notification.objects.filter(user=own_group, type=Notification.NEW_ENTRY).exists(), \
+            'When group only notifications is on, no NEW_ENTRY notification should be generated outside of group'
+        Notification.objects.all().delete()
+
+        own_group.preferences.new_entry_notifications = Preferences.OFF
+        own_group.preferences.save()
+        entry = factory.UnlimitedEntry(node__journal=entry.node.journal, author=entry.author)
+        assert not Notification.objects.filter(user=own_group, type=Notification.NEW_ENTRY).exists(), \
+            'When preference is off, no new notificaions should be generated'
+
+        lti_assignment = factory.LtiAssignment(author=own_group)
+        old_author = own_group
+        new_course = factory.LtiCourse()
+        new_author = new_course.author
+        lti_assignment.add_lti_id('new_id', new_course)  # Change Lti Assignment to new course
+        lti_assignment.refresh_from_db()
+        Notification.objects.all().delete()
+        factory.Journal(assignment=lti_assignment)
+        assert not Notification.objects.filter(user=old_author).exists(), \
+            'Should not generate any notifications if the author is not in the active lti course'
+        assert Notification.objects.filter(user=new_author).exists(), \
+            'Should generate any notifications if the author is in the active lti course'
+
+    def test_jir_notification(self):
+        g_assignment = factory.Assignment(is_group_assignment=True)
+        first_ap = factory.AssignmentParticipation(assignment=g_assignment)
+        other_ap = factory.AssignmentParticipation(assignment=g_assignment)
+        g_journal = factory.GroupJournal(
+            assignment=g_assignment, author_limit=3, add_users=[first_ap.user, other_ap.user])
+        source = factory.Journal()
+        source.authors.set([first_ap])
+        jir = JournalImportRequest.objects.create(
+            target=g_journal,
+            source=source,
+            author=first_ap.user,
+        )
+        assert Notification.objects.filter(jir=jir, user=g_assignment.author).exists(), \
+            'Supervisor should get JIR notification'
+        assert not Notification.objects.filter(jir=jir, user=other_ap.pk).exists(), \
+            'Only supervisors should get JIR notifications'
+
+        jir.state = JournalImportRequest.APPROVED_INC_GRADES
+        jir.save()
+        assert not Notification.objects.filter(jir=jir).exists(), 'Updating state should delete notifications'
+
+        JournalImportRequest.objects.all().delete()
+        jir_not_pending = JournalImportRequest.objects.create(
+            target=g_journal,
+            source=source,
+            author=first_ap.user,
+            state=JournalImportRequest.APPROVED_INC_GRADES
+        )
+        assert not Notification.objects.filter(jir=jir_not_pending).exists(), 'Non pending JIR should not create any'

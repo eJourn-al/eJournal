@@ -95,10 +95,17 @@ def is_user_supervisor_of(supervisor, user):
         course__in=VLE.models.Participation.objects.filter(user=user).values('course')).exists()
 
 
-def get_supervisors_of(journal):
+def get_supervisors_of(journal, with_permissions=[]):
+    """Get all the supervisors connected to a journal.
+
+    Args:
+    journal -- the journal to get the supervisors from
+    with_permissions -- the supervisors should have those permissions as well
+    """
     return VLE.models.User.objects.filter(pk__in=VLE.models.Participation.objects.filter(
         role__can_view_all_journals=True,
-        role__course__in=journal.assignment.courses.all()
+        role__course__in=journal.assignment.courses.all(),
+        **{f'role__{permission}': True for permission in with_permissions},
     ).values('user')).distinct()
 
 

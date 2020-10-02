@@ -32,6 +32,7 @@ export default {
         box-shadow: none
         position: relative
         border-radius: 0px
+        color: darkgrey
         svg
             fill: darkgrey
         &:hover, &.active, &:hover:not(.no-hover)
