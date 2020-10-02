@@ -257,7 +257,7 @@
             <main-card
                 v-if="assignmentJournals.length === 0"
                 text="No journals for this assignment"
-                class="no-hover border-dark-grey"
+                class="no-hover"
             >
                 {{ assignment.is_group_assignment ? 'Create journals by using the button below.' :
                     'No participants with a journal' }}
@@ -265,7 +265,7 @@
             <main-card
                 v-else-if="filteredJournals.length === 0"
                 text="No journals found"
-                class="no-hover border-dark-grey"
+                class="no-hover"
             >
                 There are no journals that match your search query.
             </main-card>

@@ -34,7 +34,7 @@
             <main-card
                 v-if="assignments !== null && assignments.length === 0"
                 text="No assignments found"
-                class="no-hover border-dark-grey"
+                class="no-hover"
             >
                 This course currently does not have any assignments.
             </main-card>

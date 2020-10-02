@@ -24,7 +24,7 @@
             <main-card
                 v-else
                 text="No journals for this assignment"
-                class="no-hover border-dark-grey"
+                class="no-hover"
             >
                 Please ask your teacher to create a journal for you to join.
             </main-card>

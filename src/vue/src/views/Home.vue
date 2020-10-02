@@ -30,7 +30,7 @@
             <main-card
                 v-else
                 text="No courses found"
-                class="no-hover border-dark-grey"
+                class="no-hover"
             >
                 You currently do not participate in any courses.
             </main-card>

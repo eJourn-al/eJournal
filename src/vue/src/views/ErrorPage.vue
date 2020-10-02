@@ -6,7 +6,7 @@
             </span>
         </h1>
         <b-card
-            class="no-hover border-dark-grey max-width-600"
+            class="no-hover max-width-600"
         >
             <h2
                 v-if="description !== null"

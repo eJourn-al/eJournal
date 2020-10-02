@@ -91,7 +91,7 @@
             <main-card
                 v-if="computedAssignments.length === 0"
                 text="No assignments found"
-                class="no-hover border-dark-grey"
+                class="no-hover"
             >
                 You currently do not participate in any assignments.
             </main-card>

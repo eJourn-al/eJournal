@@ -6,7 +6,7 @@
             </span>
         </h1>
         <b-card
-            class="no-hover border-dark-grey max-width-600"
+            class="no-hove max-width-600"
         >
             <h2 class="theme-h2 mb-2">
                 This assignment is not ready yet

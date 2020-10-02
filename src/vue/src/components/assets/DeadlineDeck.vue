@@ -62,13 +62,13 @@
             </div>
             <b-card
                 v-else
-                class="border-dark-grey no-hover"
+                class="no-hover"
             >
                 <div class="text-center multi-form">
                     <icon
                         name="check"
                         scale="4"
-                        class="fill-green mb-2 text-shadow"
+                        class="fill-green mb-2"
                     /><br/>
                     <b class="field-heading">
                         All done!
