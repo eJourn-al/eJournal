@@ -628,7 +628,8 @@ class LtiLaunchTest(TestCase):
             request_body={
                 'user_id': self.teacher.lti_id,
                 'custom_username': self.teacher.username,
-                'custom_user_image': Instance.objects.get_or_create(pk=1)[0].default_lms_profile_picture,
+                'custom_user_image': 'https://canvas.uva.nl/' +
+                Instance.objects.get_or_create(pk=1)[0].default_lms_profile_picture,
             },
             response_value=lti_view.LTI_STATES.LOGGED_IN.value,
         )
