@@ -135,10 +135,11 @@ class PreferencesSerializer(serializers.ModelSerializer):
         fields = (
             'user',
             # Toggle preferences
-            'auto_select_ungraded_entry', 'auto_proceed_next_journal',
+            'auto_select_ungraded_entry', 'auto_proceed_next_journal', 'group_only_notifications',
             # notification preferences
             'new_grade_notifications', 'new_comment_notifications', 'new_entry_notifications',
             'new_course_notifications', 'new_assignment_notifications', 'new_node_notifications',
+            'new_journal_import_request_notifications',
             # reminder preferences
             'upcoming_deadline_reminder',
             # Hidden preferences
@@ -445,6 +446,10 @@ class AssignmentSerializer(serializers.ModelSerializer):
         return assignment.courses.count()
 
     def get_has_teacher_entries(self, assignment):
+        if 'user' not in self.context or not self.context['user'] or not self.context['user'].has_permission(
+            'can_post_teacher_entries', assignment
+        ):
+            return False
         return assignment.teacherentry_set.exists()
 
 
@@ -668,21 +673,28 @@ class EntrySerializer(serializers.ModelSerializer):
         return entry.template.name
 
     def get_content(self, entry):
+        def _get_content(entry):
+            content_dict = {}
+            for content in entry.content_set.all():
+                # Only include the actual content (so e.g. text).
+                if content.field.type == VLE.models.Field.FILE and content.data:
+                    try:
+                        content_dict[content.field.id] = FileSerializer(
+                            VLE.models.FileContext.objects.get(pk=content.data)).data
+                    except VLE.models.FileContext.DoesNotExist:
+                        capture_message(
+                            f'FILE content {content.pk} refers to unknown file in data: {content.data}', level='error')
+                        return {}
+                else:
+                    content_dict[content.field.id] = content.data
+
+            return content_dict
         content_dict = {}
-
-        for content in entry.content_set.all():
-            # Only include the actual content (so e.g. text).
-            if content.field.type == VLE.models.Field.FILE and content.data:
-                try:
-                    content_dict[content.field.id] = FileSerializer(
-                        VLE.models.FileContext.objects.get(pk=content.data)).data
-                except VLE.models.FileContext.DoesNotExist:
-                    capture_message(
-                        f'FILE content {content.pk} refers to unknown file in data: {content.data}', level='error')
-                    return None
-            else:
-                content_dict[content.field.id] = content.data
-
+        # If it is a teacher entry, initialize the content with the content of the teacher entry
+        # Only when a user changed the content, set the new content
+        if entry.teacher_entry:
+            content_dict.update(_get_content(entry.teacher_entry))
+        content_dict.update(_get_content(entry))
         return content_dict
 
     def get_editable(self, entry):
@@ -718,7 +730,35 @@ class GradeSerializer(serializers.ModelSerializer):
     class Meta:
         model = VLE.models.Grade
         fields = ('id', 'entry', 'grade', 'published')
-        read_only_fields = ('id', 'entry', 'grade', 'published')
+        read_only_fields = fields
+
+
+class TeacherEntryGradeSerializer(serializers.ModelSerializer):
+    journal_id = serializers.SerializerMethodField()
+    grade = serializers.SerializerMethodField()
+    published = serializers.SerializerMethodField()
+    name = serializers.SerializerMethodField()
+    usernames = serializers.SerializerMethodField()
+
+    class Meta:
+        model = VLE.models.Entry
+        fields = ('journal_id', 'grade', 'published', 'name', 'usernames')
+        read_only_fields = fields
+
+    def get_journal_id(self, entry):
+        return entry.node.journal.pk
+
+    def get_grade(self, entry):
+        return entry.grade.grade if entry.grade else None
+
+    def get_published(self, entry):
+        return entry.grade.published if entry.grade else False
+
+    def get_name(self, entry):
+        return entry.node.journal.name
+
+    def get_usernames(self, entry):
+        return entry.node.journal.usernames
 
 
 class GradeHistorySerializer(serializers.ModelSerializer):
@@ -736,49 +776,20 @@ class GradeHistorySerializer(serializers.ModelSerializer):
         return 'Unknown or deleted account'
 
 
-class TeacherEntrySerializer(serializers.ModelSerializer):
-    template = serializers.SerializerMethodField()
-    content = serializers.SerializerMethodField()
-    journal_ids = serializers.SerializerMethodField()
-    grades = serializers.SerializerMethodField()
-    grade_published = serializers.SerializerMethodField()
+class TeacherEntrySerializer(EntrySerializer):
+    journals = serializers.SerializerMethodField()
+    # This is to overwrite the EntrySerializer serializedmethod title field, and use the db variable instead
+    title = None
 
     class Meta:
         model = VLE.models.TeacherEntry
-        fields = ('id', 'title', 'template', 'content', 'journal_ids', 'grades', 'grade_published')
-        read_only_fields = ('id', 'title', 'template', 'content', 'journal_ids', 'grades', 'grade_published')
+        fields = ('id', 'title', 'template', 'content', 'journals')
+        read_only_fields = fields
 
-    def get_template(self, teacher_entry):
-        return TemplateSerializer(teacher_entry.template).data
-
-    def get_content(self, teacher_entry):
-        content_dict = {}
-
-        for content in teacher_entry.content_set.all():
-            # Only include the actual content (so e.g. text).
-            if content.field.type == VLE.models.Field.FILE:
-                try:
-                    content_dict[content.field.id] = FileSerializer(
-                        VLE.models.FileContext.objects.get(pk=content.data)).data
-                except VLE.models.FileContext.DoesNotExist:
-                    capture_message(
-                        f'FILE content {content.pk} refers to unknown file in data: {content.data}', level='error')
-                    return None
-            else:
-                content_dict[content.field.id] = content.data
-
-        return content_dict
-
-    def get_journal_ids(self, teacher_entry):
-        return list(teacher_entry.entry_set.all().values_list('node__journal__pk', flat=True))
-
-    def get_grades(self, teacher_entry):
-        return {entry.node.journal.id: GradeSerializer(entry.grade).data['grade']
-                for entry in VLE.models.Entry.objects.filter(teacher_entry=teacher_entry).exclude(grade=None)}
-
-    def get_grade_published(self, teacher_entry):
-        return {entry.node.journal.id: GradeSerializer(entry.grade).data['published']
-                for entry in VLE.models.Entry.objects.filter(teacher_entry=teacher_entry).exclude(grade=None)}
+    def get_journals(self, teacher_entry):
+        return TeacherEntryGradeSerializer(
+            teacher_entry.entry_set.all().select_related('node__journal', 'grade'), many=True
+        ).data
 
 
 class TemplateSerializer(serializers.ModelSerializer):

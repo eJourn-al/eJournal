@@ -97,7 +97,6 @@ def add_notifications_to_content(content, notifications, period, name):
         return []
 
     sending = []
-    user = notifications.first().user
     content.append({
         'name': name,
         'notifications': [],
@@ -105,10 +104,7 @@ def add_notifications_to_content(content, notifications, period, name):
 
     for notification in notifications:
         notification.refresh_from_db()
-        if not notification.sent and \
-           getattr(
-            user.preferences, VLE.models.Notification.TYPES[notification.type]['name'], VLE.models.Preferences.DAILY) \
-           in period:
+        if not notification.sent and notification.email_preference in period:
             notification.sent = True
             notification.save()
 

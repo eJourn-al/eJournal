@@ -1,7 +1,7 @@
 import connection from '@/api/connection.js'
 import statuses from '@/utils/constants/status_codes.js'
-import router from '@/router'
-import store from '@/store'
+import router from '@/router/index.js'
+import store from '@/store/index.js'
 import sanitization from '@/utils/sanitization.js'
 import genericUtils from '@/utils/generic_utils.js'
 

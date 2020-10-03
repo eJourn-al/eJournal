@@ -129,7 +129,8 @@ class UserAPITest(TestCase):
 
         # Standard LTI user creation
         jwt_params = factory.JWTParams()
-        jwt_params['custom_user_image'] = Instance.objects.get_or_create(pk=1)[0].default_lms_profile_picture
+        jwt_params['custom_user_image'] = 'https://canvas.uva.nl/' + \
+            Instance.objects.get_or_create(pk=1)[0].default_lms_profile_picture
         api.create(self, 'users', params={**user_params, **gen_jwt_params(jwt_params)})
         user = User.objects.get(username=user_params['username'])
         assert not user.is_test_student, 'A default user created via LTI parameters should not be flagged ' \

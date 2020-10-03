@@ -68,7 +68,10 @@ def _set_file_context(fc, assignment=None, journal=None, content=None, comment=N
     if comment:
         journal = comment.entry.node.journal
     if content:
-        journal = content.entry.node.journal
+        if type(content.entry).__name__ == 'TeacherEntry':
+            assignment = content.entry.assignment
+        else:
+            journal = content.entry.node.journal
     if journal:
         assignment = journal.assignment
 

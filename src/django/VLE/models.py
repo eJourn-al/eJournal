@@ -441,6 +441,16 @@ class Preferences(CreateUpdateModel):
         choices=FREQUENCIES,
         default=WEEKLY,
     )
+    new_journal_import_request_notifications = models.TextField(
+        max_length=1,
+        choices=FREQUENCIES,
+        default=WEEKLY,
+    )
+
+    # Only get notifications of people that are in your group
+    group_only_notifications = models.BooleanField(
+        default=True,
+    )
 
     upcoming_deadline_reminder = models.TextField(
         max_length=1,
@@ -495,6 +505,7 @@ class Notification(CreateUpdateModel):
     NEW_ENTRY = 'ENTRY'
     NEW_GRADE = 'GRADE'
     NEW_COMMENT = 'COMMENT'
+    NEW_JOURNAL_IMPORT_REQUEST = 'JIR'
     UPCOMING_DEADLINE = 'DEADLINE'
     TYPES = {
         NEW_COURSE: {
@@ -548,6 +559,15 @@ class Notification(CreateUpdateModel):
                 'button_text': 'View Comment',
             },
         },
+        NEW_JOURNAL_IMPORT_REQUEST: {
+            'name': 'new_journal_import_request_notifications',
+            'content': {
+                'title': 'New journal import request',
+                'content': '{journal} requested to import another journal.',
+                'batch_content': '{journal} requested to import {n} other journals.',
+                'button_text': 'View Request',
+            },
+        },
         UPCOMING_DEADLINE: {
             'name': 'None',
             'content': {
@@ -562,7 +582,10 @@ class Notification(CreateUpdateModel):
         NEW_ENTRY: 'journal',
         NEW_GRADE: 'entry',
         NEW_COMMENT: 'entry',
+        NEW_JOURNAL_IMPORT_REQUEST: 'journal',
     }
+
+    OWN_GROUP_TYPES = [NEW_ENTRY, NEW_COMMENT, NEW_JOURNAL_IMPORT_REQUEST]
 
     type = models.CharField(
         max_length=10,
@@ -613,6 +636,11 @@ class Notification(CreateUpdateModel):
         on_delete=models.CASCADE,
         null=True,
     )
+    jir = models.ForeignKey(
+        'journalimportrequest',
+        on_delete=models.CASCADE,
+        null=True,
+    )
 
     def _fill_text(self, text, n=None):
         node_name = None
@@ -653,7 +681,20 @@ class Notification(CreateUpdateModel):
         return gen_url(
             node=self.node, journal=self.journal, assignment=self.assignment, course=self.course, user=self.user)
 
+    def has_journal_in_own_groups(self):
+        """Checks if a notification is from a user that is connected to the notification user via a group"""
+        return self.assignment.get_users_in_own_groups(self.user).filter(
+            pk__in=self.journal.authors.values('user')).exists()
+
+    @property
+    def email_preference(self):
+        return getattr(self.user.preferences, self.TYPES[self.type]['name'], None)
+
     def save(self, *args, **kwargs):
+        # Should not create a notification if notifications are off for this type
+        if self.email_preference == Preferences.OFF:
+            return
+
         is_new = self._state.adding
         if is_new:
             if self.comment:
@@ -664,17 +705,31 @@ class Notification(CreateUpdateModel):
                 self.node = self.entry.node
             if self.node:
                 self.journal = self.node.journal
+            if self.jir:
+                self.journal = self.jir.target
             if self.journal:
                 self.assignment = self.journal.assignment
             if self.assignment:
-                self.course = self.assignment.get_active_course(self.user)
+                # Should get the active lti course if there is an active LTI link, else the normal procedure
+                if self.assignment.active_lti_id:
+                    self.course = self.assignment.get_active_lti_course()
+                else:
+                    self.course = self.assignment.get_active_course(self.user)
+
+        # Should not create notifications for courses that the user cannot see
+        if not self.user.can_view(self.course):
+            return
+        # Should not create a notification as user only wants notification from within their group
+        # NOTE: it still sends notifications if there are no users in any groups
+        if self.type in self.OWN_GROUP_TYPES and self.user.preferences.group_only_notifications \
+           and self.assignment.has_users_in_own_groups(self.user) and not self.has_journal_in_own_groups():
+            return
 
         super(Notification, self).save(*args, **kwargs)
 
         if is_new:
             # Send notification on creation if user preference is set to push, default (for reminders) is daily
-            if getattr(self.user.preferences, Notification.TYPES[self.type]['name'], Preferences.DAILY) == \
-               Preferences.PUSH:
+            if self.email_preference == Preferences.PUSH:
                 send_push_notification.delay(self.pk)
 
 
@@ -1027,6 +1082,33 @@ class Assignment(CreateUpdateModel):
     can_set_journal_name = models.BooleanField(default=False)
     can_set_journal_image = models.BooleanField(default=False)
     can_lock_journal = models.BooleanField(default=False)
+
+    def get_all_users(self, user=None, courses=None, journals_only=True):
+        """Get all users in an assignment
+
+        if user is set, only get the users that are in the courses that user is connected to as well
+        if courses is set, only get the users that are in the given courses
+        if journals_only is true, only get users that also have a journal (default: true)
+        """
+        if courses is None:
+            courses = self.courses.all()
+        if user is not None:
+            courses = courses.filter(users=user)
+        if journals_only:
+            users = Journal.objects.filter(assignment=self).values('authors__user')
+        else:
+            users = self.assignmentparticipation_set.values('user')
+        return User.objects.filter(participations__in=courses, pk__in=users).distinct()
+
+    def get_users_in_own_groups(self, user, courses=None, **kwargs):
+        if courses is None:
+            courses = self.courses.all()
+        groups = user.participation_set.filter(course__in=courses).values('groups')
+        return self.get_all_users(
+            user=user, courses=courses, **kwargs).filter(participation__groups__in=groups).distinct()
+
+    def has_users_in_own_groups(self, *args, **kwargs):
+        return self.get_users_in_own_groups(*args, **kwargs).exists()
 
     def has_lti_link(self):
         return self.active_lti_id is not None
@@ -1547,7 +1629,7 @@ class Node(CreateUpdateModel):
 
         super(Node, self).save(*args, **kwargs)
 
-        # Create a Notifcation for deadline PresetNodes
+        # Create a notification for deadline PresetNodes
         if is_new and self.type in [self.ENTRYDEADLINE, self.PROGRESS]:
             for author in self.journal.authors.all():
                 if author.user.can_view(self.journal):
@@ -2111,6 +2193,23 @@ class JournalImportRequest(CreateUpdateModel):
     @receiver(models.signals.pre_delete, sender=Journal)
     def delete_pending_jirs_on_source_deletion(sender, instance, **kwargs):
         JournalImportRequest.objects.filter(source=instance, state=JournalImportRequest.PENDING).delete()
+
+    def save(self, *args, **kwargs):
+        is_new = self._state.adding
+
+        super().save(*args, **kwargs)
+
+        if is_new:
+            if self.target and self.source and self.state == self.PENDING:
+                for user in VLE.permissions.get_supervisors_of(
+                        self.target, with_permissions=['can_manage_journal_import_requests']):
+                    Notification.objects.create(
+                        user=user,
+                        type=Notification.NEW_JOURNAL_IMPORT_REQUEST,
+                        jir=self,
+                    )
+        if self.state != self.PENDING:
+            Notification.objects.filter(jir=self, sent=False).delete()
 
 
 @receiver(models.signals.pre_save, sender=JournalImportRequest)

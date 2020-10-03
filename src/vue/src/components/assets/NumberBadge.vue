@@ -13,6 +13,8 @@
 </template>
 
 <script>
+import themeColors from 'sass/modules/colors.sass'
+
 export default {
     props: {
         absolute: {

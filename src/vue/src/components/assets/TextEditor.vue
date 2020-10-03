@@ -48,6 +48,8 @@ import 'public/tinymce/plugins/placeholder.js'
 
 import auth from '@/api/auth.js'
 
+import themeColors from 'sass/modules/colors.sass'
+
 export default {
     name: 'TextEditor',
     props: {
@@ -312,12 +314,13 @@ export default {
             input.click()
         },
         setCustomColors () {
-            /* Enables some basic colors to chose from, inline with the websites theme colors. */
+            /* Enables some basic colors to chose from, inline with the websites theme colors.
+             * Strips the leading # of the color codes */
             this.config.color_map = [
-                '252C39', 'Theme dark blue',
-                '007E33', 'Theme positive selected',
-                'FF8800', 'Theme change selected',
-                'CC0000', 'Theme negative selected',
+                themeColors.darkblue.substring(1), 'Theme dark blue',
+                themeColors.green.substring(1), 'Theme positive selected',
+                themeColors.oranga.substring(1), 'Theme change selected',
+                themeColors.red.substring(1), 'Theme negative selected',
             ]
             this.config.custom_colors = false
         },

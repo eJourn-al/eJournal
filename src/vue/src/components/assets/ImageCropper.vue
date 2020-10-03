@@ -93,8 +93,6 @@ export default {
 </script>
 
 <style lang="sass">
-@import '~sass/modules/colors.sass'
-
 .croppa-container
     background-color: $theme-dark-blue
     height: 100%

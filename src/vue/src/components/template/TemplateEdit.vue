@@ -169,9 +169,6 @@ export default {
 </script>
 
 <style lang="sass">
-@import '~sass/modules/colors.sass'
-@import '~sass/modules/breakpoints.sass'
-
 .optional-field-template
     background-color: white
     color: $theme-dark-blue !important

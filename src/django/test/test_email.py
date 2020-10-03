@@ -105,6 +105,27 @@ class EmailAPITest(TestCase):
         resp = api.post(self, 'verify_email', params={'username': self.student.username, 'token': token})
         assert 'already verified' in resp['description']
 
+    @override_settings(EMAIL_BACKEND='anymail.backends.test.EmailBackend', CELERY_TASK_ALWAYS_EAGER=True)
+    def test_verify_email_from_create_user(self):
+        user_params = {
+            'username': 'test',
+            'password': 'TestPass!123',
+            'email': 'test@ejournal.app',
+            'full_name': 'Test User'
+        }
+        api.post(self, 'users', params=user_params, status=201)
+
+        assert len(mail.outbox) == 1, 'An actual mail should be sent'
+        assert mail.outbox[0].to == [user_params['email']], 'Email should be sent to the mail adress of the user'
+        assert '{}/EmailVerification/{}/'.format(settings.BASELINK, user_params['username']) in \
+            mail.outbox[0].alternatives[0][0], 'Recovery token link should be in email'
+
+        _, username, token = re.search(
+            r'EmailVerification\/(.*)\/([^"]*)', mail.outbox[0].alternatives[0][0]).group(0).split('/')
+        print(username, token)
+        resp = api.post(self, 'verify_email', params={'username': username, 'token': token})
+        assert 'Success' in resp['description']
+
     def test_request_email_verification(self):
         api.post(self, 'request_email_verification', status=401)
 

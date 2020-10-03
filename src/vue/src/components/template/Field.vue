@@ -136,11 +136,9 @@
 </template>
 
 <script>
-import textEditor from '@/components/assets/TextEditor.vue'
-
 export default {
     components: {
-        textEditor,
+        TextEditor: () => import(/* webpackChunkName: 'text-editor' */ '@/components/assets/TextEditor.vue'),
     },
     props: {
         field: {

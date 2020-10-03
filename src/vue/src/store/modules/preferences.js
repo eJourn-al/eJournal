@@ -1,5 +1,5 @@
 import preferencesAPI from '@/api/preferences.js'
-import store from '@/store'
+import store from '@/store/index.js'
 import * as types from '../constants/mutation-types.js'
 import * as preferenceOptions from '../constants/preference-types.js'
 

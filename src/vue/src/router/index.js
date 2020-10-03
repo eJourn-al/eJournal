@@ -1,29 +1,17 @@
 import Vue from 'vue'
 import Router from 'vue-router'
 import { detect as detectBrowser } from 'detect-browser'
-import store from '@/store'
+import store from '@/store/index.js'
 import routerConstraints from '@/utils/constants/router_constraints.js'
 import Home from '@/views/Home.vue'
 import AdminPanel from '@/views/AdminPanel.vue'
 import Journal from '@/views/Journal.vue'
-import JoinJournal from '@/views/JoinJournal.vue'
 import Assignment from '@/views/Assignment.vue'
 import Course from '@/views/Course.vue'
-import Profile from '@/views/Profile.vue'
-import Guest from '@/views/Guest.vue'
 import Login from '@/views/Login.vue'
-import PasswordRecovery from '@/views/PasswordRecovery.vue'
-import Register from '@/views/Register.vue'
 import LtiLaunch from '@/views/LtiLaunch.vue'
-import AssignmentsOverview from '@/views/AssignmentsOverview.vue'
-import ErrorPage from '@/views/ErrorPage.vue'
-import NotSetup from '@/views/NotSetup.vue'
-import CourseEdit from '@/views/CourseEdit.vue'
-import UserRoleConfiguration from '@/views/UserRoleConfiguration.vue'
-import FormatEdit from '@/views/FormatEdit.vue'
 import LtiLogin from '@/views/LtiLogin.vue'
 import Logout from '@/views/Logout.vue'
-import EmailVerification from '@/views/EmailVerification.vue'
 
 Vue.use(Router)
 
@@ -32,7 +20,7 @@ const router = new Router({
     routes: [{
         path: '/',
         name: 'Guest',
-        component: Guest,
+        component: () => import(/* webpackChunkName: 'guest' */ '@/views/Guest.vue'),
     }, {
         path: '/Home',
         name: 'Home',
@@ -48,17 +36,17 @@ const router = new Router({
     }, {
         path: '/PasswordRecovery/:username/:recoveryToken',
         name: 'PasswordRecovery',
-        component: PasswordRecovery,
+        component: () => import(/* webpackChunkName: 'password-recovery' */ '@/views/PasswordRecovery.vue'),
         props: true,
     }, {
         path: '/EmailVerification/:username/:token',
         name: 'EmailVerification',
-        component: EmailVerification,
+        component: () => import(/* webpackChunkName: 'email-verification' */ '@/views/EmailVerification.vue'),
         props: true,
     }, {
         path: '/Register',
         name: 'Register',
-        component: Register,
+        component: () => import(/* webpackChunkName: 'register' */ '@/views/Register.vue'),
     }, {
         path: '/Register/:username/:token',
         name: 'Register',
@@ -67,7 +55,7 @@ const router = new Router({
     }, {
         path: '/Profile',
         name: 'Profile',
-        component: Profile,
+        component: () => import(/* webpackChunkName: 'profile' */ '@/views/Profile.vue'),
     }, {
         path: '/LtiLaunch',
         name: 'LtiLaunch',
@@ -79,16 +67,16 @@ const router = new Router({
     }, {
         path: '/AssignmentsOverview',
         name: 'AssignmentsOverview',
-        component: AssignmentsOverview,
+        component: () => import(/* webpackChunkName: 'assignments-overview' */ '@/views/AssignmentsOverview.vue'),
     }, {
         path: '/Error',
         name: 'ErrorPage',
-        component: ErrorPage,
+        component: () => import(/* webpackChunkName: 'error-page' */ '@/views/ErrorPage.vue'),
         props: true,
     }, {
         path: '/NotSetup',
         name: 'NotSetup',
-        component: NotSetup,
+        component: () => import(/* webpackChunkName: 'not-setup' */ '@/views/NotSetup.vue'),
         props: true,
     }, {
         path: '/Logout',
@@ -102,12 +90,12 @@ const router = new Router({
     }, {
         path: '/Home/Course/:cID/CourseEdit',
         name: 'CourseEdit',
-        component: CourseEdit,
+        component: () => import(/* webpackChunkName: 'course-edit' */ '@/views/CourseEdit.vue'),
         props: true,
     }, {
         path: '/Home/Course/:cID/CourseEdit/UserRoleConfiguration',
         name: 'UserRoleConfiguration',
-        component: UserRoleConfiguration,
+        component: () => import(/* webpackChunkName: 'role-config' */ '@/views/UserRoleConfiguration.vue'),
         props: true,
     }, {
         path: '/Home/Course/:cID/Assignment/:aID',
@@ -117,12 +105,12 @@ const router = new Router({
     }, {
         path: '/Home/Course/:cID/Assignment/:aID/Format',
         name: 'FormatEdit',
-        component: FormatEdit,
+        component: () => import(/* webpackChunkName: 'format-edit' */ '@/views/FormatEdit.vue'),
         props: true,
     }, {
         path: '/Home/Course/:cID/Assignment/:aID/Journal/New',
         name: 'JoinJournal',
-        component: JoinJournal,
+        component: () => import(/* webpackChunkName: 'join-journal' */ '@/views/JoinJournal.vue'),
         props: true,
     }, {
         path: '/Home/Course/:cID/Assignment/:aID/Journal/:jID',
@@ -132,7 +120,7 @@ const router = new Router({
     }, {
         path: '*',
         name: 'NotFound',
-        component: ErrorPage,
+        component: () => import(/* webpackChunkName: 'error-page' */ '@/views/ErrorPage.vue'),
         props: {
             code: '404',
             reasonPhrase: 'Not Found',

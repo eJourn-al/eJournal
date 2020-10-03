@@ -1,6 +1,6 @@
 import Vue from 'vue'
-import router from '@/router'
-import store from '@/store'
+import router from '@/router/index.js'
+import store from '@/store/index.js'
 import connection from '@/api/connection.js'
 import * as types from '../constants/permission-types.js'
 import * as mutationTypes from '../constants/mutation-types.js'

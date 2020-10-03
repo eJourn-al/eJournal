@@ -34,8 +34,6 @@ export default {
 </script>
 
 <style lang="sass">
-@import '~sass/modules/colors.sass'
-
 #code-version-alert
     position: absolute
     margin: 2px

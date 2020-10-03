@@ -26,7 +26,7 @@
         @input="newValue => $emit('input', newValue)"
         @open="() => { isOpen = true }"
         @close="() => { isOpen = false }"
-        @select="(selectedOption, id) => $emit('select', (selectedOption, id))"
+        @select="(e) => $emit('select', e)"
     >
         <span slot="limit">
             {{ (value && value.length) ? value.length : 'No' }} {{ multiSelectText }}
@@ -104,8 +104,6 @@ export default {
 </script>
 
 <style lang="sass">
-@import '~sass/modules/colors.sass'
-@import '~sass/modules/breakpoints.sass'
 @import '~sass/partials/shadows.sass'
 
 .multiselect

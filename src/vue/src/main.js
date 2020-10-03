@@ -1,19 +1,16 @@
 import Vue from 'vue'
-import BootstrapVue from 'bootstrap-vue'
 import 'flatpickr/dist/flatpickr.css' // eslint-disable-line import/no-extraneous-dependencies
 import 'flatpickr/dist/themes/material_blue.css' // eslint-disable-line import/no-extraneous-dependencies
 import 'intro.js/introjs.css'
 
 import '@/helpers/vue_awesome_icons.js'
 import initSentry from '@/helpers/sentry.js'
+import initBootstrap from '@/helpers/bootstrap.js'
 
 import Toasted from 'vue-toasted'
 import flatPickr from 'vue-flatpickr-component'
 import VueIntro from 'vue-introjs'
 import Icon from 'vue-awesome/components/Icon.vue'
-import VueMoment from 'vue-moment'
-import ExcelJS from 'exceljs'
-import FileSaver from 'file-saver'
 
 import connection from '@/api/connection.js'
 
@@ -28,16 +25,15 @@ Vue.use(Toasted, {
     position: 'top-center',
     duration: 4000,
 })
-Vue.use(BootstrapVue)
 Vue.use(flatPickr)
 Vue.use(VueIntro)
-Vue.use(VueMoment)
 
 Vue.component('icon', Icon)
 Vue.component('theme-select', ThemeSelect)
 Vue.component('reset-wrapper', ResetWrapper)
 
 initSentry(Vue)
+initBootstrap(Vue)
 
 /* Checks the store for for permissions according to the current route cID or aID. */
 Vue.prototype.$hasPermission = store.getters['permissions/hasPermission']
@@ -171,33 +167,6 @@ new Vue({
             }
 
             return route
-        },
-        exportExcel (name, data) {
-            // Create a new workbook.
-            const workbook = new ExcelJS.Workbook()
-
-            // Specify metadata / source.
-            workbook.creator = 'eJournal'
-            workbook.created = new Date()
-            workbook.properties.date1904 = true
-
-            // Create a new worksheet with the first row frozen (for headers).
-            const sheet = workbook.addWorksheet(name, { views: [{ state: 'frozen', ySplit: 1 }] })
-
-            // Fill the sheet columns with each property of the data object as a column.
-            // The header of the column is the property name. Column indices start at 1.
-            Object.keys(data).forEach((header, key) => {
-                const beautifiedHeader = header.charAt(0).toUpperCase() + header.substring(1).replace('_', ' ')
-                sheet.getColumn(key + 1).values = [beautifiedHeader].concat(data[header])
-            })
-
-            // Write the spreadsheet to a buffer, then
-            return workbook.xlsx.writeBuffer(name)
-                .then((spreadsheetBuffer) => {
-                    FileSaver.saveAs(new Blob([spreadsheetBuffer],
-                        { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }),
-                    `${name}.xlsx`)
-                })
         },
         canGradeForSomeCourse () {
             return Object.entries(this.$store.getters['user/permissions']).some(
