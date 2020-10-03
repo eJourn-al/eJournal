@@ -34,7 +34,6 @@
                     type="password"
                     required
                     placeholder="Repeat new password"
-                    @keyup.enter="setPassword"
                 />
                 <b-button
                     class="float-right green-button"
@@ -99,7 +98,10 @@ export default {
                     this.password,
                     { responseSuccessToast: true },
                 )
-                    .then(() => { this.$router.push({ name: 'Login' }) })
+                    .then(() => {
+                        this.$store.dispatch('user/logout')
+                        this.$router.push({ name: 'Login' })
+                    })
                     .catch((error) => {
                         this.$router.push({
                             name: 'ErrorPage',

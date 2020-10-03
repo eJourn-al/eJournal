@@ -78,7 +78,10 @@ def recover_password(request):
     validators.validate_password(new_password)
 
     user.set_password(new_password)
+    # Activate the account if not already (password recovery occurs after invitation).
     user.is_active = True
+    # We also know that the user posesses over the email address now.
+    user.verified_email = True
     user.save()
 
     return response.success(description='Successfully changed the password, you can now log in.')
