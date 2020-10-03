@@ -1,5 +1,5 @@
 <template>
-    <b-card class="no-hover">
+    <b-card class="no-hover template-card">
         <div class="d-flex">
             <b-button
                 :class="{'active': mode === 'edit'}"
@@ -169,61 +169,62 @@ export default {
 </script>
 
 <style lang="sass">
-.optional-field-template
-    background-color: white
-    color: $theme-dark-blue !important
-    svg
-        fill: $theme-medium-grey
+.template-card
+    .optional-field-template
+        background-color: white
+        color: $theme-dark-blue !important
+        svg
+            fill: $theme-medium-grey
 
-.required-field-template
-    background-color: $theme-dark-blue !important
-    color: white !important
-    svg, &:hover:not(.no-hover) svg
+    .required-field-template
+        background-color: $theme-dark-blue !important
+        color: white !important
+        svg, &:hover:not(.no-hover) svg
+            fill: $theme-red !important
+
+    #template-name
+        font-weight: bold
+        font-size: 1.8em
+        font-family: 'Roboto', sans-serif
+        color: $theme-dark-blue
+
+    .sortable-chosen .card
+        background-color: $theme-dark-grey
+
+    .sortable-ghost
+        visibility: hidden
+
+    .sortable-drag .card
+        visibility: visible
+
+    .icon-box
+        text-align: center
+
+    .handle
+        text-align: center
+        padding-bottom: 7px
+
+    .field-card:hover .move-icon, .field-card:hover .trash-icon
+        fill: $theme-dark-blue !important
+
+    .handle:hover .move-icon
+        cursor: grab
+        fill: $theme-blue !important
+
+    .field-card:hover .trash-icon:hover
         fill: $theme-red !important
 
-#template-name
-    font-weight: bold
-    font-size: 1.8em
-    font-family: 'Roboto', sans-serif
-    color: $theme-dark-blue
+    @include sm-max
+        .icon-box
+            margin-top: 10px
 
-.sortable-chosen .card
-    background-color: $theme-dark-grey
-
-.sortable-ghost
-    visibility: hidden
-
-.sortable-drag .card
-    visibility: visible
-
-.icon-box
-    text-align: center
-
-.handle
-    text-align: center
-    padding-bottom: 7px
-
-.field-card:hover .move-icon, .field-card:hover .trash-icon
-    fill: $theme-dark-blue !important
-
-.handle:hover .move-icon
-    cursor: grab
-    fill: $theme-blue !important
-
-.field-card:hover .trash-icon:hover
-    fill: $theme-red !important
-
-@include sm-max
-    .icon-box
-        margin-top: 10px
-
-.template-availability
-    font-weight: bold
-    color: grey
-    margin-bottom: 10px
-    .btn
-        margin-right: 20px
-        @include md-max
-            width: 100%
-            margin-bottom: 10px
+    .template-availability
+        font-weight: bold
+        color: grey
+        margin-bottom: 10px
+        .btn
+            margin-right: 20px
+            @include md-max
+                width: 100%
+                margin-bottom: 10px
 </style>

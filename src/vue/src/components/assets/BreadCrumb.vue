@@ -173,6 +173,6 @@ export default {
     .title
         margin-right: 10px
     .edit-button
-        font-size: 0.667em
+        font-size: 0.7em !important
         vertical-align: middle
 </style>

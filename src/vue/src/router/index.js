@@ -50,7 +50,7 @@ const router = new Router({
     }, {
         path: '/Register/:username/:token',
         name: 'Register',
-        component: Register,
+        component: () => import(/* webpackChunkName: 'register' */ '@/views/Register.vue'),
         props: true,
     }, {
         path: '/Profile',

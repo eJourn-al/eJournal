@@ -147,8 +147,6 @@
                             />
                         </b-td>
                         <b-td class="align-middle">
-                            <b-form-checkbox v-model="publishGrade[journal.id]"/>
-                        <b-td>
                             <b-form-checkbox v-model="journal.published"/>
                         </b-td>
                         <b-td class="align-middle">
