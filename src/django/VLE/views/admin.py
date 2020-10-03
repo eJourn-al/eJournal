@@ -3,10 +3,10 @@ admin.py.
 
 In this file are all the admin api requests.
 """
+from django.core.paginator import Paginator
 from rest_framework import viewsets
 from rest_framework.decorators import action
 from sentry_sdk import capture_message
-from django.core.paginator import Paginator
 
 import VLE.factory as factory
 import VLE.utils.generic_utils as utils
@@ -73,7 +73,8 @@ class AdminView(viewsets.ViewSet):
         try:
             for user in users:
                 created_user = factory.make_user(username=user['username'], email=user['email'],
-                                                 full_name=user['full_name'], is_active=False)
+                                                 full_name=user['full_name'], is_teacher=user['is_teacher'],
+                                                 is_active=False)
                 created_user_ids.append(created_user.id)
                 print(created_user_ids)
         except Exception as exception:
@@ -129,5 +130,3 @@ class AdminView(viewsets.ViewSet):
 
         users = UserOverviewSerializer(User.objects.all(), context={'user': request.user}, many=True).data
         return response.success({'users': users})
-
-

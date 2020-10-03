@@ -2,7 +2,6 @@
     <b-table-simple
         responsive
         striped
-        noSortReset
         sortBy="name"
         class="mt-2 mb-0 user-overview"
     >
@@ -32,16 +31,16 @@
                 :key="i"
                 class="d-flex"
             >
-                <b-td class="vertical-align-middle col-3">
+                <b-td class="col-3 truncate-content">
                     {{ user.full_name }}
                 </b-td>
-                <b-td class="vertical-align-middle col-3 username-column">
+                <b-td class="col-3 truncate-content">
                     {{ user.username }}
                 </b-td>
-                <b-td class="vertical-align-middle col-3">
+                <b-td class="col-3 truncate-content">
                     {{ user.email }}
                 </b-td>
-                <b-td class="vertical-align-middle col-1">
+                <b-td class="col-1">
                     <icon
                         v-if="user.is_teacher"
                         name="check"
@@ -53,7 +52,7 @@
                         class="text-grey"
                     />
                 </b-td>
-                <b-td class="vertical-align-middle col-1">
+                <b-td class="col-1">
                     <icon
                         v-if="user.is_active"
                         name="check"
@@ -65,7 +64,7 @@
                         class="text-yellow"
                     />
                 </b-td>
-                <b-td class="vertical-align-middle col-1">
+                <b-td class="col-1">
                     <b-dropdown
                         lazy
                         noCaret
@@ -118,7 +117,7 @@ export default {
 
 <style lang="sass">
 .user-overview
-    .username-column
+    td.truncate-content
         white-space: nowrap
         overflow: hidden
         text-overflow: ellipsis

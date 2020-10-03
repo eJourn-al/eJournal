@@ -1,5 +1,5 @@
 <template>
-    <content-wide-column>
+    <wide-content>
         <bread-crumb/>
         <b-card
             class="no-hover no-left-border"
@@ -42,11 +42,11 @@
                 </b-tab>
             </b-tabs>
         </b-card>
-    </content-wide-column>
+    </wide-content>
 </template>
 
 <script>
-import ContentWideColumn from '@/components/columns/TEST.vue'
+import WideContent from '@/components/columns/WideContent.vue'
 import BreadCrumb from '@/components/assets/BreadCrumb.vue'
 import EditInstance from '@/components/admin/EditInstance.vue'
 import UserOverview from '@/components/admin/UserOverview.vue'
@@ -59,7 +59,7 @@ import adminAPI from '@/api/admin.js'
 export default {
     name: 'AdminPanel',
     components: {
-        ContentWideColumn,
+        WideContent,
         BreadCrumb,
         EditInstance,
         UserOverview,

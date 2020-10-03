@@ -1,5 +1,5 @@
 <template>
-    <content-single-wide-column>
+    <wide-content>
         <bread-crumb/>
         <b-card class="no-hover">
             <b-alert
@@ -116,20 +116,21 @@
                 </b-button>
             </b-card>
         </b-modal>
-    </content-single-wide-column>
+    </wide-content>
 </template>
 
 <script>
-import breadCrumb from '@/components/assets/BreadCrumb.vue'
-import contentSingleWideColumn from '@/components/columns/TEST.vue'
+import BreadCrumb from '@/components/assets/BreadCrumb.vue'
+import WideContent from '@/components/columns/WideContent.vue'
+
 import roleAPI from '@/api/role.js'
 import commonAPI from '@/api/common.js'
 
 export default {
     name: 'UserRoleConfiguration',
     components: {
-        contentSingleWideColumn,
-        breadCrumb,
+        WideContent,
+        BreadCrumb,
     },
     props: {
         cID: {
