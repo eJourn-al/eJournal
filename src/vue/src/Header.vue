@@ -58,18 +58,27 @@
         >
             <b-navbar-nav class="mr-auto">
                 <b-nav-item :to="{ name : 'Home' }">
-                    <icon name="home"/>
+                    <icon
+                        name="home"
+                        class="shift-up-2"
+                    />
                     Courses
                 </b-nav-item>
                 <b-nav-item :to="{ name : 'AssignmentsOverview' }">
-                    <icon name="edit"/>
+                    <icon
+                        name="edit"
+                        class="shift-up-2"
+                    />
                     Assignments
                 </b-nav-item>
                 <b-nav-item
                     v-if="$store.getters['user/isSuperuser']"
                     :to="{ name : 'AdminPanel' }"
                 >
-                    <icon name="user-shield"/>
+                    <icon
+                        name="user-shield"
+                        class="shift-up-2"
+                    />
                     Admin Panel
                 </b-nav-item>
             </b-navbar-nav>
@@ -207,10 +216,7 @@ export default {
 #header
     background-color: $theme-dark-blue
     color: white
-    font-family: 'Roboto Condensed', sans-serif
-    font-size: 1.3em
-    height: 70px
-    border-radius: 0px 0px 5px 5px !important
+    height: 50px
     .nav-link
         > svg
             fill: grey !important
@@ -223,7 +229,7 @@ export default {
                 fill: $theme-orange !important
     .brand-name
         img
-            height: 30px
+            height: 25px
     .navbar-toggler
         .collapse-icon
             fill: white !important
@@ -247,15 +253,15 @@ export default {
     [aria-expanded="true"] .nav-collapse__icon--close
         display: block
     @include md-max
-        min-height: 70px
+        min-height: 50px
         height: auto
 
     #nav-dropdown-options
         .profile-picture-container
             float: right
             border-radius: 50% !important
-            width: 50px
-            height: 50px
+            width: 35px
+            height: 35px
         a
             padding: 0px !important
         a.btn

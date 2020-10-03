@@ -34,6 +34,6 @@ export default {
 
 #app
     overflow-x: hidden
-    padding-top: 70px
+    padding-top: 50px
     min-height: 100%
 </style>
