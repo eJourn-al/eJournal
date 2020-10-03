@@ -1,5 +1,3 @@
-import 'sass/vendor/bootstrap.sass' /* cherry picked bootstrap css bundled with app css by default */
-
 // See https://github.com/bootstrap-vue/bootstrap-vue/blob/dev/src/components/index.js for all available options
 import {
     BVConfigPlugin,

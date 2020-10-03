@@ -103,7 +103,6 @@ export default {
         font-weight: bold
         color: grey
     .node-date
-        font-family: 'Roboto Condensed'
         font-size: 0.9em
         color: grey
 </style>

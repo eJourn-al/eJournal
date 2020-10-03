@@ -70,7 +70,7 @@
                         scale="4"
                         class="fill-green mb-2"
                     /><br/>
-                    <b class="field-heading">
+                    <b>
                         All done!
                     </b>
                 </div>

@@ -430,9 +430,9 @@ export default {
         width: 100%
         border-width: 1px 0px 0px 0px !important
         border-radius: 0px 0px 5px 5px !important
+        box-shadow: none
     .theme-input, .theme-input:hover, .theme-input:focus
         margin-left: 0px
-        font-size: 1.3em
         width: 3.5em
         display: inline-block
         padding-right: 0px !important

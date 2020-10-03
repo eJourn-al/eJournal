@@ -145,11 +145,7 @@
                     </template>
                 </b-table>
                 <div v-else>
-                    <h4 class="theme-h4">
-                        <span>
-                            No grades available
-                        </span>
-                    </h4>
+                    <b>No grades available</b>
                     <hr class="m-0 mb-1"/>
                     This entry has not yet been graded.
                 </div>
@@ -164,7 +160,7 @@
         <h2 class="theme-h2 mb-2">
             {{ entryNode.template.name }}
         </h2>
-        <span class="text-grey text-condensed">
+        <span class="text-grey">
             No submission for this student
         </span>
     </b-card>

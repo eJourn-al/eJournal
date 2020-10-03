@@ -25,6 +25,7 @@ export default {
 .reset-wrapper
     position: relative
     .reset-button
+        // TODO: this is broken
         position: absolute
         right: 5px
         top: 5px

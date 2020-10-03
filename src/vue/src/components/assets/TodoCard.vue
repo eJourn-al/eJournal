@@ -10,9 +10,8 @@
             keyPrefix="todo"
         />
 
-        <b class="field-heading align-top">
-            <!-- {{ deadline.name }} -->
-            Logboek Academia
+        <b class="align-top">
+            {{ deadline.name }}
         </b>
         <span class="align-middle">
             {{ courseAbbreviations }}

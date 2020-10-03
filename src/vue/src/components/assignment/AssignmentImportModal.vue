@@ -41,9 +41,7 @@
             />
 
             <div v-if="!importableFormats">
-                <h4 class="theme-h4">
-                    No existing assignments available
-                </h4>
+                <b>No existing assignments available</b>
                 <hr class="m-0 mb-1"/>
                 Only assignments where you have permission to edit are available to import.
             </div>

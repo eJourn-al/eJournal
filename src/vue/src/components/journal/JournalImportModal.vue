@@ -59,9 +59,7 @@
                 </div>
 
                 <div v-else>
-                    <h4 class="theme-h4">
-                        <span>No importable journals available.</span>
-                    </h4>
+                    <b>No importable journals available</b>
                     <hr class="m-0 mb-1"/>
                     You can only import journal your own journals, and you cannot import a journal from within the same
                     assignment.

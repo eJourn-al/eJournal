@@ -77,11 +77,7 @@
                 </div>
 
                 <div v-else>
-                    <h4 class="theme-h4">
-                        <span>
-                            No outstanding journal import requests.
-                        </span>
-                    </h4>
+                    <b>No outstanding journal import requests.</b>
                 </div>
             </load-wrapper>
         </b-card>

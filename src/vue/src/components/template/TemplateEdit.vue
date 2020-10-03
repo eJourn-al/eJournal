@@ -185,7 +185,6 @@ export default {
     #template-name
         font-weight: bold
         font-size: 1.8em
-        font-family: 'Roboto', sans-serif
         color: $theme-dark-blue
 
     .sortable-chosen .card

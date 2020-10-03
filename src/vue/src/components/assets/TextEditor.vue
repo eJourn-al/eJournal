@@ -384,8 +384,7 @@ export default {
     width: 100%
     .tox-tinymce
         border-radius: 5px !important
-    .tox
-        font-family: 'Roboto Condensed', sans-serif
+        font-family: 'Roboto'
     .tox-edit-area
         border-radius: 0px !important
         &::before
@@ -401,7 +400,7 @@ export default {
 
 
 div.mce-fullscreen
-    padding-top: 70px
+    padding-top: 50px
 
 .modal .mce-fullscreen
     padding-top: 0px

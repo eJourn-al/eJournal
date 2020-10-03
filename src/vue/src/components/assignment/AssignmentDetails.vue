@@ -1,6 +1,6 @@
 <template>
     <div>
-        <h2 class="theme-h2  field-heading required">
+        <h2 class="theme-h2 field-heading required">
             Name
         </h2>
         <div class="d-flex">

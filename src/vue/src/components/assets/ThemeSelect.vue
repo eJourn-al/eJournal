@@ -117,8 +117,7 @@ export default {
         user-select: none
         position: relative
         cursor: default
-        font-family: 'Roboto Condensed', sans-serif
-        font-size: 1.1em
+        font-size: 1em
         border-radius: 5px
         border: 1px solid $theme-dark-grey
         padding: 0.375rem 0.75rem
@@ -162,7 +161,6 @@ export default {
             display: block
             top: -2px
             left: -4px
-            font-family: 'Roboto Condensed', sans-serif
     &.multiple
         .multiselect__single
             display: none
@@ -170,8 +168,6 @@ export default {
         border-color: $theme-dark-blue transparent transparent
     .multiselect__content-wrapper
         @extend .theme-shadow
-        font-family: 'Roboto Condensed', sans-serif
-        font-size: 1.2em
         background-color: white
         z-index: 1
         border-radius: 0px 0px 5px 5px !important
@@ -199,16 +195,6 @@ export default {
     span.multiselect__option--highlight, span.multiselect__option--highlight::after
         background: $theme-medium-grey !important
         color: $theme-dark-blue
-    .multiselect__option--selected
-        font-weight: 400
-    .multiselect__option--selected::before
-        content: "•"
-        margin-right: 10px
-        margin-left: -5px
-        font-size: 1.5em
-        vertical-align: middle
-        font-weight: bold
-        color: $theme-green
 </style>
 
 <style src="vue-multiselect/dist/vue-multiselect.min.css"></style>

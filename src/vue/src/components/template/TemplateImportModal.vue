@@ -110,9 +110,7 @@
             </div>
 
             <div v-else>
-                <h4 class="theme-h4">
-                    <span>No existing templates available</span>
-                </h4>
+                <b>No existing templates available</b>
                 <hr class="m-0 mb-1"/>
                 Only templates in assignments where you have permission to edit are available to import.
             </div>
