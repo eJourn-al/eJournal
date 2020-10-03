@@ -13,7 +13,7 @@
                 @handleAction="accountCreated=true"
             />
             <b-form
-                v-else-if="!username && !token"
+                v-else
                 @submit.prevent="verifyEmail"
             >
                 <h2 class="theme-h2 field-heading">
@@ -33,9 +33,6 @@
                     Submit
                 </b-button>
             </b-form>
-            <div v-else>
-                TODO set password
-            </div>
         </b-card>
     </content-single-column>
 </template>
@@ -68,23 +65,6 @@ export default {
                 .then(() => {
                     this.$store.commit('user/EMAIL_VERIFIED')
                     this.$router.push({ name: 'Home' })
-                })
-        },
-        registerWithInvite () {
-            userAPI.acceptInvite(this.username, this.token, this.password, { responseSuccessToast: true })
-                .then(() => {
-                    this.$store.commit('user/EMAIL_VERIFIED')
-                    this.$router.push({ name: 'Home' })
-                })
-                .catch((error) => {
-                    this.$router.push({
-                        name: 'ErrorPage',
-                        params: {
-                            code: error.response.status,
-                            reasonPhrase: error.response.statusText,
-                            description: error.response.data.description,
-                        },
-                    })
                 })
         },
     },

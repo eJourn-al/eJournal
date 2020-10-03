@@ -113,7 +113,7 @@ def send_invite_email(user_pk):
     You have been invited to eJournal by TODO INSTANCE NAME. Please click the button below to activate your account."""
     email_data['full_name'] = user.full_name
     email_data['extra_content'] = 'Username: {}'.format(user.username)
-    email_data['button_url'] = '{}/Register/{}/{}'.format(settings.BASELINK, user.username, token)
+    email_data['button_url'] = '{}/SetPassword/{}/{}?new_user=true'.format(settings.BASELINK, user.username, token)
     email_data['button_text'] = 'Activate account'
     email_data['profile_url'] = '{}/Profile'.format(settings.BASELINK)
 
@@ -146,7 +146,7 @@ def send_password_recovery_link(user_pk):
     request please ignore this email."""
     email_data['full_name'] = user.full_name
     email_data['extra_content'] = 'Token: {}'.format(token)
-    email_data['button_url'] = '{}/PasswordRecovery/{}/{}'.format(settings.BASELINK, user.username, token)
+    email_data['button_url'] = '{}/SetPassword/{}/{}'.format(settings.BASELINK, user.username, token)
     email_data['button_text'] = 'Set New Password'
     email_data['profile_url'] = '{}/Profile'.format(settings.BASELINK)
 

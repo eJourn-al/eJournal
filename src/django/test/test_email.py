@@ -35,10 +35,10 @@ class EmailAPITest(TestCase):
         assert len(mail.outbox) == 1, 'An actual mail should be sent'
         assert mail.outbox[0].to == [self.student.email], 'Email should be sent to the mail adress of the student'
         assert self.student.full_name in mail.outbox[0].body, 'Full name is expected to be used to increase delivery'
-        assert '{}/PasswordRecovery/{}/'.format(settings.BASELINK, self.student.username) in \
+        assert '{}/SetPassword/{}/'.format(settings.BASELINK, self.student.username) in \
             mail.outbox[0].alternatives[0][0], 'Recovery token link should be in email'
 
-        token = re.search(r'PasswordRecovery\/(.*)\/([^"]*)', mail.outbox[0].alternatives[0][0]).group(0).split('/')[-1]
+        token = re.search(r'SetPassword\/(.*)\/([^"]*)', mail.outbox[0].alternatives[0][0]).group(0).split('/')[-1]
         assert PasswordResetTokenGenerator().check_token(self.student, token), 'Token should be valid'
 
         resp = api.post(self, 'forgot_password', params={'identifier': self.student.email})
@@ -58,7 +58,7 @@ class EmailAPITest(TestCase):
             self, 'recover_password',
             params={
                 'username': self.student.username,
-                'recovery_token': 'invalid_token',
+                'token': 'invalid_token',
                 'new_password': self.valid_pass},
             status=400)
         # Test invalid password
@@ -67,7 +67,7 @@ class EmailAPITest(TestCase):
             self, 'recover_password',
             params={
                 'username': self.student.username,
-                'recovery_token': token,
+                'token': token,
                 'new_password': 'new_invalid_pass'},
             status=400)
         # Test invalid username
@@ -75,7 +75,7 @@ class EmailAPITest(TestCase):
             self, 'recover_password',
             params={
                 'username': factory.Student().username,
-                'recovery_token': token,
+                'token': token,
                 'new_password': self.valid_pass},
             status=400)
 
@@ -84,8 +84,21 @@ class EmailAPITest(TestCase):
             self, 'recover_password',
             params={
                 'username': self.student.username,
-                'recovery_token': token,
+                'token': token,
                 'new_password': self.valid_pass})
+
+        student.is_active = False
+        student.save()
+
+        # Test whether password recovery makes user active (for invitations).
+        api.post(
+            self, 'recover_password',
+            params={
+                'username': self.student.username,
+                'token': token,
+                'new_password': self.valid_pass})
+
+        assert student.is_active
 
     def test_verify_email(self):
         api.post(self, 'verify_email', status=400)

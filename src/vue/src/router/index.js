@@ -34,9 +34,9 @@ const router = new Router({
         name: 'Login',
         component: Login,
     }, {
-        path: '/PasswordRecovery/:username/:recoveryToken',
-        name: 'PasswordRecovery',
-        component: () => import(/* webpackChunkName: 'password-recovery' */ '@/views/PasswordRecovery.vue'),
+        path: '/SetPassword/:username/:token',
+        name: 'SetPassword',
+        component: () => import(/* webpackChunkName: 'password-recovery' */ '@/views/SetPassword.vue'),
         props: true,
     }, {
         path: '/EmailVerification/:username/:token',
@@ -47,11 +47,6 @@ const router = new Router({
         path: '/Register',
         name: 'Register',
         component: () => import(/* webpackChunkName: 'register' */ '@/views/Register.vue'),
-    }, {
-        path: '/Register/:username/:token',
-        name: 'Register',
-        component: () => import(/* webpackChunkName: 'register' */ '@/views/Register.vue'),
-        props: true,
     }, {
         path: '/Profile',
         name: 'Profile',

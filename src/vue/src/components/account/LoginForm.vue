@@ -111,7 +111,7 @@ export default {
             })
     },
     mounted () {
-        if (this.$root.previousPage && this.$root.previousPage.name === 'PasswordRecovery') {
+        if (this.$root.previousPage && this.$root.previousPage.name === 'SetPassword') {
             this.username = this.$root.previousPage.params.username
         }
     },

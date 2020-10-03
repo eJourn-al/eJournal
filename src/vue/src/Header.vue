@@ -160,9 +160,8 @@
                     class="profile-picture-container bg-white d-flex justify-content-center align-items-center"
                 >
                     <icon
-                        name="user"
+                        name="ellipsis-v"
                         class="fill-dark-blue"
-                        scale="2"
                     />
                 </div>
                 <b-button
