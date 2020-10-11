@@ -64,7 +64,9 @@ def compress_all_user_data(user, extra_data_dict=None, archive_extension='zip'):
     return archive_ouput_path, '{}.{}'.format(archive_name, archive_extension)
 
 
-def _set_file_context(fc, assignment=None, journal=None, content=None, comment=None, in_rich_text=False):
+def _set_file_context(
+    fc, assignment=None, journal=None, content=None, comment=None, preset_node=None, in_rich_text=False
+):
     if comment:
         journal = comment.entry.node.journal
     if content:
@@ -74,10 +76,13 @@ def _set_file_context(fc, assignment=None, journal=None, content=None, comment=N
             journal = content.entry.node.journal
     if journal:
         assignment = journal.assignment
+    if preset_node:
+        assignment = preset_node.format.assignment
 
     fc.comment = comment
     fc.content = content
     fc.journal = journal
+    fc.preset_node = preset_node
     fc.assignment = assignment
     fc.is_temp = False
     fc.in_rich_text = in_rich_text
@@ -109,7 +114,7 @@ def _move_newly_established_file_context_to_permanent_location(fc):
     os.rename(initial_path, str(new_path))
 
 
-def establish_file(author, identifier, assignment=None, journal=None, content=None, comment=None, in_rich_text=False):
+def establish_file(author, identifier, **kwargs):
     """Sets the context of a temporary file, and moves it to a permanent location."""
     if str(identifier).isdigit():
         file_context = VLE.models.FileContext.objects.get(pk=identifier)
@@ -121,7 +126,7 @@ def establish_file(author, identifier, assignment=None, journal=None, content=No
     if not file_context.is_temp:
         raise VLE.utils.error_handling.VLEBadRequest('You are not allowed to update established files')
 
-    _set_file_context(file_context, assignment, journal, content, comment, in_rich_text)
+    _set_file_context(file_context, **kwargs)
     _move_newly_established_file_context_to_permanent_location(file_context)
 
     file_context.save()

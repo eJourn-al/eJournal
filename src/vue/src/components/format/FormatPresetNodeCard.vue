@@ -92,6 +92,18 @@
             footer="false"
         />
 
+        <h2 class="theme-h2 field-heading">
+            Files
+        </h2>
+        <files-list
+            :attachNew="true"
+            :files="currentPreset.files"
+            @uploading-file="uploadingFiles ++"
+            @fileUploadSuccess="currentPreset.files.push($event) && uploadingFiles --"
+            @fileUploadFailed="uploadingFiles --"
+            @fileRemoved="(i) => currentPreset.files.splice(i, 1)"
+        />
+
         <div v-if="currentPreset.type === 'd'">
             <h2 class="theme-h2 field-heading required">
                 Preset Template
@@ -180,17 +192,20 @@
 <script>
 import EntryFields from '@/components/entry/EntryFields.vue'
 import Tooltip from '@/components/assets/Tooltip.vue'
+import filesList from '@/components/assets/file_handling/FilesList.vue'
 
 export default {
     components: {
         TextEditor: () => import(/* webpackChunkName: 'text-editor' */ '@/components/assets/TextEditor.vue'),
         EntryFields,
         Tooltip,
+        filesList,
     },
     props: ['newPreset', 'currentPreset', 'templates', 'assignmentDetails'],
     data () {
         return {
             showTemplatePreview: false,
+            uploadingFiles: 0,
         }
     },
     computed: {

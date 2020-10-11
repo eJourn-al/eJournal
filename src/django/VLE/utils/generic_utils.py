@@ -14,6 +14,7 @@ import VLE.factory
 import VLE.models
 import VLE.utils.error_handling
 from VLE.tasks.notifications import generate_new_node_notifications
+from VLE.utils import file_handling
 
 
 # START: API-POST functions
@@ -196,7 +197,7 @@ def update_journals(journals, preset):
     generate_new_node_notifications.delay([n.pk for n in nodes])
 
 
-def update_presets(assignment, presets, new_ids):
+def update_presets(user, assignment, presets, new_ids):
     """Update preset nodes in the assignment according to the passed list.
 
     Arguments:
@@ -211,8 +212,8 @@ def update_presets(assignment, presets, new_ids):
         id, template = required_typed_params(preset, (int, 'id'), (dict, 'template'))
         target, unlock_date, lock_date = optional_typed_params(
             preset, (float, 'target'), (str, 'unlock_date'), (str, 'lock_date'))
-        type, description, due_date = required_params(
-            preset, 'type', 'description', 'due_date')
+        type, description, due_date, files = required_params(
+            preset, 'type', 'description', 'due_date', 'files')
 
         if id > 0:
             preset_node = VLE.models.PresetNode.objects.get(pk=id)
@@ -236,6 +237,18 @@ def update_presets(assignment, presets, new_ids):
                 preset_node.forced_template = VLE.models.Template.objects.get(pk=new_ids[template['id']])
             else:
                 preset_node.forced_template = VLE.models.Template.objects.get(pk=template['id'])
+
+        preset_node.save()
+        # Add new files
+        for file_date in files:
+            print(file_date)
+            file = VLE.models.FileContext.objects.get(pk=file_date['id'])
+            if not preset_node.files.filter(pk=file.pk).exists():
+                preset_node.files.add(file)
+                file_handling.establish_file(author=user, identifier=file.access_id, preset_node=preset_node)
+        # Remove old attached files
+        preset_node.files.exclude(pk__in=[file['id'] for file in files]).delete()
+
         preset_node.save()
         if id < 0:
             update_journals(VLE.models.Journal.all_objects.filter(assignment=assignment), preset_node)

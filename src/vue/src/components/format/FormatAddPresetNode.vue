@@ -99,6 +99,7 @@ export default {
                 type: '',
                 template: '',
                 description: '',
+                files: [],
             },
             showAlert: false,
         }

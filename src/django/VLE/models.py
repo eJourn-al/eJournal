@@ -1699,6 +1699,10 @@ class PresetNode(CreateUpdateModel):
         on_delete=models.SET_NULL,
         null=True,
     )
+    files = models.ManyToManyField(
+        'FileContext',
+        related_name='preset_node_files',
+    )
 
     format = models.ForeignKey(
         'Format',
