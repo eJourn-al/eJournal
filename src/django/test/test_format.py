@@ -231,6 +231,8 @@ class FormatAPITest(TestCase):
         entrydeadline.refresh_from_db()
         assert entrydeadline.forced_template == new_template, 'Template should not get changed to the other template'
         assert entrydeadline.files.filter(pk=file.pk).exists()
+        file.refresh_from_db()
+        assert not file.is_temp
 
         # Presets with ID < 0 should be newly created
         journal = factory.Journal(assignment=assignment)
@@ -247,3 +249,5 @@ class FormatAPITest(TestCase):
         assert old_node_count + 1 == journal.node_set.count(), 'New node should also be added to all connected journals'
         progress.refresh_from_db()
         assert PresetNode.objects.order_by('creation_date').last().files.filter(pk=file.pk).exists()
+        file.refresh_from_db()
+        assert not file.is_temp

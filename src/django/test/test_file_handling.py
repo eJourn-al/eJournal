@@ -331,6 +331,7 @@ class FileHandlingTest(TestCase):
                     'template': None,
                     'lock_date': None,
                     'unlock_date': None,
+                    'files': [],
                 }], 'removed_presets': [], 'removed_templates': [],
             }
             api.update(self, 'formats', params=update_params, user=self.teacher)

@@ -149,6 +149,7 @@ def get_temp_files_from_rich_text(rich_text):
     return get_files_from_rich_text(rich_text).filter(is_temp=True)
 
 
-def establish_rich_text(author, rich_text, assignment=None, journal=None, comment=None, content=None):
+def establish_rich_text(author, rich_text, **kargs):
+    kargs['in_rich_text'] = True
     for file in get_temp_files_from_rich_text(rich_text):
-        establish_file(author, file.access_id, assignment, journal, content, comment, in_rich_text=True)
+        establish_file(author, file.access_id, **kargs)
