@@ -76,37 +76,56 @@ const router = new Router({
         path: '/Home/Course/:cID',
         name: 'Course',
         component: Course,
-        props: true,
+        props: route => ({
+            cID: Number.parseInt(route.params.cID, 10),
+        }),
     }, {
         path: '/Home/Course/:cID/CourseEdit',
         name: 'CourseEdit',
         component: () => import(/* webpackChunkName: 'course-edit' */ '@/views/CourseEdit.vue'),
-        props: true,
+        props: route => ({
+            cID: Number.parseInt(route.params.cID, 10),
+        }),
     }, {
         path: '/Home/Course/:cID/CourseEdit/UserRoleConfiguration',
         name: 'UserRoleConfiguration',
         component: () => import(/* webpackChunkName: 'role-config' */ '@/views/UserRoleConfiguration.vue'),
-        props: true,
+        props: route => ({
+            cID: Number.parseInt(route.params.cID, 10),
+        }),
     }, {
         path: '/Home/Course/:cID/Assignment/:aID',
         name: 'Assignment',
         component: Assignment,
-        props: true,
+        props: route => ({
+            cID: Number.parseInt(route.params.cID, 10),
+            aID: Number.parseInt(route.params.aID, 10),
+        }),
     }, {
         path: '/Home/Course/:cID/Assignment/:aID/Format',
         name: 'FormatEdit',
         component: () => import(/* webpackChunkName: 'format-edit' */ '@/views/FormatEdit.vue'),
-        props: true,
+        props: route => ({
+            cID: Number.parseInt(route.params.cID, 10),
+            aID: Number.parseInt(route.params.aID, 10),
+        }),
     }, {
         path: '/Home/Course/:cID/Assignment/:aID/Journal/New',
         name: 'JoinJournal',
         component: () => import(/* webpackChunkName: 'join-journal' */ '@/views/JoinJournal.vue'),
-        props: true,
+        props: route => ({
+            cID: Number.parseInt(route.params.cID, 10),
+            aID: Number.parseInt(route.params.aID, 10),
+        }),
     }, {
         path: '/Home/Course/:cID/Assignment/:aID/Journal/:jID',
         name: 'Journal',
         component: Journal,
-        props: true,
+        props: route => ({
+            cID: Number.parseInt(route.params.cID, 10),
+            aID: Number.parseInt(route.params.aID, 10),
+            jID: Number.parseInt(route.params.jID, 10),
+        }),
     }, {
         path: '*',
         name: 'NotFound',

@@ -272,22 +272,23 @@ export default {
             .then((assignment) => {
                 this.assignment = assignment
 
-                if (!this.assignment.unlock_date || new Date(this.assignment.unlock_date) < new Date()) {
-                    journalAPI.getNodes(this.jID)
-                        .then((nodes) => {
-                            this.nodes = nodes
-                            this.loadingNodes = false
-                            if (this.$route.query.nID !== undefined) {
-                                this.currentNode = this.findEntryNode(parseInt(this.$route.query.nID, 10))
-                            }
-                        })
-                } else {
-                    this.loadingNodes = false
-                }
-            })
+                const initialCalls = []
+                initialCalls.push(journalAPI.get(this.jID))
 
-        journalAPI.get(this.jID)
-            .then((journal) => { this.journal = journal })
+                if (!this.assignment.unlock_date || new Date(this.assignment.unlock_date) < new Date()) {
+                    initialCalls.push(journalAPI.getNodes(this.jID))
+                }
+                Promise.all(initialCalls).then((results) => {
+                    this.journal = results[0]
+                    if (results.length > 1) {
+                        this.nodes = results[1]
+                        if (this.$route.query.nID !== undefined) {
+                            this.currentNode = this.findEntryNode(parseInt(this.$route.query.nID, 10))
+                        }
+                    }
+                    this.loadingNodes = false
+                })
+            })
     },
     methods: {
         removeCurrentEntry () {

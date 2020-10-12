@@ -295,7 +295,7 @@ export default {
 
             input.onchange = () => {
                 const files = this.files
-                if (!files.length) { return }
+                if (!files || !files.length) { return }
 
                 const file = files[0]
                 if (files[0].size > this.$root.maxFileSizeBytes) {

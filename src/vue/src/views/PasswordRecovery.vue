@@ -27,7 +27,6 @@
                     type="password"
                     required
                     placeholder="Repeat new password"
-                    @keyup.enter="recoverPassword()"
                 />
                 <b-button
                     class="float-right multi-form add-button"
@@ -71,16 +70,6 @@ export default {
                     { responseSuccessToast: true },
                 )
                     .then(() => { this.$router.push({ name: 'Login' }) })
-                    .catch((error) => {
-                        this.$router.push({
-                            name: 'ErrorPage',
-                            params: {
-                                code: error.response.status,
-                                reasonPhrase: error.response.statusText,
-                                description: error.response.data.description,
-                            },
-                        })
-                    })
             }
         },
     },
