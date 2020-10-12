@@ -116,6 +116,7 @@ def _move_newly_established_file_context_to_permanent_location(fc):
 
 def establish_file(author, identifier, **kwargs):
     """Sets the context of a temporary file, and moves it to a permanent location."""
+    kwargs['in_rich_text'] = kwargs.get('in_rich_text', False)
     if str(identifier).isdigit():
         file_context = VLE.models.FileContext.objects.get(pk=identifier)
     else:
@@ -149,7 +150,7 @@ def get_temp_files_from_rich_text(rich_text):
     return get_files_from_rich_text(rich_text).filter(is_temp=True)
 
 
-def establish_rich_text(author, rich_text, **kargs):
-    kargs['in_rich_text'] = True
+def establish_rich_text(author, rich_text, **kwargs):
+    kwargs['in_rich_text'] = kwargs.get('in_rich_text', True)
     for file in get_temp_files_from_rich_text(rich_text):
-        establish_file(author, file.access_id, **kargs)
+        establish_file(author, file.access_id, **kwargs)

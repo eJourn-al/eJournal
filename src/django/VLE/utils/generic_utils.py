@@ -241,7 +241,6 @@ def update_presets(user, assignment, presets, new_ids):
         preset_node.save()
         # Add new files
         for file_date in files:
-            print(file_date)
             file = VLE.models.FileContext.objects.get(pk=file_date['id'])
             if not preset_node.files.filter(pk=file.pk).exists():
                 preset_node.files.add(file)
