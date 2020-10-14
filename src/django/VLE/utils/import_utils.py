@@ -141,8 +141,8 @@ def import_comment(comment, entry):
         if old_fc.in_rich_text:
             comment.text = comment.text.replace(
                 old_fc.download_url(access_id=old_fc.access_id), new_fc.download_url(access_id=new_fc.access_id))
-        elif source_comment.files.filter(pk=old_fc.pk).exists():
-            comment.files.add(new_fc)
+        elif source_comment.attached_files.filter(pk=old_fc.pk).exists():
+            comment.attached_files.add(new_fc)
         else:
             raise VLEProgrammingError('Unknown file context {} encountered during comment import.'.format(old_fc.pk))
 

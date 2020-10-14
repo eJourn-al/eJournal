@@ -242,11 +242,11 @@ def update_presets(user, assignment, presets, new_ids):
         # Add new files
         for file_date in files:
             file = VLE.models.FileContext.objects.get(pk=file_date['id'])
-            if not preset_node.files.filter(pk=file.pk).exists():
-                preset_node.files.add(file)
+            if not preset_node.attached_files.filter(pk=file.pk).exists():
+                preset_node.attached_files.add(file)
                 file_handling.establish_file(author=user, identifier=file.access_id, preset_node=preset_node)
         # Remove old attached files
-        preset_node.files.exclude(pk__in=[file['id'] for file in files]).delete()
+        preset_node.attached_files.exclude(pk__in=[file['id'] for file in files]).delete()
 
         preset_node.save()
         if id < 0:

@@ -12,7 +12,17 @@ class Migration(migrations.Migration):
     operations = [
         migrations.AddField(
             model_name='presetnode',
-            name='files',
-            field=models.ManyToManyField(related_name='preset_node_files', to='VLE.FileContext'),
+            name='attached_files',
+            field=models.ManyToManyField(related_name='attached_preset_nodes', to='VLE.FileContext'),
+        ),
+        migrations.RenameField(
+            model_name='comment',
+            old_name='files',
+            new_name='attached_files',
+        ),
+        migrations.AlterField(
+            model_name='comment',
+            name='attached_files',
+            field=models.ManyToManyField(related_name='attached_comments', to='VLE.FileContext'),
         ),
     ]

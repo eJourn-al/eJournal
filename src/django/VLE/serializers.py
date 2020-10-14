@@ -518,7 +518,7 @@ class CommentSerializer(serializers.ModelSerializer):
             return comment.last_edited
 
     def get_files(self, comment):
-        return FileSerializer(comment.files, many=True).data
+        return FileSerializer(comment.attached_files, many=True).data
 
     def get_can_edit(self, comment):
         user = self.context.get('user', None)
@@ -607,7 +607,8 @@ class PresetNodeSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = VLE.models.PresetNode
-        fields = ('id', 'description', 'type', 'unlock_date', 'due_date', 'lock_date', 'target', 'template', 'files')
+        fields = ('id', 'description', 'type', 'unlock_date', 'due_date', 'lock_date', 'target', 'template',
+                  'files')
         read_only_fields = ('id', 'type')
 
     def get_unlock_date(self, node):
@@ -634,7 +635,7 @@ class PresetNodeSerializer(serializers.ModelSerializer):
         return None
 
     def get_files(self, node):
-        return FileSerializer(node.files, many=True).data
+        return FileSerializer(node.attached_files, many=True).data
 
 
 class EntrySerializer(serializers.ModelSerializer):

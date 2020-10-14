@@ -275,7 +275,7 @@ class CommentAPITest(TestCase):
             assert not comment_resp['last_edited_by'], 'No last edited on creation'
             assert FileContext.objects.filter(comment=comment).count() == len(files), \
                 'Check if all files supplied are also in comment files, no more no less'
-            for file in comment.files.all():
+            for file in comment.attached_files.all():
                 assert file in files, 'Check if all files supplied are also in comment files, no more no less'
 
     def check_comment_update(self, comment, user, should_succeed, files=[]):
@@ -303,7 +303,7 @@ class CommentAPITest(TestCase):
             assert comment_after_op.last_edited_by.full_name == user.full_name, 'Last edited by incorrect'
             assert FileContext.objects.filter(comment=comment).count() == len(files), \
                 'Check if all files supplied are also in comment files, no more no less'
-            for file in comment.files.all():
+            for file in comment.attached_files.all():
                 assert file in files, 'Check if all files supplied are also in comment files, no more no less'
         else:
             assert_comments_are_equal(comment_before_op, comment_after_op)
@@ -358,6 +358,6 @@ class CommentAPITest(TestCase):
 
         comment = factory.StudentComment(n_att_files=2)
 
-        assert comment.files.count() == 2, 'Two attached files are generated'
+        assert comment.attached_files.count() == 2, 'Two attached files are generated'
         assert FileContext.objects.filter(comment=comment, journal=comment.entry.node.journal).count() == 2, \
             'The generated files are correctly attached to the generated comment'

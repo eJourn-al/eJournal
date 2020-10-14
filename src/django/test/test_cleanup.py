@@ -49,8 +49,8 @@ class CleanupTest(TestCase):
     def test_remove_unused_comment_files(self, cleanup_function=cleanup.remove_unused_comment_files):
         comment = factory.StudentComment(n_rt_files=1, n_att_files=1)
         entry = comment.entry
-        att_fc = comment.files.first()
-        rt_fc = FileContext.objects.get(comment=comment, comment_files__isnull=True)
+        att_fc = comment.attached_files.first()
+        rt_fc = FileContext.objects.get(comment=comment, attached_comments__isnull=True)
         cleanup_function()
         assert FileContext.objects.filter(pk__in=[att_fc.pk, rt_fc.pk]).count() == 2, \
             'Correct comment FCs are not removed'
@@ -62,18 +62,18 @@ class CleanupTest(TestCase):
         assert not FileContext.objects.filter(pk=rt_fc.pk).exists(), 'No longer referenced RT FC should be removed'
 
         comment = factory.StudentComment(n_rt_files=1, n_att_files=1, entry=entry)
-        att_fc = comment.files.first()
-        rt_fc = FileContext.objects.get(comment=comment, comment_files__isnull=True)
-        comment.files.set(FileContext.objects.none())
+        att_fc = comment.attached_files.first()
+        rt_fc = FileContext.objects.get(comment=comment, attached_comments__isnull=True)
+        comment.attached_files.set(FileContext.objects.none())
         cleanup_function()
         assert not FileContext.objects.filter(pk=att_fc.pk).exists(), 'Attached comment FC should be removed'
         assert FileContext.objects.filter(pk=rt_fc.pk).exists(), 'Still referenced RT FC should not be removed'
 
         comment = factory.StudentComment(n_rt_files=1, n_att_files=1, entry=entry)
-        att_fc = comment.files.first()
-        rt_fc = FileContext.objects.get(comment=comment, comment_files__isnull=True)
+        att_fc = comment.attached_files.first()
+        rt_fc = FileContext.objects.get(comment=comment, attached_comments__isnull=True)
         comment.text = ''
-        comment.files.set(FileContext.objects.none())
+        comment.attached_files.set(FileContext.objects.none())
         comment.save()
         cleanup_function()
         assert not FileContext.objects.filter(pk__in=[att_fc.pk, rt_fc.pk]).exists(), \

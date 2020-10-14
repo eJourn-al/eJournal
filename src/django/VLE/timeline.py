@@ -82,7 +82,7 @@ def get_deadline(node, user):
         'lock_date': node.preset.lock_date,
         'template': TemplateSerializer(node.preset.forced_template).data,
         'entry': EntrySerializer(node.entry, context={'user': user}).data if node.entry else None,
-        'files': FileSerializer(node.preset.files, many=True).data
+        'files': FileSerializer(node.preset.attached_files, many=True).data
     } if node else None
 
 
@@ -95,5 +95,5 @@ def get_progress(node):
         'jID': node.journal.id,
         'due_date': node.preset.due_date,
         'target': node.preset.target,
-        'files': FileSerializer(node.preset.files, many=True).data
+        'files': FileSerializer(node.preset.attached_files, many=True).data
     } if node else None

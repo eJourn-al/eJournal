@@ -230,7 +230,7 @@ class FormatAPITest(TestCase):
         utils.update_presets(assignment.author, assignment, presets, {other_template.pk: new_template.pk})
         entrydeadline.refresh_from_db()
         assert entrydeadline.forced_template == new_template, 'Template should not get changed to the other template'
-        assert entrydeadline.files.filter(pk=file.pk).exists()
+        assert entrydeadline.attached_files.filter(pk=file.pk).exists()
         file.refresh_from_db()
         assert not file.is_temp
 
@@ -248,6 +248,6 @@ class FormatAPITest(TestCase):
         assert old_preset_count + 1 == assignment.format.presetnode_set.count(), 'Format should have a new node'
         assert old_node_count + 1 == journal.node_set.count(), 'New node should also be added to all connected journals'
         progress.refresh_from_db()
-        assert PresetNode.objects.order_by('creation_date').last().files.filter(pk=file.pk).exists()
+        assert PresetNode.objects.order_by('creation_date').last().attached_files.filter(pk=file.pk).exists()
         file.refresh_from_db()
         assert not file.is_temp

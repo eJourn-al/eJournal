@@ -102,7 +102,7 @@ class AttachedCommentFileContextFactory(RichTextCommentFileContextFactory):
         if not create:
             return
 
-        self.comment.files.add(self)
+        self.comment.attached_files.add(self)
         self.comment.save()
 
 

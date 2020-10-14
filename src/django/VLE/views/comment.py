@@ -14,15 +14,15 @@ from VLE.serializers import CommentSerializer
 from VLE.utils import file_handling
 
 
-def handle_comment_files(user, files, comment):
+def handle_attached_comment_files(user, files, comment):
     # Add new files
     for file_id in files:
         file = FileContext.objects.get(pk=int(file_id))
-        if not comment.files.filter(pk=file.pk).exists():
-            comment.files.add(file)
+        if not comment.attached_files.filter(pk=file.pk).exists():
+            comment.attached_files.add(file)
             file_handling.establish_file(author=user, identifier=file.access_id, comment=comment)
     # Remove old attached files
-    comment.files.exclude(pk__in=files).delete()
+    comment.attached_files.exclude(pk__in=files).delete()
     file_handling.establish_rich_text(author=user, rich_text=comment.text, comment=comment)
 
 
@@ -104,7 +104,7 @@ class CommentView(viewsets.ViewSet):
         published = published or not request.user.has_permission('can_grade', assignment)
         comment = factory.make_comment(entry, request.user, text, published)
 
-        handle_comment_files(request.user, files, comment)
+        handle_attached_comment_files(request.user, files, comment)
 
         return response.created({'comment': CommentSerializer(comment, context={'user': request.user}).data})
 
@@ -172,7 +172,7 @@ class CommentView(viewsets.ViewSet):
         comment.published = published or not request.user.has_permission('can_grade', assignment)
         comment.save()
 
-        handle_comment_files(request.user, files, comment)
+        handle_attached_comment_files(request.user, files, comment)
 
         return response.success({'comment': CommentSerializer(comment, context={'user': request.user}).data})
 

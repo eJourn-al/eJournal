@@ -1699,9 +1699,9 @@ class PresetNode(CreateUpdateModel):
         on_delete=models.SET_NULL,
         null=True,
     )
-    files = models.ManyToManyField(
+    attached_files = models.ManyToManyField(
         'FileContext',
-        related_name='preset_node_files',
+        related_name='attached_preset_nodes',
     )
 
     format = models.ForeignKey(
@@ -2060,9 +2060,9 @@ class Comment(CreateUpdateModel):
     published = models.BooleanField(
         default=True
     )
-    files = models.ManyToManyField(
+    attached_files = models.ManyToManyField(
         'FileContext',
-        related_name='comment_files',
+        related_name='attached_comments',
     )
     last_edited = models.DateTimeField(auto_now_add=True)
     last_edited_by = models.ForeignKey(

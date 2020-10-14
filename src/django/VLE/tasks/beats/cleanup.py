@@ -35,7 +35,7 @@ def remove_unused_comment_files():
     VLE.models.FileContext.objects.filter(
         ~Q(comment__text__contains=F('access_id')),
         comment__isnull=False,
-        comment_files__isnull=True,
+        attached_comments__isnull=True,
     ).delete()
 
 
