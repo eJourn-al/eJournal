@@ -2226,7 +2226,7 @@ def validate_jir_before_save(sender, instance, **kwargs):
 
     if instance.source:
         if not Entry.objects.filter(node__journal=instance.source).exists():
-            raise ValidationError('You cannot create an import request whose source is empty.')
+            raise ValidationError('You cannot create an import request from a journal with no entries.')
 
     if instance.target and instance.source:
         if instance.source.assignment.pk == instance.target.assignment.pk:

@@ -206,6 +206,9 @@ preset-db-no-input:
 run-preset-db:
 	${venv_activate} && cd ./src/django && python manage.py preset_db $(n_performance_students)
 
+run-add-performance-course:
+	${venv_activate} && cd ./src/django && python manage.py add_performance_course $(n_performance_students)
+
 migrate-back:
 	${venv_activate} && cd ./src/django && python manage.py makemigrations VLE && python manage.py migrate
 

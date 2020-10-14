@@ -293,6 +293,31 @@ class NotificationTest(TestCase):
         assert len(mail.outbox) != before_len_mailbox, \
             'After verification, notification should be send'
 
+    def test_dont_send_empty_course_in_digest(self):
+        author = factory.Teacher(
+            preferences={
+                'new_comment_notifications': Preferences.OFF,
+                'new_entry_notifications': Preferences.DAILY,
+            }
+        )
+
+        course_with_notification = factory.Course(author=author, name='With notification')
+        course_without_notification = factory.Course(author=author, name='Without notification')
+
+        assignment_with_notification = factory.Assignment(author=author, courses=[course_with_notification])
+        assignment_without_notification = factory.Assignment(author=author, courses=[course_without_notification])
+
+        entry = factory.UnlimitedEntry(node__journal__assignment=assignment_without_notification)
+
+        Notification.objects.all().delete()
+        factory.UnlimitedEntry(node__journal__assignment=assignment_with_notification)
+        factory.StudentComment(entry__node__journal__assignment=assignment_without_notification, entry=entry)
+
+        send_digest_notifications()
+
+        assert course_with_notification.name in mail.outbox[-1].body
+        assert course_without_notification.name not in mail.outbox[-1].body
+
     def test_save_notification(self):
         entry = factory.UnlimitedEntry()
         n = Notification.objects.last()

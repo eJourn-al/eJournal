@@ -194,12 +194,20 @@ const actions = {
                         { root: true })
                     resolve('Store is populated successfully')
                 }, (error) => {
-                    Vue.toasted.error(
-                        `Error loading preferences: ${sanitization.escapeHtml(error.response.data.description)}`)
+                    if (error.response) {
+                        Vue.toasted.error(
+                            `Error loading preferences: ${sanitization.escapeHtml(error.response.data.description)}`)
+                    } else {
+                        Vue.toasted.error('Something went wrong when loading preferences')
+                    }
                     reject(error)
                 })
             }, (error) => {
-                Vue.toasted.error(`Error logging in: ${sanitization.escapeHtml(error.response.data.description)}`)
+                if (error.response) {
+                    Vue.toasted.error(`Error logging in: ${sanitization.escapeHtml(error.response.data.description)}`)
+                } else {
+                    Vue.toasted.error('Something went wrong when loggin in')
+                }
                 reject(error)
             })
         })

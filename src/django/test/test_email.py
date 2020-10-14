@@ -122,7 +122,6 @@ class EmailAPITest(TestCase):
 
         _, username, token = re.search(
             r'EmailVerification\/(.*)\/([^"]*)', mail.outbox[0].alternatives[0][0]).group(0).split('/')
-        print(username, token)
         resp = api.post(self, 'verify_email', params={'username': username, 'token': token})
         assert 'Success' in resp['description']
 

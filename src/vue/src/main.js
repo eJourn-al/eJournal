@@ -161,9 +161,19 @@ new Vue({
             } else if (assignment.is_group_assignment && assignment.journal === null) {
                 // Student new group assignment route
                 route.name = 'JoinJournal'
-            } else { // Student with journal route
+            } else if (assignment.journal) { // Student with journal route
                 route.name = 'Journal'
                 route.params.jID = assignment.journal
+            } else {
+                route.name = 'Home'
+                this.$store.commit('sentry/CAPTURE_SCOPED_MESSAGE', {
+                    msg: 'Assignment route not found, redirected to homepage',
+                    extra: {
+                        routeQuery: this.$route.query,
+                        routeParams: this.$route.params,
+                        assignment,
+                    },
+                })
             }
 
             return route
