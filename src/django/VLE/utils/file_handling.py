@@ -114,9 +114,9 @@ def _move_newly_established_file_context_to_permanent_location(fc):
     os.rename(initial_path, str(new_path))
 
 
-def establish_file(author, identifier, **kwargs):
+def establish_file(author, identifier, **context):
     """Sets the context of a temporary file, and moves it to a permanent location."""
-    kwargs['in_rich_text'] = kwargs.get('in_rich_text', False)
+    context['in_rich_text'] = context.get('in_rich_text', False)
     if str(identifier).isdigit():
         file_context = VLE.models.FileContext.objects.get(pk=identifier)
     else:
@@ -127,7 +127,7 @@ def establish_file(author, identifier, **kwargs):
     if not file_context.is_temp:
         raise VLE.utils.error_handling.VLEBadRequest('You are not allowed to update established files')
 
-    _set_file_context(file_context, **kwargs)
+    _set_file_context(file_context, **context)
     _move_newly_established_file_context_to_permanent_location(file_context)
 
     file_context.save()
@@ -150,7 +150,7 @@ def get_temp_files_from_rich_text(rich_text):
     return get_files_from_rich_text(rich_text).filter(is_temp=True)
 
 
-def establish_rich_text(author, rich_text, **kwargs):
-    kwargs['in_rich_text'] = kwargs.get('in_rich_text', True)
+def establish_rich_text(author, rich_text, **context):
+    context['in_rich_text'] = context.get('in_rich_text', True)
     for file in get_temp_files_from_rich_text(rich_text):
-        establish_file(author, file.access_id, **kwargs)
+        establish_file(author, file.access_id, **context)
