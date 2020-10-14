@@ -317,7 +317,6 @@ export default {
                         }
                     }
                 })
-                .catch((error) => { this.$toasted.error(error.response.data.description) })
         },
     },
 }

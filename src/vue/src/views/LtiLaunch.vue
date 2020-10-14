@@ -172,15 +172,6 @@ export default {
             } else {
                 this.states.state = this.canAutoSetupState
             }
-        }).catch((error) => {
-            this.$router.push({
-                name: 'ErrorPage',
-                params: {
-                    code: error.response.status,
-                    reasonPhrase: error.response.statusText,
-                    description: error.response.data.description,
-                },
-            })
         })
     },
     methods: {
