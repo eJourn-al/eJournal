@@ -65,7 +65,7 @@
                 <!-- Newly added fields in template editor have id <0. -->
                 <text-editor
                     v-else-if="field.type == 'rt'"
-                    :id="`rich-text-editor-field-${field.id > 0 ? 'id-' + field.id : 'loc-' + field.location}`"
+                    :id="textEditorID(field)"
                     :key="`rich-text-editor-field-${field.id > 0 ? field.id : field.location}`"
                     v-model="content[field.id]"
                     @startedUploading="$emit('uploading-file')"
@@ -175,6 +175,9 @@ export default {
         nodeID: {
             default: -1,
         },
+        newEntryDraftID: {
+            default: -1,
+        },
     },
     computed: {
         orderedFields () {
@@ -203,6 +206,14 @@ export default {
             const options = JSON.parse(fieldOptions).filter(e => e).map(x => Object({ value: x, text: x }))
             options.unshift({ value: null, text: 'Please select an option...' })
             return options
+        },
+        textEditorID (field) {
+            return 'rich-text-editor'
+                + `-assignmentID-${this.$route.params.aID}`
+                + `-template-${this.template.id}`
+                + `-nodeID-${this.nodeID}`
+                + `-newEntryDraftID-${this.newEntryDraftID}`
+                + `-field-${field.id > 0 ? `id-${field.id}` : `loc-${field.location}`}`
         },
     },
 }

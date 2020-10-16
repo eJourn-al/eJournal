@@ -115,6 +115,7 @@
                         :node="nodes[currentNode]"
                         :create="nodes[currentNode].type == 'a' || (nodes[currentNode].type == 'd'
                             && !nodes[currentNode].entry)"
+                        :newEntryDraftID="newEntryDraftID"
                         @entry-deleted="removeCurrentEntry"
                         @entry-posted="entryPosted"
                     />
@@ -265,6 +266,9 @@ export default {
 
             // Add node with multiple choices: select from dropdown.
             return this.selectedTemplate
+        },
+        newEntryDraftID () {
+            return Math.max(...this.nodes.map(node => node.nID), 0) + 1
         },
     },
     created () {

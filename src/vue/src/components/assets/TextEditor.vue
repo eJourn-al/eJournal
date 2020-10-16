@@ -23,6 +23,7 @@ import 'tinymce/themes/silver'
 import 'tinymce/plugins/advlist'
 import 'tinymce/plugins/autolink'
 import 'tinymce/plugins/autoresize'
+import 'tinymce/plugins/autosave'
 /* Allows direct manipulation of the html aswell as easy export. */
 import 'tinymce/plugins/code'
 import 'tinymce/plugins/fullscreen'
@@ -61,7 +62,8 @@ export default {
             type: Boolean,
             default: false,
         },
-        /* Used to bind the editor to the components text area. */
+        /* Used to bind the editor to the components text area.
+         * Also responsible for the (default) prefix of the key used to store a draft in local storage */
         id: {
             type: String,
             required: true,
@@ -125,6 +127,12 @@ export default {
                 link_assume_external_targets: true,
                 default_link_target: '_blank',
 
+                /* Autosave (Draft restoration) */
+                autosave_restore_when_empty: true,
+                autosave_ask_before_unload: true,
+                autosave_retention: '10080m', // 1 week
+                autosave_interval: '10s',
+
                 placeholder_attrs: {
                     style: {
                         position: 'absolute',
@@ -141,18 +149,19 @@ export default {
             basicConfig: {
                 toolbar1: 'bold italic underline alignleft aligncenter alignright alignjustify '
                     + '| forecolor backcolor | formatselect | bullist numlist | image table '
-                    + '| link removeformat fullscreentoggle fullscreen',
+                    + '| link removeformat fullscreentoggle restoredraft fullscreen',
                 plugins: [
-                    'placeholder link autoresize paste image lists wordcount autolink',
+                    'placeholder link autoresize autosave paste image lists wordcount autolink',
                     'table fullscreen',
                 ],
             },
             extensiveConfig: {
                 toolbar1: 'bold italic underline alignleft aligncenter alignright alignjustify | forecolor backcolor '
-                    + '| formatselect | bullist numlist | image table | link removeformat fullscreentoggle fullscreen',
+                    + '| formatselect | bullist numlist | image table '
+                    + '| link removeformat fullscreentoggle restoredraft fullscreen',
                 plugins: [
                     'placeholder link preview paste print hr lists advlist wordcount autolink',
-                    'autoresize code fullscreen image imagetools',
+                    'autoresize autosave code fullscreen image imagetools',
                     'searchreplace table toc',
                 ],
             },
@@ -220,6 +229,13 @@ export default {
                 this.content = `${value}${separatedContent}`
                 this.editor.setContent(`${value}${separatedContent}`)
                 this.valueSet = true
+            }
+
+            /* Content is set automatically by the auto save draft restoration
+             * configured by: autosave_restore_when_empty: true
+             * The component's content state needs to by synced with the editor instance */
+            if (!this.content && this.editor.getContent()) {
+                this.content = this.editor.getContent()
             }
         },
         editorInit (editor) {

@@ -47,6 +47,7 @@
                 :content="newEntryContent"
                 :edit="edit || create"
                 :nodeID="node ? node.nID : -1"
+                :newEntryDraftID="newEntryDraftID"
                 @uploading-file="uploadingFiles ++"
                 @finished-uploading-file="uploadingFiles --"
             />
@@ -136,6 +137,9 @@ export default {
     },
     props: {
         template: {
+            required: true,
+        },
+        newEntryDraftID: {
             required: true,
         },
         node: {

@@ -19,8 +19,8 @@
                 />
                 <text-editor
                     v-if="showEditors"
-                    :id="`rich-text-editor-field-${field.location}`"
-                    :key="`rich-text-editor-field-${field.location}`"
+                    :id="`rich-text-editor-field-id-${field.id}-location-${field.location}`"
+                    :key="`rich-text-editor-field-id-${field.id}-location-${field.location}`"
                     v-model="field.description"
                     :basic="true"
                     :displayInline="true"
