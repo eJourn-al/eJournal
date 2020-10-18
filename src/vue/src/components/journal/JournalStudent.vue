@@ -300,7 +300,7 @@ export default {
             }
         },
         selectNode (selectedNode) {
-            if (selectedNode !== this.currentNode || this.safeToLeave()) {
+            if (selectedNode !== this.currentNode && this.safeToLeave()) {
                 this.currentNode = selectedNode
             }
         },
