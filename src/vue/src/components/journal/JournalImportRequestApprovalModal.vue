@@ -70,7 +70,7 @@
                             },
                         }"
                         class="float-right"
-                        :class="{ 'input-disabled': !selectedAssignment }"
+                        :class="{ 'input-disabled': !selectedAssignment || jirPatchInFlight }"
                         @change-option="$store.commit('preferences/SET_JOURNAL_IMPORT_REQUEST_BUTTON_SETTING', $event)"
                         @click="handleJIR(selectedJir)"
                     />
@@ -112,6 +112,7 @@ export default {
             selectedAssignment: null,
             loading: true,
             jirAction: null,
+            jirPatchInFlight: false,
         }
     },
     computed: {
@@ -156,6 +157,7 @@ export default {
                 + `Journal/${jir.source.journal.id}`
         },
         handleJIR (jir) {
+            this.jirPatchInFlight = true
             journalImportRequestAPI.update(
                 jir.id,
                 this.$store.getters['preferences/journalImportRequestButtonSetting'],
@@ -174,6 +176,8 @@ export default {
                     this.$root.$emit('bv::hide::modal', this.modalID)
                 }
                 this.$emit('jir-processed')
+            }).finally(() => {
+                this.jirPatchInFlight = false
             })
         },
         openSelectedJirInNewWindow () {

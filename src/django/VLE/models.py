@@ -2196,6 +2196,12 @@ class JournalImportRequest(CreateUpdateModel):
 
         return responses[self.state]
 
+    def target_url(self):
+        return gen_url(journal=self.target)
+
+    def source_url(self):
+        return gen_url(journal=self.source)
+
     @receiver(models.signals.pre_delete, sender=Journal)
     def delete_pending_jirs_on_source_deletion(sender, instance, **kwargs):
         JournalImportRequest.objects.filter(source=instance, state=JournalImportRequest.PENDING).delete()
