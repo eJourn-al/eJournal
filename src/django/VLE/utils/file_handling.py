@@ -123,9 +123,9 @@ def establish_file(author, identifier, **context):
         file_context = VLE.models.FileContext.objects.get(access_id=identifier)
 
     if file_context.author != author:
-        raise VLE.utils.error_handling.VLEPermissionError('You are not allowed to update files of other users')
+        raise VLE.utils.error_handling.VLEPermissionError('You are not allowed to update files of other users.')
     if not file_context.is_temp:
-        raise VLE.utils.error_handling.VLEBadRequest('You are not allowed to update established files')
+        raise VLE.utils.error_handling.VLEBadRequest('You are not allowed to update established files.')
 
     _set_file_context(file_context, **context)
     _move_newly_established_file_context_to_permanent_location(file_context)

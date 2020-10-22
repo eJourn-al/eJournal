@@ -12,7 +12,7 @@ from django.core.management.base import BaseCommand
 from django.utils import timezone
 from faker import Faker
 
-from VLE.models import Entry, Journal, Node, Role
+from VLE.models import Entry, Journal, Node, Role, User
 
 faker = Faker()
 
@@ -28,18 +28,21 @@ class Command(BaseCommand):
             full_name='Lars van Hijfte',
             password='pass',
             email='lars@eJournal.app',
+            verified_email=False,
         )
         self.student2 = factory.Student(
             username='student2',
             full_name='Rick Watertor',
             password='pass',
             email='rick@eJournal.app',
+            verified_email=False,
         )
         self.student3 = factory.Student(
             username='student3',
             full_name='Dennis Wind',
             password='pass',
             email='dennis@eJournal.app',
+            verified_email=False,
         )
         self.student4 = factory.Student(
             username='student4',
@@ -61,20 +64,21 @@ class Command(BaseCommand):
             full_name='Engel Hamer',
             password='pass',
             email='test@eJournal.app',
+            verified_email=False,
         )
         self.ta = factory.Student(
             username='TA',
             full_name='De TA van TAing',
-            verified_email=False,
             password='pass',
             email='ta@eJournal.app',
+            verified_email=False,
         )
         self.ta2 = factory.Student(
             username='TA2',
             full_name='Backup TA van TAing',
-            verified_email=False,
             password='pass',
             email='ta2@eJournal.app',
+            verified_email=False,
         )
         self.superuser = factory.Admin(
             username='superuser',
@@ -285,6 +289,9 @@ class Command(BaseCommand):
         self.gen_format()
         self.gen_entries()
         self.gen_journal_import_requests()
+        User.objects.filter(pk__in=[
+            self.student.pk, self.student2.pk, self.student3.pk, self.ta2.pk
+        ]).update(verified_email=True)
 
         if options['n_performance_students']:
             call_command('add_performance_course', options['n_performance_students'])

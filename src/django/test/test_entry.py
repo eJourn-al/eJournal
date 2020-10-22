@@ -8,6 +8,7 @@ from test.utils.generic_utils import equal_models
 
 from django.conf import settings
 from django.core.exceptions import ValidationError
+from django.db.models import Max
 from django.test import TestCase
 from faker import Faker
 
@@ -112,6 +113,77 @@ class EntryAPITest(TestCase):
         factory.UnlimitedEntry(node__journal=journal, grade__grade=1)
         assert User.objects.exclude(pk__in=users_before).count() == 0, \
             'No additional user is created, the grade author should default to the assignment author'
+
+    def test_create_entry_params_factory(self):
+        fcs_before = list(FileContext.objects.values_list('pk', flat=True))
+
+        course = factory.Course()
+        assignment = factory.Assignment(courses=[course], format__templates=[])
+        template = factory.TemplateAllTypes(format=assignment.format)
+        journal = factory.Journal(assignment=assignment)
+        student = journal.authors.first().user
+
+        data = factory.UnlimitedEntryCreationParams(journal=journal)
+        assert data['journal_id'] == journal.pk
+        assert data['template_id'] == template.pk
+
+        new_temp_fcs = FileContext.objects.filter(is_temp=True).exclude(pk__in=fcs_before)
+        assert all([fc.author == student for fc in new_temp_fcs]) and new_temp_fcs.exists()
+
+        api.create(self, 'entries', params=data, user=student)
+
+    def test_bulk_update_entry_grade(self):
+        entry = factory.UnlimitedEntry(grade__grade=1)
+        entry2 = factory.UnlimitedEntry(grade__grade=1)
+        grade = Grade(entry=entry, grade=2, published=True, author=entry.author)
+        grade2 = Grade(entry=entry2, grade=2, published=True, author=entry.author)
+        Grade.objects.bulk_create([grade, grade2])
+
+        assert entry.grade != grade, 'Bulk creation does not trigger save so the relation is not set'
+
+        # Check if the annotations actually fetch the newest grade
+        assert Entry.objects \
+            .filter(pk=entry.pk) \
+            .annotate(newest_grade_id=Max('grade_set__id')) \
+            .filter(newest_grade_id=grade.pk) \
+            .exists()
+        assert Entry.objects \
+            .filter(pk=entry2.pk) \
+            .annotate(newest_grade_id=Max('grade_set__id')) \
+            .filter(newest_grade_id=grade2.pk) \
+            .exists()
+
+        entries = list(Entry.objects.filter(pk__in=[entry.pk, entry2.pk])
+                       .annotate(newest_grade_id=Max('grade_set__id'))
+                       .order_by('pk'))
+        for e in entries:
+            if e == entry:
+                assert e.newest_grade_id == grade.pk
+            if e == entry2:
+                assert e.newest_grade_id == grade2.pk
+            e.grade_id = e.newest_grade_id
+
+        Entry.objects.bulk_update(entries, ['grade_id'])
+
+        entry.refresh_from_db()
+        entry2.refresh_from_db()
+        assert entry.grade == grade
+        assert entry2.grade == grade2
+
+    def test_only_most_recent_published_entry_grade_contributes_to_journal_grade_total(self):
+        entry = factory.UnlimitedEntry(grade__grade=1, grade__published=True)
+        entry2 = factory.UnlimitedEntry(grade__grade=3, grade__published=True, node__journal=entry.node.journal)
+        journal = entry.node.journal
+        journal.refresh_from_db()  # Journal is created before the entry and grade in the factory
+        assert journal.grade == entry.grade.grade + entry2.grade.grade
+
+        factory.Grade(entry=entry, grade=2, published=False)
+        journal.refresh_from_db()
+        assert journal.grade == entry2.grade.grade, 'Journal grade consists only of published grades'
+
+        factory.Grade(entry=entry, grade=5, published=True)
+        journal.refresh_from_db()
+        assert journal.grade == 5 + entry2.grade.grade
 
     def test_entry_validation(self):
         # An entry cannot be instantiated without a node

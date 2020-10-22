@@ -99,8 +99,9 @@ class GradeView(viewsets.ViewSet):
 
         request.user.check_permission('can_publish_grades', assignment)
 
-        for journal in Journal.objects.filter(assignment=assignment).distinct():
+        journals = Journal.objects.filter(assignment=assignment, unpublished__gt=0).distinct()
+        for journal in journals:
             grading.publish_all_journal_grades(journal, request.user)
-            grading.task_journal_status_to_LMS.delay(journal.pk)
+        grading.task_bulk_send_journal_status_to_LMS.delay(list(journals.values_list('pk', flat=True)))
 
         return response.success()

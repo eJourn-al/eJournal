@@ -1,5 +1,6 @@
 import filecmp
 import re
+from itertools import zip_longest
 
 from deepdiff import DeepDiff
 from django.conf import settings
@@ -9,6 +10,23 @@ from django.db.models.fields.related import ManyToManyField
 import VLE.models
 import VLE.utils.error_handling
 import VLE.utils.file_handling as file_handling
+
+
+def zip_equal(*iterables):
+    """
+    Zip and raise exception if lengths are not equal.
+    Params:
+        iterables: Iterable objects
+    Return:
+        A new iterator outputting tuples where one element comes from each iterable
+    """
+    filler = object()
+
+    for combo in zip_longest(*iterables, fillvalue=filler):
+        if any(filler is c for c in combo):
+            raise ValueError('Iterables have different lengths. Iterable(s) #{} (of 0..{}) ran out first.'.format(
+                             [i for i, c in enumerate(combo) if c is filler], len(combo) - 1))
+    yield combo
 
 
 def _model_instance_to_dict(instance, ignore=[]):
@@ -95,7 +113,7 @@ def check_equality_of_imported_rich_text(source_rt, target_rt, model):
     Also checks if the embedded FCs are actually copied but mostly equal.
     """
     if not any([model is handled_model for handled_model in [VLE.models.Content, VLE.models.Comment]]):
-        raise VLE.utils.error_handling.VLEProgrammingError('Validating RT of unhandled model')
+        raise VLE.utils.error_handling.VLEProgrammingError('Validating RT of unhandled model.')
 
     fc_ignore_keys = ['last_edited', 'creation_date', 'update_date', 'id', 'access_id']
 

@@ -20,7 +20,7 @@ class FileView(viewsets.ViewSet):
         file = FileContext.objects.get(pk=pk)
 
         if file.is_temp and not request.user == file.author:
-            return response.forbidden('You are not allowed to view this file')
+            return response.forbidden('You are not allowed to view this file.')
 
         if file.comment:
             request.user.check_can_view(file.comment)
@@ -30,7 +30,7 @@ class FileView(viewsets.ViewSet):
             request.user.check_can_view(file.assignment)
         else:
             if not request.user.can_view(file.author):
-                return response.forbidden('You are not allowed to view this file')
+                return response.forbidden('You are not allowed to view this file.')
 
         return response.file(file, file.file_name)
 

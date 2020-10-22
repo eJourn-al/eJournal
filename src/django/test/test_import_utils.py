@@ -1,7 +1,7 @@
 import test.factory as factory
 import test.utils.generic_utils as test_utils
 from test.utils.generic_utils import (check_equality_of_imported_file_context, check_equality_of_imported_rich_text,
-                                      equal_models)
+                                      equal_models, zip_equal)
 
 from django.test import TestCase
 
@@ -11,7 +11,7 @@ from VLE.utils.error_handling import VLEProgrammingError
 
 
 class ImportTest(TestCase):
-    def test_generic_test_utils(self):
+    def test_generic_test_utils_equal_models(self):
         a = {'a': {'b': 1}}
         b = {'a': {'b': 2}}
 
@@ -24,6 +24,22 @@ class ImportTest(TestCase):
                             abbreviation=c1.abbreviation)
 
         assert test_utils.equal_models(c1, c2, ignore_keys=['id', 'creation_date', 'update_date'])
+
+    def test_generic_test_utils_zip_equal(self):
+        a = [1, 2]
+        b = [1, 2, 3]
+
+        with self.assertRaises(ValueError):
+            for a, b in zip_equal(a, b):
+                assert a == b
+
+        with self.assertRaises(ValueError):
+            for b, a in zip_equal(b, a):
+                assert a == b
+
+        a = [1, 2, 3]
+        for a, b in zip_equal(a, b):
+            assert a == b
 
     def test_comment_import_with_attached_files(self):
         source_comment = factory.StudentComment(n_att_files=1)
@@ -159,37 +175,43 @@ class ImportTest(TestCase):
 
     def test__copy_grade_based_on_jir_action(self):
         journal = factory.Journal()
+        journal2 = factory.Journal(ap__user=journal.authors.first().user)
         teacher2 = factory.Teacher()
 
         entry = factory.UnlimitedEntry(node__journal=journal, grade__grade=1, grade__published=True)
-        grade = import_utils._copy_grade_based_on_jir_action(entry, teacher2, JournalImportRequest.APPROVED_INC_GRADES)
+        new_entry = factory.UnlimitedEntry(node__journal=journal2, grade=None)
+        grade = import_utils._copy_grade_based_on_jir_action(
+            new_entry, entry.grade, teacher2, JournalImportRequest.APPROVED_INC_GRADES)
 
         # Only approved JIR states allow for grade copy
         self.assertRaises(
             VLEProgrammingError,
             import_utils._copy_grade_based_on_jir_action,
-            entry, teacher2, JournalImportRequest.PENDING
+            entry, entry.grade, teacher2, JournalImportRequest.PENDING
         )
         assert grade.pk != entry.grade.pk, 'A new grade object is created'
         assert grade.grade == entry.grade.grade, \
             'When approving including grades, the entry\'s grade\'s points is copied'
         assert grade.author.pk == teacher2.pk, 'The passed author is set as author of the grade'
         assert grade.published, 'The grade is always published'
-        assert grade.entry.pk == entry.pk, 'The copied grade is linked to the passed entry'
+        assert grade.entry.pk == new_entry.pk, 'The copied grade is linked to the passed entry'
 
         entry = factory.UnlimitedEntry(node__journal=journal, grade=None)
-        grade = import_utils._copy_grade_based_on_jir_action(entry, teacher2, JournalImportRequest.APPROVED_INC_GRADES)
+        grade = import_utils._copy_grade_based_on_jir_action(
+                entry, entry.grade, teacher2, JournalImportRequest.APPROVED_INC_GRADES)
         assert grade is None, 'Approved including grades with a previous grade of None creates no new grade object'
 
         entry = factory.UnlimitedEntry(node__journal=journal, grade__grade=1, grade__published=False)
-        grade = import_utils._copy_grade_based_on_jir_action(entry, teacher2, JournalImportRequest.APPROVED_INC_GRADES)
+        grade = import_utils._copy_grade_based_on_jir_action(
+                entry, entry.grade, teacher2, JournalImportRequest.APPROVED_INC_GRADES)
         assert grade is None, 'Copying an unpublished grade should yield no new grade'
 
-        grade = import_utils._copy_grade_based_on_jir_action(entry, teacher2, JournalImportRequest.APPROVED_EXC_GRADES)
+        grade = import_utils._copy_grade_based_on_jir_action(
+                entry, entry.grade, teacher2, JournalImportRequest.APPROVED_EXC_GRADES)
         assert grade is None, 'Approved excluding grades creates no new grade object'
 
         grade = import_utils._copy_grade_based_on_jir_action(
-            entry, teacher2, JournalImportRequest.APPROVED_WITH_GRADES_ZEROED)
+            entry, entry.grade, teacher2, JournalImportRequest.APPROVED_WITH_GRADES_ZEROED)
         assert grade.grade == 0, 'Approved with grades zeroed creates a new grade object set to zero.'
 
     def test__select_vle_coupling_based_on_jir_action(self):
