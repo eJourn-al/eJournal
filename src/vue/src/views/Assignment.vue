@@ -367,7 +367,7 @@
                 <statistics-card :stats="stats"/>
             </b-col>
             <b-col
-                v-if="canPerformActions"
+                v-if="canPerformActions && !loadingJournals"
                 slot="right-content-column"
                 md="6"
                 lg="12"

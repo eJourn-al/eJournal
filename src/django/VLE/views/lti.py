@@ -182,7 +182,7 @@ def update_lti_groups(request):
     if course:
         return response.success()
     else:
-        return response.bad_request('Course not found')
+        return response.bad_request('Course not found.')
 
 
 @api_view(['POST'])

@@ -58,7 +58,7 @@ def gen_url(node=None, journal=None, assignment=None, course=None, user=None):
     User needs to be added if no course is supplied, this is to get the correct course.
     """
     if not (node or journal or assignment or course):
-        raise VLEProgrammingError('(gen_url) no object was supplied')
+        raise VLEProgrammingError('(gen_url) no object was supplied.')
 
     if journal is None and node is not None:
         journal = node.journal
@@ -66,7 +66,7 @@ def gen_url(node=None, journal=None, assignment=None, course=None, user=None):
         assignment = journal.assignment
     if course is None and assignment is not None:
         if user is None:
-            raise VLEProgrammingError('(gen_url) if course is not supplied, user needs to be supplied')
+            raise VLEProgrammingError('(gen_url) if course is not supplied, user needs to be supplied.')
         course = assignment.get_active_course(user)
         if course is None:
             raise VLEParticipationError(assignment, user)
@@ -159,7 +159,7 @@ class FileContext(CreateUpdateModel):
     def save(self, *args, **kwargs):
         if self._state.adding:
             if not self.author:
-                raise VLEProgrammingError('FileContext author should be set on creation')
+                raise VLEProgrammingError('FileContext author should be set on creation.')
 
         return super(FileContext, self).save(*args, **kwargs)
 
@@ -585,7 +585,7 @@ class Notification(CreateUpdateModel):
         NEW_JOURNAL_IMPORT_REQUEST: 'journal',
     }
 
-    OWN_GROUP_TYPES = [NEW_ENTRY, NEW_COMMENT, NEW_JOURNAL_IMPORT_REQUEST]
+    OWN_GROUP_TYPES = {NEW_ENTRY, NEW_COMMENT, NEW_JOURNAL_IMPORT_REQUEST}
 
     type = models.CharField(
         max_length=10,
@@ -1511,7 +1511,7 @@ class Journal(CreateUpdateModel, ComputedFieldsModel):
         if not self.author_limit == self.UNLIMITED and self.authors.count() > self.author_limit:
             raise ValidationError('Journal users exceed author limit.')
         if not self.assignment.is_group_assignment and self.author_limit > 1:
-            raise ValidationError('Journal author limit of a non group assignment exceeds 1')
+            raise ValidationError('Journal author limit of a non group assignment exceeds 1.')
 
         is_new = self._state.adding
         if self.stored_name is None:
@@ -1790,6 +1790,7 @@ class Entry(CreateUpdateModel):
         author_id = self.__dict__.get('author_id', None)
         node_id = self.__dict__.get('node_id', None)
         author = self.author if self.author else User.objects.get(pk=author_id) if author_id else None
+        self.grade = self.grade_set.order_by('creation_date').last()
 
         if author and not self.last_edited_by:
             self.last_edited_by = author
@@ -1798,11 +1799,11 @@ class Entry(CreateUpdateModel):
             try:
                 node = Node.objects.get(pk=node_id) if node_id else self.node
             except Node.DoesNotExist:
-                raise ValidationError('Saving entry without corresponding node')
+                raise ValidationError('Saving entry without corresponding node.')
 
             if (author and not node.journal.authors.filter(user=author).exists() and not self.teacher_entry and
                     not self.jir):
-                raise ValidationError('Saving non-teacher entry created by user not part of journal')
+                raise ValidationError('Saving non-teacher entry created by user not part of journal.')
 
         super(Entry, self).save(*args, **kwargs)
 
@@ -1866,9 +1867,8 @@ class Grade(CreateUpdateModel):
     """
     entry = models.ForeignKey(
         'Entry',
-        editable=False,
-        related_name='+',
-        on_delete=models.CASCADE
+        related_name='grade_set',
+        on_delete=models.CASCADE,
     )
     grade = models.FloatField(
         null=True,
@@ -1886,8 +1886,8 @@ class Grade(CreateUpdateModel):
     )
 
     def save(self, *args, **kwargs):
+        is_new = self._state.adding
         super(Grade, self).save(*args, **kwargs)
-
         if self.published:
             for author in self.entry.node.journal.authors.all():
                 Notification.objects.create(
@@ -1895,6 +1895,9 @@ class Grade(CreateUpdateModel):
                     user=author.user,
                     grade=self
                 )
+        # Save entry to set this grade as the new entry grade
+        if is_new:
+            self.entry.save()
 
     def to_string(self, user=None):
         return "Grade"
@@ -1946,7 +1949,7 @@ class Template(CreateUpdateModel):
 @receiver(models.signals.pre_delete, sender=Template)
 def delete_pending_jirs_on_source_deletion(sender, instance, **kwargs):
     if Content.objects.filter(field__template=instance).exists():
-        raise VLEProgrammingError('Content still exists which depends on a template being deleted')
+        raise VLEProgrammingError('Content still exists which depends on a template being deleted.')
 
 
 class Field(CreateUpdateModel):
@@ -1967,6 +1970,9 @@ class Field(CreateUpdateModel):
     DATETIME = 'dt'
     SELECTION = 's'
     NO_SUBMISSION = 'n'
+
+    TYPES_WITHOUT_FILE_CONTEXT = {TEXT, VIDEO, URL, DATE, DATETIME, SELECTION, NO_SUBMISSION}
+
     TYPES = (
         (TEXT, 'text'),
         (RICH_TEXT, 'rich text'),
@@ -2130,7 +2136,7 @@ class JournalImportRequest(CreateUpdateModel):
     APPROVED_EXC_GRADES = 'AEG'
     APPROVED_WITH_GRADES_ZEROED = 'AWGZ'
     EMPTY_WHEN_PROCESSED = 'EWP'
-    APPROVED_STATES = [APPROVED_INC_GRADES, APPROVED_EXC_GRADES, APPROVED_WITH_GRADES_ZEROED]
+    APPROVED_STATES = {APPROVED_INC_GRADES, APPROVED_EXC_GRADES, APPROVED_WITH_GRADES_ZEROED}
     STATES = (
         (PENDING, 'Pending'),
         (DECLINED, 'Declined'),
