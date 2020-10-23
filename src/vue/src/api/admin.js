@@ -10,4 +10,9 @@ export default {
         return auth.post('admin/get_all_users', null, connArgs)
             .then(response => response.data.users)
     },
+
+    removeUser (id, connArgs = auth.DEFAULT_CONN_ARGS) {
+        return auth.post(`admin/${id}/remove_user`, connArgs)
+            .then(response => response.data)
+    },
 }

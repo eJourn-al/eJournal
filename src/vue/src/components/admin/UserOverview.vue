@@ -75,7 +75,10 @@
                             name="ellipsis-v"
                             class="move-icon"
                         />
-                        <b-dropdown-item-button @click="removeUser(user)">
+                        <b-dropdown-item-button
+                            v-if="user.id !== $store.getters['user/uID']"
+                            @click="removeUser(user)"
+                        >
                             Remove
                         </b-dropdown-item-button>
                         <b-dropdown-item-button
@@ -83,6 +86,12 @@
                             @click="makeTeacher(user)"
                         >
                             Make teacher
+                        </b-dropdown-item-button>
+                        <b-dropdown-item-button
+                            v-if="user.is_teacher"
+                            @click="removeTeacher(user)"
+                        >
+                            Remove teacher
                         </b-dropdown-item-button>
                     </b-dropdown>
                 </b-td>
@@ -101,15 +110,28 @@ export default {
         }
     },
     created () {
-        adminAPI.getAllUsers()
-            .then((users) => { this.users = users })
+        this.getAllUsers()
     },
     methods: {
+        getAllUsers () {
+            adminAPI.getAllUsers()
+                .then((users) => { this.users = users })
+        },
         removeUser (user) {
-            this.$toasted.info(`TODO: Remove user ${user.full_name}`)
+            if (window.confirm(`Are you sure you want to remove ${user.full_name}? All of their work will be deleted.`
+                + 'This includes courses which they are the author of. This cannot be undone!')) {
+                adminAPI.removeUser(user.id)
+                    .then(() => { this.$toasted.success('Successfully removed user.') })
+                    .finally(() => {
+                        this.getAllUsers()
+                    })
+            }
         },
         makeTeacher (user) {
             this.$toasted.info(`TODO: Make teacher ${user.full_name}`)
+        },
+        removeTeacher (user) {
+            this.$toasted.info(`TODO: Remove teacher ${user.full_name}`)
         },
     },
 }

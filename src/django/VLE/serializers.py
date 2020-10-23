@@ -82,8 +82,8 @@ class UserSerializer(serializers.ModelSerializer):
 class UserOverviewSerializer(serializers.ModelSerializer):
     class Meta:
         model = VLE.models.User
-        fields = ('username', 'full_name', 'email', 'is_teacher', 'is_active')
-        read_only_fields = ('username', 'full_name', 'email', 'is_teacher', 'is_active')
+        fields = ('username', 'full_name', 'email', 'is_teacher', 'is_active', 'id')
+        read_only_fields = ('username', 'full_name', 'email', 'is_teacher', 'is_active', 'id')
 
 
 class OwnUserSerializer(serializers.ModelSerializer):

@@ -130,3 +130,22 @@ class AdminView(viewsets.ViewSet):
 
         users = UserOverviewSerializer(User.objects.all(), context={'user': request.user}, many=True).data
         return response.success({'users': users})
+
+    @action(methods=['post'], detail=True)
+    def remove_user(self, request, pk):
+        """Remove a specific user.
+
+        Arguments:
+        TODO
+        """
+        if not request.user.is_superuser:
+            return response.forbidden('You are not allowed to remove users.')
+        if str(request.user.pk) == pk:
+            return response.forbidden('You are not allowed to delete your own account.')
+
+        try:
+            User.objects.get(pk=pk).delete()
+        except User.DoesNotExist:
+            return response.not_found('User to delete does not exist.')
+
+        return response.success()
