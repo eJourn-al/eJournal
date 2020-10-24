@@ -93,7 +93,7 @@ class AdminView(viewsets.ViewSet):
 
         Arguments:
         request -- request data
-            data -- the new data for the journal
+            data -- the new data for the instance
 
         Returns:
         On failure:
@@ -128,7 +128,8 @@ class AdminView(viewsets.ViewSet):
         if not request.user.is_superuser:
             return response.forbidden('You are not allowed to get all users.')
 
-        users = UserOverviewSerializer(User.objects.all(), context={'user': request.user}, many=True).data
+        users = UserOverviewSerializer(User.objects.all().order_by('full_name'), context={'user': request.user},
+            many=True).data
         return response.success({'users': users})
 
     @action(methods=['post'], detail=True)
@@ -147,5 +148,28 @@ class AdminView(viewsets.ViewSet):
             User.objects.get(pk=pk).delete()
         except User.DoesNotExist:
             return response.not_found('User to delete does not exist.')
+
+        return response.success()
+
+    @action(methods=['post'], detail=True)
+    def update_teacher_status(self, request, pk):
+        """Make a specific user a teacher or remove their teacher status.
+
+        This allows the user to create new courses, in which they will automatically receive the teacher role.
+
+        Arguments:
+        TODO
+        """
+        if not request.user.is_superuser:
+            return response.forbidden('You are not allowed to manage teachers.')
+
+        is_teacher, = utils.required_typed_params(request.data, (bool, 'is_teacher'))
+
+        try:
+            user = User.objects.get(pk=pk)
+            user.is_teacher = is_teacher
+            user.save()
+        except User.DoesNotExist:
+            return response.not_found('User to update teacher status of does not exist.')
 
         return response.success()

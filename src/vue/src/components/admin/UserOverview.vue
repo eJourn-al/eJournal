@@ -128,10 +128,18 @@ export default {
             }
         },
         makeTeacher (user) {
-            this.$toasted.info(`TODO: Make teacher ${user.full_name}`)
+            adminAPI.updateTeacherStatus(user.id, { is_teacher: true })
+                .then(() => { this.$toasted.success(`Successfully made ${user.full_name} teacher.`) })
+                .finally(() => {
+                    this.getAllUsers()
+                })
         },
         removeTeacher (user) {
-            this.$toasted.info(`TODO: Remove teacher ${user.full_name}`)
+            adminAPI.updateTeacherStatus(user.id, { is_teacher: false })
+                .then(() => { this.$toasted.success(`Successfully removed ${user.full_name} as a teacher.`) })
+                .finally(() => {
+                    this.getAllUsers()
+                })
         },
     },
 }
