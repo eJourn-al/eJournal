@@ -430,5 +430,3 @@ class UserView(viewsets.ViewSet):
             send_invite_emails.delay(created_user_ids)
 
         return response.success(description=f"Successfully invited {len(created_user_ids)} users.")
-
-
