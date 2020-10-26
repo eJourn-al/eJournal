@@ -13,16 +13,6 @@
                 <b-tab>
                     <template slot="title">
                         <icon
-                            name="edit"
-                            class="shift-up-3"
-                        />
-                        Edit Instance
-                    </template>
-                    <edit-instance/>
-                </b-tab>
-                <b-tab>
-                    <template slot="title">
-                        <icon
                             name="users"
                             class="shift-up-3"
                         />
@@ -48,12 +38,10 @@
 <script>
 import WideContent from '@/components/columns/WideContent.vue'
 import BreadCrumb from '@/components/assets/BreadCrumb.vue'
-import EditInstance from '@/components/admin/EditInstance.vue'
 import UserOverview from '@/components/admin/UserOverview.vue'
 import InviteUsers from '@/components/admin/InviteUsers.vue'
 
 
-// import courseAPI from '@/api/course.js'
 import adminAPI from '@/api/admin.js'
 
 export default {
@@ -61,7 +49,6 @@ export default {
     components: {
         WideContent,
         BreadCrumb,
-        EditInstance,
         UserOverview,
         InviteUsers,
     },
