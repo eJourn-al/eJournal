@@ -323,7 +323,7 @@ export default {
                             })
                         })
                         this.$toasted.success('Successfully imported user data from file.')
-                        this.usersToInvite = this.usersToInvite.concat(importedUsersToInvite)
+                        this.usersToInvite = importedUsersToInvite.concat(this.usersToInvite)
                         this.$refs['invite-user-file-upload-modal'].hide()
                     })
                     .catch(() => {
@@ -332,7 +332,7 @@ export default {
             };
         },
         removeRow (user) {
-            this.usersToInvite.pop(user)
+            this.usersToInvite.splice(this.usersToInvite.indexOf(user), 1)
             if (this.usersToInvite.length === 0) {
                 this.addRow()
             }
