@@ -78,7 +78,17 @@
                 name="plus"
                 class="shift-up-3"
             />
-            Add row
+            Add Row
+        </span>
+        <span
+            class="text-grey ml-3 cursor-pointer unselectable darken-on-hover"
+            @click="$refs['invite-user-file-upload-modal'].show()"
+        >
+            <icon
+                name="file-import"
+                class="shift-up-3"
+            />
+            Import Spreadsheet
         </span>
         <b-card
             v-if="errorLogs"
@@ -139,10 +149,90 @@
             <icon name="paper-plane"/>
             Send Invites
         </b-button>
+
+        <b-modal
+            ref="invite-user-file-upload-modal"
+            size="lg"
+            hideFooter
+            noEnforceFocus
+            title="Import users"
+        >
+            <b-card class="no-hover">
+                <h2 class="theme-h2 mb-2">
+                    Import users to invite from a spreadsheet
+                </h2>
+                Upload a spreadsheet to import new users to eJournal. Please adhere to the following format, with each
+                new user on a new row. <b>Note:</b> no headers shall be present in the file.
+
+
+                <table
+                    class="mt-2 mb-2 full-width border"
+                >
+                    <thead>
+                        <tr class="text-align-left border">
+                            <th class="p-1 border">
+                                Name
+                            </th>
+                            <th class="p-1 border">
+                                Username
+                            </th>
+                            <th class="p-1 border">
+                                Email
+                            </th>
+                            <th class="p-1 border">
+                                Is teacher
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="p-1 border">
+                                John Doe
+                            </td>
+                            <td class="p-1 border">
+                                user1
+                            </td>
+                            <td class="p-1 border">
+                                test@example.com
+                            </td>
+                            <td class="p-1 border">
+                                1
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="p-1 border">
+                                Jane Doe
+                            </td>
+                            <td class="p-1 border">
+                                user2
+                            </td>
+                            <td class="p-1 border">
+                                test2@example.com
+                            </td>
+                            <td class="p-1 border">
+                                0
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <b-form-file
+                    ref="fileinput"
+                    class="fileinput mt-1"
+                    multiple
+                    placeholder="Select file"
+                    accept="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,
+                        application/vnd.ms-excel"
+                    @change="importRowsFromSpreadsheet"
+                />
+            </b-card>
+        </b-modal>
     </div>
 </template>
 
 <script>
+import ExcelJS from 'exceljs'
+
 import adminAPI from '@/api/admin.js'
 
 export default {
@@ -199,6 +289,47 @@ export default {
                 email: null,
                 is_teacher: false,
             })
+        },
+        importRowsFromSpreadsheet (event) {
+            const workbook = new ExcelJS.Workbook()
+            const fileReader = new FileReader()
+            const importedUsersToInvite = []
+
+            function asText (value) {
+                if (!value) {
+                    return null
+                } else if (typeof value === 'object') {
+                    return value.text
+                }
+
+                return value
+            }
+
+            if (!event.target.files.length > 0) {
+                return
+            }
+
+            fileReader.readAsArrayBuffer(event.target.files[0]);
+            fileReader.onload = () => {
+                const buffer = fileReader.result;
+                workbook.xlsx.load(buffer)
+                    .then((wb) => {
+                        wb.worksheets[0].eachRow((row) => {
+                            importedUsersToInvite.push({
+                                full_name: asText(row.values[1]),
+                                username: asText(row.values[2]),
+                                email: asText(row.values[3]),
+                                is_teacher: row.values[4] === 1,
+                            })
+                        })
+                        this.$toasted.success('Successfully imported user data from file.')
+                        this.usersToInvite = this.usersToInvite.concat(importedUsersToInvite)
+                        this.$refs['invite-user-file-upload-modal'].hide()
+                    })
+                    .catch(() => {
+                        this.$toasted.error('Something went wrong while reading the file.')
+                    })
+            };
         },
         removeRow (user) {
             this.usersToInvite.pop(user)
