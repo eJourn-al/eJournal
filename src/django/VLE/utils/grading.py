@@ -25,6 +25,12 @@ def publish_all_journal_grades(journal, publisher):
 
 
 @shared_task
+def task_bulk_send_journal_status_to_LMS(journal_pks):
+    for journal_pk in journal_pks:
+        task_journal_status_to_LMS(journal_pk)
+
+
+@shared_task
 def task_journal_status_to_LMS(journal_pk):
     return send_journal_status_to_LMS(Journal.objects.get(pk=journal_pk))
 

@@ -102,16 +102,6 @@ export default {
                         this.$store.dispatch('user/logout')
                         this.$router.push({ name: 'Login' })
                     })
-                    .catch((error) => {
-                        this.$router.push({
-                            name: 'ErrorPage',
-                            params: {
-                                code: error.response.status,
-                                reasonPhrase: error.response.statusText,
-                                description: error.response.data.description,
-                            },
-                        })
-                    })
             }
         },
     },

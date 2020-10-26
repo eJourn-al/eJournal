@@ -114,7 +114,7 @@
                                 type="number"
                                 min="0"
                                 placeholder="-"
-                                class="theme-input teacher-entry-grade"
+                                class="theme-input inline"
                                 size="3"
                             />
                         </b-td>
@@ -254,7 +254,9 @@ export default {
                 this.requestInFlight = true
                 teacherEntryAPI.update(this.selectedTeacherEntry.id, {
                     journals: this.selectedJournals,
-                }, { customSuccessToast: 'Teacher entry successfully updated.' })
+                }, {
+                    customSuccessToast: 'Teacher entry successfully updated.',
+                })
                     .then((data) => {
                         this.requestInFlight = false
                         this.$emit('teacher-entry-updated', data)
@@ -267,7 +269,7 @@ export default {
                 + 'journals it is in and cannot be undone!')) {
                 this.requestInFlight = true
                 teacherEntryAPI.delete(this.selectedTeacherEntry.id,
-                    { customSuccessToast: 'Teacher entry successfully updated.' })
+                    { customSuccessToast: 'Teacher entry successfully deleted.' })
                     .then((data) => {
                         this.requestInFlight = false
                         this.$emit('teacher-entry-updated', data)
@@ -278,8 +280,3 @@ export default {
     },
 }
 </script>
-
-<style lang="sass">
-input.theme-input.teacher-entry-grade
-    width: 4em
-</style>

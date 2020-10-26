@@ -34,16 +34,6 @@ export default {
                 this.$store.commit('user/EMAIL_VERIFIED')
                 this.$router.push({ name: 'Home' })
             })
-            .catch((error) => {
-                this.$router.push({
-                    name: 'ErrorPage',
-                    params: {
-                        code: error.response.status,
-                        reasonPhrase: error.response.statusText,
-                        description: error.response.data.description,
-                    },
-                })
-            })
     },
 }
 </script>

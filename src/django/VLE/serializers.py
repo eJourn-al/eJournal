@@ -414,7 +414,7 @@ class AssignmentSerializer(serializers.ModelSerializer):
             else:
                 return None
         elif not self.context['course'] in assignment.courses.all():
-            raise VLE.utils.error_handling.VLEProgrammingError('Wrong course is supplied')
+            raise VLE.utils.error_handling.VLEProgrammingError('Wrong course is supplied.')
         elif not self.context['user'].can_view(self.context['course']):
             raise VLE.utils.error_handling.VLEParticipationError(self.context['course'], self.context['user'])
 
@@ -788,7 +788,8 @@ class TeacherEntrySerializer(EntrySerializer):
 
     def get_journals(self, teacher_entry):
         return TeacherEntryGradeSerializer(
-            teacher_entry.entry_set.all().select_related('node__journal', 'grade'), many=True
+            teacher_entry.entry_set.all().select_related('node__journal', 'grade').order_by('node__journal__name'),
+            many=True
         ).data
 
 

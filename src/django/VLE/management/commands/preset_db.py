@@ -7,11 +7,12 @@ import random
 import test.factory as factory
 
 from dateutil.relativedelta import relativedelta
+from django.core.management import call_command
 from django.core.management.base import BaseCommand
 from django.utils import timezone
 from faker import Faker
 
-from VLE.models import Entry, Field, Journal, Node, Role
+from VLE.models import Entry, Journal, Node, Role, User
 
 faker = Faker()
 
@@ -21,24 +22,27 @@ class Command(BaseCommand):
 
     help = 'Generates useful data for the database.'
 
-    def gen_users(self, n_performance_students):
+    def gen_users(self):
         self.student = factory.Student(
             username='student',
             full_name='Lars van Hijfte',
             password='pass',
             email='lars@eJournal.app',
+            verified_email=False,
         )
         self.student2 = factory.Student(
             username='student2',
             full_name='Rick Watertor',
             password='pass',
             email='rick@eJournal.app',
+            verified_email=False,
         )
         self.student3 = factory.Student(
             username='student3',
             full_name='Dennis Wind',
             password='pass',
             email='dennis@eJournal.app',
+            verified_email=False,
         )
         self.student4 = factory.Student(
             username='student4',
@@ -60,20 +64,21 @@ class Command(BaseCommand):
             full_name='Engel Hamer',
             password='pass',
             email='test@eJournal.app',
+            verified_email=False,
         )
         self.ta = factory.Student(
             username='TA',
             full_name='De TA van TAing',
-            verified_email=False,
             password='pass',
             email='ta@eJournal.app',
+            verified_email=False,
         )
         self.ta2 = factory.Student(
             username='TA2',
             full_name='Backup TA van TAing',
-            verified_email=False,
             password='pass',
             email='ta2@eJournal.app',
+            verified_email=False,
         )
         self.superuser = factory.Admin(
             username='superuser',
@@ -87,7 +92,6 @@ class Command(BaseCommand):
         )
 
         self.students = [self.student, self.student2, self.student3, self.student4, self.student5]
-        self.performance_students = [factory.Student() for _ in range(n_performance_students)]
         self.tas = [self.ta, self.ta2]
         self.users = self.students + self.tas + [self.teacher] + [self.test_user] + [self.superuser]
 
@@ -119,18 +123,6 @@ class Command(BaseCommand):
                 'tas': [self.ta2],
                 'student_group_names': ['Algol', 'Ruby']
             },
-            'Performance Course':  {
-                'instance': factory.Course(
-                    name='Performance Course',
-                    abbreviation='SPEED',
-                    author=self.teacher,
-                    startdate=faker.date('2019-09-01'),
-                    enddate=faker.date('2022-07-31'),
-                ),
-                'students': self.students + [self.test_user] + self.performance_students,
-                'tas': [self.ta2],
-                'student_group_names': ['Speedy', 'Gonzales']
-            }
         }
 
         for c in self.courses.values():
@@ -180,16 +172,8 @@ class Command(BaseCommand):
             due_date=timezone.now() + relativedelta(years=1, days=1),
             lock_date=timezone.now() + relativedelta(years=1, days=2),
         )
-        self.performance_assignment = factory.Assignment(
-            name='Performance Assignment',
-            description='<p>User for performance testing, holds all users as expected roles + 400 students</p>',
-            courses=[self.courses['Performance Course']['instance']],
-            format__templates=[{'type': Field.RICH_TEXT}],
-            due_date=timezone.now() + relativedelta(years=1, days=1),
-            lock_date=timezone.now() + relativedelta(years=1, days=2),
-        )
 
-        self.assignments = [self.logboek, self.colloquium, self.group_assignment, self.performance_assignment]
+        self.assignments = [self.logboek, self.colloquium, self.group_assignment]
 
     def gen_group_journals(self):
         """
@@ -211,8 +195,6 @@ class Command(BaseCommand):
 
     def gen_format(self):
         for a in self.assignments:
-            if a.name == self.performance_assignment.name:
-                continue  # Already set to just a text field, reduces the generation time (no files)
             factory.FilesTemplate(format=a.format)
             factory.ColloquiumTemplate(format=a.format)
             factory.MentorgesprekTemplate(format=a.format)
@@ -261,9 +243,6 @@ class Command(BaseCommand):
         # Group Assignment
         factory.ProgressPresetNode(format=self.group_assignment.format, target=10)
 
-        # Performance Assignment
-        factory.ProgressPresetNode(format=self.performance_assignment.format, target=10)
-
     def gen_entries(self):
         for a in self.assignments:
             # NOTE: carefull to use a.journal_set or query via AP, both will yield teacher journals
@@ -303,10 +282,16 @@ class Command(BaseCommand):
         """
         Generates a dummy data for a testing environment.
         """
-        self.gen_users(options['n_performance_students'])
+        self.gen_users()
         self.gen_courses()
         self.gen_assignments()
         self.gen_group_journals()
         self.gen_format()
         self.gen_entries()
         self.gen_journal_import_requests()
+        User.objects.filter(pk__in=[
+            self.student.pk, self.student2.pk, self.student3.pk, self.ta2.pk
+        ]).update(verified_email=True)
+
+        if options['n_performance_students']:
+            call_command('add_performance_course', options['n_performance_students'])

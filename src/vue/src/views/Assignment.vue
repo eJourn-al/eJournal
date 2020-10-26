@@ -1,6 +1,6 @@
-<!-- TODO Is this check really required if we redirect, or even better have correct flow anyway? -->
-<template v-if="$hasPermission('can_view_all_journals')">
-    <content-columns>
+<template>
+    <!-- This check helps prevent user seeing the teacher view of the assignment user is not allowed to -->
+    <content-columns v-if="$hasPermission('can_view_all_journals')">
         <bread-crumb
             slot="main-content-column"
             @edit-click="handleEdit()"
@@ -369,7 +369,7 @@
                 <statistics-card :stats="stats"/>
             </b-col>
             <b-col
-                v-if="canPerformActions"
+                v-if="canPerformActions && !loadingJournals"
                 slot="right-content-column"
                 md="6"
                 lg="12"
@@ -553,15 +553,12 @@ export default {
         },
     },
     created () {
-        // TODO Should be moved to the breadcrumb, ensuring there is no more natural flow left that can get you to this
-        // page without manipulating the url manually. If someone does this, simply let the error be thrown
-        // (no checks required)
-        if (!this.$hasPermission('can_view_all_journals', 'assignment', String(this.aID))) {
-            if (this.$root.previousPage) {
-                this.$router.push({ name: this.$root.previousPage.name, params: this.$root.previousPage.params })
-            } else {
-                this.$router.push({ name: 'Home' })
-            }
+        // If a teacher manually links somewhere to an assignment
+        // students will now be directly navigated to their journal
+        if (!this.$hasPermission('can_view_all_journals', 'assignment', this.aID)) {
+            assignmentAPI.get(this.aID, this.cID).then((assignment) => {
+                this.$router.push(this.$root.assignmentRoute(assignment))
+            })
             return
         }
 

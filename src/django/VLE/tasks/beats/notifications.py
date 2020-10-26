@@ -182,6 +182,10 @@ def gen_content_from_notifications(notifications, period):
                 period=period,
                 name=assignment.name,
             )
+
+        # If nothing is sent, remove it from the list
+        if not content[-1]['subcontent']:
+            content.pop()
     return content, sending
 
 
