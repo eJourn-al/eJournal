@@ -87,8 +87,10 @@ class EmailAPITest(TestCase):
                 'token': token,
                 'new_password': self.valid_pass})
 
-        student.is_active = False
-        student.save()
+        self.student.is_active = False
+        self.student.verified_email = False
+        self.student.set_unusable_password()
+        self.student.save()
 
         # Test whether password recovery makes user active (for invitations).
         api.post(
@@ -98,9 +100,9 @@ class EmailAPITest(TestCase):
                 'token': token,
                 'new_password': self.valid_pass})
 
-        assert student.is_active
-        assert student.check_password(self.valid_pass)
-        assert student.verified_email
+        assert self.student.is_active
+        assert self.student.check_password(self.valid_pass)
+        assert self.student.verified_email
 
     def test_verify_email(self):
         api.post(self, 'verify_email', status=400)

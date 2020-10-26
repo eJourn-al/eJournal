@@ -9,6 +9,7 @@ from rest_framework import viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny
 from rest_framework_simplejwt.views import TokenObtainPairView
+from sentry_sdk import capture_message
 
 import VLE.factory as factory
 import VLE.lti_launch as lti_launch
@@ -365,7 +366,6 @@ class UserView(viewsets.ViewSet):
         else:
             return [permission() for permission in self.permission_classes]
 
-
     @action(methods=['post'], detail=False)
     def invite_users(self, request):
         """Invite new users to eJournal.
@@ -407,9 +407,6 @@ class UserView(viewsets.ViewSet):
             return response.bad_request({'existing_usernames': existing_usernames})
         existing_emails = list(User.objects.filter(email__in=[user['email'] for user in users])
                                .values_list('email', flat=True).distinct())
-        if existing_emails:
-            return response.bad_request({'existing_emails': existing_emails})
-        invalid_emails = [user['email'] for user in users]
         if existing_emails:
             return response.bad_request({'existing_emails': existing_emails})
 
