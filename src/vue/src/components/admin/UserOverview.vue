@@ -31,13 +31,22 @@
                 :key="i"
                 class="d-flex"
             >
-                <b-td class="col-3 truncate-content">
+                <b-td
+                    :title="user.full_name"
+                    class="col-3 truncate-content"
+                >
                     {{ user.full_name }}
                 </b-td>
-                <b-td class="col-3 truncate-content">
+                <b-td
+                    :title="user.username"
+                    class="col-3 truncate-content"
+                >
                     {{ user.username }}
                 </b-td>
-                <b-td class="col-3 truncate-content">
+                <b-td
+                    :title="user.email"
+                    class="col-3 truncate-content"
+                >
                     {{ user.email }}
                 </b-td>
                 <b-td class="col-1">
@@ -88,7 +97,7 @@
                             Make teacher
                         </b-dropdown-item-button>
                         <b-dropdown-item-button
-                            v-if="user.is_teacher"
+                            v-else
                             @click="removeTeacher(user)"
                         >
                             Remove teacher
@@ -101,7 +110,7 @@
 </template>
 
 <script>
-import adminAPI from '@/api/admin.js'
+import userAPI from '@/api/user.js'
 
 export default {
     data () {
@@ -114,13 +123,13 @@ export default {
     },
     methods: {
         getAllUsers () {
-            adminAPI.getAllUsers()
+            userAPI.getAllUsers()
                 .then((users) => { this.users = users })
         },
         removeUser (user) {
             if (window.confirm(`Are you sure you want to remove ${user.full_name}? All of their work will be deleted.`
-                + 'This includes courses which they are the author of. This cannot be undone!')) {
-                adminAPI.removeUser(user.id)
+                + 'This cannot be undone!')) {
+                userAPI.delete(user.id)
                     .then(() => { this.$toasted.success('Successfully removed user.') })
                     .finally(() => {
                         this.getAllUsers()
@@ -128,14 +137,14 @@ export default {
             }
         },
         makeTeacher (user) {
-            adminAPI.updateTeacherStatus(user.id, { is_teacher: true })
+            userAPI.update(user.id, { is_teacher: true })
                 .then(() => { this.$toasted.success(`Successfully made ${user.full_name} teacher.`) })
                 .finally(() => {
                     this.getAllUsers()
                 })
         },
         removeTeacher (user) {
-            adminAPI.updateTeacherStatus(user.id, { is_teacher: false })
+            userAPI.update(user.id, { is_teacher: false })
                 .then(() => { this.$toasted.success(`Successfully removed ${user.full_name} as a teacher.`) })
                 .finally(() => {
                     this.getAllUsers()

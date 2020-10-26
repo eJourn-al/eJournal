@@ -16,7 +16,7 @@ import VLE.validators as validators
 
 def make_user(username, password=None, email=None, lti_id=None, profile_picture=settings.DEFAULT_PROFILE_PICTURE,
               is_superuser=False, is_teacher=False, full_name=None, verified_email=False, is_staff=False,
-              is_test_student=False, is_active=True):
+              is_test_student=False, is_active=True, save=True):
     """Create a user.
 
     Arguments:
@@ -39,7 +39,9 @@ def make_user(username, password=None, email=None, lti_id=None, profile_picture=
         user.set_password(password)
 
     user.full_clean()
-    user.save()
+
+    if save:
+        user.save()
     return user
 
 

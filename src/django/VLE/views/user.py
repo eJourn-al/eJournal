@@ -17,8 +17,8 @@ import VLE.utils.generic_utils as utils
 import VLE.utils.responses as response
 import VLE.validators as validators
 from VLE.models import Entry, FileContext, Instance, Journal, Node, User
-from VLE.serializers import EntrySerializer, OwnUserSerializer, UserSerializer
-from VLE.tasks import send_email_verification_link
+from VLE.serializers import EntrySerializer, OwnUserSerializer, UserOverviewSerializer, UserSerializer
+from VLE.tasks import send_email_verification_link, send_invite_emails
 from VLE.utils import file_handling
 from VLE.utils.authentication import set_sentry_user_scope
 from VLE.views import lti
@@ -66,7 +66,8 @@ class UserView(viewsets.ViewSet):
         if not request.user.is_superuser:
             return response.forbidden('Only administrators are allowed to request all user data.')
 
-        serializer = UserSerializer(User.objects.all(), context={'user': request.user}, many=True)
+        serializer = UserOverviewSerializer(User.objects.all().order_by('full_name'), context={'user': request.user},
+                                            many=True)
         return response.success({'users': serializer.data})
 
     def retrieve(self, request, pk):
@@ -192,6 +193,10 @@ class UserView(viewsets.ViewSet):
         lti_id, user_email, user_full_name, user_image, is_teacher = get_lti_params(
             request, 'user_id', 'custom_user_email', 'custom_user_full_name', 'custom_user_image')
 
+        # Superuser can update another user's teacher status.
+        if request.user.is_superuser and not request.user.pk == pk:
+            is_teacher, = utils.optional_params(request.data, 'is_teacher')
+
         if user_image is not None:
             user.profile_picture = user_image
         if user_email:
@@ -203,7 +208,7 @@ class UserView(viewsets.ViewSet):
             user.verified_email = True
         if user_full_name is not None:
             user.full_name = user_full_name
-        if is_teacher:
+        if is_teacher is not None:
             user.is_teacher = is_teacher
 
         if lti_id is not None:
@@ -240,11 +245,9 @@ class UserView(viewsets.ViewSet):
         On success:
             success -- deleted message
         """
-        if int(pk) == 0:
-            pk = request.user.id
         user = User.objects.get(pk=pk)
 
-        if not (request.user.is_superuser or request.user == user):
+        if not (request.user.is_superuser):
             return response.forbidden('You are not allowed to delete a user.')
 
         # Deleting the last superuser should not be possible
@@ -361,3 +364,71 @@ class UserView(viewsets.ViewSet):
             return [AllowAny()]
         else:
             return [permission() for permission in self.permission_classes]
+
+
+    @action(methods=['post'], detail=False)
+    def invite_users(self, request):
+        """Invite new users to eJournal.
+
+        This will create accounts for the invited users, which they can activate through an invite link.
+
+        Arguments:
+        TODO
+        """
+        if not request.user.is_superuser:
+            return response.forbidden('You are not allowed to invite new users.')
+
+        users, = utils.required_params(request.data, 'users')
+
+        # Ensure a full name, username and email are specified for all users to be invited.
+        if any(not user['full_name'] for user in users):
+            return response.bad_request('Please specify a full name for all users.')
+        if any(not user['username'] for user in users):
+            return response.bad_request('Please specify a username for all users.')
+        if any(not user['email'] for user in users):
+            return response.bad_request('Please specify an email for all users.')
+
+        # Ensure the username and email for all users to be invited are unique.
+        usernames = set()
+        duplicate_usernames = [user['username'] for user in users if user['username'] in usernames or
+                               usernames.add(user['username'])]
+        if duplicate_usernames:
+            return response.bad_request({'duplicate_usernames': duplicate_usernames})
+        emails = set()
+        duplicate_emails = [user['email'] for user in users if user['email'] in emails or
+                            emails.add(user['email'])]
+        if duplicate_emails:
+            return response.bad_request({'duplicate_emails': duplicate_emails})
+
+        # Ensure the username and email for all users to be invited do not belong to existing users.
+        existing_usernames = list(User.objects.filter(username__in=[user['username'] for user in users])
+                                  .values_list('username', flat=True).distinct())
+        if existing_usernames:
+            return response.bad_request({'existing_usernames': existing_usernames})
+        existing_emails = list(User.objects.filter(email__in=[user['email'] for user in users])
+                               .values_list('email', flat=True).distinct())
+        if existing_emails:
+            return response.bad_request({'existing_emails': existing_emails})
+        invalid_emails = [user['email'] for user in users]
+        if existing_emails:
+            return response.bad_request({'existing_emails': existing_emails})
+
+        created_user_ids = []
+        try:
+            users_to_create = []
+            for user in users:
+                user = factory.make_user(username=user['username'].lower(), email=user['email'].lower(),
+                                         full_name=user['full_name'], is_teacher=user['is_teacher'], is_active=False,
+                                         save=False)
+                users_to_create.append(user)
+            created_user_ids = [user.id for user in User.objects.bulk_create(users_to_create)]
+        except Exception as exception:
+            capture_message('Something went wrong while inviting users: {}'.format(exception), level='error')
+            User.objects.filter(pk__in=created_user_ids).delete()
+            return response.bad_request('An error occured while creating new users.')
+        else:
+            send_invite_emails.delay(created_user_ids)
+
+        return response.success(description=f"Successfully invited {len(created_user_ids)} users.")
+
+

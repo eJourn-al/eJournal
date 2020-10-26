@@ -80,7 +80,7 @@ def recover_password(request):
     user.set_password(new_password)
     # Activate the account if not already (password recovery occurs after invitation).
     user.is_active = True
-    # We also know that the user posesses over the email address now.
+    # We also know that the user has access to the email address now.
     user.verified_email = True
     user.save()
 

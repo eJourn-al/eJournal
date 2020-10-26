@@ -42,8 +42,6 @@ import UserOverview from '@/components/admin/UserOverview.vue'
 import InviteUsers from '@/components/admin/InviteUsers.vue'
 
 
-import adminAPI from '@/api/admin.js'
-
 export default {
     name: 'AdminPanel',
     components: {
@@ -57,28 +55,6 @@ export default {
             errorLogs: '',
             requestInFlight: false,
         }
-    },
-    methods: {
-        inviteUsers () {
-            this.requestInFlight = true
-            adminAPI.inviteUsers({
-                users: [
-                    {
-                        full_name: 'Engel Hamer',
-                        username: 'hamertje',
-                        email: 'engelhamer@gmail.com',
-                    },
-                ],
-            }, {
-                customSuccessToast: 'Successfully invited users.',
-                customErrorToast: 'Some user details were invalid. No invites sent.',
-            })
-                .then(() => { this.requestInFlight = true })
-                .catch((error) => {
-                    this.errorLogs = error.response.data.description
-                    this.requestInFlight = true
-                })
-        },
     },
 }
 </script>

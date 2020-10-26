@@ -99,6 +99,8 @@ class EmailAPITest(TestCase):
                 'new_password': self.valid_pass})
 
         assert student.is_active
+        assert student.check_password(self.valid_pass)
+        assert student.verified_email
 
     def test_verify_email(self):
         api.post(self, 'verify_email', status=400)

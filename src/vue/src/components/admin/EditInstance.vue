@@ -5,7 +5,7 @@
 </template>
 
 <script>
-// import adminAPI from '@/api/admin.js'
+// import instanceAPI from '@/api/instance.js'
 
 export default {
     data () {

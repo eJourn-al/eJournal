@@ -233,7 +233,7 @@
 <script>
 import ExcelJS from 'exceljs'
 
-import adminAPI from '@/api/admin.js'
+import userAPI from '@/api/user.js'
 
 export default {
     data () {
@@ -257,10 +257,10 @@ export default {
     methods: {
         inviteUsers () {
             this.requestInFlight = true
-            adminAPI.inviteUsers({
+            userAPI.inviteUsers({
                 users: this.usersToInviteFiltered,
             }, {
-                customSuccessToast: 'Successfully invited users.',
+                responseSuccessToast: true,
                 customErrorToast: 'Some user details were invalid. No invites sent.',
             })
                 .then(() => {

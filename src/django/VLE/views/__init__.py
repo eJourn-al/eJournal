@@ -1,6 +1,5 @@
 from rest_framework import routers
 
-from VLE.views.admin import AdminView
 from VLE.views.assignment import AssignmentView
 from VLE.views.comment import CommentView
 from VLE.views.course import CourseView
@@ -22,7 +21,6 @@ from VLE.views.user import UserView
 
 router = routers.DefaultRouter()
 router.register(r'instance', InstanceView, basename='instance')
-router.register(r'admin', AdminView, basename='admin')
 router.register(r'courses', CourseView, basename='course')
 router.register(r'groups', GroupView, basename='group')
 router.register(r'members', MemberView, basename='member')
