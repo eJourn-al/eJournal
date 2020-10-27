@@ -260,7 +260,6 @@ export default {
             userAPI.inviteUsers({
                 users: this.usersToInviteFiltered,
             }, {
-                responseSuccessToast: true,
                 customErrorToast: 'Some user details were invalid. No invites sent.',
             })
                 .then(() => {
@@ -274,6 +273,8 @@ export default {
                     }]
                 })
                 .catch((error) => {
+                    // Ensure old errors are cleared.
+                    this.errorLogs = {}
                     if (typeof error.response.data.description === 'object') {
                         this.errorLogs = error.response.data.description
                     } else {
@@ -299,10 +300,10 @@ export default {
                 if (!value) {
                     return null
                 } else if (typeof value === 'object') {
-                    return value.text
+                    return value.text.trim()
                 }
 
-                return value
+                return value.trim()
             }
 
             if (!event.target.files.length > 0) {
@@ -315,12 +316,17 @@ export default {
                 workbook.xlsx.load(buffer)
                     .then((wb) => {
                         wb.worksheets[0].eachRow((row) => {
-                            importedUsersToInvite.push({
+                            const userRow = {
                                 full_name: asText(row.values[1]),
                                 username: asText(row.values[2]),
                                 email: asText(row.values[3]),
                                 is_teacher: row.values[4] === 1,
-                            })
+                            }
+
+                            // Only import rows for which at least one column has a value.
+                            if (Object.values(userRow).some(value => value)) {
+                                importedUsersToInvite.push(userRow)
+                            }
                         })
                         this.$toasted.success('Successfully imported user data from file.')
                         this.usersToInvite = importedUsersToInvite.concat(this.usersToInvite)

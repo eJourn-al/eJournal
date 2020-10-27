@@ -74,6 +74,9 @@ export default {
             instanceAPI.update(changes, {
                 customSuccessToast: 'Successfully updated instance details.',
             })
+                .then((instance) => {
+                    this.instance = instance
+                })
                 .finally(() => {
                     this.saveRequestInFlight = false
                 })

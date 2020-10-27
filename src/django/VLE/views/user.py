@@ -248,7 +248,7 @@ class UserView(viewsets.ViewSet):
         """
         user = User.objects.get(pk=pk)
 
-        if not (request.user.is_superuser):
+        if not request.user.is_superuser:
             return response.forbidden('You are not allowed to delete a user.')
 
         # Deleting the last superuser should not be possible
@@ -382,11 +382,11 @@ class UserView(viewsets.ViewSet):
 
         # Ensure a full name, username and email are specified for all users to be invited.
         if any(not user['full_name'] for user in users):
-            return response.bad_request('Please specify a full name for all users.')
+            return response.bad_request('Please specify a full name for all users. No invites sent.')
         if any(not user['username'] for user in users):
-            return response.bad_request('Please specify a username for all users.')
+            return response.bad_request('Please specify a username for all users. No invites sent.')
         if any(not user['email'] for user in users):
-            return response.bad_request('Please specify an email for all users.')
+            return response.bad_request('Please specify an email for all users. No invites sent.')
 
         # Ensure the username and email for all users to be invited are unique.
         usernames = set()
@@ -419,11 +419,10 @@ class UserView(viewsets.ViewSet):
                                          save=False)
                 users_to_create.append(user)
             created_user_ids = [user.id for user in User.objects.bulk_create(users_to_create)]
+            send_invite_emails.delay(created_user_ids)
         except Exception as exception:
             capture_message('Something went wrong while inviting users: {}'.format(exception), level='error')
             User.objects.filter(pk__in=created_user_ids).delete()
             return response.bad_request('An error occured while creating new users.')
-        else:
-            send_invite_emails.delay(created_user_ids)
 
         return response.success(description=f"Successfully invited {len(created_user_ids)} users.")

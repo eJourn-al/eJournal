@@ -28,7 +28,8 @@ class InstanceView(viewsets.ViewSet):
         """Update instance details.
         Arguments:
         request -- request data
-            data -- the new data for the journal
+            data -- the new data for the instance
+
         Returns:
         On failure:
             unauthorized -- when the user is not logged in

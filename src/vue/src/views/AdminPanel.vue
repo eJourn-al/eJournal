@@ -52,7 +52,6 @@ import EditInstance from '@/components/admin/EditInstance.vue'
 import UserOverview from '@/components/admin/UserOverview.vue'
 import InviteUsers from '@/components/admin/InviteUsers.vue'
 
-
 export default {
     name: 'AdminPanel',
     components: {
