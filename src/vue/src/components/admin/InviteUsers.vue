@@ -259,8 +259,6 @@ export default {
             this.requestInFlight = true
             userAPI.inviteUsers({
                 users: this.usersToInviteFiltered,
-            }, {
-                customErrorToast: 'Some user details were invalid. No invites sent.',
             })
                 .then(() => {
                     this.requestInFlight = false
@@ -276,6 +274,7 @@ export default {
                     // Ensure old errors are cleared.
                     this.errorLogs = {}
                     if (typeof error.response.data.description === 'object') {
+                        this.$toasted.error('Some user details were invalid. No invites sent.')
                         this.errorLogs = error.response.data.description
                     } else {
                         this.$toasted.error(error.response.data.description)
