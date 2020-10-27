@@ -101,6 +101,7 @@ class EmailAPITest(TestCase):
                 'token': token,
                 'new_password': self.valid_pass})
 
+        self.student.refresh_from_db()
         assert self.student.is_active
         assert self.student.check_password(self.valid_pass)
         assert self.student.verified_email
