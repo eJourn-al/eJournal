@@ -400,7 +400,7 @@ export default {
 
 
 div.mce-fullscreen
-    padding-top: 50px
+    padding-top: $header-height
 
 .modal .mce-fullscreen
     padding-top: 0px

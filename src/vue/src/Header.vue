@@ -215,7 +215,7 @@ export default {
 #header
     background-color: $theme-dark-blue
     color: white
-    height: 50px
+    height: $header-height
     .nav-link
         > svg
             fill: grey !important
@@ -252,7 +252,7 @@ export default {
     [aria-expanded="true"] .nav-collapse__icon--close
         display: block
     @include md-max
-        min-height: 50px
+        min-height: $header-height
         height: auto
 
     #nav-dropdown-options
