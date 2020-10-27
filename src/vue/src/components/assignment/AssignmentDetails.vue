@@ -79,7 +79,7 @@
                 class="multi-form mr-2"
             />
         </template>
-        <b-row class="multi-form">
+        <b-row>
             <b-col xl="4">
                 <h2 class="theme-h2 field-heading">
                     Unlock date

@@ -1,13 +1,13 @@
 <template>
     <div class="reset-wrapper">
+        <slot/>
         <b-button
             v-if="value"
-            class="red-button reset-button"
+            class="red-button reset-button float-right"
             @click="$emit('input', null)"
         >
             <icon name="trash"/>
         </b-button>
-        <slot/>
     </div>
 </template>
 
@@ -24,8 +24,7 @@ export default {
 <style lang="sass">
 .reset-wrapper
     position: relative
-    .reset-button
-        // TODO: this is broken
+    .btn.reset-button
         position: absolute
         right: 5px
         top: 5px
