@@ -268,11 +268,9 @@ class UserAPITest(TestCase):
         # Test to delete user as other user
         api.delete(self, 'users', params={'pk': user2.pk}, user=user, status=403)
 
-        # Test to delete own user
-        api.delete(self, 'users', params={'pk': user.pk}, user=user)
-        api.get(self, 'users', params={'pk': user.pk}, user=admin, status=404)
-        api.delete(self, 'users', params={'pk': 0}, user=user2)
-        api.get(self, 'users', params={'pk': user2.pk}, user=admin, status=404)
+        # Test to delete own user (not possible, should still exist)
+        api.delete(self, 'users', params={'pk': user.pk}, user=user, status=403)
+        api.get(self, 'users', params={'pk': user.pk}, user=admin)
 
         # Test to delete user as admin
         api.delete(self, 'users', params={'pk': user3.pk}, user=admin)

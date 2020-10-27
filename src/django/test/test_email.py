@@ -93,6 +93,7 @@ class EmailAPITest(TestCase):
         self.student.save()
 
         # Test whether password recovery makes user active (for invitations).
+        token = PasswordResetTokenGenerator().make_token(self.student)
         api.post(
             self, 'recover_password',
             params={
