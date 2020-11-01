@@ -109,9 +109,12 @@ def _move_newly_established_file_context_to_permanent_location(fc):
     os.rename(initial_path, str(new_path))
 
 
-def establish_file(author, identifier, assignment=None, journal=None, content=None, comment=None, in_rich_text=False):
+def establish_file(author, file_context=None, identifier=None, assignment=None, journal=None, content=None,
+                   comment=None, in_rich_text=False):
     """Sets the context of a temporary file, and moves it to a permanent location."""
-    if str(identifier).isdigit():
+    if isinstance(file_context, VLE.models.FileContext):
+        pass  # Work with the given FC
+    elif str(identifier).isdigit():
         file_context = VLE.models.FileContext.objects.get(pk=identifier)
     else:
         file_context = VLE.models.FileContext.objects.get(access_id=identifier)
@@ -145,5 +148,13 @@ def get_temp_files_from_rich_text(rich_text):
 
 
 def establish_rich_text(author, rich_text, assignment=None, journal=None, comment=None, content=None):
-    for file in get_temp_files_from_rich_text(rich_text):
-        establish_file(author, file.access_id, assignment, journal, content, comment, in_rich_text=True)
+    for file_context in get_temp_files_from_rich_text(rich_text):
+        establish_file(
+            author,
+            file_context=file_context,
+            assignment=assignment,
+            journal=journal,
+            content=content,
+            comment=comment,
+            in_rich_text=True
+        )

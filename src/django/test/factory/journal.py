@@ -110,6 +110,32 @@ class GroupJournalFactory(BaseJournalFactory):
                     test.factory.AssignmentParticipation(journal=self, assignment=self.assignment, user=user)
 
 
+class LtiGroupJournalFactory(GroupJournalFactory):
+    """
+    Generates a group lti assignment, student and an lti assignment participation by default
+    """
+    assignment = factory.SubFactory('test.factory.assignment.LtiAssignmentFactory', group_assignment=True)
+
+    @factory.post_generation
+    def ap(self, create, extracted, **kwargs):
+        _ap(self, create, extracted, lti=True, **kwargs)
+
+    @factory.post_generation
+    def add_users(self, create, extracted):
+        if not create:
+            return
+
+        if extracted:
+            for user in extracted:
+                ap = VLE.models.AssignmentParticipation.objects.filter(assignment=self.assignment, user=user)
+                if ap.exists():
+                    ap = ap.first()
+                    ap.journal = self
+                    ap.save()
+                else:
+                    test.factory.AssignmentParticipation(journal=self, assignment=self.assignment, user=user, lti=True)
+
+
 class JournalImportRequestFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = 'VLE.JournalImportRequest'

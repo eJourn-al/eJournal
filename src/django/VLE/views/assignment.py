@@ -461,6 +461,8 @@ class AssignmentView(viewsets.ViewSet):
         assignment = assignment_source
         assignment.is_published = False
         assignment.pk = None
+        assignment.active_lti_id = None
+        assignment.lti_id_set = []
         set_assignment_dates(assignment, months_offset)
 
         # One to one fields needs to be updated before save else we would have a duplicate key

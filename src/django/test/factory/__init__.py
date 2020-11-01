@@ -81,6 +81,7 @@ from test.factory.instance import InstanceFactory as Instance  # noqa: F401
 from test.factory.journal import GroupJournalFactory as GroupJournal  # noqa: F401
 from test.factory.journal import JournalFactory as Journal  # noqa: F401
 from test.factory.journal import JournalImportRequestFactory as JournalImportRequest  # noqa: F401
+from test.factory.journal import LtiGroupJournalFactory as LtiGroupJournal  # noqa: F401
 from test.factory.journal import LtiJournalFactory as LtiJournal  # noqa: F401
 from test.factory.node import NodeFactory as Node  # noqa: F401
 from test.factory.params import EntryContentCreationParamsFactory as EntryContentCreationParams  # noqa: F401

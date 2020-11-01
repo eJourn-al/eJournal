@@ -159,9 +159,9 @@ class EntryView(viewsets.ViewSet):
                     files_to_establish += [
                         (f, old_content) for f in file_handling.get_temp_files_from_rich_text(new_content)]
 
-        for (file, old_content) in files_to_establish:
-            if file.is_temp:
-                file_handling.establish_file(request.user, file.access_id, content=old_content,
+        for (fc, old_content) in files_to_establish:
+            if fc.is_temp:
+                file_handling.establish_file(request.user, file_context=fc, content=old_content,
                                              in_rich_text=old_content.field.type == Field.RICH_TEXT)
 
         grading.task_journal_status_to_LMS.delay(journal.pk)

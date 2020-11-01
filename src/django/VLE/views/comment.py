@@ -17,10 +17,10 @@ from VLE.utils import file_handling
 def handle_comment_files(user, files, comment):
     # Add new files
     for file_id in files:
-        file = FileContext.objects.get(pk=int(file_id))
-        if not comment.files.filter(pk=file.pk).exists():
-            comment.files.add(file)
-            file_handling.establish_file(author=user, identifier=file.access_id, comment=comment)
+        fc = FileContext.objects.get(pk=int(file_id))
+        if not comment.files.filter(pk=fc.pk).exists():
+            comment.files.add(fc)
+            file_handling.establish_file(author=user, file_context=fc, comment=comment)
     # Remove old attached files
     comment.files.exclude(pk__in=files).delete()
     file_handling.establish_rich_text(author=user, rich_text=comment.text, comment=comment)

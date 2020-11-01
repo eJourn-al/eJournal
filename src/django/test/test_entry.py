@@ -628,7 +628,7 @@ class EntryAPITest(TestCase):
         # Check if a published entry cannot be unpublished
         api.create(self, 'grades', params={'entry_id': entry['id'], 'published': False}, user=self.teacher, status=400)
 
-    def test_destroy(self):
+    def test_destroy_entry(self):
         # Only a student can delete their own entry
         entry = api.create(self, 'entries', params=self.valid_create_params, user=self.student)['entry']
         api.delete(self, 'entries', params={'pk': entry['id']}, user=factory.Student(), status=403)
@@ -650,6 +650,9 @@ class EntryAPITest(TestCase):
         entry = Entry.objects.get(pk=entry['id'])
         journal = entry.node.journal
         assignment_old_lti_id = journal.assignment.active_lti_id
+        ap = journal.authors.first()
+        ap_old_grade_url = ap.grade_url
+        ap_old_sourcedid = ap.sourcedid
         journal.assignment.active_lti_id = 'new_lti_id_3'
         journal.assignment.save()
 
@@ -658,6 +661,9 @@ class EntryAPITest(TestCase):
             ' no more entries can be created.'
         journal.assignment.active_lti_id = assignment_old_lti_id
         journal.assignment.save()
+        ap.grade_url = ap_old_grade_url
+        ap.sourcedid = ap_old_sourcedid
+        ap.save()
 
         # Only superusers should be allowed to delete locked entries
         entry = api.create(self, 'entries', params=self.valid_create_params, user=self.student)['entry']

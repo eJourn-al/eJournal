@@ -115,6 +115,21 @@ class FormatAPITest(TestCase):
         self.update_dict['course_id'] = self.course.pk
         check_groups([group])
 
+        # Course id has to be related to the provided assignment
+        unrelated_course = factory.Course()
+        self.update_dict['course_id'] = unrelated_course.pk
+        api.update(
+                self, 'formats', params={'pk': self.assignment.pk, **self.update_dict}, user=self.teacher, status=400)
+        self.update_dict['course_id'] = self.course.pk
+
+        # Unrelated groups cannot be assigned to
+        unrelated_group = factory.Group(course=unrelated_course)
+        self.update_dict['assignment_details']['assigned_groups'] = [
+            {'id': group.pk},
+            {'id': unrelated_group.pk}
+        ]
+        check_groups([group])
+
         # Test group gets added when other course is supplied, also check if other group does not get removed
         self.update_dict['assignment_details']['assigned_groups'] = [
             {'id': group2.pk},
