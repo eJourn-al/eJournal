@@ -12,7 +12,7 @@ django_celery_beat==1.5.0
 sh==1.12.14
 six==1.12.0 # Python 2 and 3 compatibility library, Pytest
 django-csp==3.5 # CSPMiddleware Content-Security-Policy
-django-computedfields==0.0.19 # Computed fields for Django
+django-computedfields==0.1.3 # Computed fields for Django
 
 urllib3==1.25.6
 text-unidecode==1.3

@@ -8,7 +8,7 @@ import random
 import string
 from collections import defaultdict
 
-from computedfields.models import ComputedFieldsModel, computed
+from computedfields.models import ComputedFieldsModel, computed, update_dependent
 from django.conf import settings
 from django.contrib.auth.models import AbstractUser
 from django.contrib.postgres.fields import ArrayField, CIEmailField, CITextField
@@ -985,6 +985,10 @@ class Participation(CreateUpdateModel):
         default=None,
     )
 
+    def set_groups(self, groups):
+        self.groups.set(groups)
+        update_dependent(self)
+
     def save(self, *args, **kwargs):
         is_new = self._state.adding
         notify_user = kwargs.pop('notify_user', True)
@@ -1549,7 +1553,7 @@ class Journal(CreateUpdateModel, ComputedFieldsModel):
         return self.node_set.filter(entry__isnull=False, entry__grade__isnull=True).count()
 
     @computed(ArrayField(models.TextField(), default=list), depends=[
-        ['authors', ['journal', 'sourcedid']],
+        ['authors', ['sourcedid']],
         ['authors.user', ['full_name']],
     ])
     def needs_lti_link(self):
@@ -1593,7 +1597,7 @@ class Journal(CreateUpdateModel, ComputedFieldsModel):
         return ', '.join(self.authors.values_list('user__username', flat=True))
 
     @computed(ArrayField(models.IntegerField(), default=list), depends=[
-        ['authors.user.participation_set', ['groups']],
+        ['authors.user.participation_set.groups', ['name']],
     ])
     def groups(self):
         return list(Group.objects.filter(participation__user__in=self.authors.values('user'))

@@ -20,7 +20,7 @@ class ParticipationFactory(factory.django.DjangoModelFactory):
 
         if extracted and isinstance(extracted, list):
             if all(isinstance(obj, VLE.models.Group) for obj in extracted):
-                self.groups.set(extracted)
+                self.set_groups(extracted)
         elif isinstance(extracted, VLE.models.Group):
             self.groups.add(extracted)
         elif kwargs:

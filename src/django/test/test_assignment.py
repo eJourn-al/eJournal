@@ -106,8 +106,15 @@ class AssignmentAPITest(TestCase):
             'Assignment author is also an actual teacher in the associated courses when specified manually'
 
         lti_assignment = factory.LtiAssignment()
-        lti_assignment.courses.filter(assignment_lti_id_set__contains=[lti_assignment.active_lti_id]).count() \
+        assert lti_assignment.courses.filter(assignment_lti_id_set__contains=[lti_assignment.active_lti_id]).count() \
             == lti_assignment.courses.count(), 'The lti id is added to each course\'s assignment id'
+
+        course = factory.Course()
+        participation = factory.Participation(role=course.role_set.filter(name='Student').first(), course=course)
+        journal_count = Journal.objects.count()
+        assignment = factory.Assignment(courses=[course])
+        assert journal_count + 1 == Journal.objects.count(), 'Student should have gotten a journal'
+        assert Journal.objects.get(authors__user=participation.user, assignment=assignment)
 
     def test_group_assignment_factory(self):
         j_all_count = Journal.all_objects.count()

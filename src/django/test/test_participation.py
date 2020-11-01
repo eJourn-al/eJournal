@@ -3,7 +3,7 @@ from test.utils import api
 
 from django.test import TestCase
 
-from VLE.models import Role, User
+from VLE.models import Journal, Role, User
 
 
 class ParticipationAPITest(TestCase):
@@ -121,3 +121,15 @@ class ParticipationAPITest(TestCase):
                        params={'course_id': self.course.pk, 'unenrolled_query': other_not_conn.full_name[:4]},
                        user=self.teacher)
         assert len(resp['participants']) == 0
+
+    def test_set_groups(self):
+        assignment = factory.Assignment()
+        course = assignment.courses.first()
+        participation = factory.Participation(course=course, role=course.role_set.get(name='Student'))
+        factory.Journal(ap__user=participation.user, assignment=assignment)
+        group = factory.Group(course=course, name='group name')
+
+        participation.set_groups([group])
+
+        assert group.pk in Journal.objects.get(authors__user=participation.user).groups, \
+            'Journal group names should be updated'

@@ -127,9 +127,9 @@ class ParticipationView(viewsets.ViewSet):
             participation.role = Role.objects.get(name=role_name, course=course)
 
         if group_names:
-            participation.groups.set(Group.objects.get(name=group_names, course=course))
+            participation.set_groups(Group.objects.get(name=group_names, course=course))
         elif 'groups' in request.data:
-            participation.groups.set(None)
+            participation.set_groups(None)
 
         participation.save()
         serializer = ParticipationSerializer(participation, context={'course': course})
