@@ -281,6 +281,94 @@ export default {
 
             currentTemplate: -1,
             newTemplateId: -1,
+            lastTarget: 0,
+            templatesIds: [],
+
+            presetErrors: [
+                {
+                    check: preset => this.checkDateOrder(this.assignmentDetails.unlock_date, preset.unlock_date),
+                    message: 'One or more presets have an unlock date before the assignment unlock date.',
+                    happened: false,
+                },
+                {
+                    check: preset => this.checkDateOrder(preset.unlock_date, this.assignmentDetails.due_date),
+                    message: 'One or more presets have an unlock date after the assignment due date.',
+                    happened: false,
+                },
+                {
+                    check: preset => this.checkDateOrder(this.assignmentDetails.unlock_date, preset.due_date),
+                    message: 'One or more presets have a due date before the assignment unlock date.',
+                    happened: false,
+                },
+                {
+                    check: preset => this.checkDateOrder(preset.due_date, this.assignmentDetails.due_date),
+                    message: 'One or more presets have a due date after the assignment due date.',
+                    happened: false,
+                },
+                {
+                    check: preset => this.checkDateOrder(this.assignmentDetails.unlock_date, preset.lock_date),
+                    message: 'One or more presets have a lock date before the assignment unlock date.',
+                    happened: false,
+                },
+                {
+                    check: preset => this.checkDateOrder(preset.lock_date, this.assignmentDetails.lock_date),
+                    message: 'One or more presets have a lock date after the assignment lock date.',
+                    happened: false,
+                },
+                {
+                    check: preset => this.checkDateOrder(preset.unlock_date, preset.due_date),
+                    message: 'One or more presets are due before their unlock date.',
+                    happened: false,
+                },
+                {
+                    check: preset => this.checkDateOrder(preset.due_date, preset.lock_date),
+                    message: 'One or more presets are lock before their due date.',
+                    happened: false,
+                },
+                {
+                    check: preset => this.checkValidDate(preset.unlock_date),
+                    message: 'One or more presets have an invalid unlock date.',
+                    happened: false,
+                },
+                {
+                    check: preset => this.checkValidDate(preset.due_date),
+                    message: 'One or more presets have an invalid due date.',
+                    happened: false,
+                },
+                {
+                    check: preset => this.checkValidDate(preset.lock_date),
+                    message: 'One or more presets have an invalid lock date.',
+                    happened: false,
+                },
+                {
+                    check: preset => !(preset.type === 'd' && (
+                        typeof preset.template.id === 'undefined' || !this.templatesIds.includes(preset.template.id))),
+                    message: 'One or more presets have an invalid template.',
+                    happened: false,
+                },
+                {
+                    check: preset => !(preset.type === 'p' && Number.isNaN(parseFloat(preset.target, 10))),
+                    message: 'One or more presets have an invalid target.',
+                    happened: false,
+                },
+                {
+                    check: (preset) => {
+                        if (preset.type !== 'p') {
+                            return true
+                        }
+                        const inOrder = this.lastTarget < preset.target
+                        this.lastTarget = preset.target
+                        return inOrder
+                    },
+                    message: 'One or more preset targets are out of order.',
+                    happened: false,
+                },
+                {
+                    check: preset => preset.target <= this.assignmentDetails.points_possible,
+                    message: 'Preset target is higher than the maximum possible points for the assignment.',
+                    happened: false,
+                },
+            ],
         }
     },
     computed: {
@@ -320,33 +408,19 @@ export default {
                     }
                 })
         },
+        checkDateOrder (first, second) {
+            // Returns false if order is incorrect or one of the dates is null
+            return !first || !second || Date.parse(first) <= Date.parse(second)
+        },
+        checkValidDate (date) {
+            // Returns false if date is not valid
+            return date == null || !Number.isNaN(Date.parse(date))
+        },
         saveFormat () {
-            let presetUnlockBeforeUnlock = false
-            let presetUnlockAfterDue = false
-            let presetUnlockAfterLock = false
-            let presetDueBeforeUnlock = false
-            let presetDueAfterDue = false
-            let presetDueAfterLock = false
-            let presetLockBeforeUnlock = false
-            let presetLockAfterLock = false
-            let presetUnlockAfterPresetDue = false
-            let presetUnlockAfterPresetLock = false
-            let presetDueAfterPresetLock = false
-
-            let presetInvalidDue = false
-            let presetInvalidLock = false
-            let presetInvalidUnlock = false
-            let presetInvalidTemplate = false
-            let presetInvalidTarget = false
-
-            let lastTarget
-            let targetsOutOfOrder = false
-            let targetTooHigh = false
             let untitledTemplates = false
-
-            const templatesIds = []
+            this.templatesIds = []
             this.templates.forEach((template) => {
-                templatesIds.push(template.id)
+                this.templatesIds.push(template.id)
                 if (!untitledTemplates && !template.name) {
                     untitledTemplates = true
                     this.$toasted.error('One or more templates are untitled. Please check the templates and try'
@@ -358,131 +432,24 @@ export default {
                 return
             }
 
-            /* eslint-disable complexity */
+            this.lastTarget = 0
+            this.presetErrors.forEach((error) => {
+                error.happened = false
+            })
             this.presets.forEach((preset) => {
-                if (!targetsOutOfOrder && preset.type === 'p') {
-                    if (lastTarget && preset.target < lastTarget) {
-                        targetsOutOfOrder = true
-                        this.$toasted.error(
-                            'Some preset targets are out of order. Please check the timeline and try again.')
-                    }
-                    if (preset.target > this.assignmentDetails.points_possible) {
-                        targetTooHigh = true
-                        this.$toasted.error(
-                            'Preset target is higher than the maximum possible points for the assignment.')
-                    }
-                    lastTarget = preset.target
-                }
-
-                if (!presetInvalidDue && Number.isNaN(Date.parse(preset.due_date))) {
-                    presetInvalidDue = true
-                    this.$toasted.error(
-                        'One or more presets have an invalid due date. Please check the timeline and try again.')
-                }
-                if (!presetInvalidLock && preset.lock_date && Number.isNaN(Date.parse(preset.lock_date))) {
-                    presetInvalidLock = true
-                    this.$toasted.error(
-                        'One or more presets have an invalid lock date. Please check the timeline and try again.')
-                }
-                if (!presetInvalidUnlock && preset.unlock_date && Number.isNaN(Date.parse(preset.unlock_date))) {
-                    presetInvalidUnlock = true
-                    this.$toasted.error(
-                        'One or more presets have an invalid unlock date. Please check the timeline and try again.')
-                }
-                if (!presetInvalidTemplate && preset.type === 'd' && typeof preset.template.id === 'undefined') {
-                    presetInvalidTemplate = true
-                    this.$toasted.error(
-                        'One or more presets have an invalid template. Please check the timeline and try again.')
-                }
-                if (!presetInvalidTemplate && preset.type === 'd'
-                    && preset.template.id
-                    && !templatesIds.includes(preset.template.id)) {
-                    presetInvalidTemplate = true
-                    this.$toasted.error(
-                        'One or more presets have an invalid template. Please check the timeline and try again.')
-                }
-                if (!presetInvalidTarget && preset.type === 'p' && Number.isNaN(parseFloat(preset.target, 10))) {
-                    presetInvalidTarget = true
-                    this.$toasted.error(
-                        'One or more presets have an invalid target. Please check the timeline and try again.')
-                }
-
-                if (!presetUnlockAfterPresetDue && preset.unlock_date && preset.due_date
-                    && Date.parse(preset.unlock_date) > Date.parse(preset.due_date)) {
-                    presetUnlockAfterPresetDue = true
-                    this.$toasted.error(
-                        'One or more presets are due before their unlock date. Please check the timeline and try'
-                        + ' again.')
-                }
-                if (!presetUnlockAfterPresetLock && preset.unlock_date && preset.lock_date
-                    && Date.parse(preset.unlock_date) > Date.parse(preset.lock_date)) {
-                    presetUnlockAfterPresetLock = true
-                    this.$toasted.error('One or more presets have a lock date before their unlock date. '
-                        + 'Please check the timeline and try again.')
-                }
-                if (!presetDueAfterPresetLock && preset.due_date && preset.lock_date
-                    && Date.parse(preset.due_date) > Date.parse(preset.lock_date)) {
-                    presetDueAfterPresetLock = true
-                    this.$toasted.error('One or more presets have a lock date before their due date. '
-                        + 'Please check the timeline and try again.')
-                }
-
-                if (!presetUnlockBeforeUnlock && this.assignmentDetails.unlock_date
-                    && Date.parse(preset.unlock_date) < Date.parse(this.assignmentDetails.unlock_date)) {
-                    presetUnlockBeforeUnlock = true
-                    this.$toasted.error('One or more presets have an unlock date before the assignment unlock date. '
-                        + 'Please check the timeline and try again.')
-                }
-                if (!presetUnlockAfterDue && this.assignmentDetails.due_date
-                    && Date.parse(preset.unlock_date) > Date.parse(this.assignmentDetails.due_date)) {
-                    presetUnlockAfterDue = true
-                    this.$toasted.error('One or more presets have an unlock date after the assignment due date. '
-                        + 'Please check the timeline and try again.')
-                }
-                if (!presetUnlockAfterLock && this.assignmentDetails.lock_date
-                    && Date.parse(preset.unlock_date) > Date.parse(this.assignmentDetails.lock_date)) {
-                    presetUnlockAfterLock = true
-                    this.$toasted.error('One or more presets have an unlock date after the assignment lock date. '
-                        + 'Please check the timeline and try again.')
-                }
-                if (!presetDueBeforeUnlock && this.assignmentDetails.unlock_date
-                    && Date.parse(preset.due_date) < Date.parse(this.assignmentDetails.unlock_date)) {
-                    presetDueBeforeUnlock = true
-                    this.$toasted.error('One or more presets have a due date before the assignment unlock date. '
-                        + 'Please check the timeline and try again.')
-                }
-                if (!presetDueAfterDue && this.assignmentDetails.due_date
-                    && Date.parse(preset.due_date) > Date.parse(this.assignmentDetails.due_date)) {
-                    presetDueAfterDue = true
-                    this.$toasted.error('One or more presets have a due date after the assignment due date. '
-                        + 'Please check the timeline and try again.')
-                }
-                if (!presetDueAfterLock && this.assignmentDetails.lock_date
-                    && Date.parse(preset.due_date) > Date.parse(this.assignmentDetails.lock_date)) {
-                    presetDueAfterLock = true
-                    this.$toasted.error('One or more presets have a due date after the assignment lock date. '
-                        + 'Please check the timeline and try again.')
-                }
-                if (!presetLockBeforeUnlock && this.assignmentDetails.unlock_date
-                    && Date.parse(preset.lock_date) < Date.parse(this.assignmentDetails.unlock_date)) {
-                    presetLockBeforeUnlock = true
-                    this.$toasted.error('One or more presets have a lock date before the assignment unlock date. '
-                        + 'Please check the timeline and try again.')
-                }
-                if (!presetLockAfterLock && this.assignmentDetails.lock_date
-                    && Date.parse(preset.lock_date) > Date.parse(this.assignmentDetails.lock_date)) {
-                    presetLockAfterLock = true
-                    this.$toasted.error('One or more presets have a lock date after the assignment lock date. '
-                        + 'Please check the timeline and try again.')
-                }
+                this.presetErrors.forEach((error) => {
+                    error.happened = error.happened || !error.check(preset)
+                })
             })
 
-            if (presetUnlockBeforeUnlock || presetUnlockAfterDue
-                || presetUnlockAfterLock || presetDueBeforeUnlock || presetDueAfterDue
-                || presetDueAfterLock || presetLockBeforeUnlock || presetUnlockAfterPresetDue
-                || presetUnlockAfterPresetLock || presetDueAfterPresetLock || presetLockAfterLock || presetInvalidDue
-                || presetInvalidLock || presetInvalidUnlock || presetInvalidTemplate
-                || presetInvalidTarget || targetsOutOfOrder || targetTooHigh || untitledTemplates) {
+            let hasError = false
+            this.presetErrors.forEach((error) => {
+                if (error.happened) {
+                    this.$toasted.error(error.message)
+                    hasError = true
+                }
+            })
+            if (hasError) {
                 return
             }
 
@@ -511,7 +478,6 @@ export default {
                 })
                 .catch(() => { this.saveRequestInFlight = false })
         },
-        /* eslint-enable complexity */
         addPreset (preset) {
             preset.id = this.newPresetId--
             this.presets.push(preset)
