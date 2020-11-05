@@ -358,6 +358,7 @@ export default {
                 return
             }
 
+            /* eslint-disable complexity */
             this.presets.forEach((preset) => {
                 if (!targetsOutOfOrder && preset.type === 'p') {
                     if (lastTarget && preset.target < lastTarget) {
@@ -510,6 +511,7 @@ export default {
                 })
                 .catch(() => { this.saveRequestInFlight = false })
         },
+        /* eslint-enable complexity */
         addPreset (preset) {
             preset.id = this.newPresetId--
             this.presets.push(preset)
