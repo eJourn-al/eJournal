@@ -2,15 +2,21 @@
     <image-file-display
         v-if="type == 'img'"
         :file="file"
-    />
+    >
+        <slot/>
+    </image-file-display>
     <file-download-button
         v-else-if="type == 'file'"
         :file="file"
-    />
+    >
+        <slot/>
+    </file-download-button>
     <pdf-display
         v-else-if="type == 'pdf'"
         :file="file"
-    />
+    >
+        <slot/>
+    </pdf-display>
 </template>
 
 <script>
@@ -45,3 +51,10 @@ export default {
     },
 }
 </script>
+<style lang="sass">
+.controls
+    &:hover
+        cursor: pointer
+    b
+        text-decoration: underline !important
+</style>

@@ -603,10 +603,13 @@ class PresetNodeSerializer(serializers.ModelSerializer):
     lock_date = serializers.SerializerMethodField()
     target = serializers.SerializerMethodField()
     template = serializers.SerializerMethodField()
+    attached_files = serializers.SerializerMethodField()
 
     class Meta:
         model = VLE.models.PresetNode
-        fields = ('id', 'description', 'type', 'unlock_date', 'due_date', 'lock_date', 'target', 'template')
+        fields = (
+            'id', 'description', 'type', 'unlock_date', 'due_date', 'lock_date', 'target', 'template', 'attached_files'
+        )
         read_only_fields = ('id', 'type')
 
     def get_unlock_date(self, node):
@@ -631,6 +634,9 @@ class PresetNodeSerializer(serializers.ModelSerializer):
         if node.type == VLE.models.Node.ENTRYDEADLINE:
             return TemplateSerializer(node.forced_template).data
         return None
+
+    def get_attached_files(self, node):
+        return FileSerializer(node.attached_files, many=True).data
 
 
 class EntrySerializer(serializers.ModelSerializer):

@@ -1,7 +1,7 @@
 <template>
     <div class="image-field">
         <div
-            class="image-controls mb-2 unselectable"
+            class="controls unselectable"
             @click="handleDownload"
         >
             <icon
@@ -11,6 +11,7 @@
             <b class="ml-1">
                 {{ file.file_name }}
             </b>
+            <slot/>
         </div>
         <transition name="fade">
             <img
@@ -76,19 +77,7 @@ export default {
 </script>
 
 <style lang="sass">
-.closed
-    -webkit-transition: height, .6s linear
-
-.open
-    max-height: 100vh
-    -webkit-transition: height, .6s linear
-
 .image-field
     img
         display: inline
-    .image-controls
-        &:hover
-            cursor: pointer
-        b
-            text-decoration: underline !important
 </style>
