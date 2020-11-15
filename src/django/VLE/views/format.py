@@ -124,7 +124,7 @@ class FormatView(viewsets.ViewSet):
         serializer.save()
 
         new_ids = utils.update_templates(assignment.format, templates)
-        utils.update_presets(assignment, presets, new_ids)
+        utils.update_presets(request.user, assignment, presets, new_ids)
 
         utils.delete_presets(removed_presets)
         utils.archive_templates(removed_templates)
