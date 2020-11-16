@@ -407,7 +407,7 @@ class AssignmentSerializer(serializers.ModelSerializer):
             else:
                 return None
         elif not self.context['course'] in assignment.courses.all():
-            raise VLE.utils.error_handling.VLEProgrammingError('Wrong course is supplied')
+            raise VLE.utils.error_handling.VLEProgrammingError('Wrong course is supplied.')
         elif not self.context['user'].can_view(self.context['course']):
             raise VLE.utils.error_handling.VLEParticipationError(self.context['course'], self.context['user'])
 
@@ -603,10 +603,13 @@ class PresetNodeSerializer(serializers.ModelSerializer):
     lock_date = serializers.SerializerMethodField()
     target = serializers.SerializerMethodField()
     template = serializers.SerializerMethodField()
+    attached_files = serializers.SerializerMethodField()
 
     class Meta:
         model = VLE.models.PresetNode
-        fields = ('id', 'description', 'type', 'unlock_date', 'due_date', 'lock_date', 'target', 'template')
+        fields = (
+            'id', 'description', 'type', 'unlock_date', 'due_date', 'lock_date', 'target', 'template', 'attached_files'
+        )
         read_only_fields = ('id', 'type')
 
     def get_unlock_date(self, node):
@@ -631,6 +634,9 @@ class PresetNodeSerializer(serializers.ModelSerializer):
         if node.type == VLE.models.Node.ENTRYDEADLINE:
             return TemplateSerializer(node.forced_template).data
         return None
+
+    def get_attached_files(self, node):
+        return FileSerializer(node.attached_files, many=True).data
 
 
 class EntrySerializer(serializers.ModelSerializer):
@@ -781,7 +787,8 @@ class TeacherEntrySerializer(EntrySerializer):
 
     def get_journals(self, teacher_entry):
         return TeacherEntryGradeSerializer(
-            teacher_entry.entry_set.all().select_related('node__journal', 'grade'), many=True
+            teacher_entry.entry_set.all().select_related('node__journal', 'grade').order_by('node__journal__name'),
+            many=True
         ).data
 
 

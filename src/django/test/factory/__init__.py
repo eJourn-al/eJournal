@@ -72,6 +72,8 @@ from test.factory.file_context import RichTextContentFileContextFactory as RichT
 from test.factory.file_context import RichTextFieldDescriptionFileContextFactory as RichTextFieldDescriptionFileContext  # noqa: F401, E501
 from test.factory.file_context import \
     RichTextPresetNodeDescriptionFileContextFactory as RichTextPresetNodeDescriptionFileContext  # noqa: F401, E501
+from test.factory.file_context import TempFileContextFactory as TempFileContext  # noqa: F401
+from test.factory.file_context import TempRichTextFileContextFactory as TempRichTextFileContext  # noqa: F401
 from test.factory.format import FormatFactory as Format  # noqa: F401
 from test.factory.grade import GradeFactory as Grade  # noqa: F401
 from test.factory.group import GroupFactory as Group  # noqa: F401
@@ -79,10 +81,14 @@ from test.factory.instance import InstanceFactory as Instance  # noqa: F401
 from test.factory.journal import GroupJournalFactory as GroupJournal  # noqa: F401
 from test.factory.journal import JournalFactory as Journal  # noqa: F401
 from test.factory.journal import JournalImportRequestFactory as JournalImportRequest  # noqa: F401
+from test.factory.journal import LtiGroupJournalFactory as LtiGroupJournal  # noqa: F401
 from test.factory.journal import LtiJournalFactory as LtiJournal  # noqa: F401
 from test.factory.node import NodeFactory as Node  # noqa: F401
+from test.factory.params import EntryContentCreationParamsFactory as EntryContentCreationParams  # noqa: F401
 from test.factory.params import JWTParamsFactory as JWTParams  # noqa: F401
 from test.factory.params import JWTTestUserParamsFactory as JWTTestUserParams  # noqa: F401
+from test.factory.params import TeacherEntryCreationParamsFactory as TeacherEntryCreationParams  # noqa: F401
+from test.factory.params import UnlimitedEntryCreationParamsFactory as UnlimitedEntryCreationParams  # noqa: F401
 from test.factory.params import UserParamsFactory as UserParams  # noqa: F401
 from test.factory.participation import AssignmentParticipationFactory as AssignmentParticipation  # noqa: F401
 from test.factory.participation import ParticipationFactory as Participation  # noqa: F401

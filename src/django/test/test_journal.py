@@ -146,6 +146,18 @@ class JournalAPITest(TestCase):
         users.append(factory.Student())
         self.assertRaises(ValidationError, factory.GroupJournal, add_users=users, author_limit=3)
 
+    def test_lti_group_journal_factory(self):
+        lti_group_journal = factory.LtiGroupJournal(add_users=[factory.Student()], entries__n=0)
+        lti_group_assignment = lti_group_journal.assignment
+
+        assert lti_group_assignment.is_group_assignment
+        assert lti_group_journal.author_limit > 1
+
+        assert lti_group_journal.authors.exists()
+        for ap in lti_group_journal.authors.all():
+            assert ap.grade_url
+            assert ap.sourcedid
+
     def test_journal_validation(self):
         j = factory.GroupJournal(author_limit=1)
         # NOTE: This already saves the journal, bulk updates bypass model save

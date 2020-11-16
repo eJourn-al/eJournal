@@ -249,7 +249,7 @@ class UserView(viewsets.ViewSet):
 
         # Deleting the last superuser should not be possible
         if user.is_superuser and User.objects.filter(is_superuser=True).count() == 1:
-            return response.bad_request('There is only 1 superuser left and therefore cannot be deleted')
+            return response.bad_request('There is only 1 superuser left and therefore cannot be deleted.')
 
         user.delete()
         return response.success(description='Successfully deleted user.')

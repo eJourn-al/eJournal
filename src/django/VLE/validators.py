@@ -61,7 +61,7 @@ def validate_entry_content(content, field):
         for access_id in file_handling.get_access_ids_from_rich_text(content):
             fc = VLE.models.FileContext.objects.filter(access_id=access_id)
             if not fc.exists():
-                raise ValidationError('Rich text contains reference to non existing file')
+                raise ValidationError('Rich text contains reference to non existing file.')
             fc = fc.first()
             if not fc.file or not os.path.exists(fc.file.path):
                 raise ValidationError('Rich text linked to file context whose file does not exists.')
@@ -90,13 +90,13 @@ def validate_entry_content(content, field):
     if field.type == VLE.models.Field.FILE:
         try:
             int(content['id'])
-        except (ValueError, KeyError):
-            raise ValidationError("The content['id'] of a field file should contain the pk of the related file")
+        except (ValueError, KeyError, TypeError):
+            raise ValidationError('The content of a field file should follow {field.pk: FileContext.pk}')
 
         # Ensures the FC still exists
         fc = VLE.models.FileContext.objects.get(pk=int(content['id']))
         if not os.path.isfile(fc.file.path):
-            raise ValidationError('Entry references non existing file')
+            raise ValidationError('Entry references non existing file.')
 
         if field.options:
             validator = FileExtensionValidator(field.options.split(', '))

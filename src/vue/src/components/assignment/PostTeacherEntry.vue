@@ -88,7 +88,7 @@
                     type="number"
                     min="0"
                     placeholder="-"
-                    class="theme-input mt-2 teacher-entry-grade"
+                    class="theme-input inline mt-2"
                     size="3"
                 />
                 <b-form-checkbox
@@ -141,7 +141,7 @@
                                 type="number"
                                 min="0"
                                 placeholder="-"
-                                class="theme-input teacher-entry-grade"
+                                class="theme-input inline"
                                 size="3"
                             />
                         </b-td>
@@ -258,6 +258,12 @@ export default {
                 this.$toasted.error('Teacher entry not posted: no grade set.')
             } else {
                 this.requestInFlight = true
+                if (this.sameGradeForAllEntries) {
+                    this.selectedJournals.forEach((journal) => {
+                        journal.grade = this.grade
+                        journal.published = this.publishSameGrade
+                    })
+                }
                 teacherEntryAPI.create({
                     title: this.title,
                     show_title_in_timeline: this.showTitleInTimeline,
@@ -265,7 +271,9 @@ export default {
                     template_id: this.selectedTemplate.id,
                     content: this.teacherEntryContent,
                     journals: this.selectedJournals,
-                }, { customSuccessToast: 'Teacher entry successfully posted.' })
+                }, {
+                    customSuccessToast: 'Teacher entry successfully posted.',
+                })
                     .then((data) => {
                         this.requestInFlight = false
                         this.$emit('teacher-entry-posted', data)
@@ -280,9 +288,3 @@ export default {
     },
 }
 </script>
-
-<style lang="sass">
-.teacher-entry-grade
-    width: 4em
-    display: inline-block
-</style>

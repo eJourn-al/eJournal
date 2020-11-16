@@ -202,7 +202,7 @@ export default {
     .multiselect__option--selected
         font-weight: 400
     .multiselect__option--selected::before
-        content: "•"
+        content: "\2022"
         margin-right: 10px
         margin-left: -5px
         font-size: 1.5em

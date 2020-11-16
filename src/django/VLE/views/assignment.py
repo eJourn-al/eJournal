@@ -271,7 +271,7 @@ class AssignmentView(viewsets.ViewSet):
         if intersecting_assignment_lti_id:
             if assignment.active_lti_id == intersecting_assignment_lti_id and len(assignment.lti_id_set) > 1:
                 return response.bad_request('This assignment cannot be removed from this course, since it is' +
-                                            ' currently configured for grade passback to the LMS')
+                                            ' currently configured for grade passback to the LMS.')
             course.assignment_lti_id_set.remove(intersecting_assignment_lti_id)
             assignment.lti_id_set.remove(intersecting_assignment_lti_id)
             course.save()
@@ -409,7 +409,7 @@ class AssignmentView(viewsets.ViewSet):
         for j, b in bonuses.items():
             j.bonus_points = b
             j.save()
-            grading.task_journal_status_to_LMS.delay(j.pk)
+        grading.task_bulk_send_journal_status_to_LMS.delay([journal.pk for journal in bonuses.keys()])
 
         return response.success()
 
@@ -461,6 +461,8 @@ class AssignmentView(viewsets.ViewSet):
         assignment = assignment_source
         assignment.is_published = False
         assignment.pk = None
+        assignment.active_lti_id = None
+        assignment.lti_id_set = []
         set_assignment_dates(assignment, months_offset)
 
         # One to one fields needs to be updated before save else we would have a duplicate key
@@ -550,5 +552,8 @@ class AssignmentView(viewsets.ViewSet):
 
         request.user.check_permission('can_post_teacher_entries', assignment)
 
-        return response.success({'teacher_entries': TeacherEntrySerializer(assignment.teacherentry_set.all(),
-                                                                           many=True).data})
+        return response.success({
+            'teacher_entries': TeacherEntrySerializer(
+                assignment.teacherentry_set.all().order_by('title'), many=True
+            ).data
+        })

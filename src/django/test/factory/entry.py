@@ -204,6 +204,6 @@ class PresetEntryFactory(BaseEntryFactory):
         self.save()
 
         if self.node is None:
-            raise ValidationError('Dangling preset entry (node = None)')
+            raise ValidationError('Dangling preset entry (node = None).')
         if self.template.pk != self.node.preset.forced_template.pk:
-            raise ValidationError('Deadline Entry template does not match its PresetNode\'s template')
+            raise ValidationError('Deadline Entry template does not match its PresetNode\'s template.')

@@ -42,6 +42,10 @@
                 v-if="node && node.description && (edit || create)"
                 :content="node.description"
             />
+            <files-list
+                v-if="node && node.description && (edit || create)"
+                :files="node.attached_files"
+            />
             <entry-fields
                 :template="template"
                 :content="newEntryContent"
@@ -126,6 +130,7 @@
 import SandboxedIframe from '@/components/assets/SandboxedIframe.vue'
 import EntryFields from '@/components/entry/EntryFields.vue'
 import Comments from '@/components/entry/Comments.vue'
+import filesList from '@/components/assets/file_handling/FilesList.vue'
 
 import entryAPI from '@/api/entry.js'
 
@@ -134,6 +139,7 @@ export default {
         EntryFields,
         SandboxedIframe,
         Comments,
+        filesList,
     },
     props: {
         template: {

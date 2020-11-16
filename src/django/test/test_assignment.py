@@ -106,8 +106,15 @@ class AssignmentAPITest(TestCase):
             'Assignment author is also an actual teacher in the associated courses when specified manually'
 
         lti_assignment = factory.LtiAssignment()
-        lti_assignment.courses.filter(assignment_lti_id_set__contains=[lti_assignment.active_lti_id]).count() \
+        assert lti_assignment.courses.filter(assignment_lti_id_set__contains=[lti_assignment.active_lti_id]).count() \
             == lti_assignment.courses.count(), 'The lti id is added to each course\'s assignment id'
+
+        course = factory.Course()
+        participation = factory.Participation(role=course.role_set.filter(name='Student').first(), course=course)
+        journal_count = Journal.objects.count()
+        assignment = factory.Assignment(courses=[course])
+        assert journal_count + 1 == Journal.objects.count(), 'Student should have gotten a journal'
+        assert Journal.objects.get(authors__user=participation.user, assignment=assignment)
 
     def test_group_assignment_factory(self):
         j_all_count = Journal.all_objects.count()
@@ -923,8 +930,13 @@ class AssignmentAPITest(TestCase):
             ltiAssignment2.save,
             msg='lti_id_set and assignment should be unique together for each arrayfield value'
         )
+        assert ltiAssignment2.active_lti_id not in ltiAssignment2.lti_id_set, \
+            'LTI id validaton should prevent an an invalid lti id from being added to the assignment lti_id_set'
 
-        assert ltiAssignment2.active_lti_id in ltiAssignment2.lti_id_set, \
+        new_lti_id = 'Some new id'
+        ltiAssignment2.active_lti_id = new_lti_id
+        ltiAssignment2.save()
+        assert new_lti_id in ltiAssignment2.lti_id_set, \
             'LTI ids added to the assignment should als be added to the lti_id_set'
 
         journal = factory.Journal(assignment=ltiAssignment1)
@@ -1281,3 +1293,96 @@ class AssignmentAPITest(TestCase):
         test_bonus_helper('{},2'.format(lti_bonus_student.username), user=factory.Teacher(), status=403)
         # Nor should students
         test_bonus_helper('{},2'.format(lti_bonus_student.username), user=lti_bonus_student, status=403)
+
+    def test_assignment_state_actions(self):
+        def init_assignment(**fields):
+            return Assignment(name='Test', **fields)
+
+        def create_assignment(**fields):
+            format = Format.objects.create()
+            return Assignment.objects.create(format=format, name='Test', **fields)
+
+        created_assignment = create_assignment()
+        self.assertRaises(VLEProgrammingError, Assignment.state_actions, new=created_assignment, old=None)
+
+        def test_published():
+            assignment = init_assignment(is_published=True)
+            r = Assignment.state_actions(new=assignment)
+            assert r['published']
+            assert not r['unpublished']
+
+            r = Assignment.state_actions(new=init_assignment(is_published=False))
+            assert not r['published']
+            assert not r['unpublished']
+
+            pk = assignment.pk
+            assignment.pk = None
+            r = Assignment.state_actions(new=assignment)
+            assert r['published']
+            assert not r['unpublished']
+
+            assignment.pk = pk
+            r = Assignment.state_actions(new=assignment, old=create_assignment(is_published=False))
+            assert r['published']
+            assert not r['unpublished']
+
+            r = Assignment.state_actions(
+                new=init_assignment(is_published=False), old=create_assignment(is_published=True))
+            assert not r['published']
+            assert not r['unpublished']
+
+        def test_type_changed():
+            r = Assignment.state_actions(new=init_assignment(is_group_assignment=False))
+            assert not r['type_changed']
+
+            r = Assignment.state_actions(new=init_assignment(is_group_assignment=True))
+            assert not r['type_changed']
+
+            group_assignment = create_assignment(is_group_assignment=True)
+            non_group_assignment = create_assignment(is_group_assignment=False)
+
+            assert not Assignment.state_actions(new=group_assignment, old=group_assignment)['type_changed']
+            assert Assignment.state_actions(new=group_assignment, old=non_group_assignment)['type_changed']
+            assert Assignment.state_actions(new=non_group_assignment, old=group_assignment)['type_changed']
+            assert not Assignment.state_actions(new=non_group_assignment, old=non_group_assignment)['type_changed']
+
+        def test_active_lti_id_modified():
+            assert not Assignment.state_actions(new=init_assignment(active_lti_id=None))['active_lti_id_modified']
+            assert Assignment.state_actions(new=init_assignment(active_lti_id=0))['active_lti_id_modified']
+            assert Assignment.state_actions(new=init_assignment(active_lti_id=1))['active_lti_id_modified']
+
+            assignment_lti_none = create_assignment(active_lti_id=None)
+            assignment_lti_zero = create_assignment(active_lti_id=0)
+            assignment_lti_one = create_assignment(active_lti_id=1)
+
+            assert not Assignment.state_actions(
+                new=assignment_lti_none, old=assignment_lti_none)['active_lti_id_modified']
+            assert Assignment.state_actions(new=assignment_lti_zero, old=assignment_lti_none)['active_lti_id_modified']
+            assert Assignment.state_actions(new=assignment_lti_one, old=assignment_lti_none)['active_lti_id_modified']
+
+            assert Assignment.state_actions(new=assignment_lti_none, old=assignment_lti_one)['active_lti_id_modified']
+            assert Assignment.state_actions(new=assignment_lti_zero, old=assignment_lti_one)['active_lti_id_modified']
+            assert not Assignment.state_actions(
+                new=assignment_lti_one, old=assignment_lti_one)['active_lti_id_modified']
+
+            assert Assignment.state_actions(new=assignment_lti_none, old=assignment_lti_zero)['active_lti_id_modified']
+            assert not Assignment.state_actions(
+                new=assignment_lti_zero, old=assignment_lti_zero)['active_lti_id_modified']
+            assert Assignment.state_actions(new=assignment_lti_one, old=assignment_lti_zero)['active_lti_id_modified']
+
+        test_published()
+        test_type_changed()
+        test_active_lti_id_modified()
+
+    def test_assignment_handle_active_lti_id_modified(self):
+        lti_group_journal = factory.LtiGroupJournal(entries__n=0, add_users=[factory.Student()])
+        assignment = lti_group_journal.assignment
+
+        assert not lti_group_journal.needs_lti_link, 'Assignment, AP and Journal are initialized correctly '
+        '(assignment participations have a sourcedid and grade_url, assignment an active_lti_id, and therefore '
+        'the journal has no authors which still need an active lti link.'
+
+        assignment.handle_active_lti_id_modified()
+
+        for ap in lti_group_journal.authors.select_related('user', 'journal'):
+            assert ap.user.full_name in ap.journal.needs_lti_link, 'All users require a new LTI link'

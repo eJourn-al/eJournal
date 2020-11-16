@@ -92,7 +92,7 @@
             footer="false"
         />
 
-        <div v-if="currentPreset.type === 'd'">
+        <template v-if="currentPreset.type === 'd'">
             <h2 class="theme-h2 field-heading required">
                 Preset Template
                 <tooltip tip="The template students can use for this entry"/>
@@ -134,22 +134,23 @@
                     Show Preview
                 </b-button>
             </div>
-            <div v-if="showTemplatePreview">
-                <b-card class="no-hover">
-                    <entry-fields
-                        v-if="currentPreset.template"
-                        :template="currentPreset.template"
-                        :content="() => Object()"
-                        :edit="true"
-                        :readOnly="true"
-                    />
-                    <span v-else>
-                        Select a template to preview
-                    </span>
-                </b-card>
-            </div>
-        </div>
-        <div v-else-if="currentPreset.type === 'p'">
+            <b-card
+                v-if="showTemplatePreview"
+                class="no-hover multi-form"
+            >
+                <entry-fields
+                    v-if="currentPreset.template"
+                    :template="currentPreset.template"
+                    :content="() => Object()"
+                    :edit="true"
+                    :readOnly="true"
+                />
+                <span v-else>
+                    Select a template to preview
+                </span>
+            </b-card>
+        </template>
+        <template v-else-if="currentPreset.type === 'p'">
             <h2 class="theme-h2 field-heading required">
                 Amount of points
                 <tooltip
@@ -160,15 +161,31 @@
             <b-input
                 v-model="currentPreset.target"
                 type="number"
-                class="theme-input"
+                class="theme-input multi-form"
                 placeholder="Amount of points"
                 min="1"
                 :max="assignmentDetails.points_possible"
             />
-        </div>
+        </template>
+
+        <h2
+            v-if="currentPreset.attached_files.length > 0"
+            class="theme-h2 field-heading"
+        >
+            Files
+        </h2>
+        <files-list
+            :attachNew="true"
+            :files="currentPreset.attached_files"
+            @uploading-file="uploadingFiles ++"
+            @fileUploadSuccess="currentPreset.attached_files.push($event) && uploadingFiles --"
+            @fileUploadFailed="uploadingFiles --"
+            @fileRemoved="(i) => currentPreset.attached_files.splice(i, 1)"
+        />
+
         <b-button
             v-if="!newPreset"
-            class="delete-button full-width mt-2"
+            class="delete-button float-right"
             @click.prevent="emitDeletePreset"
         >
             <icon name="trash"/>
@@ -180,17 +197,20 @@
 <script>
 import EntryFields from '@/components/entry/EntryFields.vue'
 import Tooltip from '@/components/assets/Tooltip.vue'
+import filesList from '@/components/assets/file_handling/FilesList.vue'
 
 export default {
     components: {
         TextEditor: () => import(/* webpackChunkName: 'text-editor' */ '@/components/assets/TextEditor.vue'),
         EntryFields,
         Tooltip,
+        filesList,
     },
     props: ['newPreset', 'currentPreset', 'templates', 'assignmentDetails'],
     data () {
         return {
             showTemplatePreview: false,
+            uploadingFiles: 0,
         }
     },
     computed: {
@@ -281,7 +301,7 @@ export default {
     },
     methods: {
         emitDeletePreset () {
-            if (window.confirm('Are you sure you want to remove this preset from this format?')) {
+            if (window.confirm('Are you sure you want to remove this preset from this assignment?')) {
                 this.$emit('delete-preset')
             }
         },

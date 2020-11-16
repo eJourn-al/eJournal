@@ -55,8 +55,7 @@ def make_participation(user=None, course=None, role=None, groups=None, notify_us
     participation = VLE.models.Participation(user=user, course=course, role=role)
     participation.save(notify_user=notify_user)
     if groups:
-        participation.groups.set(groups)
-        participation.save()
+        participation.set_groups(groups)
 
     return participation
 
@@ -320,17 +319,12 @@ def make_grade(entry, author, grade, published=False):
     grade -- the new grade
     published -- publishment state of the grade
     """
-    grade = VLE.models.Grade.objects.create(
+    return VLE.models.Grade.objects.create(
         entry=entry,
         author=VLE.models.User.objects.get(pk=author),
         grade=grade,
         published=published
     )
-
-    entry.grade = grade
-    entry.save()
-
-    return grade
 
 
 def make_journal_image(file, journal, author):
