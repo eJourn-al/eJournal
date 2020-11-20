@@ -288,68 +288,68 @@ export default {
                 {
                     check: preset => this.checkDateOrder(this.assignmentDetails.unlock_date, preset.unlock_date),
                     message: 'One or more presets have an unlock date before the assignment unlock date.',
-                    happened: false,
+                    occurred: false,
                 },
                 {
                     check: preset => this.checkDateOrder(preset.unlock_date, this.assignmentDetails.due_date),
                     message: 'One or more presets have an unlock date after the assignment due date.',
-                    happened: false,
+                    occurred: false,
                 },
                 {
                     check: preset => this.checkDateOrder(this.assignmentDetails.unlock_date, preset.due_date),
                     message: 'One or more presets have a due date before the assignment unlock date.',
-                    happened: false,
+                    occurred: false,
                 },
                 {
                     check: preset => this.checkDateOrder(preset.due_date, this.assignmentDetails.due_date),
                     message: 'One or more presets have a due date after the assignment due date.',
-                    happened: false,
+                    occurred: false,
                 },
                 {
                     check: preset => this.checkDateOrder(this.assignmentDetails.unlock_date, preset.lock_date),
                     message: 'One or more presets have a lock date before the assignment unlock date.',
-                    happened: false,
+                    occurred: false,
                 },
                 {
                     check: preset => this.checkDateOrder(preset.lock_date, this.assignmentDetails.lock_date),
                     message: 'One or more presets have a lock date after the assignment lock date.',
-                    happened: false,
+                    occurred: false,
                 },
                 {
                     check: preset => this.checkDateOrder(preset.unlock_date, preset.due_date),
                     message: 'One or more presets are due before their unlock date.',
-                    happened: false,
+                    occurred: false,
                 },
                 {
                     check: preset => this.checkDateOrder(preset.due_date, preset.lock_date),
                     message: 'One or more presets are lock before their due date.',
-                    happened: false,
+                    occurred: false,
                 },
                 {
                     check: preset => this.checkValidDate(preset.unlock_date),
                     message: 'One or more presets have an invalid unlock date.',
-                    happened: false,
+                    occurred: false,
                 },
                 {
                     check: preset => this.checkValidDate(preset.due_date),
                     message: 'One or more presets have an invalid due date.',
-                    happened: false,
+                    occurred: false,
                 },
                 {
                     check: preset => this.checkValidDate(preset.lock_date),
                     message: 'One or more presets have an invalid lock date.',
-                    happened: false,
+                    occurred: false,
                 },
                 {
                     check: preset => !(preset.type === 'd' && (
                         typeof preset.template.id === 'undefined' || !this.templatesIds.includes(preset.template.id))),
                     message: 'One or more presets have an invalid template.',
-                    happened: false,
+                    occurred: false,
                 },
                 {
                     check: preset => !(preset.type === 'p' && Number.isNaN(parseFloat(preset.target, 10))),
                     message: 'One or more presets have an invalid target.',
-                    happened: false,
+                    occurred: false,
                 },
                 {
                     check: (preset) => {
@@ -361,12 +361,12 @@ export default {
                         return inOrder
                     },
                     message: 'One or more preset targets are out of order.',
-                    happened: false,
+                    occurred: false,
                 },
                 {
                     check: preset => preset.target <= this.assignmentDetails.points_possible,
                     message: 'Preset target is higher than the maximum possible points for the assignment.',
-                    happened: false,
+                    occurred: false,
                 },
             ],
         }
@@ -409,7 +409,7 @@ export default {
                 })
         },
         checkDateOrder (first, second) {
-            // Returns false if order is incorrect or one of the dates is null
+            // Returns false if order is incorrect
             return !first || !second || Date.parse(first) <= Date.parse(second)
         },
         checkValidDate (date) {
@@ -434,17 +434,17 @@ export default {
 
             this.lastTarget = 0
             this.presetErrors.forEach((error) => {
-                error.happened = false
+                error.occurred = false
             })
             this.presets.forEach((preset) => {
                 this.presetErrors.forEach((error) => {
-                    error.happened = error.happened || !error.check(preset)
+                    error.occurred = error.occurred || !error.check(preset)
                 })
             })
 
             let hasError = false
             this.presetErrors.forEach((error) => {
-                if (error.happened) {
+                if (error.occurred) {
                     this.$toasted.error(error.message)
                     hasError = true
                 }
