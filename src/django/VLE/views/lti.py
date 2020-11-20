@@ -114,7 +114,7 @@ def get_finish_state(user, assignment, lti_params):
 
 
 def handle_test_student(user, params):
-    """Creates a test user if no user is proved and the params contain a blank email adress."""
+    """Creates a test user if no user is provided and the params contain a blank email adress."""
     if not user \
        and 'custom_user_email' in params and params['custom_user_email'] == '' \
        and 'custom_user_full_name' in params and params['custom_user_full_name'] == settings.LTI_TEST_STUDENT_FULL_NAME:

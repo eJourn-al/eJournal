@@ -1,6 +1,7 @@
 from urllib.parse import urljoin
 
 import oauth2
+import sentry_sdk
 from django.conf import settings
 
 import VLE.factory as factory
@@ -133,6 +134,9 @@ def _make_lti_participation(user, course, lti_role):
         if role in lti_role:
             return factory.make_participation(
                 user, course, Role.objects.get(name=role, course=course), notify_user=False)
+
+    sentry_sdk.capture_message(f'Unrecognized LTI role encountered. User {user.pk}, roles {lti_role}', level='warning')
+
     return factory.make_participation(
         user, course, Role.objects.get(name='Student', course=course), notify_user=False)
 
