@@ -14,8 +14,9 @@ from django.contrib.auth.models import AbstractUser, UserManager
 from django.contrib.postgres.fields import ArrayField, CIEmailField, CITextField
 from django.core.exceptions import ValidationError
 from django.db import models
-from django.db.models import F, Min, OuterRef, Prefetch, Q, Subquery, Sum
+from django.db.models import F, Min, OuterRef, Prefetch, Q, Subquery, Sum, TextField
 from django.db.models.deletion import CASCADE, SET_NULL
+from django.db.models.functions import Cast
 from django.dispatch import receiver
 from django.utils import timezone
 from django.utils.timezone import now
@@ -88,6 +89,22 @@ def access_gen(size=128, chars=string.ascii_lowercase + string.ascii_uppercase +
     return ''.join(random.SystemRandom().choice(chars) for _ in range(size))
 
 
+class FileContextQuerySet(models.QuerySet):
+    def unused_file_field_files(self, func='filter'):
+        """Queries for files linked to a FILE field where the data no longer holds the FC's `pk`"""
+        return getattr(self, func)(
+            ~Q(content__data=Cast(F('pk'), TextField())),
+            content__field__type=VLE.models.Field.FILE,
+        )
+
+    def unused_rich_text_field_files(self, func='filter'):
+        """Queries for files linked to a FILE field where the data no longer holds the FC's `access_id`"""
+        return getattr(self, func)(
+            ~Q(content__data__contains=F('access_id')),
+            content__field__type=VLE.models.Field.RICH_TEXT,
+        )
+
+
 class FileContext(CreateUpdateModel):
     """FileContext.
 
@@ -102,6 +119,8 @@ class FileContext(CreateUpdateModel):
     - course: The course that the File is linked to (e.g. course description).
     - journal: The journal that the File is linked to (e.g. comment).
     """
+    objects = models.Manager.from_queryset(FileContextQuerySet)()
+
     file = models.FileField(
         null=False,
         upload_to=file_handling.get_file_path,
