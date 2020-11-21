@@ -376,10 +376,24 @@ class UserView(viewsets.ViewSet):
     def invite_users(self, request):
         """Invite new users to eJournal.
 
-        This will create accounts for the invited users, which they can activate through an invite link.
+        This will create accounts for the invited users, which they can activate through an invite link sent via email.
 
         Arguments:
-        TODO
+        request -- request data
+            users -- all users to create
+                full_name -- full name of a user
+                username -- username of a user
+                email -- email address of a user
+                is_teacher -- whether the user is a teacher
+
+        Returns
+        On failure:
+            forbidden -- when the user is not a superuser (thus not allowed to invite new users)
+            bad_request -- when the provided user data is invalid, e.g.
+                Some users are missing a full name, email or username
+                Usernames or email addresses belong to existing users
+        On success:
+            success -- the users have been invited
         """
         if not request.user.is_superuser:
             return response.forbidden('You are not allowed to invite new users.')
