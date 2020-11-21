@@ -92,7 +92,7 @@
                 </b-button>
                 <b-button
                     v-else
-                    class="delete-button"
+                    class="red-button"
                     @click="previewTemplate = false"
                 >
                     <icon name="eye-slash"/>

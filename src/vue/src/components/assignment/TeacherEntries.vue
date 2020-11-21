@@ -24,7 +24,7 @@
             </b-button>
             <b-button
                 v-if="selectedTeacherEntry && showTeacherEntryContent"
-                class="delete-button flex-shrink-0 mb-2"
+                class="red-button flex-shrink-0 mb-2"
                 @click="showTeacherEntryContent = false"
             >
                 <icon name="eye-slash"/>
