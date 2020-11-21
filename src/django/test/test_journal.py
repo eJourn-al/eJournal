@@ -1,5 +1,6 @@
 import test.factory as factory
 from test.utils import api
+from test.utils.performance import queries_invariant_to_db_size
 
 from computedfields.models import update_dependent
 from django.conf import settings
@@ -8,6 +9,8 @@ from django.test import TestCase
 
 from VLE.models import (Assignment, AssignmentParticipation, Comment, Content, Course, Entry, FileContext, Journal,
                         JournalImportRequest, Participation, Role, User)
+from VLE.serializers import JournalSerializer
+from VLE.utils.error_handling import VLEProgrammingError
 
 
 class JournalAPITest(TestCase):
@@ -85,6 +88,9 @@ class JournalAPITest(TestCase):
         # LtiJournal also creates a single user
         ap = AssignmentParticipation.objects.get(journal=lti_journal, assignment=lti_journal.assignment, user=user)
         assert ap.grade_url and ap.sourcedid, 'Lti journal requires a non empty grade_url and sourcedid'
+
+        empty_journal = factory.Journal(ap=False, assignment=assignment)
+        assert not empty_journal.authors.exists()
 
     def test_journal_factory_assignment_author_chain(self):
         users_before = list(User.objects.values_list('pk', flat=True))
@@ -739,3 +745,115 @@ class JournalAPITest(TestCase):
             }, user=self.g_teacher)
         assert Journal.objects.get(pk=self.group_journal.pk).locked, \
             'Teacher should sitll be able to lock journal'
+
+    def test_journal_author_property(self):
+        journal = factory.Journal()
+
+        with self.assertNumQueries(2):
+            student = journal.authors.first().user
+
+        with self.assertNumQueries(1):
+            assert student == journal.author, 'Journal.author is correct and faster'
+
+        group_journal = factory.GroupJournal()
+
+        # Author access is ambiguous when dealing with a group journal
+        with self.assertRaises(VLEProgrammingError):
+            group_journal.author
+
+    def test_journal_queryset_order_by_authors_first(self):
+        assignment = factory.Assignment(group_assignment=True)
+
+        journal_with_author = factory.GroupJournal(assignment=assignment)
+        empty_journal = factory.GroupJournal(ap=False, assignment=assignment)
+        empty_journal2 = factory.GroupJournal(ap=False, assignment=assignment)
+        journal_with_2_authors = factory.GroupJournal(assignment=assignment, add_users=[factory.Student()])
+
+        qry = Journal.objects.filter(assignment=assignment).order_by_authors_first()
+        assert len(qry) == 4, 'Equal to the number of journals (not APs)'
+
+        # Journals with authors come before those without
+        assert qry[0] == journal_with_author or qry[1] == journal_with_author
+        assert qry[0] == journal_with_2_authors or qry[1] == journal_with_2_authors
+        assert qry[2] == empty_journal or qry[3] == empty_journal
+        assert qry[2] == empty_journal2 or qry[3] == empty_journal2
+
+    def test_journal_queryset_for_course(self):
+        c1 = factory.Course()
+        c2 = factory.Course()
+        shared_assignment = factory.Assignment(courses=[c1, c2])
+        p_c1 = factory.Participation(course=c1, role=c1.role_set.filter(name='Student').first())
+        p_c2 = factory.Participation(course=c2, role=c2.role_set.filter(name='Student').first())
+        j_c1 = factory.Journal(assignment=shared_assignment, ap__user=p_c1.user, ap__add_user_to_missing_courses=False)
+        j_c2 = factory.Journal(assignment=shared_assignment, ap__user=p_c2.user, ap__add_user_to_missing_courses=False)
+
+        assert Journal.objects.filter(assignment=shared_assignment).for_course(c1).get() == j_c1
+        assert Journal.objects.filter(assignment=shared_assignment).for_course(c2).get() == j_c2
+
+        shared_assignment = factory.Assignment(courses=[c1, c2], group_assignment=True)
+        p_c1 = factory.Participation(course=c1, role=c1.role_set.filter(name='Student').first())
+        p_c2 = factory.Participation(course=c2, role=c2.role_set.filter(name='Student').first())
+        empty_group_journal = factory.GroupJournal(assignment=shared_assignment, ap=False)
+        group_journal_c1 = factory.GroupJournal(
+            assignment=shared_assignment, ap__user=p_c1.user, ap__add_user_to_missing_courses=False)
+        group_journal_c2 = factory.GroupJournal(
+            assignment=shared_assignment, ap__user=p_c2.user, ap__add_user_to_missing_courses=False)
+
+        journals_for_course_c1 = Journal.objects.filter(assignment=shared_assignment).for_course(c1)
+        assert empty_group_journal in journals_for_course_c1, 'Empty group journals should appear for all courses'
+        assert group_journal_c1 in journals_for_course_c1
+        assert group_journal_c2 not in journals_for_course_c1
+
+        journals_for_course_c2 = Journal.objects.filter(assignment=shared_assignment).for_course(c2)
+        assert empty_group_journal in journals_for_course_c2, 'Empty group journals should appear for all courses'
+        assert group_journal_c2 in journals_for_course_c2
+        assert group_journal_c1 not in journals_for_course_c2
+
+    def test_journal_serializer(self):
+        journal = factory.Journal()
+        student = journal.author
+        assignment = journal.assignment
+        teacher = assignment.author
+
+        queries_invariant_to_db_size(
+            call=JournalSerializer,
+            call_args=[assignment],
+            call_kwargs={'context': {'user': teacher}, 'many': True},
+            add_state=[(factory.Journal, {'assignment': assignment})],
+        )
+
+        queries_invariant_to_db_size(
+            call=JournalSerializer,
+            call_args=[assignment],
+            call_kwargs={'context': {'user': student}, 'many': True},
+            add_state=[(factory.Journal, {'assignment': assignment})],
+        )
+
+        data = JournalSerializer(journal, context={'user': student}).data
+        assert data['import_requests'] is None
+        assert data['usernames'] is None
+
+        data = JournalSerializer(journal, context={'user': teacher}).data
+        assert data['import_requests'] == 0
+        assert data['usernames'] == journal.usernames
+
+    def test_can_add(self):
+        student = factory.Student()
+        student2 = factory.Student()
+        journal = factory.GroupJournal(ap__user=student, add_users=[student2])
+        journal = Journal.objects.get(pk=journal.pk)
+        unrelated_student = factory.AssignmentParticipation(assignment=journal.assignment).user
+        teacher = journal.assignment.author
+        admin = factory.Admin()
+
+        assert not journal.can_add(None)
+        assert not journal.can_add(False)
+        with self.assertRaises(ValueError):
+            assert not journal.can_add(journal.authors.first()), 'Check is based on user instance not AP'
+
+        assert journal.can_add(student)
+        assert journal.can_add(student2)
+
+        assert not journal.can_add(unrelated_student)
+        assert not journal.can_add(teacher)
+        assert not journal.can_add(admin)

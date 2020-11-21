@@ -8,7 +8,7 @@ from rest_framework import viewsets
 
 import VLE.utils.generic_utils as utils
 import VLE.utils.responses as response
-from VLE.models import Assignment, Course, Field, Group, PresetNode
+from VLE.models import Assignment, Course, Field, Format, Group, PresetNode
 from VLE.serializers import AssignmentFormatSerializer, FormatSerializer
 from VLE.utils import file_handling
 
@@ -67,10 +67,15 @@ class FormatView(viewsets.ViewSet):
         request.user.check_can_view(assignment)
         request.user.check_permission('can_edit_assignment', assignment)
 
-        serializer = FormatSerializer(assignment.format)
-        assignment_details = AssignmentFormatSerializer(assignment, context={'user': request.user, 'course': course})
-
-        return response.success({'format': serializer.data, 'assignment_details': assignment_details.data})
+        return response.success({
+            'format': FormatSerializer(
+                FormatSerializer.setup_eager_loading(Format.objects.filter(pk=assignment.format_id)).get()
+            ).data,
+            'assignment_details': AssignmentFormatSerializer(
+                assignment,
+                context={'user': request.user, 'course': course}
+            ).data
+        })
 
     def partial_update(self, request, pk):
         """Update an existing journal format.
@@ -136,7 +141,11 @@ class FormatView(viewsets.ViewSet):
             file_handling.establish_rich_text(author=request.user, rich_text=node.description, assignment=assignment)
 
         return response.success({
-            'format': FormatSerializer(assignment.format).data,
+            'format': FormatSerializer(
+                FormatSerializer.setup_eager_loading(Format.objects.filter(pk=assignment.format_id)).get()
+            ).data,
             'assignment_details': AssignmentFormatSerializer(
-                assignment, context={'user': request.user, 'course': course}).data
+                assignment,
+                context={'user': request.user, 'course': course}
+            ).data
         })

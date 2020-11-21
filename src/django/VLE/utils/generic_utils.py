@@ -99,8 +99,10 @@ def get_sorted_nodes(journal):
     Get all the nodes of a journal in sorted order.
     Order is default by due_date.
     """
-    return journal.node_set.annotate(
-        sort_due_date=Case(
+    return journal.node_set.select_related(
+        'entry',
+        'preset'
+    ).annotate(sort_due_date=Case(
             When(type=VLE.models.Node.ENTRY, then='entry__creation_date'),
             default='preset__due_date')
     ).order_by('sort_due_date')
@@ -225,14 +227,14 @@ def update_presets(user, assignment, presets, new_ids):
         preset_node.due_date = due_date
         preset_node.lock_date = lock_date if lock_date else None
 
-        if preset_node.type == VLE.models.Node.PROGRESS:
+        if preset_node.is_progress:
             if target > 0 and target <= assignment.points_possible:
                 preset_node.target = target
             else:
                 raise VLE.utils.error_handling.VLEBadRequest(
                     'Progress goal needs to be between 0 and the maximum amount for the assignment: {}'
                     .format(assignment.points_possible))
-        elif preset_node.type == VLE.models.Node.ENTRYDEADLINE:
+        elif preset_node.is_deadline:
             if template['id'] in new_ids:
                 preset_node.forced_template = VLE.models.Template.objects.get(pk=new_ids[template['id']])
             else:

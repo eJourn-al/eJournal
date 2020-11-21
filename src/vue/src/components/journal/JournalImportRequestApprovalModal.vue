@@ -92,7 +92,7 @@ import utils from '@/utils/generic_utils.js'
 import journalCard from '@/components/assignment/JournalCard.vue'
 import dropdownButton from '@/components/assets/DropdownButton.vue'
 
-import journalImportRequestAPI from '@/api/journal_import_request.js'
+import jirAPI from '@/api/journal_import_request.js'
 
 export default {
     components: {
@@ -133,7 +133,7 @@ export default {
         },
     },
     created () {
-        journalImportRequestAPI.list(this.$route.params.jID).then((jirs) => {
+        jirAPI.list(this.$route.params.jID).then((jirs) => {
             this.jirs = jirs
             if (jirs.length === 1) {
                 this.selectedAssignment = {
@@ -158,7 +158,7 @@ export default {
         },
         handleJIR (jir) {
             this.jirPatchInFlight = true
-            journalImportRequestAPI.update(
+            jirAPI.update(
                 jir.id,
                 this.$store.getters['preferences/journalImportRequestButtonSetting'],
                 { responseSuccessToast: true },

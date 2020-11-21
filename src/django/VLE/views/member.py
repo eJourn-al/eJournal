@@ -20,8 +20,10 @@ class MemberView(viewsets.ViewSet):
         request.user.check_permission('can_edit_course_user_group', group.course)
 
         serializer = ParticipationSerializer(
-            Participation.objects.filter(groups=group), context={'course': group.course, 'user': request.user},
-            many=True)
+            ParticipationSerializer.setup_eager_loading(Participation.objects.filter(groups=group)),
+            context={'course': group.course, 'user': request.user},
+            many=True
+        )
         return response.success({'members': serializer.data})
 
     def create(self, request):

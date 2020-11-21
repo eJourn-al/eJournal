@@ -14,7 +14,7 @@ class JournalImportRequestView(viewsets.ViewSet):
         Lists all journal import requests (JIR) for a given (import) target journal.
 
         JIRs are not (fully) serialized alongside their respective journals in order to speedup the
-        assignment page, as JIRs occur infrequently.
+        assignment page, as JIRs occur infrequently. Instead Entries serialize a trimmed version.
         """
         journal_target_id, = utils.required_typed_params(request.query_params, (int, 'journal_target_id'))
 
@@ -22,7 +22,9 @@ class JournalImportRequestView(viewsets.ViewSet):
         request.user.check_permission('can_manage_journal_import_requests', journal_target.assignment)
 
         serializer = JournalImportRequestSerializer(
-            journal_target.import_request_targets.filter(state=JournalImportRequest.PENDING),
+            JournalImportRequestSerializer.setup_eager_loading(
+                journal_target.import_request_targets.filter(state=JournalImportRequest.PENDING)
+            ),
             context={'user': request.user},
             many=True
         )
@@ -47,7 +49,10 @@ class JournalImportRequestView(viewsets.ViewSet):
 
         jir = JournalImportRequest.objects.create(source=journal_source, target=journal_target, author=request.user)
 
-        serializer = JournalImportRequestSerializer(jir, many=False, context={'user': request.user})
+        serializer = JournalImportRequestSerializer(
+            JournalImportRequestSerializer.setup_eager_loading(JournalImportRequest.objects.filter(pk=jir.pk))[0],
+            context={'user': request.user},
+        )
         return response.created({'journal_import_request': serializer.data})
 
     def partial_update(self, request, *args, **kwargs):

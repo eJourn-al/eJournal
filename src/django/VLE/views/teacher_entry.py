@@ -6,10 +6,10 @@ In this file are all the entry api requests.
 from django.db.models import Max
 from rest_framework import viewsets
 
-import VLE.serializers as serialize
 import VLE.utils.generic_utils as utils
 import VLE.utils.responses as response
 from VLE.models import Assignment, Entry, Grade, Journal, Node, TeacherEntry, Template
+from VLE.serializers import TeacherEntrySerializer
 from VLE.utils import entry_utils, grading
 from VLE.utils.error_handling import VLEBadRequest
 
@@ -72,7 +72,12 @@ class TeacherEntryView(viewsets.ViewSet):
         self._create_new_entries(teacher_entry, journals, request.user)
 
         return response.created({
-            'teacher_entry': serialize.TeacherEntrySerializer(teacher_entry).data
+            'teacher_entry': TeacherEntrySerializer(
+                TeacherEntrySerializer.setup_eager_loading(
+                    TeacherEntry.objects.filter(pk=teacher_entry.pk)
+                ).get(),
+                context={'user': request.user},
+            ).data
         })
 
     def partial_update(self, request, pk, *args, **kwargs):
@@ -89,12 +94,16 @@ class TeacherEntryView(viewsets.ViewSet):
         that journal).
         """
         journals, = utils.required_params(request.data, 'journals')
+        title, = utils.required_typed_params(request.data, (str, 'title'))
 
         teacher_entry = TeacherEntry.objects.get(pk=pk)
 
         request.user.check_permission('can_post_teacher_entries', teacher_entry.assignment)
         request.user.check_permission('can_grade', teacher_entry.assignment)
         request.user.check_permission('can_publish_grades', teacher_entry.assignment)
+
+        if title is None or len(title) == 0:
+            return response.bad_request('Title cannot be empty.')
 
         journals = self._check_teacher_entry_content(journals, teacher_entry.assignment, teacher_entry=teacher_entry)
 
@@ -118,8 +127,16 @@ class TeacherEntryView(viewsets.ViewSet):
         self._create_new_entries(teacher_entry, new_journals, request.user)
         self._update_existing_entries(teacher_entry, existing_journals, request.user)
 
+        if teacher_entry.title != title:
+            teacher_entry.title = title
+            teacher_entry.save()
+
         return response.success({
-            'teacher_entry': serialize.TeacherEntrySerializer(teacher_entry).data
+            'teacher_entry': TeacherEntrySerializer(
+                TeacherEntrySerializer.setup_eager_loading(
+                    TeacherEntry.objects.filter(pk=teacher_entry.pk)
+                )[0]
+            ).data
         })
 
     def destroy(self, request, *args, **kwargs):

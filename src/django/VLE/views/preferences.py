@@ -56,7 +56,7 @@ class PreferencesView(viewsets.ViewSet):
             return response.forbidden('You are not allowed to change this users preferences.')
 
         preferences = Preferences.objects.get(user=pk)
-        serializer = PreferencesSerializer(preferences, data=request.data, partial=True)
+        serializer = PreferencesSerializer(preferences, data=request.data, context={'user': request.user}, partial=True)
 
         if not serializer.is_valid():
             return response.bad_request('Invalid preference data provided.')

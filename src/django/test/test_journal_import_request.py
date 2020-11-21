@@ -2,6 +2,7 @@ import re
 import test.factory as factory
 import test.utils.generic_utils as test_utils
 from test.utils import api
+from test.utils.performance import assert_num_queries_less_than
 from unittest import mock
 
 from dateutil.relativedelta import relativedelta
@@ -11,6 +12,7 @@ from django.utils import timezone
 import VLE.utils.generic_utils as utils
 from VLE.models import (AssignmentParticipation, Comment, Content, Entry, Field, FileContext, JournalImportRequest,
                         Node, PresetNode)
+from VLE.serializers import JournalImportRequestSerializer
 
 
 class JournalImportRequestTest(TestCase):
@@ -187,7 +189,9 @@ class JournalImportRequestTest(TestCase):
         assert JournalImportRequest.objects.filter(pk=jir.pk).exists()
 
     def test_list_jir(self):
-        jir = factory.JournalImportRequest()
+        course = factory.Course()
+        jir = factory.JournalImportRequest(
+            source__assignment__author=course.author, target__assignment__author=course.author)
         supervisor = jir.target.assignment.author
         unrelated_teacher = factory.Teacher()
         data = {'journal_target_id': jir.target.pk}
@@ -221,9 +225,8 @@ class JournalImportRequestTest(TestCase):
         assert jir_resp['source']['journal']['id'] == jir.source.pk \
             and jir_resp['target']['journal']['id'] == jir.target.pk, \
             'The correct source and target journal are serialized'
-        assert jir_resp['source']['journal']['import_requests'] is None, \
-            'JIR import_requests (count) are only serialized for the target journal'
-        assert jir_resp['target']['journal']['import_requests'] == 2
+        assert jir_resp['source']['journal']['import_requests'] == 0, 'Source has no import requests with it as target'
+        assert jir_resp['target']['journal']['import_requests'] == 2, 'Two JIRs are pending for the targer journal'
 
     def test_create_jir(self):
         source_journal = factory.Journal()
@@ -616,3 +619,20 @@ class JournalImportRequestTest(TestCase):
         check_db_state_after_exception(self, 'VLE.utils.import_utils.copy_entry')
         check_db_state_after_exception(self, 'VLE.utils.import_utils.import_comment')
         check_db_state_after_exception(self, 'VLE.utils.import_utils.import_content')
+
+    def test_jir_serializer(self):
+        jir = factory.JournalImportRequest()
+        teacher = jir.target.assignment.author
+
+        with assert_num_queries_less_than(31):
+            data = JournalImportRequestSerializer(
+                JournalImportRequestSerializer.setup_eager_loading(
+                    JournalImportRequest.objects.filter(pk=jir.pk)
+                ).get(),
+                context={'user': teacher},
+            ).data
+
+        assert data['source']['assignment']
+        assert data['source']['assignment']['course']
+        assert data['source']['journal']
+        assert data['target']['assignment']

@@ -3,7 +3,6 @@ journal.py.
 
 In this file are all the journal api requests.
 """
-from django.db.models import Q
 from rest_framework import viewsets
 from rest_framework.decorators import action
 
@@ -53,10 +52,8 @@ class JournalView(viewsets.ViewSet):
             request.user.check_permission('can_view_all_journals', assignment)
         request.user.check_can_view(course)
 
-        users = course.participation_set.filter(role__can_have_journal=True).values('user')
         journals = JournalSerializer(
-            Journal.objects.filter(assignment=assignment).filter(
-                Q(authors__user__in=users) | Q(authors__isnull=True)).distinct().order_by('pk'),
+            Journal.objects.filter(assignment=assignment).for_course(course),
             many=True,
             context={
                 'user': request.user,
@@ -280,7 +277,10 @@ class JournalView(viewsets.ViewSet):
 
         return response.success({
             'authors': AssignmentParticipationSerializer(
-                journal.authors, many=True, context={'user': request.user}).data
+                AssignmentParticipationSerializer.setup_eager_loading(journal.authors),
+                many=True,
+                context={'user': request.user}
+            ).data
         })
 
     @action(['patch'], detail=True)
@@ -324,7 +324,10 @@ class JournalView(viewsets.ViewSet):
 
         return response.success({
             'authors': AssignmentParticipationSerializer(
-                journal.authors, many=True, context={'user': request.user}).data
+                AssignmentParticipationSerializer.setup_eager_loading(journal.authors),
+                many=True,
+                context={'user': request.user}
+            ).data
         })
 
     @action(['patch'], detail=True)
