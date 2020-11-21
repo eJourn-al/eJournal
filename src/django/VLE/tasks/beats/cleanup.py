@@ -2,8 +2,7 @@ from __future__ import absolute_import, unicode_literals
 
 from celery import shared_task
 from django.conf import settings
-from django.db.models import F, Q, TextField
-from django.db.models.functions import Cast
+from django.db.models import F, Q
 from django.utils import timezone
 
 import VLE.models
@@ -19,15 +18,8 @@ def remove_temp_files(older_lte=None):
 
 def remove_unused_content_files():
     """Remove overwritten files of RT and FILE context fields"""
-    VLE.models.FileContext.objects.filter(
-        ~Q(content__data=Cast(F('pk'), TextField())),
-        content__field__type=VLE.models.Field.FILE
-    ).delete()
-
-    VLE.models.FileContext.objects.filter(
-        ~Q(content__data__contains=F('access_id')),
-        content__field__type=VLE.models.Field.RICH_TEXT
-    ).delete()
+    VLE.models.FileContext.objects.unused_file_field_files().delete()
+    VLE.models.FileContext.objects.unused_rich_text_field_files().delete()
 
 
 def remove_unused_comment_files():
