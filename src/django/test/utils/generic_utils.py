@@ -118,7 +118,7 @@ def check_equality_of_imported_rich_text(source_rt, target_rt, model):
     fc_ignore_keys = ['last_edited', 'creation_date', 'update_date', 'id', 'access_id']
 
     if model is VLE.models.Content:
-        fc_ignore_keys += ['content', 'journal']
+        fc_ignore_keys += ['content', 'journal', 'assignment']
     elif model is VLE.models.Comment:
         fc_ignore_keys += ['comment', 'journal']
 
