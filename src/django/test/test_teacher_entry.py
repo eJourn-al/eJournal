@@ -188,6 +188,7 @@ class TeacherEntryAPITest(TestCase):
 
         valid_update_params = {
             'pk': resp['id'],
+            'title': resp['title'],
             'journals': [{
                 'journal_id': self.journal1.id,
                 'grade': 2
@@ -195,6 +196,19 @@ class TeacherEntryAPITest(TestCase):
                 'journal_id': self.journal2.id
             }]
         }
+
+        no_title = deepcopy(self.valid_create_params)
+        no_title['pk'] = resp['id']
+        no_title.pop('title')
+        api.update(self, 'teacher_entries', params=no_title, user=self.teacher, status=400)
+        no_title['title'] = ""
+        api.update(self, 'teacher_entries', params=no_title, user=self.teacher, status=400)
+        no_title['title'] = None
+        api.update(self, 'teacher_entries', params=no_title, user=self.teacher, status=400)
+
+        no_title['title'] = 0
+        update_resp = api.update(self, 'teacher_entries', params=no_title, user=self.teacher, status=200)
+        assert update_resp['teacher_entry']['title'] == '0', 'Title is succesfully updated with a falsey value'
 
         # Update grade for journal1, create entry to journal2 without grade.
         pre_update_grade_entry_journal1 = updated_entry_journal1.grade
@@ -419,6 +433,7 @@ class TeacherEntryAPITest(TestCase):
         def validate_update(grade, published, journals, deleted_journals=[]):
             update_params = {
                 'pk': te_id,
+                'title': 'new title',
                 'journals': [{
                     'journal_id': journal.pk,
                     'grade': grade,

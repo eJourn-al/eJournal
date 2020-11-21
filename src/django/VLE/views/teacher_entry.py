@@ -94,12 +94,16 @@ class TeacherEntryView(viewsets.ViewSet):
         that journal).
         """
         journals, = utils.required_params(request.data, 'journals')
+        title, = utils.required_typed_params(request.data, (str, 'title'))
 
         teacher_entry = TeacherEntry.objects.get(pk=pk)
 
         request.user.check_permission('can_post_teacher_entries', teacher_entry.assignment)
         request.user.check_permission('can_grade', teacher_entry.assignment)
         request.user.check_permission('can_publish_grades', teacher_entry.assignment)
+
+        if title is None or len(title) == 0:
+            return response.bad_request('Title cannot be empty.')
 
         journals = self._check_teacher_entry_content(journals, teacher_entry.assignment, teacher_entry=teacher_entry)
 
@@ -122,6 +126,10 @@ class TeacherEntryView(viewsets.ViewSet):
 
         self._create_new_entries(teacher_entry, new_journals, request.user)
         self._update_existing_entries(teacher_entry, existing_journals, request.user)
+
+        if teacher_entry.title != title:
+            teacher_entry.title = title
+            teacher_entry.save()
 
         return response.success({
             'teacher_entry': TeacherEntrySerializer(
