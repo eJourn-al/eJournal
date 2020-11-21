@@ -116,7 +116,7 @@ export default {
     created () {
         const initCalls = []
 
-        courseAPI.getUserEnrolled()
+        courseAPI.list()
             .then((courses) => {
                 this.fetchedCourses = courses
                 courses.forEach((c) => {

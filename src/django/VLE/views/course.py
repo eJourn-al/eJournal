@@ -28,7 +28,11 @@ class CourseView(viewsets.ViewSet):
         On success:
             success -- with the course data
         """
-        queryset = request.user.participations.all()
+        get_all, = utils.optional_params(request.query_params, 'get_all')
+        if request.user.is_superuser and get_all:
+            queryset = Course.objects.all()
+        else:
+            queryset = request.user.participations.all()
         serializer = self.serializer_class(queryset, many=True)
         return response.success({'courses': serializer.data})
 

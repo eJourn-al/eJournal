@@ -101,7 +101,7 @@ export default {
     },
     methods: {
         loadCourses () {
-            courseAPI.getUserEnrolled()
+            courseAPI.list()
                 .then((courses) => {
                     this.courses = courses
                     this.loadingCourses = false

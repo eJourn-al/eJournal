@@ -10,7 +10,7 @@
                 pills
                 lazy
             >
-                <b-tab>
+                <b-tab active>
                     <template slot="title">
                         <icon
                             name="edit"
@@ -23,6 +23,16 @@
                 <b-tab>
                     <template slot="title">
                         <icon
+                            name="book"
+                            class="shift-up-3"
+                        />
+                        Course Overview
+                    </template>
+                    <course-overview/>
+                </b-tab>
+                <b-tab>
+                    <template slot="title">
+                        <icon
                             name="users"
                             class="shift-up-3"
                         />
@@ -30,7 +40,7 @@
                     </template>
                     <user-overview/>
                 </b-tab>
-                <b-tab active>
+                <b-tab>
                     <template slot="title">
                         <icon
                             name="user-plus"
@@ -49,6 +59,7 @@
 import WideContent from '@/components/columns/WideContent.vue'
 import BreadCrumb from '@/components/assets/BreadCrumb.vue'
 import EditInstance from '@/components/admin/EditInstance.vue'
+import CourseOverview from '@/components/admin/CourseOverview.vue'
 import UserOverview from '@/components/admin/UserOverview.vue'
 import InviteUsers from '@/components/admin/InviteUsers.vue'
 
@@ -58,6 +69,7 @@ export default {
         WideContent,
         BreadCrumb,
         EditInstance,
+        CourseOverview,
         UserOverview,
         InviteUsers,
     },
