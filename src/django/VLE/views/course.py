@@ -21,15 +21,19 @@ class CourseView(viewsets.ViewSet):
 
         Arguments:
         request -- request data
+        get_all (query param) -- get all courses instead of only participations
 
         Returns:
         On failure:
             unauthorized -- when the user is not logged in
+            forbidden -- when the user requests all courses, but is not allowed to
         On success:
             success -- with the course data
         """
         get_all, = utils.optional_params(request.query_params, 'get_all')
-        if request.user.is_superuser and get_all:
+        if get_all:
+            if not request.user.is_superuser:
+                return response.forbidden('You are not allowed to get all courses.')
             queryset = Course.objects.all()
         else:
             queryset = request.user.participations.all()
