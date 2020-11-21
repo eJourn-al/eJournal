@@ -17,7 +17,6 @@ class ContentTest(TestCase):
         c_count = Content.objects.count()
         content = factory.Content(entry=entry, field__type=Field.TEXT)
 
-        # assert False, 'The content is attached to the template of the entry'
         assert content.entry.pk == entry.pk, 'Content should chain upto entry'
         assert Journal.objects.count() == 1, 'Generating content for a given entry generates a single journal'
         assert c_count + 1 == Content.objects.count(), 'No additional content is created'

@@ -12,10 +12,14 @@ def _add_courses(self, create, extracted, **kwargs):
         for course in extracted:
             self.courses.add(course)
     else:
-        if self.author:
-            self.courses.add(test.factory.Course(**{**kwargs, 'author': self.author}))
+        if self.active_lti_id:
+            course_factory = test.factory.LtiCourse
         else:
-            self.courses.add(test.factory.Course(**kwargs))
+            course_factory = test.factory.Course
+        if self.author:
+            self.courses.add(course_factory(**{**kwargs, 'author': self.author}))
+        else:
+            self.courses.add(course_factory(**kwargs))
 
 
 class AssignmentFactory(factory.django.DjangoModelFactory):

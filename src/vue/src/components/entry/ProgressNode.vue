@@ -14,6 +14,7 @@
                 :content="currentNode.description"
             />
         </p>
+        <files-list :files="currentNode.attached_files"/>
         <hr class="full-width"/>
         <span
             v-if="!accomplished && new Date() < new Date(currentNode.due_date)"
@@ -41,10 +42,12 @@
 
 <script>
 import sandboxedIframe from '@/components/assets/SandboxedIframe.vue'
+import filesList from '@/components/assets/file_handling/FilesList.vue'
 
 export default {
     components: {
         sandboxedIframe,
+        filesList,
     },
     props: ['nodes', 'currentNode', 'bonusPoints'],
     computed: {

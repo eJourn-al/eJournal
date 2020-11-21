@@ -2,7 +2,7 @@
     <div>
         <div
             v-if="teacherEntries && teacherEntries.length > 0"
-            class="d-flex"
+            class="d-lg-flex"
         >
             <theme-select
                 v-model="selectedTeacherEntry"
@@ -12,21 +12,31 @@
                 :multiple="false"
                 :searchable="true"
                 placeholder="Select A Teacher Entry"
-                class="flex-shrink-1"
+                class="flex-shrink-1 mb-2 mr-md-2"
             />
             <b-button
-                v-if=" selectedTeacherEntry && showTeacherEntryContent"
-                class="red-button ml-2"
+                v-if="selectedTeacherEntry"
+                class="red-button mr-2 flex-shrink-0 mb-2"
+                @click="toggleUpdateTitle"
+            >
+                <icon name="edit"/>
+                Edit title
+            </b-button>
+            <b-button
+                v-if="selectedTeacherEntry && showTeacherEntryContent"
+                class="delete-button flex-shrink-0 mb-2"
                 @click="showTeacherEntryContent = false"
             >
                 <icon name="eye-slash"/>
+                Hide Content
             </b-button>
             <b-button
                 v-else-if="selectedTeacherEntry"
-                class="green-button ml-2"
+                class="green-button flex-shrink-0 mb-2"
                 @click="showTeacherEntryContent = true"
             >
                 <icon name="eye"/>
+                Show&nbsp;Content
             </b-button>
         </div>
         <span
@@ -36,6 +46,12 @@
             No teacher entries for this assignment. Once you have posted a teacher entry you can manage it here.
         </span>
         <div v-if="selectedTeacherEntry">
+            <b-input
+                v-if="showUpdateTitle"
+                v-model="updatedTitle"
+                placeholder="New title"
+                class="theme-input mt-2"
+            />
             <entry-fields
                 v-if="showTeacherEntryContent"
                 :template="selectedTeacherEntry.template"
@@ -184,6 +200,8 @@ export default {
             showTeacherEntryContent: false,
             grades: Object(),
             publishGrade: Object(),
+            showUpdateTitle: false,
+            updatedTitle: null,
         }
     },
     computed: {
@@ -197,6 +215,8 @@ export default {
             handler () {
                 this.showTeacherEntryContent = false
                 if (this.selectedTeacherEntry) {
+                    this.updatedTitle = this.selectedTeacherEntry.title
+                    this.showUpdateTitle = false
                     this.selectedJournals = this.selectedTeacherEntry.journals
                 }
             },
@@ -242,6 +262,8 @@ export default {
         saveTeacherEntry () {
             if (this.selectedJournals.length === 0) {
                 this.$toasted.error('No journals selected.')
+            } else if (!this.updatedTitle) {
+                this.$toasted.error('Title cannot be empty.')
             } else if (this.selectedJournals.some(journal => !journal.grade)
                 && !window.confirm('Students will be able to edit the entry if no grade is set. Are you sure you'
                 + ' want to post ungraded entries?')) {
@@ -254,6 +276,7 @@ export default {
                 this.requestInFlight = true
                 teacherEntryAPI.update(this.selectedTeacherEntry.id, {
                     journals: this.selectedJournals,
+                    title: this.updatedTitle,
                 }, {
                     customSuccessToast: 'Teacher entry successfully updated.',
                 })
@@ -276,6 +299,12 @@ export default {
                     })
                     .catch(() => { this.requestInFlight = false })
             }
+        },
+        toggleUpdateTitle () {
+            if (this.showUpdateTitle && this.selectedTeacherEntry) {
+                this.updatedTitle = this.selectedTeacherEntry.title
+            }
+            this.showUpdateTitle = !this.showUpdateTitle
         },
     },
 }

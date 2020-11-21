@@ -6,14 +6,15 @@ Database file
 import os
 import random
 import string
+from collections import defaultdict
 
 from computedfields.models import ComputedFieldsModel, computed, update_dependent
 from django.conf import settings
-from django.contrib.auth.models import AbstractUser
+from django.contrib.auth.models import AbstractUser, UserManager
 from django.contrib.postgres.fields import ArrayField, CIEmailField, CITextField
 from django.core.exceptions import ValidationError
 from django.db import models
-from django.db.models import F, Q, Sum
+from django.db.models import F, Min, OuterRef, Prefetch, Q, Subquery, Sum
 from django.db.models.deletion import CASCADE, SET_NULL
 from django.dispatch import receiver
 from django.utils import timezone
@@ -179,6 +180,31 @@ def auto_delete_file_on_delete(sender, instance, **kwargs):
             os.remove(instance.file.path)
 
 
+class UserQuerySet(models.QuerySet):
+    def annotate_course_role(self, course):
+        """
+        Annotates a users course participation role as `role_name` for a specific course.
+        Defaults to None if the user is not a participant of that course.
+        """
+        role_sub_qry = Participation.objects.filter(user=OuterRef('pk'), course=course).select_related('role')
+        return self.annotate(role_name=Subquery(role_sub_qry.values('role__name')))
+
+    def prefetch_course_groups(self, course):
+        """Prefetches all groups for the users related to the provided course"""
+        return self.prefetch_related(
+            Prefetch(
+                'participation_set',
+                queryset=Participation.objects.filter(course=course).prefetch_related('groups')
+            )
+        )
+
+
+class UserManagerExtended(UserManager):
+    """Using from queryset not possible due to the extra functionality that comes with the UserManager"""
+    def get_queryset(self):
+        return UserQuerySet(self.model, using=self._db)
+
+
 class User(AbstractUser):
     """User.
 
@@ -189,6 +215,9 @@ class User(AbstractUser):
     - password: the hash of the password of the user.
     - lti_id: the DLO id of the user.
     """
+    objects = UserManagerExtended()
+
+    UNKNOWN_STR = 'Unknown or deleted account'
 
     full_name = models.CharField(
         null=False,
@@ -645,9 +674,9 @@ class Notification(CreateUpdateModel):
     def _fill_text(self, text, n=None):
         node_name = None
         if self.node:
-            if self.node.type == Node.PROGRESS:
+            if self.node.is_progress:
                 node_name = f"{self.journal.grade}/{self.node.preset.target}"
-            elif self.node.type == Node.ENTRYDEADLINE:
+            elif self.node.is_deadline:
                 node_name = self.node.preset.forced_template.name
 
         return text.format(
@@ -984,6 +1013,10 @@ class Participation(CreateUpdateModel):
         default=None,
     )
 
+    def set_groups(self, groups):
+        self.groups.set(groups)
+        update_dependent(self)
+
     def save(self, *args, **kwargs):
         is_new = self._state.adding
         notify_user = kwargs.pop('notify_user', True)
@@ -1123,82 +1156,181 @@ class Assignment(CreateUpdateModel):
             for user in course.users.exclude(pk__in=existing):
                 AssignmentParticipation.objects.create(assignment=self, user=user)
 
+    @classmethod
+    def state_actions(cls, new, old=None):
+        """
+        Returns a dictionary containing multiple actionable booleans. Used
+        either for validation, or for further processing of the assignment.
+
+        Args:
+            new (:model:`VLE.assignment` or dict): new contains the data to update.
+            old (:model:`VLE.assignment`): assignment instance as currently in the DB.
+
+        Returns:
+            (dict)
+                published (bool): assignment is published and create or was unpublished
+                unpublished (bool): assignment was published.
+                type_changed (bool): assignment group_assignment field changed.
+                active_lti_id_modified (bool): lti_id set and new or lti_id changed.
+        """
+        if isinstance(new, dict):
+            new = cls(**new)
+
+        is_new = not new.pk
+
+        if not is_new and not old:
+            raise VLEProgrammingError('Old assignment state is required to check for state actions.')
+
+        if is_new:
+            published = new.is_published
+            unpublished = False
+            type_changed = False
+            active_lti_id_modified = new.active_lti_id is not None
+        else:
+            published = not old.is_published and new.is_published
+            unpublished = old.is_published and not new.is_published
+            type_changed = old.is_group_assignment != new.is_group_assignment
+            active_lti_id_modified = old.active_lti_id != new.active_lti_id
+
+        return {
+            'published': published,
+            'unpublished': unpublished,
+            'type_changed': type_changed,
+            'active_lti_id_modified': active_lti_id_modified
+        }
+
+    @staticmethod
+    def validate(new, unpublished, type_changed, active_lti_id_modified, old=None):
+        """
+        Args:
+            new (:model:`VLE.assignment`): new contains the data to update.
+            unpublished (bool): assignment was published.
+            type_changed (bool): assignment group_assignment field changed.
+            active_lti_id_modified (bool): lti_id set and new or lti_id changed.
+            old (:model:`VLE.assignment`): assignment instance as currently in the DB.
+        """
+        if unpublished and not old.can_unpublish():
+            raise ValidationError(
+                'Cannot unpublish an assignment that has entries or outstanding journal import requests.')
+
+        if type_changed and old.has_entries():
+            raise ValidationError('Cannot change the type of an assignment that has entries.')
+
+        if active_lti_id_modified and new.conflicting_lti_link():
+            raise ValidationError("An lti_id should be unique, and only part of a single assignment's lti_id_set.")
+
     def save(self, *args, **kwargs):
+        is_new = not self.pk  # self._state.adding is false when copying an instance as, inst.pk = None, inst.save()
+
+        if not is_new:
+            old = Assignment.objects.get(pk=self.pk)
+
+        state_actions = Assignment.state_actions(new=self, old=None if is_new else old)
+
+        Assignment.validate(
+            new=self,
+            old=None if is_new else old,
+            unpublished=state_actions['unpublished'],
+            type_changed=state_actions['type_changed'],
+            active_lti_id_modified=state_actions['active_lti_id_modified']
+        )
+
         self.description = sanitization.strip_script_tags(self.description)
-
-        active_lti_id_modified = False
-        type_changed = False
-
-        # Instance is being created (not modified)
-        if self._state.adding:
-            active_lti_id_modified = self.active_lti_id is not None
-        else:
-            if self.pk:
-                pre_save = Assignment.objects.get(pk=self.pk)
-                active_lti_id_modified = pre_save.active_lti_id != self.active_lti_id
-
-                if pre_save.is_published and not self.is_published and not pre_save.can_unpublish():
-                    raise ValidationError(
-                        'Cannot unpublish an assignment that has entries or outstanding journal import requests.')
-                if pre_save.is_group_assignment != self.is_group_assignment:
-                    if pre_save.has_entries():
-                        raise ValidationError('Cannot change the type of an assignment that has entries.')
-                    else:
-                        type_changed = True
-            # A copy is being made of the original instance
-            else:
-                self.active_lti_id = None
-                self.lti_id_set = []
-
-        if active_lti_id_modified:
-            # Reset all sourcedid if the active lti id is updated.
-            AssignmentParticipation.objects.filter(assignment=self).update(sourcedid=None, grade_url=None)
-            update_dependent(AssignmentParticipation.objects.filter(assignment=self))
-
-            if self.active_lti_id is not None and self.active_lti_id not in self.lti_id_set:
-                self.lti_id_set.append(self.active_lti_id)
-
-            other_assignments_with_lti_id_set = Assignment.objects.filter(
-                lti_id_set__contains=[self.active_lti_id]).exclude(pk=self.pk)
-            if other_assignments_with_lti_id_set.exists():
-                raise ValidationError("An lti_id should be unique, and only part of a single assignment's lti_id_set.")
-
-        is_new = self._state.adding
-        if not self._state.adding and self.pk:
-            was_published = Assignment.objects.get(pk=self.pk).is_published
-        else:
-            was_published = self.is_published
+        if self.active_lti_id is not None and self.active_lti_id not in self.lti_id_set:
+            self.lti_id_set.append(self.active_lti_id)
 
         super(Assignment, self).save(*args, **kwargs)
 
-        if type_changed:
-            # Delete all journals if assignment type changes
-            Journal.objects.filter(assignment=self).delete()
+        if state_actions['active_lti_id_modified']:
+            self.handle_active_lti_id_modified()
 
-        if type_changed or not was_published and self.is_published:
-            # Create journals if it is changed to (or published as) a non group assignment
-            if not self.is_group_assignment:
-                users = self.courses.values('users').distinct()
-                if is_new:
-                    existing = []
-                    for user in users:
-                        AssignmentParticipation.objects.create(assignment=self, user=user['users'])
-                else:
-                    existing = Journal.objects.filter(assignment=self).values('authors__user')
-                for user in users.exclude(pk__in=existing):
-                    ap = AssignmentParticipation.objects.get_or_create(
-                        assignment=self, user=User.objects.get(pk=user['users']))[0]
-                    if not Journal.objects.filter(assignment=self, authors__in=[ap]).exists():
-                        journal = Journal.objects.create(assignment=self)
-                        journal.add_author(ap)
+        if state_actions['type_changed']:
+            self.handle_type_change()
 
-        # When an assignment is published, create a new assignment notification for each of the assignment's users
-        if self.is_published and not was_published:
-            for ap in self.assignmentparticipation_set.exclude(user=self.author):
-                ap.create_new_assignment_notification()
-        # When an assignment is unpublished, remove any respctive new assignment notifications
-        elif not self.is_published and was_published:
-            self.notification_set.filter(type=Notification.NEW_ASSIGNMENT).delete()
+        if state_actions['published']:
+            self.handle_publish()
+        elif state_actions['unpublished']:
+            self.handle_unpublish()
+
+    def setup_journals(self):
+        """
+        Creates missing journals and assigment participations for all the assignment's users.
+        """
+        if self.is_group_assignment:
+            return
+
+        users = User.objects.filter(participations__in=self.courses.all()).distinct()
+
+        # If a user misses an AP he is guaranteed to have no journal (since the AP is the link between user and journal)
+        users_missing_aps = users.exclude(assignmentparticipation__assignment=self)
+        for user in users_missing_aps:
+            ap = AssignmentParticipation.objects.create(assignment=self, user=user)
+            journal = Journal.objects.create(assignment=self)
+            journal.add_author(ap)
+
+        # However, if a user does have an AP, he is not guaranteed to have a journal (since an AP's journal can be None)
+        aps_without_journal = AssignmentParticipation.objects.filter(
+            assignment=self, journal__isnull=True, user__in=users)
+        for ap in aps_without_journal:
+            journal = Journal.objects.create(assignment=self)
+            journal.add_author(ap)
+
+    def handle_active_lti_id_modified(self):
+        """
+        Reset all the Journals (APs) sourcedids and grade_urls.
+
+        On on each LTI launch, these values are once again set if present.
+        """
+        # Bulk update does not trigger a desired update of the related journals 'needs_lti_link' update field.
+        AssignmentParticipation.objects.filter(assignment=self).update(sourcedid=None, grade_url=None)
+
+        # So we trigger the update manually (2 queries)
+        aps = AssignmentParticipation.objects.filter(
+            assignment=self,
+            user__isnull=False,
+            journal__isnull=False
+        ).select_related(
+            'journal',
+            'user'
+        )
+
+        journals = defaultdict(list)
+        for ap in aps:
+            journals[ap.journal].append(ap.user.full_name)
+
+        for journal, needs_lti_link in journals.items():
+            journal.needs_lti_link = needs_lti_link
+        Journal.objects.bulk_update(list(journals.keys()), ['needs_lti_link'])
+
+    def handle_type_change(self):
+        """
+        When the assignments type is changed from group journal to individual journals or vice versa,
+        delete all journals.
+
+        A group assignment requires no initial journals (these are setup at a later stage)
+        For an individual assignment `setup_journals` will recreate all missing journals as individual ones.
+        """
+        Journal.objects.filter(assignment=self).delete()
+
+        if not self.is_group_assignment:
+            self.setup_journals()
+
+    def handle_publish(self):
+        """
+        Should be called when an assignment is published.
+        Either created as published, or released as such (going from unpublished to published)
+        """
+        if not self.is_group_assignment:
+            self.setup_journals()
+
+        for ap in self.assignmentparticipation_set.exclude(user=self.author):
+            ap.create_new_assignment_notification()
+
+    def handle_unpublish(self):
+        """
+        Should be called when an assignment is unpublished. Publish state is changed from True to False.
+        """
+        self.notification_set.filter(type=Notification.NEW_ASSIGNMENT).delete()
 
     def get_active_lti_course(self):
         """"Query for retrieving the course which matches the active lti id of the assignment."""
@@ -1206,32 +1338,52 @@ class Assignment(CreateUpdateModel):
         return courses.first()
 
     def get_active_course(self, user):
-        """"Query for retrieving the course which is most relevant to the assignment."""
+        """"
+        Query for retrieving the course which is most relevant to the assignment.
+
+        Compatible with prefetched courses.
+        Will trigger N permission queries for N courses.
+        """
         # If there are no courses connected, return none
+        courses = self.courses.all()
         if not self.courses:
             return None
 
+        can_view_course_map = {}
+
+        def cached_can_view_courses(course):
+            if course not in can_view_course_map:
+                can_view_course_map[course] = user.can_view(course)
+            return can_view_course_map[course]
+
         # Get matching LTI course if possible
-        active_courses = self.courses.filter(assignment_lti_id_set__contains=[self.active_lti_id])
-        for course in active_courses:
-            if user.can_view(course):
-                return course
+        for course in courses:
+            if self.active_lti_id in course.assignment_lti_id_set:
+                if cached_can_view_courses(course):
+                    return course
+
+        courses_with_startdate = [course for course in courses if course.startdate]
+        now = timezone.now().date()
 
         # Else get course that started the most recent
-        most_recent_courses = self.courses.filter(startdate__lte=timezone.now()).order_by('-startdate')
-        for course in most_recent_courses:
-            if user.can_view(course):
+        comparison = [course for course in courses_with_startdate if course.startdate <= now]
+        comparison.sort(key=lambda x: x.startdate, reverse=True)
+        for course in comparison:
+            if cached_can_view_courses(course):
                 return course
 
         # Else get the course that starts the soonest
-        starts_first_courses = self.courses.filter(startdate__gt=timezone.now()).order_by('startdate')
-        for course in starts_first_courses:
-            if user.can_view(course):
+        comparison = [course for course in courses_with_startdate if course.startdate > now]
+        comparison.sort(key=lambda x: x.startdate)
+        for course in comparison:
+            if cached_can_view_courses(course):
                 return course
 
         # Else get the first course without start date
-        for course in self.courses.filter(startdate__isnull=True).order_by('pk'):
-            if user.can_view(course):
+        comparison = [course for course in courses if course.startdate is None]
+        comparison.sort(key=lambda x: x.pk)
+        for course in comparison:
+            if cached_can_view_courses(course):
                 return course
 
         return None
@@ -1270,8 +1422,59 @@ class Assignment(CreateUpdateModel):
     def has_outstanding_jirs(self):
         return JournalImportRequest.objects.filter(target__assignment=self, state=JournalImportRequest.PENDING).exists()
 
+    def conflicting_lti_link(self):
+        """
+        Checks if other assignments exist which are or were at one point linked to its active lti id.
+        """
+        return Assignment.objects.filter(lti_id_set__contains=[self.active_lti_id]).exclude(pk=self.pk).exists()
+
     def can_unpublish(self):
         return not (self.has_entries() or self.has_outstanding_jirs())
+
+    def get_teacher_deadline(self):
+        """
+        Return the earliest date that an entry has been submitted and is not yet graded or has an unpublished grade
+        """
+        return VLE.models.Journal.objects.filter(assignment=self).require_teacher_action().values(
+            'node__entry__last_edited'
+        ).aggregate(
+            Min('node__entry__last_edited')
+        )['node__entry__last_edited__min']
+
+    def get_student_deadline(self, journal):
+        """
+        Get student deadline.
+
+        This function gets the first upcoming deadline.
+        It checks for the first entrydeadline that still need to submitted and still can be, or for the first
+        progressnode that is not yet fullfilled.
+        """
+        grade_sum = journal.bonus_points if journal else 0
+        deadline_due_date = None
+        deadline_label = None
+
+        if journal is not None:
+            for node in VLE.utils.generic_utils.get_sorted_nodes(journal).prefetch_related('entry__grade'):
+                # Sum published grades to check if PROGRESS node is fullfiled
+                if node.holds_published_grade:
+                    grade_sum += node.entry.grade.grade
+                elif node.is_deadline and node.open_deadline():
+                    deadline_due_date = node.preset.due_date
+                    deadline_label = node.preset.forced_template.name
+                    break
+                elif node.is_progress and node.open_deadline(grade=grade_sum):
+                    deadline_due_date = node.preset.due_date
+                    deadline_label = "{:g}/{:g} points".format(grade_sum, node.preset.target)
+                    break
+
+        # If no deadline is found, but the points possible has not been reached,
+        # use the assignment due date as the deadline
+        if deadline_due_date is None and grade_sum < self.points_possible:
+            if self.due_date or self.lock_date and self.lock_date < timezone.now():
+                deadline_due_date = self.due_date
+                deadline_label = 'End of assignment'
+
+        return deadline_due_date, deadline_label
 
     def to_string(self, user=None):
         if user is None:
@@ -1346,11 +1549,28 @@ class AssignmentParticipation(CreateUpdateModel):
         unique_together = ('assignment', 'user',)
 
 
-class JournalManager(models.Manager):
-    def get_queryset(self):
+class JournalQuerySet(models.QuerySet):
+    def order_by_authors_first(self):
+        """Order by journals with authors first, no authors last."""
+        return self.order_by(F('authors__journal').asc(nulls_last=True)).distinct()
+
+    def for_course(self, course):
+        """Filter the journals from the perspective of a single course."""
+        return self.filter(
+            Q(authors__user__in=course.participation_set.values('user'))
+            | Q(authors__isnull=True)  # Also include empty (group) journals
+        )
+
+    def require_teacher_action(self):
+        """Returns journals which have an entry, and are awaiting grading or of which the grade needs publishing"""
+        return self.filter(
+            Q(node__entry__grade__isnull=True) | Q(node__entry__grade__published=False),
+            node__entry__isnull=False
+        )
+
+    def allowed_journals(self):
         """Filter on only journals with can_have_journal and that are in the assigned to groups"""
-        query = super(JournalManager, self).get_queryset()
-        return query.annotate(
+        return self.annotate(
             p_user=F('assignment__courses__participation__user'),
             p_group=F('assignment__courses__participation__groups'),
             can_have_journal=F('assignment__courses__participation__role__can_have_journal')
@@ -1367,6 +1587,11 @@ class JournalManager(models.Manager):
         ).distinct().order_by('pk')
 
 
+class JournalManager(models.Manager):
+    def get_queryset(self):
+        return JournalQuerySet(self.model, using=self._db).allowed_journals()
+
+
 class Journal(CreateUpdateModel, ComputedFieldsModel):
     """Journal.
 
@@ -1376,7 +1601,7 @@ class Journal(CreateUpdateModel, ComputedFieldsModel):
     - user: a foreign key linked to a user.
     """
     UNLIMITED = 0
-    all_objects = models.Manager()
+    all_objects = models.Manager.from_queryset(JournalQuerySet)()
     objects = JournalManager()
 
     assignment = models.ForeignKey(
@@ -1443,9 +1668,8 @@ class Journal(CreateUpdateModel, ComputedFieldsModel):
         return self.node_set.filter(entry__isnull=False, entry__grade__isnull=True).count()
 
     @computed(ArrayField(models.TextField(), default=list), depends=[
-        ['authors', ['journal', 'sourcedid']],
+        ['authors', ['sourcedid']],
         ['authors.user', ['full_name']],
-        ['assignment', ['active_lti_id']],
     ])
     def needs_lti_link(self):
         if not self.assignment.active_lti_id:
@@ -1488,13 +1712,15 @@ class Journal(CreateUpdateModel, ComputedFieldsModel):
         return ', '.join(self.authors.values_list('user__username', flat=True))
 
     @computed(ArrayField(models.IntegerField(), default=list), depends=[
-        ['authors.user.participation_set', ['groups']],
+        ['authors.user.participation_set.groups', ['name']],
     ])
     def groups(self):
         return list(Group.objects.filter(participation__user__in=self.authors.values('user'))
                     .values_list('pk', flat=True).distinct())
 
     def add_author(self, author):
+        # NOTE: This approach sucks, author is now first added (SQL operation), then validation is run in the
+        # save of the journal. This should obviously be validation first then change DB state.
         self.authors.add(author)
         self.save()
 
@@ -1535,6 +1761,24 @@ class Journal(CreateUpdateModel, ComputedFieldsModel):
         return self.node_set.filter(
             Q(entry__grade__isnull=True) | Q(entry__grade__published=False),
             entry__isnull=False).order_by('entry__last_edited')
+
+    @property
+    def author(self):
+        if self.author_limit > 1:
+            raise VLEProgrammingError('Unsafe use of journal author property')
+        return User.objects.filter(assignmentparticipation__journal=self).first()
+
+    def can_add(self, user):
+        """
+        Checks wether the provided user can add an entry to the journal
+
+        Used to help determine if the add node appears in the timeline.
+        """
+        return user \
+            and self.authors.filter(user=user).exists() \
+            and user.has_permission('can_have_journal', self.assignment) \
+            and not len(self.needs_lti_link) > 0 \
+            and self.assignment.format.template_set.filter(archived=False, preset_only=False).exists()
 
     def to_string(self, user=None):
         if user is None or not user.can_view(self):
@@ -1618,6 +1862,44 @@ class Node(CreateUpdateModel):
         on_delete=models.SET_NULL,
     )
 
+    @property
+    def is_deadline(self):
+        return self.type == self.ENTRYDEADLINE
+
+    @property
+    def is_progress(self):
+        return self.type == self.PROGRESS
+
+    @property
+    def is_entry(self):
+        return self.type == self.ENTRY
+
+    @property
+    def holds_published_grade(self):
+        return self.entry and self.entry.grade and self.entry.grade.grade and self.entry.grade.published
+
+    def open_deadline(self, grade=None):
+        """
+        Checks if the deadline can be fulfilled
+
+        The due date has not passed and no entry has been submissed or the progress goal has not yet been met.
+        """
+        if self.is_deadline:
+            return not self.entry and self.preset.due_date > timezone.now()
+
+        if self.is_progress:
+            if not grade and not hasattr(self.journal, 'grade'):
+                raise VLEProgrammingError('Expired deadline check requires a journal grade')
+
+            if grade is None:
+                grade = self.journal.grade
+            return self.preset.target > grade and self.preset.due_date > timezone.now()
+
+        if self.is_entry:
+            return False  # An unlimited entry has no deadline to begin with
+
+        raise VLEProgrammingError('Expired deadline check called on an unsupported node type')
+
     def to_string(self, user=None):
         return "Node"
 
@@ -1699,11 +1981,22 @@ class PresetNode(CreateUpdateModel):
         on_delete=models.SET_NULL,
         null=True,
     )
+    attached_files = models.ManyToManyField(
+        'FileContext',
+    )
 
     format = models.ForeignKey(
         'Format',
         on_delete=models.CASCADE
     )
+
+    @property
+    def is_deadline(self):
+        return self.type == Node.ENTRYDEADLINE
+
+    @property
+    def is_progress(self):
+        return self.type == Node.PROGRESS
 
     def is_locked(self):
         return self.unlock_date is not None and self.unlock_date > now() or self.lock_date and self.lock_date < now()
@@ -1871,8 +2164,7 @@ class Grade(CreateUpdateModel):
         on_delete=models.CASCADE,
     )
     grade = models.FloatField(
-        null=True,
-        editable=False
+        editable=False,
     )
     published = models.BooleanField(
         default=False,
@@ -1957,9 +2249,10 @@ class Field(CreateUpdateModel):
 
     Defines the fields of an Template
     """
+    class Meta:
+        ordering = ['location']
+
     ALLOWED_URL_SCHEMES = ('http', 'https', 'ftp', 'ftps')
-    ALLOWED_DATE_FORMAT = '%Y-%m-%d'
-    ALLOWED_DATETIME_FORMAT = '%Y-%m-%dT%H:%M:%S'
 
     TEXT = 't'
     RICH_TEXT = 'rt'

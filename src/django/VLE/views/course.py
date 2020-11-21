@@ -61,7 +61,7 @@ class CourseView(viewsets.ViewSet):
 
         course = factory.make_course(name, abbr, startdate, enddate, request.user, active_lti_id=active_lti_id)
 
-        serializer = self.serializer_class(course, many=False)
+        serializer = self.serializer_class(course, context={'user': request.user}, many=False)
         return response.created({'course': serializer.data})
 
     def retrieve(self, request, pk=None):
@@ -116,7 +116,7 @@ class CourseView(viewsets.ViewSet):
             course.save()
 
         request.data['startdate'], request.data['enddate'] = utils.optional_params(request.data, 'startdate', 'enddate')
-        serializer = self.serializer_class(course, data=request.data, partial=True)
+        serializer = self.serializer_class(course, data=request.data, context={'user': request.user}, partial=True)
         if not serializer.is_valid():
             return response.bad_request()
         serializer.save()

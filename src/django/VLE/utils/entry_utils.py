@@ -91,8 +91,11 @@ def create_entry_content(content_dict, entry, user):
         else:
             raise e
 
-    for (file, created_content) in files_to_establish:
-        if file.is_temp:
+    for (fc, created_content) in files_to_establish:
+        if fc.is_temp:
             file_handling.establish_file(
-                user, file.access_id, content=created_content,
-                in_rich_text=created_content.field.type == Field.RICH_TEXT)
+                author=user,
+                file_context=fc,
+                content=created_content,
+                in_rich_text=created_content.field.type == Field.RICH_TEXT
+            )

@@ -5,6 +5,7 @@ Generate preset data and save it to the database.
 """
 import random
 import test.factory as factory
+from test.test_lti_launch import create_request
 
 from dateutil.relativedelta import relativedelta
 from django.core.management import call_command
@@ -13,8 +14,38 @@ from django.utils import timezone
 from faker import Faker
 
 from VLE.models import Entry, Journal, Node, Role, User
+from VLE.views.lti import lti_launch
 
 faker = Faker()
+
+
+def _add_lti_launch_links_to_assignment_description(assignment, users):
+    """
+    Adds LTI launch links to the assignment description for the provided users.
+
+    NOTE: The launch links are valid for 15 minutes after generation.
+
+    Args:
+        user (:model:`VLE.user`): list of user instances for which a lti launch link should be added.
+        assignment (:model:`VLE.assignment`): assignment of which the description should be added.
+    """
+    launch_links = '<ul>'
+
+    for user in users:
+        launch_links += '<li><a href="{url}">{full_name} ({username})</a></li>'.format(
+            url=lti_launch(create_request(
+                user=user,
+                assignment=assignment,
+                course=assignment.courses.first(),
+            )).url,
+            full_name=user.full_name,
+            username=user.username
+        )
+
+    launch_links += '</ul>'
+
+    assignment.description += '<br/>' + launch_links
+    assignment.save()
 
 
 class Command(BaseCommand):
@@ -173,7 +204,16 @@ class Command(BaseCommand):
             lock_date=timezone.now() + relativedelta(years=1, days=2),
         )
 
-        self.assignments = [self.logboek, self.colloquium, self.group_assignment]
+        self.lti_assignment = factory.LtiAssignment(
+            name='Lti Assignment',
+            description=f'''Test Your LTI stuff with this. Launch URLs (works for 15 min after generation).''',
+            author=self.teacher,
+            is_published=True,
+        )
+
+        _add_lti_launch_links_to_assignment_description(self.lti_assignment, self.users)
+
+        self.assignments = [self.logboek, self.colloquium, self.group_assignment, self.lti_assignment]
 
     def gen_group_journals(self):
         """

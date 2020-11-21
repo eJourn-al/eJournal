@@ -76,7 +76,7 @@ class AssignmentView(viewsets.ViewSet):
             course = settings.EXPLICITLY_WITHOUT_CONTEXT
             courses = request.user.participations.all()
 
-        query = Assignment.objects.filter(courses__in=courses).distinct()
+        query = SmallAssignmentSerializer.setup_eager_loading(Assignment.objects.filter(courses__in=courses).distinct())
         viewable = [assignment for assignment in query if request.user.can_view(assignment)]
         serializer = SmallAssignmentSerializer(viewable, many=True, context={'user': request.user, 'course': course})
 
@@ -139,9 +139,9 @@ class AssignmentView(viewsets.ViewSet):
 
         file_handling.establish_rich_text(author=request.user, rich_text=assignment.description, assignment=assignment)
         serializer = AssignmentSerializer(
-            assignment,
+            AssignmentSerializer.setup_eager_loading(Assignment.objects.filter(pk=assignment.pk)).get(),
             context={'user': request.user, 'course': course,
-                     'journals': request.user.has_permission('can_grade', assignment)}
+                     'serialize_journals': request.user.has_permission('can_grade', assignment)}
         )
         return response.created({'assignment': serializer.data})
 
@@ -177,9 +177,9 @@ class AssignmentView(viewsets.ViewSet):
         request.user.check_can_view(assignment)
 
         serializer = AssignmentSerializer(
-            assignment,
+            AssignmentSerializer.setup_eager_loading(Assignment.objects.filter(pk=assignment.pk)).get(),
             context={'user': request.user, 'course': course,
-                     'journals': request.user.has_permission('can_grade', assignment)}
+                     'serialize_journals': request.user.has_permission('can_grade', assignment)}
         )
         return response.success({'assignment': serializer.data})
 
@@ -203,7 +203,7 @@ class AssignmentView(viewsets.ViewSet):
 
         """
         pk, = utils.required_typed_params(kwargs, (int, 'pk'))
-        assignment = Assignment.objects.get(pk=pk)
+        assignment = AssignmentSerializer.setup_eager_loading(Assignment.objects.filter(pk=pk)).get()
         course = None
 
         request.user.check_permission('can_edit_assignment', assignment)
@@ -316,9 +316,9 @@ class AssignmentView(viewsets.ViewSet):
             courses = request.user.participations.all()
 
         now = timezone.now()
-        query = Assignment.objects.filter(
+        query = SmallAssignmentSerializer.setup_eager_loading(Assignment.objects.filter(
             Q(lock_date__gt=now) | Q(lock_date=None), courses__in=courses
-        ).distinct()
+        ).distinct())
         viewable = [assignment for assignment in query if request.user.can_view(assignment)]
         upcoming = SmallAssignmentSerializer(
             viewable, context={'user': request.user, 'course': course}, many=True).data
@@ -423,7 +423,7 @@ class AssignmentView(viewsets.ViewSet):
 
         importable = []
         for course in courses:
-            assignments = Assignment.objects.filter(courses=course)
+            assignments = SmallAssignmentSerializer.setup_eager_loading(Assignment.objects.filter(courses=course))
             if assignments:
                 importable.append({
                     'course': CourseSerializer(course).data,
@@ -461,6 +461,8 @@ class AssignmentView(viewsets.ViewSet):
         assignment = assignment_source
         assignment.is_published = False
         assignment.pk = None
+        assignment.active_lti_id = None
+        assignment.lti_id_set = []
         set_assignment_dates(assignment, months_offset)
 
         # One to one fields needs to be updated before save else we would have a duplicate key
@@ -537,8 +539,10 @@ class AssignmentView(viewsets.ViewSet):
                 request.user.has_permission('can_edit_assignment', assignment)):
             return response.forbidden('You are not allowed to view all templates for this assignment.')
 
-        return response.success({'templates': TemplateSerializer(assignment.format.template_set.filter(
-            archived=False).order_by('name'), many=True).data})
+        qry = assignment.format.template_set.filter(archived=False).order_by('name')
+        return response.success({
+            'templates': TemplateSerializer(TemplateSerializer.setup_eager_loading(qry), many=True).data
+        })
 
     @action(methods=['get'], detail=True)
     def teacher_entries(self, request, pk):
@@ -552,6 +556,11 @@ class AssignmentView(viewsets.ViewSet):
 
         return response.success({
             'teacher_entries': TeacherEntrySerializer(
-                assignment.teacherentry_set.all().order_by('title'), many=True
+                TeacherEntrySerializer.setup_eager_loading(
+                    assignment.teacherentry_set.all()
+                ).order_by(
+                    'title'
+                ),
+                many=True
             ).data
         })

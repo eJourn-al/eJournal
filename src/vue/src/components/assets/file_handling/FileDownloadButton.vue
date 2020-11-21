@@ -1,6 +1,6 @@
 <template>
     <div
-        class="file-controls"
+        class="controls unselectable"
         @click="fileDownload"
     >
         <icon
@@ -10,6 +10,7 @@
         <b class="ml-1">
             {{ file.file_name }}
         </b>
+        <slot/>
     </div>
 </template>
 
@@ -42,11 +43,3 @@ export default {
     },
 }
 </script>
-
-<style lang="sass">
-.file-controls
-    &:hover
-        cursor: pointer
-    b
-        text-decoration: underline !important
-</style>

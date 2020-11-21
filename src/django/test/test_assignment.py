@@ -2,6 +2,7 @@ import datetime
 import test.factory as factory
 from test.utils import api
 from test.utils.generic_utils import equal_models
+from test.utils.performance import QueryContext
 
 import pytest
 from dateutil import parser
@@ -17,7 +18,7 @@ from django.utils import timezone
 import VLE.utils.statistics as stats_utils
 from VLE.models import (Assignment, AssignmentParticipation, Course, Entry, Field, Format, Journal,
                         JournalImportRequest, Node, Participation, PresetNode, Role, Template)
-from VLE.serializers import AssignmentSerializer
+from VLE.serializers import AssignmentSerializer, SmallAssignmentSerializer
 from VLE.utils.error_handling import VLEParticipationError, VLEProgrammingError
 from VLE.views.assignment import day_neutral_datetime_increment, set_assignment_dates
 
@@ -106,8 +107,15 @@ class AssignmentAPITest(TestCase):
             'Assignment author is also an actual teacher in the associated courses when specified manually'
 
         lti_assignment = factory.LtiAssignment()
-        lti_assignment.courses.filter(assignment_lti_id_set__contains=[lti_assignment.active_lti_id]).count() \
+        assert lti_assignment.courses.filter(assignment_lti_id_set__contains=[lti_assignment.active_lti_id]).count() \
             == lti_assignment.courses.count(), 'The lti id is added to each course\'s assignment id'
+
+        course = factory.Course()
+        participation = factory.Participation(role=course.role_set.filter(name='Student').first(), course=course)
+        journal_count = Journal.objects.count()
+        assignment = factory.Assignment(courses=[course])
+        assert journal_count + 1 == Journal.objects.count(), 'Student should have gotten a journal'
+        assert Journal.objects.get(authors__user=participation.user, assignment=assignment)
 
     def test_group_assignment_factory(self):
         j_all_count = Journal.all_objects.count()
@@ -282,22 +290,23 @@ class AssignmentAPITest(TestCase):
         course2 = factory.Course()
         assignment.courses.add(course2)
         factory.Journal(assignment=assignment)
+        assignment = AssignmentSerializer.setup_eager_loading(Assignment.objects.filter(pk=assignment.pk)).get()
         result = AssignmentSerializer(assignment, context={
-            'user': course2.author, 'course': course2, 'journals': True}).data
+            'user': course2.author, 'course': course2, 'serialize_journals': True}).data
         assert len(result['journals']) == 1, 'Course2 is supplied, only journals from that course should appear (1)'
 
         result = AssignmentSerializer(assignment, context={
-            'user': course2.author, 'journals': True}).data
+            'user': course2.author, 'serialize_journals': True}).data
         assert not result['journals'], 'No course supplied should also return no journals'
 
         result = AssignmentSerializer(assignment, context={
-            'user': course1.author, 'course': course1, 'journals': True}).data
+            'user': course1.author, 'course': course1, 'serialize_journals': True}).data
         assert len(result['journals']) == 2, 'Course1 is supplied, only journals from that course should appear (2)'
 
         # Should not work when user is not in supplied course
         with pytest.raises(VLEParticipationError):
             result = AssignmentSerializer(assignment, context={
-                'user': course2.author, 'course': course1, 'journals': True}).data
+                'user': course2.author, 'course': course1, 'serialize_journals': True}).data
 
     def test_assigned_assignment(self):
         assignment = factory.Assignment()
@@ -923,8 +932,13 @@ class AssignmentAPITest(TestCase):
             ltiAssignment2.save,
             msg='lti_id_set and assignment should be unique together for each arrayfield value'
         )
+        assert ltiAssignment2.active_lti_id not in ltiAssignment2.lti_id_set, \
+            'LTI id validaton should prevent an an invalid lti id from being added to the assignment lti_id_set'
 
-        assert ltiAssignment2.active_lti_id in ltiAssignment2.lti_id_set, \
+        new_lti_id = 'Some new id'
+        ltiAssignment2.active_lti_id = new_lti_id
+        ltiAssignment2.save()
+        assert new_lti_id in ltiAssignment2.lti_id_set, \
             'LTI ids added to the assignment should als be added to the lti_id_set'
 
         journal = factory.Journal(assignment=ltiAssignment1)
@@ -959,6 +973,14 @@ class AssignmentAPITest(TestCase):
         resp = api.get(self, 'assignments/upcoming', user=journal.authors.first().user)['upcoming']
         assert resp[0]['deadline']['name'] == '0/7 points', \
             'When not having completed an progress node, that should be shown'
+
+        journal.bonus_points = 7
+        journal.save()
+        resp = api.get(self, 'assignments/upcoming', user=journal.authors.first().user)['upcoming']
+        assert resp[0]['deadline']['name'] == 'End of assignment', \
+            'Journal bonus points should count to grade total, including fulfilling progress goals'
+        journal.bonus_points = 0
+        journal.save()
 
         entrydeadline = factory.DeadlinePresetNode(
             format=assignment.format,
@@ -1281,3 +1303,151 @@ class AssignmentAPITest(TestCase):
         test_bonus_helper('{},2'.format(lti_bonus_student.username), user=factory.Teacher(), status=403)
         # Nor should students
         test_bonus_helper('{},2'.format(lti_bonus_student.username), user=lti_bonus_student, status=403)
+
+    def test_assignment_state_actions(self):
+        def init_assignment(**fields):
+            return Assignment(name='Test', **fields)
+
+        def create_assignment(**fields):
+            format = Format.objects.create()
+            return Assignment.objects.create(format=format, name='Test', **fields)
+
+        created_assignment = create_assignment()
+        self.assertRaises(VLEProgrammingError, Assignment.state_actions, new=created_assignment, old=None)
+
+        def test_published():
+            assignment = init_assignment(is_published=True)
+            r = Assignment.state_actions(new=assignment)
+            assert r['published']
+            assert not r['unpublished']
+
+            r = Assignment.state_actions(new=init_assignment(is_published=False))
+            assert not r['published']
+            assert not r['unpublished']
+
+            pk = assignment.pk
+            assignment.pk = None
+            r = Assignment.state_actions(new=assignment)
+            assert r['published']
+            assert not r['unpublished']
+
+            assignment.pk = pk
+            r = Assignment.state_actions(new=assignment, old=create_assignment(is_published=False))
+            assert r['published']
+            assert not r['unpublished']
+
+            r = Assignment.state_actions(
+                new=init_assignment(is_published=False), old=create_assignment(is_published=True))
+            assert not r['published']
+            assert not r['unpublished']
+
+        def test_type_changed():
+            r = Assignment.state_actions(new=init_assignment(is_group_assignment=False))
+            assert not r['type_changed']
+
+            r = Assignment.state_actions(new=init_assignment(is_group_assignment=True))
+            assert not r['type_changed']
+
+            group_assignment = create_assignment(is_group_assignment=True)
+            non_group_assignment = create_assignment(is_group_assignment=False)
+
+            assert not Assignment.state_actions(new=group_assignment, old=group_assignment)['type_changed']
+            assert Assignment.state_actions(new=group_assignment, old=non_group_assignment)['type_changed']
+            assert Assignment.state_actions(new=non_group_assignment, old=group_assignment)['type_changed']
+            assert not Assignment.state_actions(new=non_group_assignment, old=non_group_assignment)['type_changed']
+
+        def test_active_lti_id_modified():
+            assert not Assignment.state_actions(new=init_assignment(active_lti_id=None))['active_lti_id_modified']
+            assert Assignment.state_actions(new=init_assignment(active_lti_id=0))['active_lti_id_modified']
+            assert Assignment.state_actions(new=init_assignment(active_lti_id=1))['active_lti_id_modified']
+
+            assignment_lti_none = create_assignment(active_lti_id=None)
+            assignment_lti_zero = create_assignment(active_lti_id=0)
+            assignment_lti_one = create_assignment(active_lti_id=1)
+
+            assert not Assignment.state_actions(
+                new=assignment_lti_none, old=assignment_lti_none)['active_lti_id_modified']
+            assert Assignment.state_actions(new=assignment_lti_zero, old=assignment_lti_none)['active_lti_id_modified']
+            assert Assignment.state_actions(new=assignment_lti_one, old=assignment_lti_none)['active_lti_id_modified']
+
+            assert Assignment.state_actions(new=assignment_lti_none, old=assignment_lti_one)['active_lti_id_modified']
+            assert Assignment.state_actions(new=assignment_lti_zero, old=assignment_lti_one)['active_lti_id_modified']
+            assert not Assignment.state_actions(
+                new=assignment_lti_one, old=assignment_lti_one)['active_lti_id_modified']
+
+            assert Assignment.state_actions(new=assignment_lti_none, old=assignment_lti_zero)['active_lti_id_modified']
+            assert not Assignment.state_actions(
+                new=assignment_lti_zero, old=assignment_lti_zero)['active_lti_id_modified']
+            assert Assignment.state_actions(new=assignment_lti_one, old=assignment_lti_zero)['active_lti_id_modified']
+
+        test_published()
+        test_type_changed()
+        test_active_lti_id_modified()
+
+    def test_assignment_handle_active_lti_id_modified(self):
+        lti_group_journal = factory.LtiGroupJournal(entries__n=0, add_users=[factory.Student()])
+        assignment = lti_group_journal.assignment
+
+        assert not lti_group_journal.needs_lti_link, 'Assignment, AP and Journal are initialized correctly '
+        '(assignment participations have a sourcedid and grade_url, assignment an active_lti_id, and therefore '
+        'the journal has no authors which still need an active lti link.'
+
+        assignment.handle_active_lti_id_modified()
+
+        for ap in lti_group_journal.authors.select_related('user', 'journal'):
+            assert ap.user.full_name in ap.journal.needs_lti_link, 'All users require a new LTI link'
+
+    def test_assignment_serializer(self):
+        assignment = factory.Assignment(format__templates=False)
+        course = assignment.courses.first()
+        factory.TextTemplate(format=assignment.format)
+
+        # Some base state
+        journal = factory.Journal(assignment=assignment)
+        factory.UnlimitedEntry(node__journal=journal, grade__grade=1)
+        factory.UnlimitedEntry(node__journal=journal, grade__grade=1, grade__published=False)
+        student = journal.author
+        factory.Journal(assignment=assignment)
+        factory.DeadlinePresetNode(format=assignment.format)
+        factory.ProgressPresetNode(format=assignment.format)
+
+        def add_state():
+            factory.TextTemplate(**{'format': assignment.format})
+            factory.Journal(**{'assignment': assignment})
+            factory.UnlimitedEntry(**{'node__journal': journal, 'grade__grade': 1})
+            factory.UnlimitedEntry(**{'node__journal': journal, 'grade__grade': 1, 'grade__published': False})
+
+        # Student perspective
+        with QueryContext() as context_pre:
+            AssignmentSerializer(
+                AssignmentSerializer.setup_eager_loading(Assignment.objects.filter(pk=assignment.pk)).get(),
+                context={'user': student, 'course': course, 'serialize_journals': True}
+            ).data
+        add_state()
+        with QueryContext() as context_post:
+            AssignmentSerializer(
+                AssignmentSerializer.setup_eager_loading(Assignment.objects.filter(pk=assignment.pk)).get(),
+                context={'user': student, 'course': course, 'serialize_journals': True}
+            ).data
+        assert len(context_pre) == len(context_post) and len(context_pre) <= 28
+
+        # Teacher perspective
+        with QueryContext() as context_pre:
+            AssignmentSerializer(
+                AssignmentSerializer.setup_eager_loading(Assignment.objects.filter(pk=assignment.pk)).get(),
+                context={'user': assignment.author, 'course': course, 'serialize_journals': True}
+            ).data
+        add_state()
+        with QueryContext() as context_post:
+            AssignmentSerializer(
+                AssignmentSerializer.setup_eager_loading(Assignment.objects.filter(pk=assignment.pk)).get(),
+                context={'user': assignment.author, 'course': course, 'serialize_journals': True}
+            ).data
+        assert len(context_pre) == len(context_post) and len(context_pre) <= 19
+
+    def test_small_assignment_serializer(self):
+        assignment = factory.Assignment(format__templates=False)
+
+        # User is required context for any serializer which inherits AssignmentSerializer
+        with self.assertRaises(VLEProgrammingError):
+            SmallAssignmentSerializer(assignment).data

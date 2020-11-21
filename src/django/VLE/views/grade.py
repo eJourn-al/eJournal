@@ -10,7 +10,7 @@ import VLE.factory as factory
 import VLE.utils.generic_utils as utils
 import VLE.utils.grading as grading
 import VLE.utils.responses as response
-from VLE.models import Assignment, Comment, Entry, Grade, Journal
+from VLE.models import Assignment, Comment, Entry, Journal
 from VLE.serializers import EntrySerializer, GradeHistorySerializer
 
 
@@ -37,16 +37,19 @@ class GradeView(viewsets.ViewSet):
         On success:
             success -- with all historic grades corresponding to the entry
         """
-        entry_id, = utils.required_typed_params(request.query_params, (int, "entry_id"))
+        entry_id, = utils.required_typed_params(request.query_params, (int, 'entry_id'))
 
-        entry = Entry.objects.get(pk=entry_id)
+        entry = Entry.objects.filter(pk=entry_id).select_related('node__journal__assignment').get()
         assignment = entry.node.journal.assignment
 
         request.user.check_permission('can_view_grade_history', assignment)
 
-        grade_history = Grade.objects.filter(entry=entry)
-
-        return response.success({'grade_history': GradeHistorySerializer(grade_history, many=True).data})
+        return response.success({
+            'grade_history': GradeHistorySerializer(
+                GradeHistorySerializer.setup_eager_loading(entry.grade_set).order_by('pk'),
+                many=True
+            ).data
+        })
 
     def create(self, request):
         """Set a new grade for an entry.
@@ -88,7 +91,10 @@ class GradeView(viewsets.ViewSet):
         grading.task_journal_status_to_LMS.delay(journal.pk)
 
         return response.created({
-            'entry': EntrySerializer(entry, context={'user': request.user}).data,
+            'entry': EntrySerializer(
+                EntrySerializer.setup_eager_loading(Entry.objects.filter(pk=entry.pk))[0],
+                context={'user': request.user},
+            ).data,
         })
 
     @action(methods=['patch'], detail=False)

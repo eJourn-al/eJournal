@@ -91,13 +91,13 @@ class UserView(viewsets.ViewSet):
         user = User.objects.get(pk=pk)
 
         if request.user == user or request.user.is_superuser:
-            serializer = OwnUserSerializer(user, context={'user': request.user}, many=False)
+            data = OwnUserSerializer(user, context={'user': request.user}, many=False).data
         elif permissions.is_user_supervisor_of(request.user, user):
-            serializer = UserSerializer(user, context={'user': request.user}, many=False)
+            data = {field: getattr(user, field) for field in UserSerializer.Meta.user_fields}
         else:
             return response.forbidden('You are not allowed to view this users information.')
 
-        return response.success({'user': serializer.data})
+        return response.success({'user': data})
 
     def create(self, request):
         """Create a new user.
@@ -226,7 +226,7 @@ class UserView(viewsets.ViewSet):
             data = {'profile_picture': pp if pp else user.profile_picture}
         else:
             data = request.data
-        serializer = OwnUserSerializer(user, data=data, partial=True)
+        serializer = OwnUserSerializer(user, data=data, context={'user': request.user}, partial=True)
         if not serializer.is_valid():
             return response.bad_request()
         serializer.save()
@@ -316,11 +316,17 @@ class UserView(viewsets.ViewSet):
         for journal in journals:
             # Select the nodes of this journal but only the ones with entries.
             entry_ids = Node.objects.filter(journal=journal).exclude(entry__isnull=True).values_list('entry', flat=True)
-            entries = Entry.objects.filter(id__in=entry_ids)
             # Serialize all entries and put them into the entries dictionary with the assignment name key.
             journal_dict.update({
                 journal.assignment.name: EntrySerializer(
-                    entries, context={'user': request.user, 'comments': True}, many=True).data
+                    EntrySerializer.setup_eager_loading(
+                        Entry.objects.filter(id__in=entry_ids)
+                    ).prefetch_related(
+                        'comment_set'  # Only GDPR serializes comments via this route.
+                    ),
+                    context={'user': request.user, 'comments': True},
+                    many=True
+                ).data
             })
 
         archive_path, archive_name = file_handling.compress_all_user_data(

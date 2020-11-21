@@ -57,8 +57,7 @@ def make_participation(user=None, course=None, role=None, groups=None, notify_us
     participation = VLE.models.Participation(user=user, course=course, role=role)
     participation.save(notify_user=notify_user)
     if groups:
-        participation.groups.set(groups)
-        participation.save()
+        participation.set_groups(groups)
 
     return participation
 

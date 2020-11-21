@@ -2,6 +2,7 @@ import test.factory as factory
 import test.factory.user as user_factory
 from test.utils import api
 from test.utils.lti import gen_jwt_params
+from test.utils.performance import QueryContext
 
 import pytest
 from django.conf import settings
@@ -12,7 +13,8 @@ from rest_framework.settings import api_settings
 import VLE.factory as creation_factory
 import VLE.permissions as permissions
 import VLE.validators as validators
-from VLE.models import Instance, Preferences, User
+from VLE.models import Instance, Preferences, Role, User
+from VLE.serializers import UserSerializer, prefetched_objects
 
 
 class UserAPITest(TestCase):
@@ -400,3 +402,97 @@ class UserAPITest(TestCase):
         assert user1.can_view(user1), 'Non supervisor should not be able to see its students'
 
     # TODO: Test download, upload and set_profile_picture
+
+    def test_user_serializer(self):
+        group = factory.Group()
+        group2 = factory.Group(course=group.course)
+        student = factory.Student()
+        student2 = factory.Student()
+        p = factory.Participation(user=student, course=group.course, role=group.course.role_set.get(name='Student'))
+        p.groups.add(group, group2)
+        factory.Participation(user=student2, course=group.course, role=group.course.role_set.get(name='Student'))
+        p3 = factory.Participation(course=group.course, role=group.course.role_set.get(name='Student'))
+        student3 = p3.user
+
+        # Fairly best case (not all checks are exhausted)
+        student_permission_queries = 5
+        teacher_permission_queries = 2
+
+        # Student perspective
+        with QueryContext() as context_pre:
+            UserSerializer(
+                group.course.users.filter(pk__in=[student2.pk]),
+                many=True,
+                context={'user': student, 'course': group.course}
+            ).data
+        with QueryContext() as context_post:
+            UserSerializer(
+                group.course.users.filter(pk__in=[student2.pk, student3.pk]),
+                many=True,
+                context={'user': student, 'course': group.course}
+            ).data
+        assert len(context_post) - len(context_pre) <= student_permission_queries
+
+        # Teacher perspective
+        with QueryContext() as context_pre:
+            UserSerializer(
+                group.course.users.filter(pk__in=[student2.pk]),
+                many=True,
+                context={'user': group.course.author, 'course': group.course}
+            ).data
+        with QueryContext() as context_post:
+            UserSerializer(
+                group.course.users.filter(pk__in=[student2.pk, student3.pk]),
+                many=True,
+                context={'user': group.course.author, 'course': group.course}
+            ).data
+        assert len(context_post) - len(context_pre) <= teacher_permission_queries
+
+    def test_annotate_course_role(self):
+        c1 = factory.Course()
+        c2 = factory.Course()
+        p1 = factory.Participation(course=c1, role__name='role p1 c1 user')
+        user = p1.user
+        p2 = factory.Participation(course=c1, role__name='role p2 c1 user2')
+        user2 = p2.user
+
+        # Ensure user has multiple course participations (for query count check)
+        factory.Participation(course=c2, user=user, role=Role.objects.get(name='Student', course=c2))
+
+        assert user.participations.count() == 2
+
+        with self.assertNumQueries(1):
+            user = User.objects.filter(pk=user.pk).annotate_course_role(c1).get()
+        assert user.role_name == p1.role.name
+
+        with self.assertNumQueries(1):
+            users = list(User.objects.filter(participation__course=c1).annotate_course_role(c1))
+
+        assert user in users
+        assert user2 in users
+        for u in users:
+            if u == user:
+                assert u.role_name == p1.role.name, 'Annotation is correct'
+            if u == user2:
+                assert u.role_name == p2.role.name
+
+        user = User.objects.filter(pk=user2.pk).annotate_course_role(c2).get()
+        assert user.role_name is None, 'If the user is not part of the provided course, annotations yield None'
+
+    def test_prefetch_course_groups(self):
+        course = factory.Course()
+        group = factory.Group(course=course)
+        p1 = factory.Participation(course=course)
+        user = p1.user
+        p1.groups.add(group)
+        p2 = factory.Participation(course=course)
+        user2 = p2.user
+        p2.groups.add(group)
+
+        with self.assertNumQueries(3):  # Select user, 2 prefetches
+            qry = User.objects.filter(pk__in=[user.pk, user2.pk]).prefetch_course_groups(course)
+
+            for user in qry:
+                values, prefetched = prefetched_objects(user, 'participation_set')
+                participation = values[0]  # Test is setup so there no need to check if prefetched with alternative qry
+                assert list(participation.groups.all()) == [group], 'All groups are prefetched for all users'

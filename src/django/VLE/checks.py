@@ -12,6 +12,7 @@ def check_missing_read_only_fields_serializers(app_configs, **kwargs):
 
     import inspect
     from rest_framework.serializers import ModelSerializer
+    from VLE.serializers import ExtendedModelSerializer
     import django.conf.urls  # noqa, force import of all serializers.
 
     for serializer in ModelSerializer.__subclasses__():
@@ -19,6 +20,10 @@ def check_missing_read_only_fields_serializers(app_configs, **kwargs):
         # Skip third-party apps.
         path = inspect.getfile(serializer)
         if path.find('site-packages') > -1:
+            continue
+
+        # ExtendedModelSerializer is practically an abstract class
+        if serializer is ExtendedModelSerializer:
             continue
 
         if hasattr(serializer.Meta, 'read_only_fields'):

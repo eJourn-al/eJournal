@@ -22,6 +22,14 @@ def _ap(self, create, extracted, lti=False, **kwargs):
         test.factory.AssignmentParticipation(**{**kwargs, 'journal': self, 'assignment': self.assignment, 'lti': lti})
 
 
+def _entries(self, create, extracted, **kwargs):
+    if not create or not self.authors.exists():
+        return
+
+    for _ in range(kwargs['n'] if 'n' in kwargs else 1):
+        test.factory.UnlimitedEntry(node__journal=self)
+
+
 class BaseJournalFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = 'VLE.Journal'
@@ -46,11 +54,7 @@ class JournalFactory(BaseJournalFactory):
 
     @factory.post_generation
     def entries(self, create, extracted, **kwargs):
-        if not create:
-            return
-
-        for _ in range(kwargs['n'] if 'n' in kwargs else 1):
-            test.factory.UnlimitedEntry(node__journal=self)
+        _entries(self, create, extracted, **kwargs)
 
 
 class LtiJournalFactory(BaseJournalFactory):
@@ -65,11 +69,7 @@ class LtiJournalFactory(BaseJournalFactory):
 
     @factory.post_generation
     def entries(self, create, extracted, **kwargs):
-        if not create:
-            return
-
-        for _ in range(kwargs['n'] if 'n' in kwargs else 1):
-            test.factory.UnlimitedEntry(node__journal=self)
+        _entries(self, create, extracted, **kwargs)
 
 
 class GroupJournalFactory(BaseJournalFactory):
@@ -88,11 +88,7 @@ class GroupJournalFactory(BaseJournalFactory):
 
     @factory.post_generation
     def entries(self, create, extracted, **kwargs):
-        if not create:
-            return
-
-        for _ in range(kwargs['n'] if 'n' in kwargs else 1):
-            test.factory.UnlimitedEntry(node__journal=self)
+        _entries(self, create, extracted, **kwargs)
 
     @factory.post_generation
     def add_users(self, create, extracted):
@@ -108,6 +104,32 @@ class GroupJournalFactory(BaseJournalFactory):
                     ap.save()
                 else:
                     test.factory.AssignmentParticipation(journal=self, assignment=self.assignment, user=user)
+
+
+class LtiGroupJournalFactory(GroupJournalFactory):
+    """
+    Generates a group lti assignment, student and an lti assignment participation by default
+    """
+    assignment = factory.SubFactory('test.factory.assignment.LtiAssignmentFactory', group_assignment=True)
+
+    @factory.post_generation
+    def ap(self, create, extracted, **kwargs):
+        _ap(self, create, extracted, lti=True, **kwargs)
+
+    @factory.post_generation
+    def add_users(self, create, extracted):
+        if not create:
+            return
+
+        if extracted:
+            for user in extracted:
+                ap = VLE.models.AssignmentParticipation.objects.filter(assignment=self.assignment, user=user)
+                if ap.exists():
+                    ap = ap.first()
+                    ap.journal = self
+                    ap.save()
+                else:
+                    test.factory.AssignmentParticipation(journal=self, assignment=self.assignment, user=user, lti=True)
 
 
 class JournalImportRequestFactory(factory.django.DjangoModelFactory):

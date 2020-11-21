@@ -94,7 +94,7 @@ class GroupView(viewsets.ViewSet):
             return response.bad_request('Course group with the desired lti id already exists.')
 
         course_group = factory.make_course_group(name, course, lti_id)
-        serializer = GroupSerializer(course_group, many=False)
+        serializer = GroupSerializer(course_group, context={'user': request.user}, many=False)
         return response.created({'group': serializer.data})
 
     def partial_update(self, request, *args, **kwargs):
@@ -126,7 +126,7 @@ class GroupView(viewsets.ViewSet):
         if not name:
             return response.bad_request('Group name is not allowed to be empty.')
 
-        serializer = GroupSerializer(group, data={'name': name}, partial=True)
+        serializer = GroupSerializer(group, data={'name': name}, context={'user': request.user}, partial=True)
         if not serializer.is_valid():
             return response.bad_request()
 

@@ -1,7 +1,7 @@
 <template>
     <div>
         <div
-            class="pdf-controls mb-2 unselectable"
+            class="controls unselectable"
             @click="handleDownload"
         >
             <icon
@@ -11,6 +11,7 @@
             <b class="ml-1">
                 {{ file.file_name }}
             </b>
+            <slot/>
         </div>
         <div class="position-relative">
             <div

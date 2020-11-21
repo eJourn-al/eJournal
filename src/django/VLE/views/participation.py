@@ -55,10 +55,13 @@ class ParticipationView(viewsets.ViewSet):
 
         request.user.check_participation(course)
 
-        participation = Participation.objects.get(user=request.user, course=course)
+        participation = ParticipationSerializer.setup_eager_loading(
+            Participation.objects.filter(user=request.user, course=course)
+        ).get()
 
-        serializer = ParticipationSerializer(participation)
-        return response.success({'participant': serializer.data})
+        return response.success({
+            'participant': ParticipationSerializer(participation, context={'user': request.user}).data
+        })
 
     def create(self, request):
         """Add a user to a course.
@@ -127,13 +130,19 @@ class ParticipationView(viewsets.ViewSet):
             participation.role = Role.objects.get(name=role_name, course=course)
 
         if group_names:
-            participation.groups.set(Group.objects.get(name=group_names, course=course))
+            participation.set_groups(Group.objects.get(name=group_names, course=course))
         elif 'groups' in request.data:
-            participation.groups.set(None)
+            participation.set_groups(None)
 
         participation.save()
-        serializer = ParticipationSerializer(participation, context={'course': course})
-        return response.success({'participation': serializer.data}, description='Successfully updated participation.')
+
+        participation = ParticipationSerializer.setup_eager_loading(
+            Participation.objects.filter(pk=participation.pk)).get()
+        return response.success(
+            {'participation': ParticipationSerializer(
+                participation, context={'course': course, 'user': request.user}).data},
+            description='Successfully updated participation.'
+        )
 
     def destroy(self, request, pk):
         """Remove a user from the course.
