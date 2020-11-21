@@ -45,7 +45,7 @@ class InstanceView(viewsets.ViewSet):
         instance = Instance.objects.get_or_create(pk=1)[0]
 
         req_data = request.data
-        serializer = InstanceSerializer(instance, data=req_data, partial=True)
+        serializer = InstanceSerializer(instance, data=req_data, context={'user': request.user}, partial=True)
         if not serializer.is_valid():
             return response.bad_request()
         serializer.save()

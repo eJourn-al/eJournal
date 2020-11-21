@@ -14,6 +14,15 @@ class TemplateFactory(factory.django.DjangoModelFactory):
     # Forces format specification
     format = None
 
+    @factory.post_generation
+    def add_fields(self, create, extracted):
+        if not create:
+            return
+
+        if isinstance(extracted, list):
+            for kwargs in extracted:
+                FieldFactory(**{**kwargs, 'template': self})
+
 
 class MentorgesprekTemplateFactory(TemplateFactory):
     name = 'Mentorgesprek'

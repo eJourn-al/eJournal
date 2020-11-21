@@ -10,7 +10,7 @@ from django.test import TestCase
 from django.test.utils import override_settings
 
 from VLE.models import Entry, Field, Grade, Node, TeacherEntry
-from VLE.serializers import EntrySerializer
+from VLE.serializers import EntrySerializer, TeacherEntrySerializer
 from VLE.utils.error_handling import VLEPermissionError
 
 
@@ -450,3 +450,25 @@ class TeacherEntryAPITest(TestCase):
         validate_update(grade=2, published=False, journals=[journal], deleted_journals=[journal2])
         validate_update(grade=1, published=False, journals=[journal, journal2])
         validate_update(grade=4, published=False, journals=[journal], deleted_journals=[journal2])
+
+    def test_teacher_entry_serializer(self):
+        assignment = factory.Assignment()
+        factory.Journal(assignment=assignment, entries__n=0)
+        teacher = assignment.author
+        params = factory.TeacherEntryCreationParams(assignment=assignment, grade=1, published=True)
+        te_id = api.create(self, 'teacher_entries', params=params, user=teacher)['teacher_entry']['id']
+
+        with self.assertNumQueries(6):
+            TeacherEntrySerializer(
+                TeacherEntrySerializer.setup_eager_loading(TeacherEntry.objects.filter(pk=te_id))[0]
+            ).data
+
+        factory.Journal(assignment=assignment, entries__n=0)
+        params = factory.TeacherEntryCreationParams(assignment=assignment, grade=1, published=True)
+        te_id = api.create(self, 'teacher_entries', params=params, user=teacher)['teacher_entry']['id']
+
+        # Queries count is not affected by the number of journals
+        with self.assertNumQueries(6):
+            TeacherEntrySerializer(
+                TeacherEntrySerializer.setup_eager_loading(TeacherEntry.objects.filter(pk=te_id))[0]
+            ).data

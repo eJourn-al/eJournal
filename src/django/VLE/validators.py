@@ -77,13 +77,13 @@ def validate_entry_content(content, field):
 
     if field.type == VLE.models.Field.DATE:
         try:
-            datetime.strptime(content, VLE.models.Field.ALLOWED_DATE_FORMAT)
+            datetime.strptime(content, settings.ALLOWED_DATE_FORMAT)
         except (ValueError, TypeError) as e:
             raise ValidationError(str(e))
 
     if field.type == VLE.models.Field.DATETIME:
         try:
-            datetime.strptime(content, VLE.models.Field.ALLOWED_DATETIME_FORMAT)
+            datetime.strptime(content, settings.ALLOWED_DATETIME_FORMAT)
         except (ValueError, TypeError) as e:
             raise ValidationError(str(e))
 

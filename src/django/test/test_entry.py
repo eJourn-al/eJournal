@@ -10,10 +10,12 @@ from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db.models import Max
 from django.test import TestCase
+from django.utils import timezone
 from faker import Faker
 
-from VLE.models import (Assignment, Comment, Content, Course, Entry, Field, FileContext, Format, Grade, Journal, Node,
-                        PresetNode, Template, User)
+from VLE.models import (Assignment, Comment, Content, Course, Entry, Field, FileContext, Format, Grade, Journal,
+                        JournalImportRequest, Node, PresetNode, Template, User)
+from VLE.serializers import EntrySerializer
 from VLE.utils import generic_utils as utils
 from VLE.utils.error_handling import VLEMissingRequiredField, VLEPermissionError
 from VLE.validators import validate_entry_content
@@ -42,6 +44,11 @@ class EntryAPITest(TestCase):
         }
         fields = Field.objects.filter(template=self.template)
         self.valid_create_params['content'] = {field.id: 'test data' for field in fields}
+
+        # Queries:
+        # Select Entry and related tables 1
+        # Template is selected, but its field set is also serialized 1
+        self.entry_serializer_base_query_count = len(EntrySerializer.prefetch_related) + 1 + 1
 
     def test_entry_factory(self):
         course_c = Course.objects.count()
@@ -237,8 +244,8 @@ class EntryAPITest(TestCase):
         # A single node has been added to the journal
         node = Node.objects.get(journal=journal)
         assert node.pk == entry.node.pk, 'The journal has no additional nodes'
-        assert node.type == Node.ENTRYDEADLINE, 'The entry node is of the correct type'
-        assert node.preset.type == Node.ENTRYDEADLINE, 'The attached preset is of the correct type'
+        assert node.is_deadline, 'The entry node is of the correct type'
+        assert node.preset.is_deadline, 'The attached preset is of the correct type'
         assert node.preset.forced_template == Template.objects.get(format__assignment=assignment), \
             'The deadline node\'s preset is indeed that of the assignment'
         assert Node.objects.get(type=Node.ENTRYDEADLINE, journal=journal, preset__forced_template=template), \
@@ -789,3 +796,139 @@ class EntryAPITest(TestCase):
 
         assert not Content.objects.all().exclude(pk__in=all_pre_setup_contents).exists(), \
             'Cascade works properly on bulk delete as well'
+
+    def test_entry_serializer(self):
+        grade = 3
+        entry = factory.UnlimitedEntry(
+            node__journal__assignment__format__templates=[{'type': Field.TEXT}],
+            grade__grade=grade
+        )
+        journal = entry.node.journal
+        student = journal.author
+        teacher = journal.assignment.author
+
+        with self.assertNumQueries(self.entry_serializer_base_query_count):
+            data = EntrySerializer(
+                EntrySerializer.setup_eager_loading(Entry.objects.filter(pk=entry.pk))[0],
+                context={'user': student}
+            ).data
+
+        assert data['grade']['grade'] == grade
+
+        entry = factory.UnlimitedEntry(
+            node__journal__assignment__format__templates=[{'type': Field.TEXT}],
+            grade__published=False,
+            grade__grade=2,
+            node__journal=journal
+        )
+
+        # Teacher requires one additional query to check can_grade
+        with self.assertNumQueries(self.entry_serializer_base_query_count + 1):
+            data = EntrySerializer(
+                EntrySerializer.setup_eager_loading(Entry.objects.filter(pk=entry.pk))[0],
+                context={'user': teacher}
+            ).data
+
+        def check_is_editable():
+            assignment = journal.assignment
+
+            entry_without_grade = factory.UnlimitedEntry(node__journal=journal, grade=None)
+
+            data = EntrySerializer(
+                EntrySerializer.setup_eager_loading(Entry.objects.filter(pk=entry_without_grade.pk))[0],
+                context={'user': teacher}
+            ).data
+            assert data['editable']
+
+            assignment.lock_date = timezone.now()
+            assignment.save()
+
+            data = EntrySerializer(
+                EntrySerializer.setup_eager_loading(Entry.objects.filter(pk=entry_without_grade.pk))[0],
+                context={'user': teacher}
+            ).data
+            assert not data['editable']
+
+            assignment.lock_date = timezone.now() - timedelta(1)
+            assignment.save()
+            graded_entry = factory.UnlimitedEntry(node__journal=journal, grade__grade=1)
+
+            data = EntrySerializer(
+                EntrySerializer.setup_eager_loading(Entry.objects.filter(pk=graded_entry.pk))[0],
+                context={'user': teacher}
+            ).data
+            assert not data['editable']
+
+            entry_unpublished_grade = factory.UnlimitedEntry(
+                node__journal=journal, grade__grade=1, grade__published=False)
+
+            data = EntrySerializer(
+                EntrySerializer.setup_eager_loading(Entry.objects.filter(pk=entry_unpublished_grade.pk))[0],
+                context={'user': teacher}
+            ).data
+            assert not data['editable']
+
+        def check_default_fields():
+            assert data['author'] == student.full_name
+            assert data['last_edited_by'] == student.full_name
+
+            User.objects.filter(pk=entry.author_id).delete()
+            # student.delete()
+            student_deleted_data = EntrySerializer(
+                EntrySerializer.setup_eager_loading(Entry.objects.filter(pk=entry.pk))[0],
+                context={'user': teacher}
+            ).data
+            assert student_deleted_data['author'] == User.UNKNOWN_STR
+            assert student_deleted_data['last_edited_by'] == User.UNKNOWN_STR
+
+        check_is_editable()
+        check_default_fields()
+
+    def test_entry_serializer_files(self):
+        n_file_fields = 3
+        entry = factory.UnlimitedEntry(
+            node__journal__assignment__format__templates=[{'type': Field.FILE} for _ in range(n_file_fields)],
+        )
+        journal = entry.node.journal
+        student = journal.author
+
+        # The entry serializer query count is invariant to the number of FILE fields.
+        with self.assertNumQueries(self.entry_serializer_base_query_count):
+            data = EntrySerializer(
+                EntrySerializer.setup_eager_loading(Entry.objects.filter(pk=entry.pk))[0],
+                context={'user': student}
+            ).data
+
+        fc_ids = list(FileContext.objects.filter(content__entry=entry).values_list('pk', flat=True))
+        for _, content in data['content'].items():
+            assert content['id'] in fc_ids
+
+    def test_entry_serializer_jir(self):
+        source_journal = factory.Journal()
+        student = source_journal.author
+
+        jir = factory.JournalImportRequest(
+            source=source_journal,
+            state=JournalImportRequest.APPROVED_INC_GRADES,
+            processor=factory.Teacher()
+        )
+        entry = factory.UnlimitedEntry(
+            node__journal__ap__user=student,
+            node__journal__assignment__author=jir.processor,
+            node__journal__assignment__format__templates=[{'type': Field.TEXT}],
+            jir=jir
+        )
+
+        # Jir requires a can_view_course check
+        # Jir requires access to all source assignment's courses to provide the correct abbreviation
+        with self.assertNumQueries(self.entry_serializer_base_query_count + 2):
+            data = EntrySerializer(
+                EntrySerializer.setup_eager_loading(Entry.objects.filter(pk=entry.pk))[0],
+                context={'user': student}
+            ).data
+
+        # JIR data required front end is serialized per entry
+        assert data['jir']['processor']['full_name'] == jir.processor.full_name
+        assert data['jir']['source']['assignment']['name'] == jir.source.assignment.name
+        assert data['jir']['source']['assignment']['course']['abbreviation'] == \
+            jir.source.assignment.courses.first().abbreviation

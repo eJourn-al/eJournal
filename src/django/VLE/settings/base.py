@@ -29,6 +29,9 @@ USER_MAX_TOTAL_STORAGE_BYTES = 100 * MiB
 USER_MAX_EMAIL_ATTACHMENT_BYTES = USER_MAX_FILE_SIZE_BYTES
 DATA_UPLOAD_MAX_MEMORY_SIZE = USER_MAX_FILE_SIZE_BYTES
 
+ALLOWED_DATE_FORMAT = '%Y-%m-%d'
+ALLOWED_DATETIME_FORMAT = '%Y-%m-%dT%H:%M:%S'
+
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 BASELINK = os.environ['BASELINK']
 API_URL = os.environ['API_URL']
