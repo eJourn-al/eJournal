@@ -387,11 +387,11 @@ class UserView(viewsets.ViewSet):
         users, = utils.required_params(request.data, 'users')
 
         # Ensure a full name, username and email are specified for all users to be invited.
-        if any(not user['full_name'] for user in users):
+        if any('full_name' not in user or not user['full_name'] for user in users):
             return response.bad_request('Please specify a full name for all users. No invites sent.')
-        if any(not user['username'] for user in users):
+        if any('username' not in user or not user['username'] for user in users):
             return response.bad_request('Please specify a username for all users. No invites sent.')
-        if any(not user['email'] for user in users):
+        if any('email' not in user or not user['email'] for user in users):
             return response.bad_request('Please specify an email for all users. No invites sent.')
 
         # Ensure the username and email for all users to be invited are unique.
@@ -407,11 +407,11 @@ class UserView(viewsets.ViewSet):
             return response.bad_request({'duplicate_emails': duplicate_emails})
 
         # Ensure the username and email for all users to be invited do not belong to existing users.
-        existing_usernames = list(User.objects.filter(username__in=[user['username'] for user in users])
+        existing_usernames = list(User.objects.filter(username__in=[user['username'].lower() for user in users])
                                   .values_list('username', flat=True).distinct())
         if existing_usernames:
             return response.bad_request({'existing_usernames': existing_usernames})
-        existing_emails = list(User.objects.filter(email__in=[user['email'] for user in users])
+        existing_emails = list(User.objects.filter(email__in=[user['email'].lower() for user in users])
                                .values_list('email', flat=True).distinct())
         if existing_emails:
             return response.bad_request({'existing_emails': existing_emails})
@@ -421,7 +421,8 @@ class UserView(viewsets.ViewSet):
             users_to_create = []
             for user in users:
                 user = factory.make_user(username=user['username'].lower(), email=user['email'].lower(),
-                                         full_name=user['full_name'], is_teacher=user['is_teacher'], is_active=False,
+                                         full_name=user['full_name'],
+                                         is_teacher='is_teacher' in user and user['is_teacher'], is_active=False,
                                          save=False)
                 users_to_create.append(user)
             created_user_ids = [user.id for user in User.objects.bulk_create(users_to_create)]

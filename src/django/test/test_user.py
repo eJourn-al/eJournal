@@ -1,3 +1,4 @@
+import re
 import test.factory as factory
 import test.factory.user as user_factory
 from test.utils import api
@@ -6,8 +7,11 @@ from test.utils.performance import QueryContext
 
 import pytest
 from django.conf import settings
+from django.contrib.auth.tokens import PasswordResetTokenGenerator
+from django.core import mail
 from django.core.exceptions import ValidationError
 from django.test import TestCase
+from django.test.utils import override_settings
 from rest_framework.settings import api_settings
 
 import VLE.factory as creation_factory
@@ -496,3 +500,98 @@ class UserAPITest(TestCase):
                 values, prefetched = prefetched_objects(user, 'participation_set')
                 participation = values[0]  # Test is setup so there no need to check if prefetched with alternative qry
                 assert list(participation.groups.all()) == [group], 'All groups are prefetched for all users'
+
+    @override_settings(EMAIL_BACKEND='anymail.backends.test.EmailBackend', CELERY_TASK_ALWAYS_EAGER=True)
+    def test_invite_users(self):
+        admin = factory.Admin()
+        pre_invite_user_count = User.objects.count()
+        users = [
+            {
+                'full_name': f'User Full Name {i}',
+                'username': f'user{i}username',
+                'email': f'user{i}mail@ejournal.app',
+            } for i in range(10)
+        ]
+
+        users[0]['full_name'] = ''
+        resp = api.post(self, 'users/invite_users', params={'users': users}, user=admin, status=400)
+        assert 'Please specify a full name for all users. No invites sent.' in resp['description']
+        del users[0]
+        assert User.objects.count() == pre_invite_user_count, 'No accounts should be created if some user is invalid'
+
+        users[0]['username'] = ''
+        resp = api.post(self, 'users/invite_users', params={'users': users}, user=admin, status=400)
+        assert 'Please specify a username for all users. No invites sent.' in resp['description']
+        del users[0]
+        assert User.objects.count() == pre_invite_user_count, 'No accounts should be created if some user is invalid'
+
+        users[0]['email'] = ''
+        resp = api.post(self, 'users/invite_users', params={'users': users}, user=admin, status=400)
+        assert 'Please specify an email for all users. No invites sent.' in resp['description']
+        del users[0]
+        assert User.objects.count() == pre_invite_user_count, 'No accounts should be created if some user is invalid'
+
+        users[0]['username'] = users[1]['username']
+        resp = api.post(self, 'users/invite_users', params={'users': users}, user=admin, status=400)
+        assert users[0]['username'] in resp['description']['duplicate_usernames']
+        del users[0]
+        assert User.objects.count() == pre_invite_user_count, 'No accounts should be created if some user is invalid'
+
+        users[0]['email'] = users[1]['email']
+        resp = api.post(self, 'users/invite_users', params={'users': users}, user=admin, status=400)
+        assert users[0]['email'] in resp['description']['duplicate_emails']
+        del users[0]
+        assert User.objects.count() == pre_invite_user_count, 'No accounts should be created if some user is invalid'
+
+        # Username and email should be unique and case-insensitive.
+        # All-uppercase versions of existing values should thus not be accepted.
+        users[0]['username'] = User.objects.all().first().username.upper()
+        resp = api.post(self, 'users/invite_users', params={'users': users}, user=admin, status=400)
+        assert users[0]['username'].lower() in resp['description']['existing_usernames']
+        del users[0]
+        assert User.objects.count() == pre_invite_user_count, 'No accounts should be created if some user is invalid'
+
+        users[0]['email'] = User.objects.all().first().email.upper()
+        resp = api.post(self, 'users/invite_users', params={'users': users}, user=admin, status=400)
+        assert users[0]['email'].lower() in resp['description']['existing_emails']
+        del users[0]
+        assert User.objects.count() == pre_invite_user_count, 'No accounts should be created if some user is invalid'
+
+        pre_invite_teacher_count = User.objects.filter(is_teacher=True).count()
+        resp = api.post(self, 'users/invite_users', params={'users': users}, user=admin)
+        assert 'Successfully invited 3 users.' in resp['description']
+        assert User.objects.count() == pre_invite_user_count + 3
+        assert User.objects.filter(is_teacher=True).count() == pre_invite_teacher_count
+
+        assert len(mail.outbox) == 3, 'Invite email should be sent to all invited users'
+        assert all(mail.outbox[i].to == [users[i]['email']] for i in range(len(users))), \
+            'Email should be sent to the mail adress of each invited user'
+        assert all(users[i]['full_name'] in mail.outbox[i].body for i in range(len(users))), \
+            'Invited user should be greeted by their full name'
+        assert all(f'{settings.BASELINK}/SetPassword/{users[i]["username"]}/' in mail.outbox[i].alternatives[0][0]
+                   for i in range(len(users))), 'Recovery token link should be in email'
+
+        # The recovery link should contain an indication that this is a new user, which is not part of the token
+        # itself.
+        for i in range(len(users)):
+            token = re.search(r'SetPassword\/(.*)\/([^"]*)\?new_user=true',
+                              mail.outbox[i].alternatives[0][0]).group(0).split('/')[-1][:-len('?new_user=true')]
+            assert PasswordResetTokenGenerator().check_token(User.objects.get(username=users[i]['username']), token), \
+                'Token for each user should be valid and new user should be indicated in URL'
+
+        resp = api.post(self, 'users/invite_users', params={'users': [{
+            'full_name': 'Invited Teacher Name',
+            'username': 'invitedteacherusername',
+            'email': 'invitedteacher@ejournal.app',
+            'is_teacher': True,
+        }]}, user=admin)
+        assert 'Successfully invited 1 users.' in resp['description']
+        assert User.objects.count() == pre_invite_user_count + 4
+        assert User.objects.filter(is_teacher=True).count() == pre_invite_teacher_count + 1
+
+        assert User.objects.filter(is_active=False).count() == 4, 'Invited user accounts are not yet active'
+
+        # Non-superusers may never invite new users.
+        admin.is_superuser = False
+        admin.save()
+        api.post(self, 'users/invite_users', params={'users': users}, user=admin, status=403)
