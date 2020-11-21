@@ -71,6 +71,8 @@ setup:
 setup-no-input:
 	@make clean
 
+	make setup-git
+
 	# Install apt dependencies and ppa's.
 	(sudo apt-cache show python3.6 | grep "Package: python3.6") || \
 	(sudo add-apt-repository ppa:deadsnakes/ppa -y; sudo apt update) || echo "0"
@@ -117,7 +119,14 @@ setup-sentry-cli:
 		${venv_activate} && curl -sL https://sentry.io/get-cli/ | bash; \
 	fi
 
-update-submodules:
+setup-git:
+	make git-update-submodules
+	make git-set-custom-hooks-path
+
+git-set-custom-hooks-path:
+	git config core.hooksPath .githooks
+
+git-update-submodules:
 	git submodule update --remote --merge
 
 output-webpack-config:
