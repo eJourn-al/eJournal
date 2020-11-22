@@ -1,87 +1,58 @@
 <template>
     <div>
-        <b-card
-            :class="$root.getBorderClass($route.params.cID)"
-            class="no-hover overflow-x-hidden"
+        <b-row noGutters>
+            <b-col md="6">
+                <b-card
+                    class="select-type mr-md-1"
+                    :class="{'unselected': currentPreset.type === 'p'}"
+                    @click="currentPreset.type = 'd'"
+                >
+                    <icon
+                        class="float-left mr-3 mt-3 mb-4"
+                        name="calendar"
+                        scale="2"
+                    />
+                    <div class="unselectable">
+                        <b>Entry</b><br/>
+                        A template that should be filled in before a set deadline.
+                    </div>
+                </b-card>
+            </b-col>
+            <b-col md="6">
+                <b-card
+                    class="select-type border-yellow ml-md-1"
+                    :class="{'unselected': currentPreset.type === 'd'}"
+                    @click="currentPreset.type = 'p'"
+                >
+                    <icon
+                        class="float-left mr-3 mt-3 mb-4"
+                        name="flag-checkered"
+                        scale="2"
+                    />
+                    <div class="unselectable">
+                        <b>Progress</b><br/>
+                        A point target to indicate required progress.
+                    </div>
+                </b-card>
+            </b-col>
+        </b-row>
+        <b-alert
+            :show="showAlert"
+            class="error"
+            dismissible
+            @dismissed="showAlert = false"
         >
-            <h2 class="theme-h2 d-inline multi-form">
-                New preset
-            </h2>
-            <h2 class="theme-h2 field-heading required">
-                Preset Type
-            </h2>
-            <b-row>
-                <b-col md="6">
-                    <b-card
-                        :class="{'unselected': currentPreset.type !== '' && currentPreset.type !== 'd'}"
-                        @click="currentPreset.type = 'd'"
-                    >
-                        <b-button
-                            :class="{'selected': currentPreset.type === 'd'}"
-                            class="change-button preset-type-button float-left mr-3 mt-2 no-hover"
-                        >
-                            <icon
-                                name="calendar"
-                                scale="1.8"
-                            />
-                        </b-button>
-                        <div class="unselectable">
-                            <b>Entry</b><br/>
-                            An entry that should be filled in before a set deadline.
-                        </div>
-                    </b-card>
-                </b-col>
-                <b-col md="6">
-                    <b-card
-                        :class="{'unselected': currentPreset.type !== '' && currentPreset.type !== 'p'}"
-                        @click="currentPreset.type = 'p'"
-                    >
-                        <b-button
-                            :class="{'selected': currentPreset.type === 'p'}"
-                            class="change-button preset-type-button float-left mr-3 mt-2 no-hover"
-                        >
-                            <icon
-                                name="flag-checkered"
-                                scale="1.8"
-                            />
-                        </b-button>
-                        <div class="unselectable">
-                            <b>Progress</b><br/>
-                            A point target to indicate required progress.
-                        </div>
-                    </b-card>
-                </b-col>
-            </b-row>
-
-            <div
-                v-if="currentPreset.type !== ''"
-                class="mt-2"
-            >
-                <preset-node-card
-                    :newPreset="true"
-                    :currentPreset="currentPreset"
-                    :templates="templates"
-                    :assignmentDetails="assignmentDetails"
-                />
-
-                <b-alert
-                    :show="showAlert"
-                    class="error"
-                    dismissible
-                    @dismissed="showAlert = false"
-                >
-                    Some required fields are empty or invalid.
-                </b-alert>
-
-                <b-button
-                    class="add-button float-right"
-                    @click="addPreset"
-                >
-                    <icon name="plus"/>
-                    Add preset
-                </b-button>
-            </div>
-        </b-card>
+            Some required fields are empty or invalid.
+        </b-alert>
+        <preset-node-card
+            v-if="currentPreset.type"
+            :newPreset="true"
+            :currentPreset="currentPreset"
+            :templates="templates"
+            :assignmentDetails="assignmentDetails"
+            @new-template="preset => $emit('new-template', currentPreset)"
+            @add-preset="addPreset"
+        />
     </div>
 </template>
 
@@ -96,7 +67,7 @@ export default {
     data () {
         return {
             currentPreset: {
-                type: '',
+                type: null,
                 template: '',
                 description: '',
                 attached_files: [],
@@ -130,3 +101,8 @@ export default {
     },
 }
 </script>
+<style lang="sass" scoped>
+.select-type.unselected, .select-type.unselected:hover
+    opacity: 0.5
+
+</style>
