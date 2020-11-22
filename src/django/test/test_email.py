@@ -161,21 +161,47 @@ class EmailAPITest(TestCase):
         resp = api.post(self, 'request_email_verification', user=self.is_test_student, status=200)
         assert 'email was sent' in resp['description']
 
+    @override_settings(EMAIL_BACKEND='anymail.backends.test.EmailBackend', CELERY_TASK_ALWAYS_EAGER=True)
     def test_send_feedback(self):
         # needs to be logged in
         api.post(self, 'send_feedback', status=401)
+        assert len(mail.outbox) == 0
         # cannot send without valid email
         api.post(self, 'send_feedback', user=self.not_verified, status=403)
+        assert len(mail.outbox) == 0
         # Require params
         api.post(self, 'send_feedback', user=self.student, status=400)
+        assert len(mail.outbox) == 0
         api.post(self, 'send_feedback',
                  params={
                      'topic': 'topic',
-                     'feedback': 'feedback',
+                     'feedback': 'actual_feedback_content_here',
                      'ftype': 'ftype',
-                     'user_agent': 'user_agent',
-                     'url': 'url'
+                     'user_agent': 'someBrowser',
+                     'url': 'current_user_url.com'
                  }, user=self.student)
+
+        assert len(mail.outbox) == 2, 'Two emails should be sent: one to user and another to developers'
+        assert len(mail.outbox[0].to) == 1 and mail.outbox[0].to[0] == self.student.email, \
+            'Confirmation email should be sent to user who gave the feedback'
+        assert len(mail.outbox[0].bcc) == 1 and mail.outbox[0].bcc[0] == f'support@{settings.EMAIL_SENDER_DOMAIN}', \
+            'Confirmation email should be also sent to developers via BCC'
+        assert mail.outbox[0].subject == 'Re: topic', 'Feedback topic should be in confirmation email title'
+        assert 'actual_feedback_content_here' in mail.outbox[0].body, \
+            'Feedback should be repeated in confirmation mail'
+
+        assert len(mail.outbox[1].to) == 1 and mail.outbox[1].to[0] == f'support@{settings.EMAIL_SENDER_DOMAIN}', \
+            'Additional support info should be sent to developers'
+        assert mail.outbox[1].subject == 'Additional support info: topic', \
+            'Feedback topic should be in developer support email title'
+        assert 'actual_feedback_content_here' in mail.outbox[1].body, \
+            'Feedback should be repeated in developer support email'
+        assert 'ftype' in mail.outbox[1].body, \
+            'Feedback type should be in developer support email'
+        assert 'someBrowser' in mail.outbox[1].body, \
+            'User agent should be in developer support email'
+        assert 'current_user_url.com' in mail.outbox[1].body, \
+            'Current URL should be in developer support email'
 
     def test_deadline_email_standalone(self):
         assignment = factory.Assignment()
