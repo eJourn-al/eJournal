@@ -203,6 +203,9 @@ class EmailAPITest(TestCase):
         assert 'current_user_url.com' in mail.outbox[1].body, \
             'Current URL should be in developer support email'
 
+        assert all(mail.outbox[i].from_email == f'eJournal | Support<support@{settings.EMAIL_SENDER_DOMAIN}>' for i in
+                   range(len(mail.outbox))), 'All emails should be sent with eJournal | Support as the sender'
+
     def test_deadline_email_standalone(self):
         assignment = factory.Assignment()
 
