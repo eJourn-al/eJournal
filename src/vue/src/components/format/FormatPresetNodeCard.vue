@@ -84,8 +84,8 @@
             Description
         </h2>
         <text-editor
-            :id="`preset-description-${currentPreset.id}`"
-            :key="`preset-description-${currentPreset.id}`"
+            :id="`preset-description-${newPreset ? currentPreset.type : currentPreset.id}`"
+            :key="`preset-description-${newPreset ? currentPreset.type : currentPreset.id}`"
             v-model="currentPreset.description"
             class="multi-form"
             placeholder="Description"
@@ -94,7 +94,7 @@
 
         <template v-if="currentPreset.type === 'd'">
             <h2 class="theme-h2 field-heading required">
-                Preset Template
+                Template
                 <tooltip tip="The template students can use for this entry"/>
             </h2>
             <div class="d-flex">
@@ -134,9 +134,18 @@
                     Show Preview
                 </b-button>
             </div>
+            <p>
+                Or
+                <span
+                    class="text-blue cursor-pointer"
+                    @click="$emit('new-template', currentPreset)"
+                >
+                    create a new template</span>.
+                <br/>
+            </p>
             <b-card
                 v-if="showTemplatePreview"
-                class="no-hover multi-form"
+                class="no-hover"
             >
                 <entry-fields
                     v-if="currentPreset.template"
@@ -161,7 +170,7 @@
             <b-input
                 v-model="currentPreset.target"
                 type="number"
-                class="theme-input multi-form"
+                class="theme-input mb-2"
                 placeholder="Amount of points"
                 min="1"
                 :max="assignmentDetails.points_possible"
@@ -184,7 +193,15 @@
         />
 
         <b-button
-            v-if="!newPreset"
+            v-if="newPreset"
+            class="green-button float-right"
+            @click.prevent="$emit('add-preset')"
+        >
+            <icon name="plus"/>
+            Add preset
+        </b-button>
+        <b-button
+            v-else
             class="red-button float-right"
             @click.prevent="emitDeletePreset"
         >

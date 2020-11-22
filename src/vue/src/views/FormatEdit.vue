@@ -123,6 +123,7 @@
                     :assignmentDetails="assignmentDetails"
                     @delete-preset="deletePreset"
                     @change-due-date="sortPresets"
+                    @new-template="newTemplateInPreset"
                 />
 
                 <add-preset-node
@@ -131,6 +132,7 @@
                     :templates="templates"
                     :assignmentDetails="assignmentDetails"
                     @add-preset="addPreset"
+                    @new-template="newTemplateInPreset"
                 />
 
                 <b-card
@@ -533,7 +535,7 @@ export default {
             }
         },
         newTemplate () {
-            this.templates.push({
+            const template = {
                 field_set: [{
                     type: 'rt',
                     title: 'Content',
@@ -545,8 +547,15 @@ export default {
                 name: 'Entry',
                 id: this.newTemplateId--,
                 preset_only: false,
-            })
+            }
+            this.templates.push(template)
             this.showTemplateModal(this.templates.length - 1)
+            return template
+        },
+        newTemplateInPreset (preset) {
+            const template = this.newTemplate()
+            template.preset_only = true
+            preset.template = template
         },
         importTemplate (template) {
             template.id = this.newTemplateId--
