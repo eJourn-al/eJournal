@@ -66,7 +66,6 @@ setup:
 	@read -r a
 	make setup-no-input
 	make setup-sentry-cli
-	make update-submodules
 	make run-preset-db
 setup-no-input:
 	@make clean
