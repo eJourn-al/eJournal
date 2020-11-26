@@ -9,7 +9,7 @@ from rest_framework import viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny
 from rest_framework_simplejwt.views import TokenObtainPairView
-from sentry_sdk import capture_message
+from sentry_sdk import capture_exception
 
 import VLE.factory as factory
 import VLE.lti_launch as lti_launch

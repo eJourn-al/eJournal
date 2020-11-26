@@ -502,7 +502,7 @@ class UserAPITest(TestCase):
                 assert list(participation.groups.all()) == [group], 'All groups are prefetched for all users'
 
     @override_settings(EMAIL_BACKEND='anymail.backends.test.EmailBackend', CELERY_TASK_ALWAYS_EAGER=True)
-    def test_invite_users(self):
+    def test_invite_invalid_users(self):
         admin = factory.Admin()
         pre_invite_user_count = User.objects.count()
         # Trailing whitespace is on purpose.
@@ -511,7 +511,7 @@ class UserAPITest(TestCase):
                 'full_name': f'User Full Name {i}   ',
                 'username': f'user{i}username   ',
                 'email': f'user{i}mail@ejournal.app   ',
-            } for i in range(10)
+            } for i in range(7)
         ]
 
         users[0]['full_name'] = ''
@@ -558,7 +558,20 @@ class UserAPITest(TestCase):
         del users[0]
         assert User.objects.count() == pre_invite_user_count, 'No accounts should be created if some user is invalid'
 
+    @override_settings(EMAIL_BACKEND='anymail.backends.test.EmailBackend', CELERY_TASK_ALWAYS_EAGER=True)
+    def test_invite_valid_users(self):
+        admin = factory.Admin()
+        pre_invite_user_count = User.objects.count()
         pre_invite_teacher_count = User.objects.filter(is_teacher=True).count()
+        # Trailing whitespace is on purpose.
+        users = [
+            {
+                'full_name': f'User Full Name {i}   ',
+                'username': f'user{i}username   ',
+                'email': f'user{i}mail@ejournal.app   ',
+            } for i in range(3)
+        ]
+
         resp = api.post(self, 'users/invite_users', params={'users': users}, user=admin)
         assert 'Successfully invited 3 users.' in resp['description']
         assert User.objects.count() == pre_invite_user_count + 3
