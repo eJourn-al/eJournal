@@ -30,7 +30,7 @@ class CourseView(viewsets.ViewSet):
         On success:
             success -- with the course data
         """
-        get_all, = utils.optional_params(request.query_params, 'get_all')
+        get_all, = utils.optional_typed_params(request.query_params, (bool, 'get_all'))
         if get_all:
             if not request.user.is_superuser:
                 return response.forbidden('You are not allowed to get all courses.')

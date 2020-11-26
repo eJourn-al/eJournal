@@ -228,13 +228,6 @@ class UserSerializer(ExtendedModelSerializer):
         return GroupSerializer(participation.groups.all(), many=True, context=self.context, read_only=True).data
 
 
-class UserOverviewSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = VLE.models.User
-        fields = ('username', 'full_name', 'email', 'is_teacher', 'is_active', 'id')
-        read_only_fields = fields
-
-
 class OwnUserSerializer(serializers.ModelSerializer):
     class Meta:
         model = VLE.models.User

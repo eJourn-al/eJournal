@@ -103,13 +103,12 @@ def send_email_verification_link(user_pk):
 @shared_task
 def send_invite_emails(user_pks):
     """Sends an invite link to join the platform to the users email adress."""
-    for user_pk in user_pks:
-        user = VLE.models.User.objects.get(pk=user_pk)
-        instance_name = VLE.models.Instance.objects.get_or_create(pk=1)[0].name
-
+    users = VLE.models.User.objects.filter(pk__in=user_pks)
+    instance_name = VLE.models.Instance.objects.get_or_create(pk=1)[0].name
+    token_generator = PasswordResetTokenGenerator()
+    for user in users:
         email_data = {}
         email_data['heading'] = 'Welcome to eJournal!'
-        token_generator = PasswordResetTokenGenerator()
         token = token_generator.make_token(user)
         email_data['main_content'] = """
         You have been invited to eJournal by {}. Please click the button below to activate your account.""" \

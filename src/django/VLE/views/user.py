@@ -18,7 +18,7 @@ import VLE.utils.generic_utils as utils
 import VLE.utils.responses as response
 import VLE.validators as validators
 from VLE.models import Entry, FileContext, Instance, Journal, Node, User
-from VLE.serializers import EntrySerializer, OwnUserSerializer, UserOverviewSerializer, UserSerializer
+from VLE.serializers import EntrySerializer, OwnUserSerializer, UserSerializer
 from VLE.tasks import send_email_verification_link, send_invite_emails
 from VLE.utils import file_handling
 from VLE.utils.authentication import set_sentry_user_scope
@@ -67,9 +67,10 @@ class UserView(viewsets.ViewSet):
         if not request.user.is_superuser:
             return response.forbidden('Only administrators are allowed to request all user data.')
 
-        serializer = UserOverviewSerializer(User.objects.all().order_by('full_name'), context={'user': request.user},
-                                            many=True)
-        return response.success({'users': serializer.data})
+        users = list(User.objects.values('username', 'full_name', 'email', 'is_teacher', 'is_active', 'id') \
+                     .order_by('full_name'))
+        print(users)
+        return response.success({'users': users})
 
     def retrieve(self, request, pk):
         """Get the user data of the requested user.

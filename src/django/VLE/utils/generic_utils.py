@@ -61,7 +61,10 @@ def required_typed_params(post, *keys):
             if isinstance(post[key], list):
                 result.append([func(elem) for elem in post[key]])
             elif post[key] is not None:
-                result.append(func(post[key]))
+                if func == bool and post[key] == 'false':
+                    result.append(False)
+                else:
+                    result.append(func(post[key]))
             else:
                 result.append(None)
         except ValueError as err:
@@ -81,7 +84,10 @@ def optional_typed_params(post, *keys):
         if key and key in post and post[key] != '':
             try:
                 if post[key] is not None:
-                    result.append(func(post[key]))
+                    if func == bool and post[key] == 'false':
+                        result.append(False)
+                    else:
+                        result.append(func(post[key]))
                 else:
                     result.append(None)
             except ValueError as err:
