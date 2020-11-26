@@ -251,7 +251,7 @@ export default {
     computed: {
         usersToInviteFiltered () {
             // Filter fully empty rows.
-            return this.usersToInvite.filter(user => !(!user.full_name && !user.username && !user.email))
+            return this.usersToInvite.filter(user => user.full_name || user.username || user.email)
         },
     },
     methods: {
@@ -259,6 +259,8 @@ export default {
             this.requestInFlight = true
             userAPI.inviteUsers({
                 users: this.usersToInviteFiltered,
+            }, {
+                customErrorToast: '',
             })
                 .then(() => {
                     this.requestInFlight = false
@@ -272,7 +274,7 @@ export default {
                 })
                 .catch((error) => {
                     // Ensure old errors are cleared.
-                    this.errorLogs = {}
+                    this.errorLogs = null
                     if (typeof error.response.data.description === 'object') {
                         this.$toasted.error('Some user details were invalid. No invites sent.')
                         this.errorLogs = error.response.data.description
