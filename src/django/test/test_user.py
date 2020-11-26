@@ -505,11 +505,12 @@ class UserAPITest(TestCase):
     def test_invite_users(self):
         admin = factory.Admin()
         pre_invite_user_count = User.objects.count()
+        # Trailing whitespace is on purpose.
         users = [
             {
-                'full_name': f'User Full Name {i}',
-                'username': f'user{i}username',
-                'email': f'user{i}mail@ejournal.app',
+                'full_name': f'User Full Name {i}   ',
+                'username': f'user{i}username   ',
+                'email': f'user{i}mail@ejournal.app   ',
             } for i in range(10)
         ]
 
@@ -533,13 +534,13 @@ class UserAPITest(TestCase):
 
         users[0]['username'] = users[1]['username']
         resp = api.post(self, 'users/invite_users', params={'users': users}, user=admin, status=400)
-        assert users[0]['username'] in resp['description']['duplicate_usernames']
+        assert users[0]['username'].strip() in resp['description']['duplicate_usernames']
         del users[0]
         assert User.objects.count() == pre_invite_user_count, 'No accounts should be created if some user is invalid'
 
         users[0]['email'] = users[1]['email']
         resp = api.post(self, 'users/invite_users', params={'users': users}, user=admin, status=400)
-        assert users[0]['email'] in resp['description']['duplicate_emails']
+        assert users[0]['email'].strip() in resp['description']['duplicate_emails']
         del users[0]
         assert User.objects.count() == pre_invite_user_count, 'No accounts should be created if some user is invalid'
 
@@ -547,13 +548,13 @@ class UserAPITest(TestCase):
         # All-uppercase versions of existing values should thus not be accepted.
         users[0]['username'] = User.objects.all().first().username.upper()
         resp = api.post(self, 'users/invite_users', params={'users': users}, user=admin, status=400)
-        assert users[0]['username'].lower() in resp['description']['existing_usernames']
+        assert users[0]['username'].lower().strip() in resp['description']['existing_usernames']
         del users[0]
         assert User.objects.count() == pre_invite_user_count, 'No accounts should be created if some user is invalid'
 
         users[0]['email'] = User.objects.all().first().email.upper()
         resp = api.post(self, 'users/invite_users', params={'users': users}, user=admin, status=400)
-        assert users[0]['email'].lower() in resp['description']['existing_emails']
+        assert users[0]['email'].lower().strip() in resp['description']['existing_emails']
         del users[0]
         assert User.objects.count() == pre_invite_user_count, 'No accounts should be created if some user is invalid'
 
@@ -562,21 +563,26 @@ class UserAPITest(TestCase):
         assert 'Successfully invited 3 users.' in resp['description']
         assert User.objects.count() == pre_invite_user_count + 3
         assert User.objects.filter(is_teacher=True).count() == pre_invite_teacher_count
+        assert not User.objects.last().full_name.endswith(' '), 'Whitespace should be removed from full names'
+        assert not User.objects.last().username.endswith(' '), 'Whitespace should be removed from usernames'
+        assert not User.objects.last().email.endswith(' '), 'Whitespace should be removed from emails'
 
         assert len(mail.outbox) == 3, 'Invite email should be sent to all invited users'
-        assert all(mail.outbox[i].to == [users[i]['email']] for i in range(len(users))), \
+        assert all(mail.outbox[i].to == [users[i]['email'].strip()] for i in range(len(users))), \
             'Email should be sent to the mail adress of each invited user'
-        assert all(users[i]['full_name'] in mail.outbox[i].body for i in range(len(users))), \
+        assert all(users[i]['full_name'].strip() in mail.outbox[i].body for i in range(len(users))), \
             'Invited user should be greeted by their full name'
-        assert all(f'{settings.BASELINK}/SetPassword/{users[i]["username"]}/' in mail.outbox[i].alternatives[0][0]
-                   for i in range(len(users))), 'Recovery token link should be in email'
+        assert all(f'{settings.BASELINK}/SetPassword/{users[i]["username"].strip()}/'
+                   in mail.outbox[i].alternatives[0][0] for i in range(len(users))), \
+            'Recovery token link should be in email'
 
         # The recovery link should contain an indication that this is a new user, which is not part of the token
         # itself.
         for i in range(len(users)):
             token = re.search(r'SetPassword\/(.*)\/([^"]*)\?new_user=true',
                               mail.outbox[i].alternatives[0][0]).group(0).split('/')[-1][:-len('?new_user=true')]
-            assert PasswordResetTokenGenerator().check_token(User.objects.get(username=users[i]['username']), token), \
+            assert PasswordResetTokenGenerator().check_token(User.objects.get(username=users[i]['username'].strip()),
+                                                             token), \
                 'Token for each user should be valid and new user should be indicated in URL'
 
         resp = api.post(self, 'users/invite_users', params={'users': [{

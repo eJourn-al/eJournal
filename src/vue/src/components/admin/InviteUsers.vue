@@ -239,9 +239,9 @@ export default {
     data () {
         return {
             usersToInvite: [{
-                full_name: null,
-                username: null,
-                email: null,
+                full_name: '',
+                username: '',
+                email: '',
                 is_teacher: false,
             }],
             errorLogs: null,
@@ -251,24 +251,41 @@ export default {
     computed: {
         usersToInviteFiltered () {
             // Filter fully empty rows.
-            return this.usersToInvite.filter(user => user.full_name || user.username || user.email)
+            return this.filterUsersToInvite()
         },
     },
     methods: {
+        filterUsersToInvite () {
+            const filteredUsers = []
+            this.usersToInvite.forEach((user) => {
+                const tempUser = {}
+                tempUser.full_name = user.full_name.replace(/\s+/g, ' ').trim()
+                tempUser.username = user.username.replace(/\s+/g, ' ').trim()
+                tempUser.email = user.email.replace(/\s+/g, ' ').trim()
+
+                if (tempUser.full_name || tempUser.username || tempUser.email) {
+                    filteredUsers.push(tempUser)
+                }
+            })
+
+            return filteredUsers
+        },
         inviteUsers () {
+            this.usersToInvite = this.filterUsersToInvite()
             this.requestInFlight = true
             userAPI.inviteUsers({
-                users: this.usersToInviteFiltered,
+                users: this.usersToInvite,
             }, {
                 customErrorToast: '',
+                responseSuccessToast: true,
             })
                 .then(() => {
                     this.requestInFlight = false
                     this.errorLogs = null
                     this.usersToInvite = [{
-                        full_name: null,
-                        username: null,
-                        email: null,
+                        full_name: '',
+                        username: '',
+                        email: '',
                         is_teacher: false,
                     }]
                 })
@@ -286,9 +303,9 @@ export default {
         },
         addRow () {
             this.usersToInvite.push({
-                full_name: null,
-                username: null,
-                email: null,
+                full_name: '',
+                username: '',
+                email: '',
                 is_teacher: false,
             })
         },

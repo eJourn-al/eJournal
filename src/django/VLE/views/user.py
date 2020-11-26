@@ -401,12 +401,18 @@ class UserView(viewsets.ViewSet):
         users, = utils.required_params(request.data, 'users')
 
         # Ensure a full name, username and email are specified for all users to be invited.
-        if any('full_name' not in user or not user['full_name'] for user in users):
+        if any('full_name' not in user or not user['full_name'] or not user['full_name'].strip() for user in users):
             return response.bad_request('Please specify a full name for all users. No invites sent.')
-        if any('username' not in user or not user['username'] for user in users):
+        if any('username' not in user or not user['username'] or not user['username'].strip() for user in users):
             return response.bad_request('Please specify a username for all users. No invites sent.')
-        if any('email' not in user or not user['email'] for user in users):
+        if any('email' not in user or not user['email'] or not user['email'].strip() for user in users):
             return response.bad_request('Please specify an email for all users. No invites sent.')
+
+        # Remove excess whitespace. Whitespace differences should not satisfy username or email uniqueness constraints.
+        for user in users:
+            user['full_name'] = ' '.join(user['full_name'].split())
+            user['username'] = ' '.join(user['username'].split())
+            user['email'] = ' '.join(user['email'].split())
 
         # Ensure the username and email for all users to be invited are unique.
         usernames = set()
@@ -432,13 +438,13 @@ class UserView(viewsets.ViewSet):
 
         created_user_ids = []
         try:
-            users_to_create = []
-            for user in users:
-                user = factory.make_user(username=user['username'].lower(), email=user['email'].lower(),
-                                         full_name=user['full_name'],
-                                         is_teacher='is_teacher' in user and user['is_teacher'], is_active=False,
-                                         save=False)
-                users_to_create.append(user)
+            users_to_create = [
+                factory.make_user(username=user['username'].lower(), email=user['email'].lower(),
+                                  full_name=user['full_name'],
+                                  is_teacher='is_teacher' in user and user['is_teacher'], is_active=False,
+                                  save=False)
+                for user in users
+            ]
             created_user_ids = [user.id for user in User.objects.bulk_create(users_to_create)]
             send_invite_emails.delay(created_user_ids)
         except Exception as exception:
