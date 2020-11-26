@@ -78,15 +78,7 @@ class JournalView(viewsets.ViewSet):
             success -- with journals and stats about the journals
 
         """
-        journal = Journal.all_objects.get(pk=pk)
-        if not Journal.objects.filter(pk=pk).exists():
-            if journal.authors.filter(user=request.user).exist():
-                return response.forbidden(
-                    'You do not have the correct rights to have a journal in this assignment')
-            else:
-                return response.forbidden(
-                    'This user currently does not have the correct rights to have a journal in this assignment')
-
+        journal = Journal.objects.get(pk=pk)
         request.user.check_can_view(journal)
 
         serializer = JournalSerializer(journal, context={
@@ -186,7 +178,9 @@ class JournalView(viewsets.ViewSet):
             journal.bonus_points = bonus_points
             journal.save()
             grading.task_journal_status_to_LMS.delay(journal.pk)
-            return response.success({'journal': JournalSerializer(journal, context={'user': request.user}).data})
+            return response.success({
+                'journal': JournalSerializer(Journal.objects.get(pk=journal.pk), context={'user': request.user}).data
+            })
 
         name, author_limit, image = utils.optional_typed_params(request.data, (str, 'name'), (int, 'author_limit'),
                                                                 (str, 'image'))
@@ -216,7 +210,10 @@ class JournalView(viewsets.ViewSet):
                     return response.bad_request('There are too many student in this journal.')
                 journal.author_limit = author_limit
                 journal.save()
-            return response.success({'journal': JournalSerializer(journal, context={'user': request.user}).data})
+
+            return response.success({
+                'journal': JournalSerializer(Journal.objects.get(pk=journal.pk), context={'user': request.user}).data
+            })
 
         if request.user.is_superuser:
             return self.admin_update(request, journal)
@@ -265,8 +262,9 @@ class JournalView(viewsets.ViewSet):
         journal.add_author(author)
         grading.task_author_status_to_LMS.delay(journal.pk, author.pk)
 
-        serializer = JournalSerializer(journal, context={'user': request.user})
-        return response.success({'journal': serializer.data})
+        return response.success({
+            'journal': JournalSerializer(Journal.objects.get(pk=journal.pk), context={'user': request.user}).data
+        })
 
     @action(['get'], detail=True)
     def get_members(self, request, pk):
@@ -416,11 +414,14 @@ class JournalView(viewsets.ViewSet):
             return response.bad_request()
         serializer.save()
 
-        return response.success({'journal': serializer.data})
+        return response.success({
+            'journal': JournalSerializer(Journal.objects.get(pk=journal.pk), context={'user': request.user}).data
+        })
 
     def publish(self, request, journal):
         grading.publish_all_journal_grades(journal, request.user)
         grading.task_journal_status_to_LMS.delay(journal.pk)
+
         return response.success({
-            'journal': JournalSerializer(journal, context={'user': request.user}).data
+            'journal': JournalSerializer(Journal.objects.get(pk=journal.pk), context={'user': request.user}).data
         })

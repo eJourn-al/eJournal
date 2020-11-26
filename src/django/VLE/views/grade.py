@@ -73,7 +73,7 @@ class GradeView(viewsets.ViewSet):
                                                                  (bool, 'published'))
 
         entry = Entry.objects.get(pk=entry_id)
-        journal = entry.node.journal
+        journal = Journal.objects.get(node__entry=entry)
         assignment = journal.assignment
 
         request.user.check_permission('can_grade', assignment)

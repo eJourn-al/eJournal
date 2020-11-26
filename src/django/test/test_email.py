@@ -10,7 +10,7 @@ from django.test import TestCase
 from django.test.utils import override_settings
 from django.utils import timezone
 
-from VLE.models import Group, Node, Notification, Participation, Preferences, PresetNode, Template, User
+from VLE.models import Group, Journal, Node, Notification, Participation, Preferences, PresetNode, Template, User
 from VLE.tasks.beats import notifications
 
 
@@ -401,6 +401,7 @@ class EmailAPITest(TestCase):
             format=assignment.format,
         )
         journal = factory.Journal(assignment=assignment)
+        journal = Journal.objects.get(pk=journal.pk)
         notifications.generate_upcoming_deadline_notifications()
 
         assert f'{journal.grade}/' in Notification.objects.get(node__preset=preset).content

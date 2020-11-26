@@ -309,7 +309,7 @@ class AssignmentParticipationSerializer(serializers.ModelSerializer, EagerLoadin
     class Meta:
         model = VLE.models.AssignmentParticipation
         fields = ('id', 'journal', 'assignment', 'user', 'needs_lti_link')
-        read_only_fields = ('journal', 'assignment')
+        read_only_fields = ('journal', 'assignment',)
 
     select_related = [
         'assignment',
@@ -483,33 +483,37 @@ class AssignmentSerializer(ExtendedModelSerializer, EagerLoadingMixin):
                 return None
             relevant_stat_users = VLE.utils.statistics.get_user_lists_with_scopes(assignment, user, course=course)
 
-        all_j = VLE.models.Journal.objects.filter(assignment=assignment, authors__user__in=relevant_stat_users['all'])
-        own_j = VLE.models.Journal.objects.filter(assignment=assignment, authors__user__in=relevant_stat_users['own'])
+        # Evaluation needs to be forced to play nice with ArrayAgg annotations (needs_lti_link, groups)
+        relevant_stat_users_all = list(relevant_stat_users['all'])
+        relevant_stat_users_own = list(relevant_stat_users['own'])
+
+        all_j = VLE.models.Journal.objects.filter(assignment=assignment, authors__user__in=relevant_stat_users_all)
+        own_j = VLE.models.Journal.objects.filter(assignment=assignment, authors__user__in=relevant_stat_users_own)
 
         all_j_stats = all_j.aggregate(
             average_points=Avg('grade'),
-            needs_marking=Sum('needs_marking'),
-            unpublished=Sum('unpublished'),
-            import_requests=Sum('import_requests'),
+            needs_marking_sum=Sum('needs_marking'),
+            unpublished_sum=Sum('unpublished'),
+            import_requests_sum=Sum('import_requests'),
         )
         own_j_stats = own_j.aggregate(
-            needs_marking=Sum('needs_marking'),
-            unpublished=Sum('unpublished'),
-            import_requests=Sum('import_requests'),
+            needs_marking_sum=Sum('needs_marking'),
+            unpublished_sum=Sum('unpublished'),
+            import_requests_sum=Sum('import_requests'),
         )
 
         # Grader stats
         if self.permission_from_context('can_grade', assignment):
             stats.update({
-                'needs_marking': all_j_stats['needs_marking'] or 0,
-                'unpublished': all_j_stats['unpublished'] or 0,
-                'needs_marking_own_groups': own_j_stats['needs_marking'] or 0,
-                'unpublished_own_groups': own_j_stats['unpublished'] or 0,
+                'needs_marking': all_j_stats['needs_marking_sum'] or 0,
+                'unpublished': all_j_stats['unpublished_sum'] or 0,
+                'needs_marking_own_groups': own_j_stats['needs_marking_sum'] or 0,
+                'unpublished_own_groups': own_j_stats['unpublished_sum'] or 0,
             })
         if self.permission_from_context('can_manage_journal_import_requests', assignment):
             stats.update({
-                'import_requests': all_j_stats['import_requests'] or 0,
-                'import_requests_own_groups': own_j_stats['import_requests'] or 0,
+                'import_requests': all_j_stats['import_requests_sum'] or 0,
+                'import_requests_own_groups': own_j_stats['import_requests_sum'] or 0,
             })
         # Other stats
         stats['average_points'] = all_j_stats['average_points']
@@ -616,7 +620,7 @@ class CommentSerializer(serializers.ModelSerializer, EagerLoadingMixin):
         model = VLE.models.Comment
         fields = ('id', 'entry', 'author', 'text', 'published', 'creation_date', 'last_edited', 'last_edited_by',
                   'can_edit', 'files')
-        read_only_fields = ('entry', 'author', 'creation_date', 'last_edited')
+        read_only_fields = ('entry', 'author', 'creation_date', 'last_edited',)
 
     select_related = [
         'author',
@@ -654,18 +658,50 @@ class JournalSerializer(serializers.ModelSerializer):
         model = VLE.models.Journal
         fields = (
             # Normal fields
-            'id', 'bonus_points', 'author_limit', 'locked',
-            # Computed fields
-            'grade', 'name', 'image', 'needs_lti_link', 'unpublished', 'needs_marking', 'full_names', 'groups',
-            # Serialized fields
-            'author_count', 'import_requests', 'usernames'
+            'id',
+            'bonus_points',
+            'author_limit',
+            'locked',
+            # Annotated fields
+            'full_names',
+            'usernames',
+            'name',
+            'author_count',  # NOTE: Will be fetched if missing
+            'import_requests',
+            'image',
+            'grade',
+            'unpublished',
+            'needs_marking',
+            'needs_lti_link',
+            'groups',
         )
-        read_only_fields = ('assignment', 'authors', 'grade')
+        read_only_fields = (
+            'assignment',
+            'authors',
+            'import_requests',
+            'full_names',
+            'usernames',
+            'name',
+            'image',
+            'grade',
+            'unpublished',
+            'needs_marking',
+            'needs_lti_link',
+            'groups',
+        )
 
     author_count = serializers.SerializerMethodField()
-    groups = serializers.SerializerMethodField()
+    # Annotated fields need to be explicitly declared as they can't be derived from the Meta model
     usernames = serializers.SerializerMethodField()
+    full_names = serializers.CharField()
+    name = serializers.CharField()
     import_requests = serializers.SerializerMethodField()
+    image = serializers.CharField()
+    grade = serializers.FloatField()
+    unpublished = serializers.IntegerField()
+    needs_marking = serializers.IntegerField()
+    needs_lti_link = serializers.SerializerMethodField()
+    groups = serializers.SerializerMethodField()
 
     def __init__(self, *args, **kwargs):
         super(JournalSerializer, self).__init__(*args, **kwargs)
@@ -681,7 +717,6 @@ class JournalSerializer(serializers.ModelSerializer):
         if not assignment:
             if isinstance(self.instance, VLE.models.Journal):
                 assignment = self.instance.assignment
-            # NOTE: This is no longer valid if journals from different assignments are serialized at the same time
             elif isinstance(self.instance, VLE.models.JournalQuerySet) and self.instance.exists():
                 if VLE.models.Assignment.objects.filter(journal__in=self.instance).count() > 1:
                     capture_message('Serializing journals from multiple assignments', level='warning')
@@ -712,6 +747,9 @@ class JournalSerializer(serializers.ModelSerializer):
         if self.context.get('can_manage_journal_import_requests', False):
             return journal.import_requests
         return None
+
+    def get_needs_lti_link(self, journal):
+        return journal.needs_lti_link
 
 
 class PresetNodeSerializer(serializers.ModelSerializer, EagerLoadingMixin):
@@ -936,7 +974,14 @@ class GradeSerializer(serializers.ModelSerializer):
 class TeacherEntryGradeSerializer(serializers.ModelSerializer, EagerLoadingMixin):
     class Meta:
         model = VLE.models.Entry
-        fields = ('journal_id', 'grade', 'published', 'name', 'usernames')
+        fields = (
+            'journal_id',
+            'grade',
+            'published',
+            # Annotations
+            'usernames',
+            'name',
+        )
         read_only_fields = fields
 
     select_related = [
@@ -945,10 +990,11 @@ class TeacherEntryGradeSerializer(serializers.ModelSerializer, EagerLoadingMixin
     ]
 
     journal_id = serializers.IntegerField(source='node.journal_id')
-    name = serializers.CharField(source='node.journal.name')
-    usernames = serializers.CharField(source='node.journal.usernames')
     grade = serializers.FloatField(source='grade.grade', default=None)
     published = serializers.BooleanField(source='grade.published', default=False)
+    # Annotated fields need to be explicitly declared as they can't be derived from the Meta model
+    usernames = serializers.CharField()
+    name = serializers.CharField()
 
 
 class GradeHistorySerializer(serializers.ModelSerializer, EagerLoadingMixin):
@@ -984,9 +1030,9 @@ class TeacherEntrySerializer(EntrySerializer):
                 'entry_set',
                 queryset=VLE.models.Entry.objects.select_related(
                     *TeacherEntryGradeSerializer.select_related
-                ).order_by(
-                   'node__journal__name'
                 )
+                .annotate_teacher_entry_grade_serializer_fields()
+                .order_by('name')
             )
         )
 
@@ -1024,13 +1070,21 @@ class JournalImportRequestSerializer(serializers.ModelSerializer, EagerLoadingMi
         if jir.source is None:
             return 'Source journal no longer exists.'
 
+        source = jir.source
+        if source.missing_annotated_field:
+            source = VLE.models.Journal.objects.get(pk=source.pk)
+
         return {
-            'journal': JournalSerializer(jir.source, context=self.context, read_only=True).data,
+            'journal': JournalSerializer(source, context=self.context, read_only=True).data,
             'assignment': SmallAssignmentSerializer(jir.source.assignment, context=self.context, read_only=True).data,
         }
 
     def get_target(self, jir):
+        target = jir.target
+        if target.missing_annotated_field:
+            target = VLE.models.Journal.objects.get(pk=target.pk)
+
         return {
-            'journal': JournalSerializer(jir.target, context=self.context, read_only=True).data,
+            'journal': JournalSerializer(target, context=self.context, read_only=True).data,
             'assignment': SmallAssignmentSerializer(jir.target.assignment, context=self.context, read_only=True).data,
         }
