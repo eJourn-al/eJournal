@@ -6,17 +6,17 @@ Database file
 import os
 import random
 import string
-from collections import defaultdict
 
-from computedfields.models import ComputedFieldsModel, computed, update_dependent
 from django.conf import settings
 from django.contrib.auth.models import AbstractUser, UserManager
+from django.contrib.postgres.aggregates import ArrayAgg, StringAgg
 from django.contrib.postgres.fields import ArrayField, CIEmailField, CITextField
 from django.core.exceptions import ValidationError
 from django.db import models
-from django.db.models import F, Min, OuterRef, Prefetch, Q, Subquery, Sum, TextField
+from django.db.models import (Case, CharField, Count, F, FloatField, IntegerField, Min, OuterRef, Prefetch, Q, Subquery,
+                              Sum, TextField, Value, When)
 from django.db.models.deletion import CASCADE, SET_NULL
-from django.db.models.functions import Cast
+from django.db.models.functions import Cast, Coalesce
 from django.dispatch import receiver
 from django.utils import timezone
 from django.utils.timezone import now
@@ -27,6 +27,7 @@ from VLE.tasks.email import send_push_notification
 from VLE.utils import sanitization
 from VLE.utils.error_handling import (VLEBadRequest, VLEParticipationError, VLEPermissionError, VLEProgrammingError,
                                       VLEUnverifiedEmailError)
+from VLE.utils.query_funcs import Round2
 
 
 class CreateUpdateModel(models.Model):
@@ -691,10 +692,13 @@ class Notification(CreateUpdateModel):
     )
 
     def _fill_text(self, text, n=None):
+        if self.journal:
+            journal = Journal.objects.get(pk=self.journal.pk)
+
         node_name = None
         if self.node:
             if self.node.is_progress:
-                node_name = f"{self.journal.grade}/{self.node.preset.target}"
+                node_name = f"{journal.grade}/{self.node.preset.target}"
             elif self.node.is_deadline:
                 node_name = self.node.preset.forced_template.name
 
@@ -702,7 +706,7 @@ class Notification(CreateUpdateModel):
             comment=self.comment.author.full_name if self.comment else None,
             entry=self.entry.template.name if self.entry and self.entry.template else None,
             node=node_name,
-            journal=self.journal.name if self.journal else None,
+            journal=journal.name if self.journal else None,
             assignment=self.assignment.name if self.assignment else None,
             course=self.course.name if self.course else None,
             deadline=self.node.preset.due_date.strftime("%B %-d at %H:%M") if self.node and self.node.preset else None,
@@ -1034,7 +1038,6 @@ class Participation(CreateUpdateModel):
 
     def set_groups(self, groups):
         self.groups.set(groups)
-        update_dependent(self)
 
     def save(self, *args, **kwargs):
         is_new = self._state.adding
@@ -1300,26 +1303,7 @@ class Assignment(CreateUpdateModel):
 
         On on each LTI launch, these values are once again set if present.
         """
-        # Bulk update does not trigger a desired update of the related journals 'needs_lti_link' update field.
         AssignmentParticipation.objects.filter(assignment=self).update(sourcedid=None, grade_url=None)
-
-        # So we trigger the update manually (2 queries)
-        aps = AssignmentParticipation.objects.filter(
-            assignment=self,
-            user__isnull=False,
-            journal__isnull=False
-        ).select_related(
-            'journal',
-            'user'
-        )
-
-        journals = defaultdict(list)
-        for ap in aps:
-            journals[ap.journal].append(ap.user.full_name)
-
-        for journal, needs_lti_link in journals.items():
-            journal.needs_lti_link = needs_lti_link
-        Journal.objects.bulk_update(list(journals.keys()), ['needs_lti_link'])
 
     def handle_type_change(self):
         """
@@ -1605,13 +1589,160 @@ class JournalQuerySet(models.QuerySet):
             p_group=F('pk'), p_user=F('pk'), can_have_journal=F('pk'),
         ).distinct().order_by('pk')
 
+    def annotate_fields(self):
+        """Calls all individual annotations which were used as computed fields."""
+        return (
+            self
+            .annotate_full_names()
+            .annotate_usernames()
+            .annotate_name()
+            .annotate_import_requests()
+            .annotate_image()
+            .annotate_unpublished()
+            .annotate_grade()
+            .annotate_needs_marking()
+            .annotate_needs_lti_link()
+            .annotate_groups()
+        )
+
+    def annotate_grade(self):
+        """"Annotates for each journal the rounded published grade sum of all entries as `grade`"""
+        grade_qry = Subquery(
+            Entry.objects.filter(
+                node__journal=OuterRef('pk'),
+                grade__published=True,
+            ).values(
+                'node__journal',  # NOTE: Could be replaced by Sum(distinct=True) in Django 3.0+
+            ).annotate(
+                entry_grade_sum=Sum('grade__grade'),
+            ).values(
+                'entry_grade_sum',
+            ),
+            output_field=FloatField(),
+        )
+
+        return self.annotate(grade=(Round2(F('bonus_points') + Coalesce(grade_qry, 0))))
+
+    def annotate_unpublished(self):
+        """"Annotates for each journal the count of entries which have an unpublished grade as `unpublished`"""
+        unpublished_entries_qry = Subquery(
+            Entry.objects.filter(
+                grade__published=False,
+                node__journal=OuterRef('pk'),
+            ).values(
+                'node__journal',
+            ).annotate(
+                unpublished_count=Count('pk')
+            ).values(
+                'unpublished_count',
+            ),
+            output_field=IntegerField(),
+        )
+
+        return self.annotate(unpublished=Coalesce(unpublished_entries_qry, 0))
+
+    def annotate_needs_marking(self):
+        """"Annotates for each journal the count of entries which are ungraded as `needs_marking`"""
+        needs_marking_entries_qry = Subquery(
+            Entry.objects.filter(
+                grade__isnull=True,
+                node__journal=OuterRef('pk'),
+            ).values(
+                'node__journal',
+            ).annotate(
+                needs_marking_count=Count('pk')
+            ).values(
+                'needs_marking_count',
+            ),
+            output_field=IntegerField(),
+        )
+
+        return self.annotate(needs_marking=Coalesce(needs_marking_entries_qry, 0))
+
+    def annotate_import_requests(self):
+        """"Annotates for each journal the number of pending JIRs with it as target as `import_requests`"""
+        return self.annotate(
+            import_requests=Count(
+                'import_request_targets',
+                filter=Q(import_request_targets__state=JournalImportRequest.PENDING),
+                distinct=True,
+            ),
+        )
+
+    def annotate_needs_lti_link(self):
+        """
+        Annotates for each journal linked to an lti assignment (active lti id is not None)
+        the full name as array of the users who do not have a sourcedid set as `needs_lti_link`
+        """
+        return self.annotate(needs_lti_link=ArrayAgg(
+            'authors__user__full_name',
+            filter=Q(authors__sourcedid__isnull=True, assignment__active_lti_id__isnull=False),
+            distinct=True,
+        ))
+
+    def annotate_name(self):
+        """
+        Annotates the journal name of each journal as `name`
+        Uses the stored name if found, else defaults to a concat of all author names.
+
+        NOTE: Makes use of `annotate_full_names` as a default, as such that annotation needs to happen first.
+        """
+        return (
+            self
+            .annotate_full_names()
+            .annotate(name=Case(
+                When(Q(stored_name__isnull=False), then=F('stored_name')),
+                default=F('full_names'),
+                output_field=CharField(),
+            ))
+        )
+
+    def annotate_image(self):
+        """
+        Annotates for each journal the stored image or the first non default image for each journal as `image`
+        """
+        first_non_default_profile_pic_user_qry = Subquery(User.objects.filter(
+            ~Q(profile_picture=settings.DEFAULT_PROFILE_PICTURE),
+            assignmentparticipation__journal=OuterRef('pk'),
+        ).values('profile_picture')[:1])
+
+        return self.annotate(image=Case(
+            When(Q(stored_image__isnull=False), then=F('stored_image')),
+            default=Coalesce(first_non_default_profile_pic_user_qry, Value(settings.DEFAULT_PROFILE_PICTURE)),
+            output_field=CharField(),
+        ))
+
+    def annotate_full_names(self):
+        """Annotates for each journal all journal users full name as a string joined by ', ' as `full_names`"""
+        return self.annotate(full_names=StringAgg(
+            'authors__user__full_name',
+            ', ',
+            distinct=True,
+        ))
+
+    def annotate_usernames(self):
+        """Annotates for each journal all journal users full name as a string joined by ', ' as `usernames`"""
+        return self.annotate(usernames=StringAgg('authors__user__username', ', ', distinct=True))
+
+    def annotate_groups(self):
+        """Annotates for each journal all journal users their groups as an array of group pks `usernames`"""
+        return self.annotate(groups=ArrayAgg(
+            'authors__user__participation__groups',
+            filter=Q(authors__user__participation__groups__isnull=False),
+            distinct=True,
+        ))
+
 
 class JournalManager(models.Manager):
     def get_queryset(self):
-        return JournalQuerySet(self.model, using=self._db).allowed_journals()
+        return (
+            JournalQuerySet(self.model, using=self._db)
+            .allowed_journals()
+            .annotate_fields()
+        )
 
 
-class Journal(CreateUpdateModel, ComputedFieldsModel):
+class Journal(CreateUpdateModel):
     """Journal.
 
     A journal is a collection of Nodes that holds the student's
@@ -1622,6 +1753,19 @@ class Journal(CreateUpdateModel, ComputedFieldsModel):
     UNLIMITED = 0
     all_objects = models.Manager.from_queryset(JournalQuerySet)()
     objects = JournalManager()
+
+    ANNOTATED_FIELDS = [
+        'full_names',
+        'grade',
+        'unpublished',
+        'needs_marking',
+        'import_requests',
+        'name',
+        'image',
+        'usernames',
+        'needs_lti_link',
+        'groups',
+    ]
 
     assignment = models.ForeignKey(
         'Assignment',
@@ -1655,87 +1799,6 @@ class Journal(CreateUpdateModel, ComputedFieldsModel):
     # NOTE: Any suggestions for a clear warning msg for all cases?
     outdated_link_warning_msg = 'This journal has an outdated LMS uplink and can no longer be edited. Visit  ' \
         + 'eJournal from an updated LMS connection.'
-
-    @computed(models.FloatField(null=True), depends=[
-        ['node_set', ['entry']],
-        ['node_set.entry', ['grade']],
-    ])
-    def grade(self):
-        return round(self.bonus_points + (
-            self.node_set.filter(entry__grade__published=True)
-            .values('entry__grade__grade')
-            .aggregate(Sum('entry__grade__grade'))['entry__grade__grade__sum'] or 0), 2)
-
-    @computed(models.FloatField(null=True), depends=[
-        ['node_set', ['entry']],
-        ['node_set.entry', ['grade']],
-    ])
-    def unpublished(self):
-        return self.node_set.filter(entry__grade__published=False).count()
-
-    @computed(models.IntegerField(null=True), depends=[
-        ['import_request_targets', ['target', 'state']],
-    ])
-    def import_requests(self):
-        return self.import_request_targets.filter(state=JournalImportRequest.PENDING).count()
-
-    @computed(models.FloatField(null=True), depends=[
-        ['node_set', ['entry']],
-        ['node_set.entry', ['grade']],
-    ])
-    def needs_marking(self):
-        return self.node_set.filter(entry__isnull=False, entry__grade__isnull=True).count()
-
-    @computed(ArrayField(models.TextField(), default=list), depends=[
-        ['authors', ['sourcedid']],
-        ['authors.user', ['full_name']],
-    ])
-    def needs_lti_link(self):
-        if not self.assignment.active_lti_id:
-            return list()
-        return list(self.authors.filter(sourcedid__isnull=True).values_list('user__full_name', flat=True))
-
-    @computed(models.TextField(null=True), depends=[
-        ['self', ['stored_name']],
-        ['authors.user', ['full_name']],
-    ])
-    def name(self):
-        if self.stored_name:
-            return self.stored_name
-        return ', '.join(self.authors.values_list('user__full_name', flat=True))
-
-    @computed(models.TextField(null=True), depends=[
-        ['self', ['stored_image']],
-        ['authors.user', ['profile_picture']],
-    ])
-    def image(self):
-        if self.stored_image:
-            return self.stored_image
-
-        user_with_pic = self.authors.all().exclude(user__profile_picture=settings.DEFAULT_PROFILE_PICTURE).first()
-        if user_with_pic is not None:
-            return user_with_pic.user.profile_picture
-
-        return settings.DEFAULT_PROFILE_PICTURE
-
-    @computed(models.TextField(null=True), depends=[
-        ['authors.user', ['full_name']],
-    ])
-    def full_names(self):
-        return ', '.join(self.authors.values_list('user__full_name', flat=True))
-
-    @computed(models.TextField(null=True), depends=[
-        ['authors.user', ['username']],
-    ])
-    def usernames(self):
-        return ', '.join(self.authors.values_list('user__username', flat=True))
-
-    @computed(ArrayField(models.IntegerField(), default=list), depends=[
-        ['authors.user.participation_set.groups', ['name']],
-    ])
-    def groups(self):
-        return list(Group.objects.filter(participation__user__in=self.authors.values('user'))
-                    .values_list('pk', flat=True).distinct())
 
     def add_author(self, author):
         # NOTE: This approach sucks, author is now first added (SQL operation), then validation is run in the
@@ -1787,6 +1850,10 @@ class Journal(CreateUpdateModel, ComputedFieldsModel):
             raise VLEProgrammingError('Unsafe use of journal author property')
         return User.objects.filter(assignmentparticipation__journal=self).first()
 
+    @property
+    def missing_annotated_field(self):
+        return any(not hasattr(self, field) for field in self.ANNOTATED_FIELDS)
+
     def can_add(self, user):
         """
         Checks wether the provided user can add an entry to the journal
@@ -1803,7 +1870,7 @@ class Journal(CreateUpdateModel, ComputedFieldsModel):
         if user is None or not user.can_view(self):
             return 'Journal'
 
-        return self.get_name()
+        return self.name
 
 
 def CASCADE_IF_UNLIMITED_ENTRY_NODE_ELSE_SET_NULL(collector, field, sub_objs, using):
@@ -2024,12 +2091,56 @@ class PresetNode(CreateUpdateModel):
         return "PresetNode"
 
 
+class EntryQuerySet(models.QuerySet):
+    def annotate_teacher_entry_grade_serializer_fields(self):
+        return (
+            self
+            .annotate_full_names()
+            .annotate_usernames()
+            .annotate_name()
+        )
+
+    def annotate_full_names(self):
+        """
+        Annotates for each entry all journal users full name as a string joined by ', ' as `full_names`
+
+        NOTE: Not compatible with exact matches of full names, but acceptable (same group and full name)
+        """
+        return self.annotate(full_names=StringAgg(
+            'node__journal__authors__user__full_name',
+            ', ',
+            distinct=True,
+        ))
+
+    def annotate_usernames(self):
+        return self.annotate(usernames=StringAgg('node__journal__authors__user__username', ', ', distinct=True))
+
+    def annotate_name(self):
+        """
+        Annotates for each entry the journal name as `name`
+        Uses the stored name if found, else defaults to a concat of all author names.
+
+        NOTE: Makes use of `full_names` annotation as a default, as such that annotation needs to happen first.
+        """
+        return (
+            self
+            .annotate_full_names()
+            .annotate(name=Case(
+                When(Q(node__journal__stored_name__isnull=False), then=F('node__journal__stored_name')),
+                default=F('full_names'),
+                output_field=CharField(),
+            ))
+        )
+
+
 class Entry(CreateUpdateModel):
     """Entry.
 
     An Entry has the following features:
     - last_edited: the date and time when the etry was last edited by an author. This also changes the last_edited_by
     """
+    objects = models.Manager.from_queryset(EntryQuerySet)()
+
     NEEDS_SUBMISSION = 'Submission needs to be sent to VLE'
     SENT_SUBMISSION = 'Submission is successfully received by VLE'
     NEEDS_GRADE_PASSBACK = 'Grade needs to be sent to VLE'

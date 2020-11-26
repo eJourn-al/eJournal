@@ -181,15 +181,15 @@ class EntryAPITest(TestCase):
         entry = factory.UnlimitedEntry(grade__grade=1, grade__published=True)
         entry2 = factory.UnlimitedEntry(grade__grade=3, grade__published=True, node__journal=entry.node.journal)
         journal = entry.node.journal
-        journal.refresh_from_db()  # Journal is created before the entry and grade in the factory
+        journal = Journal.objects.get(pk=journal.pk)  # Journal is created before the entry and grade in the factory
         assert journal.grade == entry.grade.grade + entry2.grade.grade
 
         factory.Grade(entry=entry, grade=2, published=False)
-        journal.refresh_from_db()
+        journal = Journal.objects.get(pk=journal.pk)
         assert journal.grade == entry2.grade.grade, 'Journal grade consists only of published grades'
 
         factory.Grade(entry=entry, grade=5, published=True)
-        journal.refresh_from_db()
+        journal = Journal.objects.get(pk=journal.pk)
         assert journal.grade == 5 + entry2.grade.grade
 
     def test_entry_validation(self):
@@ -471,7 +471,7 @@ class EntryAPITest(TestCase):
 
         # Teachers shouldn't be able to make entries on their own journal
         self.assertRaises(
-            VLEPermissionError,
+            Journal.DoesNotExist,
             assignment.author.check_can_edit,
             mocked_entry,
         )

@@ -155,6 +155,7 @@ class TimelineTests(TestCase):
     def test_get_nodes(self):
         assignment = factory.Assignment(format__templates=[{'type': Field.TEXT}])
         journal = factory.LtiJournal(entries__n=0, assignment=assignment)
+        journal = Journal.objects.get(pk=journal.pk)
         student = journal.author
         factory.UnlimitedEntry(node__journal=journal)
         factory.PresetEntry(node__journal=journal)
@@ -174,6 +175,7 @@ class TimelineTests(TestCase):
 
         assignment = factory.Assignment(format__templates=[{'type': Field.TEXT}])
         journal = factory.LtiJournal(entries__n=1, assignment=assignment)
+        journal = Journal.objects.get(pk=journal.pk)
         student = journal.author
 
         data = timeline.get_nodes(journal, author=student)
@@ -182,6 +184,7 @@ class TimelineTests(TestCase):
 
         assignment.lock_date = timezone.now()
         assignment.save()
+        journal = Journal.objects.get(pk=journal.pk)
         data = timeline.get_nodes(journal, author=student)
         for n in data:
             assert n['type'] != Node.ADDNODE, 'When the assignment is locked no add node should be serialized'

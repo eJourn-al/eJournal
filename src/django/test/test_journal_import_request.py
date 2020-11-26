@@ -10,8 +10,8 @@ from django.test import TestCase
 from django.utils import timezone
 
 import VLE.utils.generic_utils as utils
-from VLE.models import (AssignmentParticipation, Comment, Content, Entry, Field, FileContext, JournalImportRequest,
-                        Node, PresetNode)
+from VLE.models import (AssignmentParticipation, Comment, Content, Entry, Field, FileContext, Journal,
+                        JournalImportRequest, Node, PresetNode)
 from VLE.serializers import JournalImportRequestSerializer
 
 
@@ -343,6 +343,7 @@ class JournalImportRequestTest(TestCase):
         student = source_journal.authors.first().user
         assignment2 = factory.Assignment(courses=[course])
         target_journal = factory.Journal(assignment=assignment2, ap__user=student)
+        target_journal = Journal.objects.get(pk=target_journal.pk)
         jir = factory.JournalImportRequest(source=source_journal, target=target_journal)
 
         entry1 = factory.UnlimitedEntry(node__journal=source_journal)
@@ -366,8 +367,8 @@ class JournalImportRequestTest(TestCase):
 
         data = {'pk': jir.pk, 'jir_action': JournalImportRequest.APPROVED_INC_GRADES}
         api.update(self, 'journal_import_request', params=data, user=course.author, status=200)
-        target_journal.refresh_from_db()
-        source_journal.refresh_from_db()
+        target_journal = Journal.objects.get(pk=target_journal.pk)
+        source_journal = Journal.objects.get(pk=source_journal.pk)
 
         for entry in Entry.objects.filter(node__journal=jir.target):
             entry.node in jir.target.node_set.all(), 'Created nodes correctly linked via node set'
@@ -690,7 +691,7 @@ class JournalImportRequestTest(TestCase):
         jir = factory.JournalImportRequest()
         teacher = jir.target.assignment.author
 
-        with assert_num_queries_less_than(31):
+        with assert_num_queries_less_than(34):
             data = JournalImportRequestSerializer(
                 JournalImportRequestSerializer.setup_eager_loading(
                     JournalImportRequest.objects.filter(pk=jir.pk)

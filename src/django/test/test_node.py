@@ -75,6 +75,7 @@ class NodeTest(TestCase):
     def test_open_deadline(self):
         assignment = factory.Assignment()
         journal = factory.Journal(assignment=assignment, entries__n=0)
+        journal = VLE.models.Journal.objects.get(pk=journal.pk)
         progress = factory.ProgressPresetNode(
             format=assignment.format, due_date=timezone.now() + datetime.timedelta(days=1), target=3)
         deadline = factory.DeadlinePresetNode(

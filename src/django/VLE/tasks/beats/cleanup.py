@@ -34,7 +34,7 @@ def remove_unused_comment_files():
 def remove_unused_journal_files():
     """Removes unused files associated directly with a journal (cover image)"""
     VLE.models.FileContext.objects.filter(
-        ~Q(journal__image__contains=F('access_id')),
+        ~Q(journal__stored_image__contains=F('access_id')),
         journal__isnull=False,
         comment__isnull=True,
         content__isnull=True,
