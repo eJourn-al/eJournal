@@ -163,7 +163,8 @@ class ImportTest(TestCase):
                 check_equality_of_imported_file_context(
                     source_fc,
                     imported_fc,
-                    ignore_keys=['last_edited', 'creation_date', 'update_date', 'id', 'access_id', 'content', 'journal']
+                    ignore_keys=['last_edited', 'creation_date', 'update_date', 'id', 'access_id', 'content', 'journal',
+                                 'assignment']
                 )
 
                 assert imported_fc.journal.pk == target_journal.pk, 'FC is linked to the target journal'
