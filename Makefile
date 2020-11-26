@@ -92,6 +92,7 @@ setup-no-input:
 	@echo "DONE!"
 
 setup-travis:
+	git submodule update --init --recursive
 	(sudo apt-cache show python3.6 | grep "Package: python3.6") || (sudo add-apt-repository ppa:deadsnakes/ppa -y; sudo apt update) || echo "0"
 	sudo apt install npm -y
 	sudo apt install nodejs python3 python3-pip python3-setuptools -y
