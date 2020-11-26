@@ -283,10 +283,59 @@ export default {
 
             currentTemplate: -1,
             newTemplateId: -1,
-            lastTarget: 0,
-            templatesIds: [],
+        }
+    },
+    computed: {
+        isChanged () {
+            return !this.saveRequestInFlight && JSON.stringify(this.currentData, this.replacer) !== this.originalData
+        },
+    },
+    created () {
+        this.loadFormat()
 
-            presetErrors: [
+        window.addEventListener('beforeunload', (e) => { // eslint-disable-line
+            if (this.$route.name === 'FormatEdit' && this.isChanged) {
+                const dialogText = 'Unsaved changes will be lost if you leave. Do you wish to continue?'
+                e.returnValue = dialogText
+                return dialogText
+            }
+        })
+    },
+    methods: {
+        loadFormat () {
+            formatAPI.get(this.aID, this.cID)
+                .then((data) => {
+                    this.currentData = data
+                    this.originalData = JSON.stringify(data, this.replacer)
+                    this.assignmentDetails = data.assignment_details
+                    this.templates = data.format.templates
+                    this.presets = data.format.presets
+                    this.deletedTemplates = []
+                    this.deletedPresets = []
+                    this.currentTemplate = -1
+                    this.newTemplateId = -1
+                    this.newPresetId = -1
+
+                    if (this.$store.getters['preferences/saved'].show_format_tutorial) {
+                        this.$store.commit('preferences/CHANGE_PREFERENCES', { show_format_tutorial: false })
+                        this.startTour()
+                    }
+                })
+        },
+        checkDateOrder (first, second) {
+            // Returns false if order is incorrect
+            return !first || !second || Date.parse(first) <= Date.parse(second)
+        },
+        checkValidDate (date) {
+            // Returns false if date is not valid
+            return date == null || !Number.isNaN(Date.parse(date))
+        },
+        // eslint-disable-next-line max-lines-per-function
+        saveFormat () {
+            let lastTarget = 0
+            const templatesIds = []
+
+            const presetErrors = [
                 {
                     check: preset => this.checkDateOrder(this.assignmentDetails.unlock_date, preset.unlock_date),
                     message: 'One or more presets have an unlock date before the assignment unlock date.',
@@ -344,7 +393,7 @@ export default {
                 },
                 {
                     check: preset => !(preset.type === 'd' && (
-                        typeof preset.template.id === 'undefined' || !this.templatesIds.includes(preset.template.id))),
+                        typeof preset.template.id === 'undefined' || !templatesIds.includes(preset.template.id))),
                     message: 'One or more presets have an invalid template.',
                     occurred: false,
                 },
@@ -358,8 +407,8 @@ export default {
                         if (preset.type !== 'p') {
                             return true
                         }
-                        const inOrder = this.lastTarget < preset.target
-                        this.lastTarget = preset.target
+                        const inOrder = lastTarget < preset.target
+                        lastTarget = preset.target
                         return inOrder
                     },
                     message: 'One or more preset targets are out of order.',
@@ -370,59 +419,10 @@ export default {
                     message: 'Preset target is higher than the maximum possible points for the assignment.',
                     occurred: false,
                 },
-            ],
-        }
-    },
-    computed: {
-        isChanged () {
-            return !this.saveRequestInFlight && JSON.stringify(this.currentData, this.replacer) !== this.originalData
-        },
-    },
-    created () {
-        this.loadFormat()
-
-        window.addEventListener('beforeunload', (e) => { // eslint-disable-line
-            if (this.$route.name === 'FormatEdit' && this.isChanged) {
-                const dialogText = 'Unsaved changes will be lost if you leave. Do you wish to continue?'
-                e.returnValue = dialogText
-                return dialogText
-            }
-        })
-    },
-    methods: {
-        loadFormat () {
-            formatAPI.get(this.aID, this.cID)
-                .then((data) => {
-                    this.currentData = data
-                    this.originalData = JSON.stringify(data, this.replacer)
-                    this.assignmentDetails = data.assignment_details
-                    this.templates = data.format.templates
-                    this.presets = data.format.presets
-                    this.deletedTemplates = []
-                    this.deletedPresets = []
-                    this.currentTemplate = -1
-                    this.newTemplateId = -1
-                    this.newPresetId = -1
-
-                    if (this.$store.getters['preferences/saved'].show_format_tutorial) {
-                        this.$store.commit('preferences/CHANGE_PREFERENCES', { show_format_tutorial: false })
-                        this.startTour()
-                    }
-                })
-        },
-        checkDateOrder (first, second) {
-            // Returns false if order is incorrect
-            return !first || !second || Date.parse(first) <= Date.parse(second)
-        },
-        checkValidDate (date) {
-            // Returns false if date is not valid
-            return date == null || !Number.isNaN(Date.parse(date))
-        },
-        saveFormat () {
+            ]
             let untitledTemplates = false
-            this.templatesIds = []
             this.templates.forEach((template) => {
-                this.templatesIds.push(template.id)
+                templatesIds.push(template.id)
                 if (!untitledTemplates && !template.name) {
                     untitledTemplates = true
                     this.$toasted.error('One or more templates are untitled. Please check the templates and try'
@@ -434,18 +434,17 @@ export default {
                 return
             }
 
-            this.lastTarget = 0
-            this.presetErrors.forEach((error) => {
+            presetErrors.forEach((error) => {
                 error.occurred = false
             })
             this.presets.forEach((preset) => {
-                this.presetErrors.forEach((error) => {
+                presetErrors.forEach((error) => {
                     error.occurred = error.occurred || !error.check(preset)
                 })
             })
 
             let hasError = false
-            this.presetErrors.forEach((error) => {
+            presetErrors.forEach((error) => {
                 if (error.occurred) {
                     this.$toasted.error(error.message)
                     hasError = true
