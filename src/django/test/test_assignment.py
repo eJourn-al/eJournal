@@ -801,7 +801,7 @@ class AssignmentAPITest(TestCase):
                                   'TA is only part of a group in pav2, so own should only yield those users')
 
         def test_returned_stats(self):
-            # Setup todos for PAV1
+            # Setup stuff to do for PAV1
             ungrouped_pav1_needs_marking = 7
             ungrouped_pav1_outstanding_jirs = 5
             for _ in range(ungrouped_pav1_needs_marking):
@@ -820,7 +820,7 @@ class AssignmentAPITest(TestCase):
             pav1_needs_marking = ungrouped_pav1_needs_marking + gr_pav1_needs_marking
             pav1_oustanding_jirs = ungrouped_pav1_outstanding_jirs + gr_pav1_outstanding_jirs
 
-            # Setup todos for PAV2
+            # Setup stuff to do for PAV2
             ungrouped_pav2_needs_marking = 13
             ungrouped_pav2_outstanding_jirs = 3
             for _ in range(ungrouped_pav2_needs_marking):
@@ -1241,6 +1241,7 @@ class AssignmentAPITest(TestCase):
         lti_course = factory.LtiCourse(author=lti_teacher)
         lti_assignment = factory.LtiAssignment(courses=[lti_course])
         lti_journal = factory.LtiJournal(assignment=lti_assignment)
+        lti_journal = Journal.objects.get(pk=lti_journal.pk)
         lti_bonus_student = lti_journal.authors.first().user
 
         def test_bonus_helper(content, status=200, user=lti_teacher, delimiter=','):
@@ -1386,6 +1387,7 @@ class AssignmentAPITest(TestCase):
 
     def test_assignment_handle_active_lti_id_modified(self):
         lti_group_journal = factory.LtiGroupJournal(entries__n=0, add_users=[factory.Student()])
+        lti_group_journal = Journal.objects.get(pk=lti_group_journal.pk)
         assignment = lti_group_journal.assignment
 
         assert not lti_group_journal.needs_lti_link, 'Assignment, AP and Journal are initialized correctly '
@@ -1395,7 +1397,8 @@ class AssignmentAPITest(TestCase):
         assignment.handle_active_lti_id_modified()
 
         for ap in lti_group_journal.authors.select_related('user', 'journal'):
-            assert ap.user.full_name in ap.journal.needs_lti_link, 'All users require a new LTI link'
+            journal = Journal.objects.get(pk=ap.journal.pk)
+            assert ap.user.full_name in journal.needs_lti_link, 'All users require a new LTI link'
 
     def test_assignment_serializer(self):
         assignment = factory.Assignment(format__templates=False)
@@ -1429,7 +1432,7 @@ class AssignmentAPITest(TestCase):
                 AssignmentSerializer.setup_eager_loading(Assignment.objects.filter(pk=assignment.pk)).get(),
                 context={'user': student, 'course': course, 'serialize_journals': True}
             ).data
-        assert len(context_pre) == len(context_post) and len(context_pre) <= 28
+        assert len(context_pre) == len(context_post) and len(context_pre) <= 31
 
         # Teacher perspective
         with QueryContext() as context_pre:
@@ -1443,7 +1446,7 @@ class AssignmentAPITest(TestCase):
                 AssignmentSerializer.setup_eager_loading(Assignment.objects.filter(pk=assignment.pk)).get(),
                 context={'user': assignment.author, 'course': course, 'serialize_journals': True}
             ).data
-        assert len(context_pre) == len(context_post) and len(context_pre) <= 19
+        assert len(context_pre) == len(context_post) and len(context_pre) <= 22
 
     def test_small_assignment_serializer(self):
         assignment = factory.Assignment(format__templates=False)

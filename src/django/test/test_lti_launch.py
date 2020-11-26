@@ -735,7 +735,7 @@ class LtiLaunchTest(TestCase):
                 'custom_section_id': ','.join(groups),
             }, user=student, role=settings.ROLES['Teacher'])
 
-        journal.refresh_from_db()
+        journal = Journal.objects.get(pk=journal.pk)
         assert set(journal.groups) == set(Group.objects.filter(lti_id__in=groups).values_list('pk', flat=True)), \
             'Journal groups should also be updated'
 

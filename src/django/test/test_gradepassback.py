@@ -10,7 +10,7 @@ from django.test import TestCase
 
 import VLE.lti_grade_passback as lti_grade
 import VLE.tasks.beats.lti as lti_beats
-from VLE.models import Entry
+from VLE.models import Entry, Journal
 from VLE.utils import grading
 
 
@@ -32,6 +32,7 @@ class GradePassBackRequestXMLTest(TestCase):
             ap__sourcedid='f6d552',
             ap__grade_url='https://uvadlo-tes.instructure.com/api/lti/v1/tools/267/grade_passback'
         )
+        self.lti_journal = Journal.objects.get(pk=self.lti_journal.pk)
 
     def test_create_grade_passback(self):
         """Test if the GradePassBackRequest is correctly created when a journal is given"""

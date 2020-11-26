@@ -135,7 +135,7 @@ class TeacherEntryView(viewsets.ViewSet):
             'teacher_entry': TeacherEntrySerializer(
                 TeacherEntrySerializer.setup_eager_loading(
                     TeacherEntry.objects.filter(pk=teacher_entry.pk)
-                )[0]
+                ).get()
             ).data
         })
 
@@ -192,17 +192,8 @@ class TeacherEntryView(viewsets.ViewSet):
                 )
                 grades.append(grade)
 
-                if journal_data['published']:
-                    journal.grade += journal_data['grade']  # Set the journal grade for bulk update later
-                else:
-                    journal.unpublished += 1  # Set the journal unpublished count for bulk update later
-            else:
-                journal.needs_marking += 1  # Set the journal needs_marking count for bulk update later
-
         Node.objects.bulk_create(nodes)
         grades = Grade.objects.bulk_create(grades)
-        # Update the journals @computed fields
-        Journal.objects.bulk_update(journals, ['grade', 'unpublished', 'needs_marking'])
 
         # Set the grade field of the newly created entries to the newly created grades.
         # Last edited is set on creation, even when specified during initialization.
@@ -224,7 +215,6 @@ class TeacherEntryView(viewsets.ViewSet):
         journal_pks = list(journals_data_dict.keys())
         entries = Entry.objects.filter(teacher_entry=teacher_entry, node__journal__in=journal_pks) \
             .select_related('grade', 'node__journal')
-        journal_objs = [entry.node.journal for entry in entries]
         grades = []
 
         for entry in entries:
@@ -233,8 +223,6 @@ class TeacherEntryView(viewsets.ViewSet):
                 entry.grade.grade != journals_data_dict[entry.node.journal.pk]['grade'] or
                 entry.grade.published != journals_data_dict[entry.node.journal.pk]['published']
             ):
-                journal = entry.node.journal
-
                 grade = Grade(
                     author=author,
                     grade=journals_data_dict[entry.node.journal.pk]['grade'],
@@ -243,28 +231,7 @@ class TeacherEntryView(viewsets.ViewSet):
                 )
                 grades.append(grade)
 
-                # Set the journal's @computed fields 'grade' ,'unpublished', and 'needs_marking' for bulk update later.
-                if entry.grade:
-                    if entry.grade.published:
-                        if journals_data_dict[entry.node.journal.pk]['published']:
-                            journal.grade = journal.grade - entry.grade.grade + journals_data_dict[journal.pk]['grade']
-                        else:
-                            journal.grade -= entry.grade.grade
-                            journal.unpublished += 1
-                    else:
-                        if journals_data_dict[entry.node.journal.pk]['published']:
-                            journal.unpublished -= 1
-                            journal.grade += journals_data_dict[journal.pk]["grade"]
-                else:
-                    journal.needs_marking -= 1
-                    if journals_data_dict[entry.node.journal.pk]['published']:
-                        journal.grade += journals_data_dict[entry.node.journal.pk]['grade']
-                    else:
-                        journal.unpublished += 1
-
         Grade.objects.bulk_create(grades)
-        # Update the earlier in memory set journal computed fields
-        Journal.objects.bulk_update(journal_objs, ['grade', 'unpublished', 'needs_marking'])
 
         # Set the grade field of the updated entries to the newly created grades.
         entries = list(

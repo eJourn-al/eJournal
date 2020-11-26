@@ -117,14 +117,15 @@ def can_edit(user, obj):
 
 
 def _can_edit_entry(user, entry):
-    user.check_permission('can_have_journal', entry.node.journal.assignment)
+    journal = VLE.models.Journal.objects.filter(node__entry=entry).select_related('assignment').get()
+    user.check_permission('can_have_journal', journal.assignment)
 
     if (
-        not entry.node.journal.authors.filter(user=user).exists() or
-        entry.node.journal.assignment.is_locked() or
+        not journal.authors.filter(user=user).exists() or
+        journal.assignment.is_locked() or
         entry.is_graded() or
         entry.is_locked() or
-        len(entry.node.journal.needs_lti_link) > 0
+        len(journal.needs_lti_link) > 0
     ):
         return False
 

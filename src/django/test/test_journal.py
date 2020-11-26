@@ -2,13 +2,13 @@ import test.factory as factory
 from test.utils import api
 from test.utils.performance import queries_invariant_to_db_size
 
-from computedfields.models import update_dependent
 from django.conf import settings
 from django.core.exceptions import ValidationError
+from django.db.models import F, Sum
 from django.test import TestCase
 
-from VLE.models import (Assignment, AssignmentParticipation, Comment, Content, Course, Entry, FileContext, Journal,
-                        JournalImportRequest, Participation, Role, User)
+from VLE.models import (Assignment, AssignmentParticipation, Comment, Content, Course, Entry, FileContext, Group,
+                        Journal, JournalImportRequest, Participation, Role, User)
 from VLE.serializers import JournalSerializer
 from VLE.utils.error_handling import VLEProgrammingError
 
@@ -16,6 +16,7 @@ from VLE.utils.error_handling import VLEProgrammingError
 class JournalAPITest(TestCase):
     def setUp(self):
         self.journal = factory.Journal()
+        self.journal = Journal.objects.get(pk=self.journal.pk)
         self.student = self.journal.authors.first().user
         self.assignment = self.journal.assignment
         self.course = self.assignment.courses.first()
@@ -23,7 +24,9 @@ class JournalAPITest(TestCase):
 
         self.group_assignment = factory.Assignment(group_assignment=True)
         self.group_journal = factory.GroupJournal(assignment=self.group_assignment)
+        self.group_journal = Journal.objects.get(pk=self.group_journal.pk)
         self.group_journal2 = factory.GroupJournal(assignment=self.group_assignment)
+        self.group_journal2 = Journal.objects.get(pk=self.group_journal2.pk)
         self.ap = factory.AssignmentParticipation(assignment=self.group_assignment)
         self.g_student = self.ap.user
         self.g_teacher = self.group_assignment.courses.first().author
@@ -205,18 +208,19 @@ class JournalAPITest(TestCase):
             removed. Approved JIRs with the journal as source should persists as this is how entries are flagged as
             imported."""
 
-    def test_computed_name(self):
+    def test_annotated_name(self):
         # A short name which will not be truncated with two users in a journal
         short_name = 'Short name'
         # NOTE, comments or assert messages why the behaviour is expected missing
         journal = factory.Journal()
+        journal = Journal.objects.get(pk=journal.pk)
         assert journal.name == journal.authors.first().user.full_name
 
         # Test author name
         user = journal.authors.first().user
         user.full_name = short_name
         user.save()
-        journal.refresh_from_db()
+        journal = Journal.objects.get(pk=journal.pk)
         assert journal.name == short_name
         assert journal.full_names == short_name
         assert journal.usernames == user.username
@@ -224,12 +228,13 @@ class JournalAPITest(TestCase):
         # Test stored name
         journal.stored_name = 'stored name'
         journal.save()
-        journal.refresh_from_db()
+        journal = Journal.objects.get(pk=journal.pk)
         assert journal.name == 'stored name'
         assert journal.full_names == short_name
 
         # Test add author
         group_journal = factory.GroupJournal(ap__user__full_name='Short name', add_users=[factory.Student()])
+        group_journal = Journal.objects.get(pk=group_journal.pk)
         ap = group_journal.authors.first()
         assert ', ' in group_journal.full_names
         assert ap.user.full_name in group_journal.full_names
@@ -241,83 +246,87 @@ class JournalAPITest(TestCase):
 
         # Test updates also on .update
         User.objects.filter(pk=ap.user.pk).update(full_name='update name')
-        update_dependent(User.objects.filter(pk=ap.user.pk))
-        group_journal.refresh_from_db()
+        group_journal = Journal.objects.get(pk=group_journal.pk)
         assert 'update name' in group_journal.full_names, \
             'Updated users name is reflected in cached journals full names'
         assert group_journal.name
 
         # Test remove author
         group_journal.remove_author(ap)
+        group_journal = Journal.objects.get(pk=group_journal.pk)
         assert ap.user.full_name not in group_journal.name
         assert ap.user.full_name not in group_journal.full_names
         assert group_journal.full_names == group_journal.authors.first().user.full_name
         assert group_journal.name == 'Journal {}'.format(Journal.objects.filter(assignment=self.assignment).count()), \
             'Group journal name should still default to assignments journal count'
 
-    def test_computed_import_requests(self):
+    def test_annotated_import_requests(self):
         journal = factory.Journal(entries__n=0)
+        journal = Journal.objects.get(pk=journal.pk)
         assert journal.import_requests == 0, 'A journal has no JIRs by default'
 
         jir = factory.JournalImportRequest(target=journal, state=JournalImportRequest.APPROVED_EXC_GRADES)
+        journal = Journal.objects.get(pk=journal.pk)
         assert journal.import_requests == 0, 'Only pending JIRs should count towards import request total'
 
         jir = factory.JournalImportRequest(target=journal, state=JournalImportRequest.PENDING)
         jir2 = factory.JournalImportRequest(target=journal, state=JournalImportRequest.PENDING)
-        journal.refresh_from_db()
+        journal = Journal.objects.get(pk=journal.pk)
         assert journal.import_request_targets.count() == 3, 'Journal should have three JIRs with journal as target'
         assert journal.import_requests == 2, 'Import requests should update on the creation of a JIR'
 
         jir.delete()
-        journal.refresh_from_db()
+        journal = Journal.objects.get(pk=journal.pk)
         assert journal.import_requests == 1, 'Import requests should update on the deletion of a JIR'
 
         jir2.state = JournalImportRequest.DECLINED
         jir2.save()
-        journal.refresh_from_db()
+        journal = Journal.objects.get(pk=journal.pk)
         assert journal.import_requests == 0, 'Import requests should update on the state change of a JIR'
 
-    def test_computed_grade(self):
+    def test_annotated_grade(self):
         journal = factory.Journal(entries__n=0)
+        journal = Journal.objects.get(pk=journal.pk)
         assert journal.grade == 0
         assert journal.unpublished == 0
         assert journal.needs_marking == 0
 
         factory.Grade(grade=5, published=False, entry__node__journal=journal)
-        journal.refresh_from_db()
+        journal = Journal.objects.get(pk=journal.pk)
         assert journal.grade == 0
         assert journal.unpublished == 1
         assert journal.needs_marking == 0
 
         grade = factory.Grade(grade=5, published=True, entry__node__journal=journal)
-        journal.refresh_from_db()
+        journal = Journal.objects.get(pk=journal.pk)
         assert journal.grade == 5
         assert journal.unpublished == 1
         assert journal.needs_marking == 0
 
         factory.Grade(entry=grade.entry, grade=3, published=True)
-        journal.refresh_from_db()
+        journal = Journal.objects.get(pk=journal.pk)
         assert journal.grade == 3
         assert journal.unpublished == 1
         assert journal.needs_marking == 0
 
         entry = factory.UnlimitedEntry(grade=None, node__journal=journal)
-        journal.refresh_from_db()
+        journal = Journal.objects.get(pk=journal.pk)
         assert journal.grade == 3
         assert journal.unpublished == 1
         assert journal.needs_marking == 1
 
         factory.Grade(entry=entry, published=False, grade=10)
-        journal.refresh_from_db()
+        journal = Journal.objects.get(pk=journal.pk)
         assert journal.grade == 3
         assert journal.unpublished == 2
         assert journal.needs_marking == 0
 
-    def test_computed_groups(self):
+    def test_annotated_groups(self):
         course = factory.Course()
         course2 = factory.Course()
         g_assignment = factory.Assignment(group_assignment=True, courses=[course, course2])
         g_journal = factory.GroupJournal(entries__n=0, add_users=[factory.Student()], assignment=g_assignment)
+        g_journal = Journal.objects.get(pk=g_journal.pk)
         student = g_journal.authors.first().user
         student2 = g_journal.authors.last().user
         Participation.objects.filter(user=student, course=course2).delete()
@@ -332,33 +341,33 @@ class JournalAPITest(TestCase):
         group2 = factory.Group(course=course2)
 
         student_course_participation.groups.add(group)
-        g_journal.refresh_from_db()
+        g_journal = Journal.objects.get(pk=g_journal.pk)
         assert g_journal.groups == [group.pk], 'Added group appears in the computed property'
 
         student2_course2_participation.groups.add(group2)
-        g_journal.refresh_from_db()
+        g_journal = Journal.objects.get(pk=g_journal.pk)
         assert group.pk in g_journal.groups and group2.pk in g_journal.groups, \
             'Added group appears in the computed property for all authors'
 
         student_course_participation.groups.remove(group)
-        g_journal.refresh_from_db()
+        g_journal = Journal.objects.get(pk=g_journal.pk)
         assert g_journal.groups == [group2.pk], \
             'Removing a student from a group also removes the group pk from the journal computed group property'
 
         course2.delete()
-        g_journal.refresh_from_db()
+        g_journal = Journal.objects.get(pk=g_journal.pk)
         assert g_journal.groups == [], \
             'Removing a course from an assignment should also remove the respective groups from a journal'
 
         student_course_participation.groups.add(group)
-        g_journal.refresh_from_db()
+        g_journal = Journal.objects.get(pk=g_journal.pk)
         assert g_journal.groups == [group.pk], 'Journal groups once again holds a single value'
         student_ap.delete()
-        g_journal.refresh_from_db()
+        g_journal = Journal.objects.get(pk=g_journal.pk)
         assert g_journal.groups == [], 'Removing a user from a journal updates the computed property'
 
         student_ap = factory.AssignmentParticipation(assignment=g_assignment, user=student, journal=g_journal)
-        g_journal.refresh_from_db()
+        g_journal = Journal.objects.get(pk=g_journal.pk)
         assert g_journal.groups == [group.pk], \
             'Adding a user to a journal updates the journal\'s groups computed property'
 
@@ -394,7 +403,7 @@ class JournalAPITest(TestCase):
         assert self.journal.image == settings.DEFAULT_PROFILE_PICTURE
         self.student.profile_picture = 'new_image'
         self.student.save()
-        self.journal.refresh_from_db()
+        self.journal = Journal.objects.get(pk=self.journal.pk)
         assert self.journal.image == 'new_image'
 
         second_ap = factory.AssignmentParticipation(assignment=self.group_assignment)
@@ -402,7 +411,7 @@ class JournalAPITest(TestCase):
         assert self.group_journal.image == settings.DEFAULT_PROFILE_PICTURE
         second_ap.user.profile_picture = 'new_image'
         second_ap.user.save()
-        self.group_journal.refresh_from_db()
+        self.group_journal = Journal.objects.get(pk=self.group_journal.pk)
         assert self.group_journal.image == 'new_image'
 
     def test_create_journal(self):
@@ -435,6 +444,7 @@ class JournalAPITest(TestCase):
 
     def test_journal_name(self):
         non_group_journal = factory.Journal()
+        non_group_journal = Journal.objects.get(pk=non_group_journal.pk)
         assert non_group_journal.name == non_group_journal.authors.first().user.full_name, \
             'Non group journals should get name of author'
         non_group_journal.authors.first().user.full_name = non_group_journal.authors.first().user.full_name + 'NEW'
@@ -483,7 +493,7 @@ class JournalAPITest(TestCase):
         # Check teacher can update author_limit only for group assignment
         api.update(self, 'journals', params={'pk': self.journal.pk, 'author_limit': 4}, user=self.teacher, status=400)
         api.update(self, 'journals', params={'pk': self.group_journal.pk, 'author_limit': 4}, user=self.g_teacher)
-        self.group_journal.refresh_from_db()
+        self.group_journal = Journal.objects.get(pk=self.group_journal.pk)
         assert self.group_journal.author_limit == 4, 'Author limit is succsefully update'
 
         assert self.group_journal.authors.count() == 1
@@ -500,7 +510,7 @@ class JournalAPITest(TestCase):
         api.update(
             self, 'journals', params={'pk': self.group_journal.pk, 'author_limit': 9, 'name': 'NEW'},
             user=self.g_teacher)
-        self.group_journal.refresh_from_db()
+        self.group_journal = Journal.objects.get(pk=self.group_journal.pk)
         assert self.group_journal.author_limit == 9 and self.group_journal.name == 'NEW'
 
         for i in range(self.group_journal.author_limit - self.group_journal.authors.count()):
@@ -509,13 +519,13 @@ class JournalAPITest(TestCase):
         api.update(
             self, 'journals', params={'pk': self.group_journal.pk, 'author_limit': Journal.UNLIMITED},
             user=self.g_teacher)
-        self.group_journal.refresh_from_db()
+        self.group_journal = Journal.objects.get(pk=self.group_journal.pk)
         assert self.group_journal.author_limit == Journal.UNLIMITED
 
         api.update(
             self, 'journals', params={'pk': self.group_journal.pk, 'author_limit': 3},
             user=self.g_teacher, status=400)
-        self.group_journal.refresh_from_db()
+        self.group_journal = Journal.objects.get(pk=self.group_journal.pk)
         assert self.group_journal.author_limit == Journal.UNLIMITED
         api.update(
             self, 'journals', params={'pk': self.journal.pk, 'author_limit': 3}, user=self.teacher, status=400)
@@ -811,6 +821,7 @@ class JournalAPITest(TestCase):
 
     def test_journal_serializer(self):
         journal = factory.Journal()
+        journal = Journal.objects.get(pk=journal.pk)
         student = journal.author
         assignment = journal.assignment
         teacher = assignment.author
@@ -836,6 +847,264 @@ class JournalAPITest(TestCase):
         data = JournalSerializer(journal, context={'user': teacher}).data
         assert data['import_requests'] == 0
         assert data['usernames'] == journal.usernames
+
+    def test_annotate_grade(self):
+        journal = factory.Journal(entries__n=0, bonus_points=0.5)
+        factory.UnlimitedEntry(node__journal=journal, grade__grade=1, grade__published=True)
+        factory.UnlimitedEntry(node__journal=journal, grade__grade=1.0051, grade__published=True)
+        factory.UnlimitedEntry(node__journal=journal, grade__grade=1, grade__published=False)
+        factory.UnlimitedEntry(node__journal=journal, grade=None)
+
+        correct_grade = 2.51
+
+        def grade(journal):
+            """Old computed method"""
+            return round(
+                journal.bonus_points +
+                journal.node_set.filter(
+                    entry__grade__published=True
+                ).values(
+                    'entry__grade__grade'
+                ).aggregate(
+                    Sum(
+                        'entry__grade__grade'
+                    )
+                )['entry__grade__grade__sum']
+                or 0,
+                2
+            )
+        old_grade = grade(journal)
+
+        with self.assertNumQueries(1):
+            qry_journal = Journal.all_objects.filter(pk=journal.pk).allowed_journals().annotate_grade().get()
+        assert qry_journal.grade == old_grade == correct_grade
+
+        journal = factory.Journal(entries__n=0, bonus_points=0, assignment=journal.assignment)
+        qry_journal = Journal.all_objects.filter(pk=journal.pk).allowed_journals().annotate_grade().get()
+        assert qry_journal.grade == 0, 'Should default to zero not None'
+
+    def test_annotate_unpublished(self):
+        journal = factory.Journal(entries__n=0)
+        factory.UnlimitedEntry(node__journal=journal, grade__grade=1, grade__published=True)
+        factory.UnlimitedEntry(node__journal=journal, grade__grade=1, grade__published=False)
+        factory.UnlimitedEntry(node__journal=journal, grade__grade=1, grade__published=False)
+        factory.UnlimitedEntry(node__journal=journal, grade=None)
+
+        unpublished = journal.node_set.filter(entry__grade__published=False).count()
+        assert unpublished == 2
+
+        with self.assertNumQueries(1):
+            qry_journal = Journal.all_objects.filter(pk=journal.pk).allowed_journals().annotate_unpublished().get()
+        assert qry_journal.unpublished == unpublished
+
+        no_unpublished_journal = factory.Journal(entries__n=0, assignment=journal.assignment)
+        no_unpublished_journal = Journal.all_objects.filter(
+            pk=no_unpublished_journal.pk).allowed_journals().annotate_unpublished().get()
+        assert no_unpublished_journal.unpublished == 0, 'Unpublished should default to zero not None'
+
+    def test_annotate_import_requests(self):
+        jir = factory.JournalImportRequest()
+        target = jir.target
+
+        import_requests = target.import_request_targets.filter(state=JournalImportRequest.PENDING).count()
+        assert import_requests == 1
+
+        with self.assertNumQueries(1):
+            qry_journal = Journal.all_objects.filter(pk=target.pk).annotate_import_requests().get()
+
+        assert import_requests == qry_journal.import_requests
+
+    def test_annotate_needs_marking(self):
+        journal = factory.Journal(entries__n=0)
+        factory.UnlimitedEntry(node__journal=journal, grade__grade=1, grade__published=True)
+        factory.UnlimitedEntry(node__journal=journal, grade__grade=1, grade__published=False)
+        factory.UnlimitedEntry(node__journal=journal, grade=None)
+
+        needs_marking = journal.node_set.filter(entry__isnull=False, entry__grade__isnull=True).count()
+        assert needs_marking == 1
+
+        with self.assertNumQueries(1):
+            qry_journal = Journal.all_objects.filter(pk=journal.pk).allowed_journals().annotate_needs_marking().get()
+        assert qry_journal.needs_marking == needs_marking
+
+        no_needs_marking_journal = factory.Journal(entries__n=0, assignment=journal.assignment)
+        no_needs_marking_journal = Journal.all_objects.filter(
+            pk=no_needs_marking_journal.pk).allowed_journals().annotate_needs_marking().get()
+        no_needs_marking_journal.needs_marking == 0, 'Needs marking should default to zero not None'
+
+    def test_annotate_needs_lti_link(self):
+        student2 = factory.Student(full_name='student2')
+        student3 = factory.Student(full_name='student3')
+        journal = factory.LtiGroupJournal(ap__user__full_name='student', add_users=[student2, student3])
+        journal.authors.filter(user__in=[student2, student3]).update(sourcedid=None)
+
+        assert journal.authors.filter(sourcedid__isnull=True).count() == 2
+        assert journal.assignment.active_lti_id
+
+        def needs_lti_link(journal):
+            """Old computed method"""
+            if not journal.assignment.active_lti_id:
+                return list()
+            return list(journal.authors.filter(sourcedid__isnull=True).values_list('user__full_name', flat=True))
+
+        old_needs_lti_link = needs_lti_link(journal)
+        for name in old_needs_lti_link:
+            assert name in [student2.full_name, student3.full_name]
+
+        qry_journal = Journal.all_objects.filter(pk=journal.pk).allowed_journals().annotate_needs_lti_link().get()
+        assert qry_journal.needs_lti_link == old_needs_lti_link
+
+        journal.assignment.active_lti_id = None
+        journal.assignment.save()
+        qry_journal = Journal.all_objects.filter(pk=journal.pk).allowed_journals().annotate_needs_lti_link().get()
+        assert qry_journal.needs_lti_link == [], 'No LTI links needed for a non LTI assignment'
+
+        journal = factory.LtiJournal()
+        qry_journal = Journal.all_objects.filter(pk=journal.pk).allowed_journals().annotate_needs_lti_link().get()
+        assert qry_journal.needs_lti_link == [], 'NO LTI links needed if all APs are correctly linked'
+
+    def test_annotate_name(self):
+        journal = factory.GroupJournal(ap__user__full_name='SAME', add_users=[factory.Student(full_name='SAME')])
+        journal_stored_name = factory.Journal(stored_name='Stored name')
+
+        def name(journal):
+            """Old computed method"""
+            if journal.stored_name:
+                return journal.stored_name
+            return ', '.join(journal.authors.values_list('user__full_name', flat=True))
+
+        old_name = name(journal)
+        with self.assertNumQueries(1):
+            qry_journal = Journal.all_objects.filter(
+                pk=journal.pk).allowed_journals().annotate_full_names().annotate_name().get()
+        assert old_name == qry_journal.name
+
+        entry = Entry.objects.filter(node__journal=journal).annotate_full_names().annotate_name().first()
+        assert entry.name == old_name
+
+        old_name = name(journal_stored_name)
+        with self.assertNumQueries(1):
+            qry_journal = Journal.all_objects.filter(
+                pk=journal_stored_name.pk).annotate_full_names().annotate_name().get()
+        assert old_name == qry_journal.name
+
+        entry = Entry.objects.filter(node__journal=journal_stored_name).annotate_full_names().annotate_name().first()
+        assert entry.name == old_name
+
+    def test_annotate_image(self):
+        student_default_pic = factory.Student()
+        student_custom_pic = factory.Student(profile_picture='some pic link')
+        student2_custom_pic = factory.Student(profile_picture='some pic link2')
+        journal = factory.GroupJournal(
+            author_limit=4,
+            ap__user=student_default_pic,
+            add_users=[student_default_pic, student_custom_pic, student2_custom_pic]
+        )
+
+        with self.assertNumQueries(1):
+            qry_journal = Journal.all_objects.filter(pk=journal.pk).allowed_journals().annotate_image().get()
+        assert qry_journal.image in [student_custom_pic.profile_picture, student2_custom_pic.profile_picture],\
+            'First non default author image should be selected, order is not relevant'
+
+        journal = factory.Journal(ap__user=student_default_pic)
+        qry_journal = Journal.all_objects.filter(pk=journal.pk).allowed_journals().annotate_image().get()
+        assert qry_journal.image == student_default_pic.profile_picture
+
+    def test_annotate_full_names(self):
+        journal = factory.GroupJournal(ap__user__full_name='Diff', add_users=[factory.Student(full_name='Different')])
+        assignment = journal.assignment
+        full_names = journal.authors.values_list('user__full_name', flat=True)
+        factory.Journal(ap__user=journal.authors.first().user)  # Some unrelated journal of same user
+
+        def check_full_names(instance, oracle):
+            split_annotation = instance.full_names.split(', ')
+            assert len(split_annotation) == len(oracle)
+
+            for name in split_annotation:
+                assert name in oracle
+
+        with self.assertNumQueries(1):
+            qry_journal = Journal.all_objects.filter(pk=journal.pk).allowed_journals().annotate_full_names().get()
+        check_full_names(qry_journal, full_names)
+
+        entry = Entry.objects.filter(node__journal=journal).annotate_full_names().first()
+        check_full_names(entry, full_names)
+
+        journal = factory.GroupJournal(
+            assignment=assignment, ap__user__full_name='SAME', add_users=[factory.Student(full_name='SAME')])
+        qry_journal = Journal.all_objects.filter(pk=journal.pk).allowed_journals().annotate_full_names().get()
+        full_names = journal.authors.values_list('user__full_name', flat=True)
+        assert len(qry_journal.full_names.split(', ')) != len(full_names), \
+            'Equal names are merged, but this is acceptable since the occurance is low (same group and full names)'
+
+    def test_annotate_usernames(self):
+        journal = factory.GroupJournal(add_users=[factory.Student()])
+        usernames = journal.authors.values_list('user__username', flat=True)
+        factory.Journal(ap__user=journal.authors.first().user)  # Some unrelated journal of same user
+
+        def check_usernames(instance, oracle):
+            split_annotation = instance.usernames.split(', ')
+            assert len(split_annotation) == len(oracle)
+
+            for name in split_annotation:
+                assert name in oracle
+
+        with self.assertNumQueries(1):
+            qry_journal = Journal.all_objects.filter(pk=journal.pk).allowed_journals().annotate_usernames().get()
+        check_usernames(qry_journal, usernames)
+
+        entry = Entry.objects.filter(node__journal=journal).annotate_usernames().first()
+        check_usernames(entry, usernames)
+
+    def test_annotate_groups(self):
+        def groups(journal):
+            """Old computed method"""
+            return list(
+                Group.objects.filter(
+                    participation__user__in=journal.authors.values('user'),
+                ).values_list(
+                    'pk',
+                    flat=True,
+                ).distinct()
+            )
+
+        course = factory.Course()
+        group = factory.Group(course=course)
+        group2 = factory.Group(course=course)
+        p1 = factory.Participation(course=course)
+        p2 = factory.Participation(course=course)
+        p3 = factory.Participation(course=course)
+        p1.groups.add(group)
+        p2.groups.add(group, group2)
+        journal = factory.GroupJournal(ap__user=p1.user, add_users=[p2.user, p3.user])
+
+        old_groups = groups(journal)
+
+        with self.assertNumQueries(1):
+            qry_journal = Journal.all_objects.filter(pk=journal.pk).allowed_journals().annotate_groups().get()
+
+        assert len(old_groups) == len(qry_journal.groups)
+        assert all(elem in old_groups for elem in qry_journal.groups), 'Order may differ'
+
+    def test_annotated_fields(self):
+        journal = factory.GroupJournal(add_users=[factory.Student(), factory.Student()])
+        factory.JournalImportRequest(target=journal)
+
+        with self.assertNumQueries(1):
+            journal_qry = Journal.all_objects.filter(pk=journal.pk).annotate_fields().get()
+
+        for annotated_field in Journal.ANNOTATED_FIELDS:
+            assert hasattr(journal_qry, annotated_field)
+
+    def test_missing_annotated_field(self):
+        journal = factory.Journal()
+        assert journal.missing_annotated_field
+
+        journal = Journal.objects.get(pk=journal.pk)
+        assert not journal.missing_annotated_field
+
+        journal = Journal.all_objects.filter(pk=journal.pk).annotate(full_names=F('pk')).get()
+        assert journal.missing_annotated_field
 
     def test_can_add(self):
         student = factory.Student()

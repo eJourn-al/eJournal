@@ -26,12 +26,12 @@ class StatisticsTests(TestCase):
         for entry in entries[self.n_entries - n_graded_entries:]:
             api.create(self, 'grades', params={'entry_id': entry.id, 'grade': 1, 'published': True},
                        user=self.journal.assignment.courses.first().author)
-        self.journal.refresh_from_db()
+        self.journal = VLE.models.Journal.objects.get(pk=self.journal.pk)
         assert self.journal.grade == n_graded_entries
         bonus_points = 5
         self.journal.bonus_points = bonus_points
         self.journal.save()
-        self.journal.refresh_from_db()
+        self.journal = VLE.models.Journal.objects.get(pk=self.journal.pk)
         assert self.journal.grade == n_graded_entries + bonus_points
         assert entries.count() == self.n_entries
         assert entries.exclude(grade=None).exclude(grade__grade=None).count() == n_graded_entries
