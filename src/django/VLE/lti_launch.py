@@ -223,6 +223,6 @@ def select_create_journal(request, user, assignment):
 
     if journal:
         grading.task_author_status_to_LMS.delay(journal.pk, author.pk)
-        journal.refresh_from_db()
+        journal = Journal.objects.get(pk=journal.pk)
 
     return journal
