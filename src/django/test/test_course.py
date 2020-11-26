@@ -67,9 +67,9 @@ class CourseAPITest(TestCase):
             'Teacher should get all courses they are the author of'
 
         get_resp = api.get(self, 'courses', user=self.teacher2)['courses']
-        assert len(get_resp) == 2, 'Teacher should get all courses they are the author of or ar participating in'
+        assert len(get_resp) == 2, 'Teacher should get all courses they are the author of or are participating in'
         assert is_response(get_resp, self.course2, self.course3), \
-            'Teacher should get all courses they are the author of or ar participating in'
+            'Teacher should get all courses they are the author of or are participating in'
 
         get_resp = api.get(self, 'courses', params={'get_all': True}, user=self.admin)['courses']
         assert len(get_resp) == Course.objects.count(), 'Superuser can get all courses on the instance'

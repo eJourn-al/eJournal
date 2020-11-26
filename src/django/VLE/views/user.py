@@ -67,9 +67,8 @@ class UserView(viewsets.ViewSet):
         if not request.user.is_superuser:
             return response.forbidden('Only administrators are allowed to request all user data.')
 
-        users = list(User.objects.values('username', 'full_name', 'email', 'is_teacher', 'is_active', 'id') \
+        users = list(User.objects.values('username', 'full_name', 'email', 'is_teacher', 'is_active', 'id')
                      .order_by('full_name'))
-        print(users)
         return response.success({'users': users})
 
     def retrieve(self, request, pk):
@@ -196,7 +195,7 @@ class UserView(viewsets.ViewSet):
             request, 'user_id', 'custom_user_email', 'custom_user_full_name', 'custom_user_image')
 
         # Superuser can update another user's teacher status.
-        if request.user.is_superuser and not request.user.pk == pk:
+        if request.user.is_superuser:
             is_teacher, = utils.optional_params(request.data, 'is_teacher')
 
         if user_image is not None:
@@ -428,28 +427,32 @@ class UserView(viewsets.ViewSet):
             return response.bad_request({'duplicate_emails': duplicate_emails})
 
         # Ensure the username and email for all users to be invited do not belong to existing users.
-        existing_usernames = list(User.objects.filter(username__in=[user['username'].lower() for user in users])
-                                  .values_list('username', flat=True).distinct())
+        existing_usernames = list(User.objects.filter(username__in=[user['username'] for user in users])
+                                  .values_list('username', flat=True))
         if existing_usernames:
             return response.bad_request({'existing_usernames': existing_usernames})
-        existing_emails = list(User.objects.filter(email__in=[user['email'].lower() for user in users])
-                               .values_list('email', flat=True).distinct())
+        existing_emails = list(User.objects.filter(email__in=[user['email'] for user in users])
+                               .values_list('email', flat=True))
         if existing_emails:
             return response.bad_request({'existing_emails': existing_emails})
 
         created_user_ids = []
         try:
             users_to_create = [
-                factory.make_user(username=user['username'].lower(), email=user['email'].lower(),
-                                  full_name=user['full_name'],
-                                  is_teacher='is_teacher' in user and user['is_teacher'], is_active=False,
-                                  save=False)
+                factory.make_user(
+                    username=user['username'],
+                    email=user['email'],
+                    full_name=user['full_name'],
+                    is_teacher='is_teacher' in user and user['is_teacher'],
+                    is_active=False,
+                    save=False
+                )
                 for user in users
             ]
             created_user_ids = [user.id for user in User.objects.bulk_create(users_to_create)]
             send_invite_emails.delay(created_user_ids)
-        except Exception as exception:
-            capture_message('Something went wrong while inviting users: {}'.format(exception), level='error')
+        except Exception as e:
+            capture_exception(e)
             User.objects.filter(pk__in=created_user_ids).delete()
             return response.bad_request('An error occured while creating new users.')
 
