@@ -101,7 +101,7 @@ class EntryView(viewsets.ViewSet):
         content_dict, = utils.required_params(request.data, 'content')
         entry_id, = utils.required_typed_params(kwargs, (int, 'pk'))
         entry = Entry.objects.get(pk=entry_id)
-        journal = entry.node.journal
+        journal = Journal.objects.get(node__entry=entry)
         assignment = journal.assignment
 
         if assignment.is_locked():
@@ -189,7 +189,7 @@ class EntryView(viewsets.ViewSet):
         pk, = utils.required_typed_params(kwargs, (int, 'pk'))
 
         entry = Entry.objects.get(pk=pk)
-        journal = entry.node.journal
+        journal = Journal.objects.get(node__entry=entry)
         assignment = journal.assignment
 
         if journal.authors.filter(user=request.user).exists():

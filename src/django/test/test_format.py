@@ -266,7 +266,7 @@ class FormatAPITest(TestCase):
         presets[1]['attached_files'].append(FileSerializer(file).data)
         presets[1]['id'] = '-1'
         utils.update_presets(assignment.author, assignment, presets, {})
-        journal.refresh_from_db()
+        journal = Journal.objects.get(pk=journal.pk)
         assert old_preset_count + 1 == assignment.format.presetnode_set.count(), 'Format should have a new node'
         assert old_node_count + 1 == journal.node_set.count(), 'New node should also be added to all connected journals'
 

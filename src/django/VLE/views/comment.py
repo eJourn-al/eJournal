@@ -9,7 +9,7 @@ from rest_framework import viewsets
 import VLE.factory as factory
 import VLE.utils.generic_utils as utils
 import VLE.utils.responses as response
-from VLE.models import Comment, Entry, FileContext
+from VLE.models import Comment, Entry, FileContext, Journal
 from VLE.serializers import CommentSerializer
 from VLE.utils import file_handling
 
@@ -56,7 +56,7 @@ class CommentView(viewsets.ViewSet):
         entry_id, = utils.required_params(request.query_params, "entry_id")
 
         entry = Entry.objects.get(pk=entry_id)
-        journal = entry.node.journal
+        journal = Journal.objects.get(node__entry=entry)
         assignment = journal.assignment
 
         request.user.check_can_view(journal)
@@ -99,7 +99,7 @@ class CommentView(viewsets.ViewSet):
         published, = utils.optional_typed_params(request.data, (bool, 'published'))
 
         entry = Entry.objects.get(pk=entry_id)
-        journal = entry.node.journal
+        journal = Journal.objects.get(node__entry=entry)
         assignment = journal.assignment
 
         request.user.check_permission('can_comment', assignment)
