@@ -453,7 +453,6 @@ class UserView(viewsets.ViewSet):
             send_invite_emails.delay(created_user_ids)
         except Exception as e:
             capture_exception(e)
-            User.objects.filter(pk__in=created_user_ids).delete()
             return response.bad_request('An error occured while creating new users.')
 
         return response.success(description=f"Successfully invited {len(created_user_ids)} users.")
