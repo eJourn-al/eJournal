@@ -87,6 +87,7 @@ module.exports = {
                 prependData: `
                     @import "~sass/modules/colors.sass"
                     @import "~sass/modules/breakpoints.sass"
+                    @import "~sass/modules/dimensions.sass"
                 `
             }
         }
