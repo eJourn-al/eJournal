@@ -13,7 +13,6 @@ from django.db.models import Case, When
 import VLE.factory
 import VLE.models
 import VLE.utils.error_handling
-from VLE.tasks.notifications import generate_new_node_notifications
 from VLE.utils import file_handling
 
 
@@ -189,14 +188,12 @@ def update_journals(journals, preset):
     journals -- the journals to update.
     preset -- the preset node to add to the journals.
     """
-    nodes = [VLE.models.Node(
+    VLE.models.Node.objects.bulk_create([VLE.models.Node(
         type=preset.type,
         entry=None,
         preset=preset,
         journal=journal
-    ) for journal in journals]
-    nodes = VLE.models.Node.objects.bulk_create(nodes)
-    generate_new_node_notifications.delay([n.pk for n in nodes])
+    ) for journal in journals])
 
 
 def update_presets(user, assignment, presets, new_ids):

@@ -12,7 +12,7 @@ from django.contrib.auth.models import AbstractUser, UserManager
 from django.contrib.postgres.aggregates import ArrayAgg, StringAgg
 from django.contrib.postgres.fields import ArrayField, CIEmailField, CITextField
 from django.core.exceptions import ValidationError
-from django.db import models
+from django.db import models, transaction
 from django.db.models import (Case, CharField, Count, F, FloatField, IntegerField, Min, OuterRef, Prefetch, Q, Subquery,
                               Sum, TextField, Value, When)
 from django.db.models.deletion import CASCADE, SET_NULL
@@ -24,6 +24,7 @@ from django.utils.timezone import now
 import VLE.permissions
 import VLE.utils.file_handling as file_handling
 from VLE.tasks.email import send_push_notification
+from VLE.tasks.notifications import generate_new_assignment_notifications, generate_new_node_notifications
 from VLE.utils import sanitization
 from VLE.utils.error_handling import (VLEBadRequest, VLEParticipationError, VLEPermissionError, VLEProgrammingError,
                                       VLEUnverifiedEmailError)
@@ -1274,28 +1275,49 @@ class Assignment(CreateUpdateModel):
         elif state_actions['unpublished']:
             self.handle_unpublish()
 
-    def setup_journals(self):
+    def setup_journals(self, new_assignment_notification=False):
         """
         Creates missing journals and assigment participations for all the assignment's users.
+
+        When {new_assignment_notification} it will also create a new assignment notification for all provided users
         """
         if self.is_group_assignment:
             return
 
         users = User.objects.filter(participations__in=self.courses.all()).distinct()
-
-        # If a user misses an AP he is guaranteed to have no journal (since the AP is the link between user and journal)
         users_missing_aps = users.exclude(assignmentparticipation__assignment=self)
-        for user in users_missing_aps:
-            ap = AssignmentParticipation.objects.create(assignment=self, user=user)
-            journal = Journal.objects.create(assignment=self)
-            journal.add_author(ap)
-
-        # However, if a user does have an AP, he is not guaranteed to have a journal (since an AP's journal can be None)
         aps_without_journal = AssignmentParticipation.objects.filter(
-            assignment=self, journal__isnull=True, user__in=users)
-        for ap in aps_without_journal:
-            journal = Journal.objects.create(assignment=self)
-            journal.add_author(ap)
+            assignment=self,
+            journal__isnull=True,
+            user__in=users,
+        )
+
+        # Bulk update existing assignment participations
+        self.connect_assignment_participations_to_journals(aps_without_journal)
+
+        # Generate new assignment notification for all users already in course
+        generate_new_assignment_notifications([
+            ap.pk for ap in AssignmentParticipation.objects.filter(assignment=self).exclude(user=self.author)
+        ])
+
+        # Bulk create missing assignment participations, automatically generates journals & nodes
+        AssignmentParticipation.objects.bulk_create(
+            [
+                AssignmentParticipation(assignment=self, user=user)
+                for user in users_missing_aps
+            ],
+            new_assignment_notification=new_assignment_notification
+        )
+
+    def connect_assignment_participations_to_journals(self, aps):
+        """Connect the {aps} to a newly created journal"""
+        # Bulk create journals for users that have an AP already
+        journals = Journal.objects.bulk_create(
+            [Journal(assignment=self) for _ in range(len(aps))]
+        )
+        for ap, journal in zip(aps, journals):
+            ap.journal = journal
+        return AssignmentParticipation.objects.bulk_update(aps, ['journal'])
 
     def handle_active_lti_id_modified(self):
         """
@@ -1324,10 +1346,7 @@ class Assignment(CreateUpdateModel):
         Either created as published, or released as such (going from unpublished to published)
         """
         if not self.is_group_assignment:
-            self.setup_journals()
-
-        for ap in self.assignmentparticipation_set.exclude(user=self.author):
-            ap.create_new_assignment_notification()
+            self.setup_journals(new_assignment_notification=True)
 
     def handle_unpublish(self):
         """
@@ -1488,12 +1507,40 @@ class Assignment(CreateUpdateModel):
         return "{} ({})".format(self.name, self.pk)
 
 
+class AssignmentParticipationQuerySet(models.QuerySet):
+    def bulk_create(self, aps, *args, create_missing_journals=True, new_assignment_notification=True, **kwargs):
+        with transaction.atomic():
+            # Create missing journals
+            if create_missing_journals:
+                journals = []
+                aps_missing_journal = []
+                for ap in aps:
+                    if not ap.journal:
+                        journals.append(Journal(assignment=ap.assignment))
+                        aps_missing_journal.append(ap)
+
+                journals = Journal.objects.bulk_create(journals)
+                for ap, journal in zip(aps_missing_journal, journals):
+                    ap.journal = journal
+
+            aps = super().bulk_create(aps, *args, **kwargs)
+
+            # Generate new assignment notifications
+            if new_assignment_notification:
+                generate_new_assignment_notifications.delay([
+                    ap.pk
+                    for ap in aps if ap.user != ap.assignment.author
+                ])
+            return aps
+
+
 class AssignmentParticipation(CreateUpdateModel):
     """AssignmentParticipation
 
     A user that is connected to an assignment
     this can then be used as a participation for a journal
     """
+    objects = models.Manager.from_queryset(AssignmentParticipationQuerySet)()
 
     journal = models.ForeignKey(
         'Journal',
@@ -1553,6 +1600,19 @@ class AssignmentParticipation(CreateUpdateModel):
 
 
 class JournalQuerySet(models.QuerySet):
+    def bulk_create(self, journals, *args, **kwargs):
+        with transaction.atomic():
+            journals = super().bulk_create(journals, *args, **kwargs)
+
+            # Bulk create nodes
+            nodes = []
+            for journal in journals:
+                nodes += journal.generate_missing_nodes(create=False)
+            # Notifications should not be send when the journal is new. A "new assignment" notification is good enough
+            Node.objects.bulk_create(nodes, new_node_notifications=False)
+
+            return journals
+
     def order_by_authors_first(self):
         """Order by journals with authors first, no authors last."""
         return self.order_by(F('authors__journal').asc(nulls_last=True)).distinct()
@@ -1829,10 +1889,7 @@ class Journal(CreateUpdateModel):
         super(Journal, self).save(*args, **kwargs)
         # On create add preset nodes
         if is_new:
-            preset_nodes = self.assignment.format.presetnode_set.all()
-            for preset_node in preset_nodes:
-                if not self.node_set.filter(preset=preset_node).exists():
-                    Node.objects.create(type=preset_node.type, journal=self, preset=preset_node)
+            self.generate_missing_nodes()
 
     @property
     def published_nodes(self):
@@ -1866,6 +1923,19 @@ class Journal(CreateUpdateModel):
             and not len(self.needs_lti_link) > 0 \
             and self.assignment.format.template_set.filter(archived=False, preset_only=False).exists()
 
+    def generate_missing_nodes(self, create=True):
+        nodes = [Node(
+            type=preset_node.type,
+            entry=None,
+            preset=preset_node,
+            journal=self,
+        ) for preset_node in self.assignment.format.presetnode_set.all()]
+
+        if create:
+            nodes = Node.objects.bulk_create(nodes)
+
+        return nodes
+
     def to_string(self, user=None):
         if user is None or not user.can_view(self):
             return 'Journal'
@@ -1881,6 +1951,15 @@ def CASCADE_IF_UNLIMITED_ENTRY_NODE_ELSE_SET_NULL(collector, field, sub_objs, us
 
     CASCADE(collector, field, unlimited_entry_nodes, using)
     SET_NULL(collector, field, other_nodes, using)
+
+
+class NodeQuerySet(models.QuerySet):
+    def bulk_create(self, nodes, *args, new_node_notifications=True, **kwargs):
+        nodes = super().bulk_create(nodes, *args, **kwargs)
+        if new_node_notifications:
+            generate_new_node_notifications.delay([node.pk for node in nodes])
+
+        return nodes
 
 
 class Node(CreateUpdateModel):
@@ -1915,6 +1994,7 @@ class Node(CreateUpdateModel):
         the Format. In the Format it is assigned an
         unlock/lock date, a due date and a 'forced template'.
     """
+    objects = models.Manager.from_queryset(NodeQuerySet)()
 
     PROGRESS = 'p'
     ENTRY = 'e'
