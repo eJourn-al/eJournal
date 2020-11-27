@@ -505,14 +505,11 @@ class UserAPITest(TestCase):
     def test_invite_invalid_users(self):
         admin = factory.Admin()
         pre_invite_user_count = User.objects.count()
-        # Trailing whitespace is on purpose.
-        users = [
-            {
-                'full_name': f'User Full Name {i}   ',
-                'username': f'user{i}username   ',
-                'email': f'user{i}mail@ejournal.app   ',
-            } for i in range(7)
-        ]
+        users = [{
+            'full_name': user.full_name,
+            'username': user.username,
+            'email': user.email,
+        } for user in [factory.Student.build() for _ in range(7)]]
 
         users[0]['full_name'] = ''
         resp = api.post(self, 'users/invite_users', params={'users': users}, user=admin, status=400)
@@ -534,13 +531,13 @@ class UserAPITest(TestCase):
 
         users[0]['username'] = users[1]['username']
         resp = api.post(self, 'users/invite_users', params={'users': users}, user=admin, status=400)
-        assert users[0]['username'].strip() in resp['description']['duplicate_usernames']
+        assert users[0]['username'] in resp['description']['duplicate_usernames']
         del users[0]
         assert User.objects.count() == pre_invite_user_count, 'No accounts should be created if some user is invalid'
 
         users[0]['email'] = users[1]['email']
         resp = api.post(self, 'users/invite_users', params={'users': users}, user=admin, status=400)
-        assert users[0]['email'].strip() in resp['description']['duplicate_emails']
+        assert users[0]['email'] in resp['description']['duplicate_emails']
         del users[0]
         assert User.objects.count() == pre_invite_user_count, 'No accounts should be created if some user is invalid'
 
@@ -548,13 +545,13 @@ class UserAPITest(TestCase):
         # All-uppercase versions of existing values should thus not be accepted.
         users[0]['username'] = User.objects.all().first().username.upper()
         resp = api.post(self, 'users/invite_users', params={'users': users}, user=admin, status=400)
-        assert users[0]['username'].lower().strip() in resp['description']['existing_usernames']
+        assert users[0]['username'].lower() in resp['description']['existing_usernames']
         del users[0]
         assert User.objects.count() == pre_invite_user_count, 'No accounts should be created if some user is invalid'
 
         users[0]['email'] = User.objects.all().first().email.upper()
         resp = api.post(self, 'users/invite_users', params={'users': users}, user=admin, status=400)
-        assert users[0]['email'].lower().strip() in resp['description']['existing_emails']
+        assert users[0]['email'].lower() in resp['description']['existing_emails']
         del users[0]
         assert User.objects.count() == pre_invite_user_count, 'No accounts should be created if some user is invalid'
 
@@ -563,14 +560,15 @@ class UserAPITest(TestCase):
         admin = factory.Admin()
         pre_invite_user_count = User.objects.count()
         pre_invite_teacher_count = User.objects.filter(is_teacher=True).count()
-        # Trailing whitespace is on purpose.
-        users = [
-            {
-                'full_name': f'User Full Name {i}   ',
-                'username': f'user{i}username   ',
-                'email': f'user{i}mail@ejournal.app   ',
-            } for i in range(3)
-        ]
+        users = [{
+            'full_name': user.full_name,
+            'username': user.username,
+            'email': user.email,
+        } for user in [factory.Student.build() for _ in range(3)]]
+
+        users[-1]['full_name'] = users[-1]['full_name'] + '   '
+        users[-1]['username'] = users[-1]['username'] + '   '
+        users[-1]['email'] = users[-1]['email'] + '   '
 
         resp = api.post(self, 'users/invite_users', params={'users': users}, user=admin)
         assert 'Successfully invited 3 users.' in resp['description']
