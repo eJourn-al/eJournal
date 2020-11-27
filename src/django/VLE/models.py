@@ -1296,7 +1296,7 @@ class Assignment(CreateUpdateModel):
         self.connect_assignment_participations_to_journals(aps_without_journal)
 
         # Generate new assignment notification for all users already in course
-        generate_new_assignment_notifications([
+        generate_new_assignment_notifications.delay([
             ap.pk for ap in AssignmentParticipation.objects.filter(assignment=self).exclude(user=self.author)
         ])
 
