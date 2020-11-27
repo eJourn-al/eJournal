@@ -1454,3 +1454,18 @@ class AssignmentAPITest(TestCase):
         # User is required context for any serializer which inherits AssignmentSerializer
         with self.assertRaises(VLEProgrammingError):
             SmallAssignmentSerializer(assignment).data
+
+    def test_bulk_create_aps(self):
+        assignment = factory.Assignment()
+        factory.ProgressPresetNode(format=assignment.format)
+        aps = [
+            AssignmentParticipation(
+                assignment=assignment,
+                user=factory.Participation().user,
+            )
+            for _ in range(10)
+        ]
+        aps = AssignmentParticipation.objects.bulk_create(aps)
+        for ap in aps:
+            assert ap.journal, 'journals should be created'
+            assert Node.objects.filter(journal=ap.journal).exists(), 'nodes should be created inside journal'
