@@ -566,6 +566,7 @@ class UserAPITest(TestCase):
             'email': user.email,
         } for user in [factory.Student.build() for _ in range(3)]]
 
+        # Add excess whitespace to some user details.
         users[-1]['full_name'] = users[-1]['full_name'] + '   '
         users[-1]['username'] = users[-1]['username'] + '   '
         users[-1]['email'] = users[-1]['email'] + '   '
