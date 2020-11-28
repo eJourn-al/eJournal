@@ -13,19 +13,19 @@
         >
             <b-thead>
                 <b-tr class="d-flex">
-                    <b-th class="col-3">
+                    <b-th class="col-3 truncate-content">
                         Name
                     </b-th>
-                    <b-th class="col-3">
+                    <b-th class="col-3 truncate-content">
                         Username
                     </b-th>
-                    <b-th class="col-3">
+                    <b-th class="col-3 truncate-content">
                         Email
                     </b-th>
-                    <b-th class="col-1">
+                    <b-th class="col-1 truncate-content">
                         Teacher
                     </b-th>
-                    <b-th class="col-1">
+                    <b-th class="col-1 truncate-content">
                         Active
                     </b-th>
                     <b-th class="col-1"/>
@@ -178,7 +178,7 @@ export default {
 
 <style lang="sass">
 .user-overview
-    td.truncate-content
+    td.truncate-content, th.truncate-content
         white-space: nowrap
         overflow: hidden
         text-overflow: ellipsis
