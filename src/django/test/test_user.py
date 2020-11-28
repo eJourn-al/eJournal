@@ -578,6 +578,8 @@ class UserAPITest(TestCase):
         assert not User.objects.last().full_name.endswith(' '), 'Whitespace should be removed from full names'
         assert not User.objects.last().username.endswith(' '), 'Whitespace should be removed from usernames'
         assert not User.objects.last().email.endswith(' '), 'Whitespace should be removed from emails'
+        assert all(Preferences.objects.filter(user__username=users[i]['username'].strip()).exists()
+                   for i in range(len(users))), 'All users should have preferences initialised after invitation'
 
         assert len(mail.outbox) == 3, 'Invite email should be sent to all invited users'
         assert all(mail.outbox[i].to == [users[i]['email'].strip()] for i in range(len(users))), \

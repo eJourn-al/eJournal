@@ -202,6 +202,18 @@ def auto_delete_file_on_delete(sender, instance, **kwargs):
 
 
 class UserQuerySet(models.QuerySet):
+    def bulk_create(self, users, *args, **kwargs):
+        with transaction.atomic():
+            users = super().bulk_create(users, *args, **kwargs)
+
+            # Bulk create preferences.
+            preferences = []
+            for user in users:
+                preferences.append(Preferences(user=user))
+            Preferences.objects.bulk_create(preferences)
+
+            return users
+
     def annotate_course_role(self, course):
         """
         Annotates a users course participation role as `role_name` for a specific course.
