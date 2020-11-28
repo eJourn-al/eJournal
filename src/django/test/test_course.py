@@ -74,8 +74,11 @@ class CourseAPITest(TestCase):
         get_resp = api.get(self, 'courses', params={'get_all': True}, user=self.admin)['courses']
         assert len(get_resp) == Course.objects.count(), 'Superuser can get all courses on the instance'
 
-        api.get(self, 'courses', params={'get_all': True}, user=self.teacher1, status=403)
-        api.get(self, 'courses', params={'get_all': True}, user=self.student, status=403)
+        # Get all should work only for superusers.
+        api.get(self, 'courses', params={'get_all': 'true'}, user=self.teacher1, status=403)
+        api.get(self, 'courses', params={'get_all': 'true'}, user=self.student, status=403)
+        api.get(self, 'courses', params={'get_all': 'false'}, user=self.teacher1)
+        api.get(self, 'courses', params={'get_all': 'false'}, user=self.student)
 
         # Get author course
         get_resp = api.get(self, 'courses', params={'pk': self.course1.pk}, user=self.teacher1)
