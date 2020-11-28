@@ -6,9 +6,16 @@ import VLE.models
 
 
 @shared_task
+def generate_new_assignment_notifications(ap_ids):
+    aps = VLE.models.AssignmentParticipation.objects.filter(pk__in=ap_ids)
+    for ap in aps:
+        ap.create_new_assignment_notification()
+
+
+@shared_task
 def generate_new_node_notifications(node_ids):
-    for node_id in node_ids:
-        node = VLE.models.Node.objects.get(pk=node_id)
+    nodes = VLE.models.Node.objects.filter(pk__in=node_ids)
+    for node in nodes:
         for author in node.journal.authors.all():
             if author.user.can_view(node.journal):
                 VLE.models.Notification.objects.create(
