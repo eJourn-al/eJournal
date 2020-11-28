@@ -59,7 +59,7 @@
 
             <b-button
                 v-if="!storeLtiID"
-                class="add-button float-right"
+                class="green-button float-right"
                 @click="saveUserdata"
             >
                 <icon name="save"/>

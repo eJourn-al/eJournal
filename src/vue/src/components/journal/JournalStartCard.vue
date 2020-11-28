@@ -13,14 +13,14 @@
         <hr class="full-width"/>
         <span
             v-if="assignment.unlock_date && new Date(assignment.unlock_date) > new Date()"
-            class="text-grey text-condensed"
+            class="text-grey"
         >
             This assignment is locked and will be made available later<br/>
             Unlock date: {{ $root.beautifyDate(assignment.unlock_date) }}
         </span>
         <span
             v-else
-            class="text-grey text-condensed"
+            class="text-grey"
         >
             <span v-if="assignment.due_date">
                 <span v-if="new Date() > new Date(assignment.due_date) && !assignment.lock_date">

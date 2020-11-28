@@ -15,7 +15,7 @@
             </p>
 
             <b-button
-                class="add-button float-right"
+                class="green-button float-right"
                 @click="showModal('createAssignmentRef')"
             >
                 <icon name="plus-square"/>
@@ -31,7 +31,7 @@
             </p>
             <b-button
                 v-b-modal="'lti-assignment-import-modal'"
-                class="change-button float-right"
+                class="orange-button float-right"
             >
                 <icon name="file-import"/>
                 Import existing assignment
@@ -48,7 +48,7 @@
                 working on their existing journals related to this assignment.
             </p>
             <b-button
-                class="change-button float-right"
+                class="orange-button float-right"
                 @click="showModal('linkAssignmentRef')"
             >
                 <icon name="link"/>

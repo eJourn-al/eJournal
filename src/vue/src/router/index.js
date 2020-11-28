@@ -4,6 +4,7 @@ import { detect as detectBrowser } from 'detect-browser'
 import store from '@/store/index.js'
 import routerConstraints from '@/utils/constants/router_constraints.js'
 import Home from '@/views/Home.vue'
+import AdminPanel from '@/views/AdminPanel.vue'
 import Journal from '@/views/Journal.vue'
 import Assignment from '@/views/Assignment.vue'
 import Course from '@/views/Course.vue'
@@ -25,13 +26,17 @@ const router = new Router({
         name: 'Home',
         component: Home,
     }, {
+        path: '/AdminPanel',
+        name: 'AdminPanel',
+        component: AdminPanel,
+    }, {
         path: '/Login',
         name: 'Login',
         component: Login,
     }, {
-        path: '/PasswordRecovery/:username/:recoveryToken',
-        name: 'PasswordRecovery',
-        component: () => import(/* webpackChunkName: 'password-recovery' */ '@/views/PasswordRecovery.vue'),
+        path: '/SetPassword/:username/:token',
+        name: 'SetPassword',
+        component: () => import(/* webpackChunkName: 'password-recovery' */ '@/views/SetPassword.vue'),
         props: true,
     }, {
         path: '/EmailVerification/:username/:token',
@@ -190,6 +195,9 @@ router.beforeEach((to, from, next) => {
     }
 
     if (loggedIn && routerConstraints.UNAVAILABLE_WHEN_LOGGED_IN.has(to.name)) {
+        next({ name: 'Home' })
+    } else if (loggedIn && to.name === 'AdminPanel' && !store.getters['user/isSuperuser']) {
+        router.app.$toasted.error('You are not allowed to access that page.')
         next({ name: 'Home' })
     } else if (!loggedIn && !routerConstraints.PERMISSIONLESS_CONTENT.has(to.name)) {
         store.dispatch('user/validateToken')

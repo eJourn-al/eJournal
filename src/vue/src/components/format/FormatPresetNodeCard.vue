@@ -119,7 +119,7 @@
                 </b-form-select>
                 <b-button
                     v-if="showTemplatePreview"
-                    class="multi-form delete-button flex-shrink-0"
+                    class="multi-form red-button flex-shrink-0"
                     @click="showTemplatePreview = false"
                 >
                     <icon name="eye-slash"/>
@@ -127,7 +127,7 @@
                 </b-button>
                 <b-button
                     v-if="!showTemplatePreview"
-                    class="multi-form add-button flex-shrink-0"
+                    class="multi-form green-button flex-shrink-0"
                     @click="showTemplatePreview = true"
                 >
                     <icon name="eye"/>
@@ -194,7 +194,7 @@
 
         <b-button
             v-if="newPreset"
-            class="add-button float-right"
+            class="green-button float-right"
             @click.prevent="$emit('add-preset')"
         >
             <icon name="plus"/>
@@ -202,7 +202,7 @@
         </b-button>
         <b-button
             v-else
-            class="delete-button float-right"
+            class="red-button float-right"
             @click.prevent="emitDeletePreset"
         >
             <icon name="trash"/>

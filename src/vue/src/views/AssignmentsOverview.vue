@@ -24,7 +24,7 @@
             </span>
         </div>
 
-        <bread-crumb :currentPage="'Assignments'"/>
+        <bread-crumb/>
 
         <input
             v-model="searchValue"
@@ -90,10 +90,11 @@
             </div>
             <main-card
                 v-if="computedAssignments.length === 0"
-                line1="No assignments found"
-                line2="You currently do not participate in any assignments."
-                class="no-hover border-dark-grey"
-            />
+                text="No assignments found"
+                class="no-hover"
+            >
+                You currently do not participate in any assignments.
+            </main-card>
         </load-wrapper>
     </content-single-column>
 </template>

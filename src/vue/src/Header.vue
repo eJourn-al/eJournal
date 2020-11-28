@@ -58,12 +58,28 @@
         >
             <b-navbar-nav class="mr-auto">
                 <b-nav-item :to="{ name : 'Home' }">
-                    <icon name="home"/>
+                    <icon
+                        name="home"
+                        class="shift-up-2"
+                    />
                     Courses
                 </b-nav-item>
                 <b-nav-item :to="{ name : 'AssignmentsOverview' }">
-                    <icon name="edit"/>
+                    <icon
+                        name="edit"
+                        class="shift-up-2"
+                    />
                     Assignments
+                </b-nav-item>
+                <b-nav-item
+                    v-if="$store.getters['user/isSuperuser']"
+                    :to="{ name : 'AdminPanel' }"
+                >
+                    <icon
+                        name="user-shield"
+                        class="shift-up-2"
+                    />
+                    Admin Panel
                 </b-nav-item>
             </b-navbar-nav>
         </b-collapse>
@@ -144,9 +160,8 @@
                     class="profile-picture-container bg-white d-flex justify-content-center align-items-center"
                 >
                     <icon
-                        name="user"
+                        name="ellipsis-v"
                         class="fill-dark-blue"
-                        scale="2"
                     />
                 </div>
                 <b-button
@@ -200,10 +215,7 @@ export default {
 #header
     background-color: $theme-dark-blue
     color: white
-    font-family: 'Roboto Condensed', sans-serif
-    font-size: 1.3em
-    height: 70px
-    border-radius: 0px 0px 5px 5px !important
+    height: $header-height
     .nav-link
         > svg
             fill: grey !important
@@ -216,7 +228,7 @@ export default {
                 fill: $theme-orange !important
     .brand-name
         img
-            height: 30px
+            height: 25px
     .navbar-toggler
         .collapse-icon
             fill: white !important
@@ -240,57 +252,49 @@ export default {
     [aria-expanded="true"] .nav-collapse__icon--close
         display: block
     @include md-max
-        min-height: 70px
+        min-height: $header-height
         height: auto
 
-#nav-dropdown-options
-    .profile-picture-container
-        border-radius: 50% !important
-        width: 50px
-        height: 50px
-        @include md-max
+    #nav-dropdown-options
+        .profile-picture-container
+            float: right
+            border-radius: 50% !important
+            width: 35px
+            height: 35px
+        a
+            padding: 0px !important
+        a.btn
+            padding: 0.375rem 0.75rem !important
+            min-width: 100%
+            width: auto
+            justify-content: left
+        @include sm-max
             position: absolute
-            top: 10px
-            right: 10px
-    a
-        padding: 0px !important
-    a.btn
-        padding: 0.375rem 0.75rem !important
-        width: 100%
-    @include md-max
-        position: absolute
-        top: 0px
-        right: 0px
-        width: auto
+            top: -65px
+            right: 15px
+            margin-top: 75px
 
-        a.nav-link
-            text-align: right !important
+    .dropdown-menu
+        @extend .theme-shadow
+        float: right
+        background: $theme-dark-blue !important
+        border: none !important
+        border-radius: 0px 0px 5px 5px !important
+        padding: 10px 5px 5px 5px !important
+        @include sm-max
+            padding-top: 60px !important
 
-.dropdown-menu
-    @extend .theme-shadow
-    background: $theme-dark-blue !important
-    border: none !important
-    border-radius: 0px 0px 5px 5px !important
-    padding: 5px 5px
-    margin-top: 10px
-    .btn
-        justify-content: left
-        svg
-            margin-left: 0px
-    @include md-max
-        margin-top: 70px
-
-.spinner
-    background: white
-    color: $theme-dark-blue
-    position: fixed
-    bottom: 0px
-    left: 0px
-    width: 1.5em
-    height: 1.5em
-    border-radius: 0px 5px 0px 0px !important
-    display: flex
-    align-items: center
-    justify-content: center
+    .spinner
+        background: white
+        color: $theme-dark-blue
+        position: fixed
+        bottom: 0px
+        left: 0px
+        width: 1.5em
+        height: 1.5em
+        border-radius: 0px 5px 0px 0px !important
+        display: flex
+        align-items: center
+        justify-content: center
 
 </style>

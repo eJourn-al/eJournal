@@ -14,12 +14,12 @@
                         {
                             value: true,
                             icon: 'check',
-                            class: 'add-button',
+                            class: 'green-button',
                         },
                         {
                             value: false,
                             icon: 'times',
-                            class: 'delete-button',
+                            class: 'red-button',
                         },
                     ]"
                     class="float-right"
@@ -40,12 +40,12 @@
                         {
                             value: true,
                             icon: 'check',
-                            class: 'add-button',
+                            class: 'green-button',
                         },
                         {
                             value: false,
                             icon: 'times',
-                            class: 'delete-button',
+                            class: 'red-button',
                         },
                     ]"
                     class="float-right"

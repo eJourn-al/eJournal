@@ -44,7 +44,7 @@
             />
             <b-button
                 type="submit"
-                class="add-button float-right"
+                class="green-button float-right"
             >
                 <icon name="save"/>
                 Save

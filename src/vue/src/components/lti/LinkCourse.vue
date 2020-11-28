@@ -21,7 +21,7 @@
             <hr/>
 
             <b-button
-                class="change-button float-right"
+                class="orange-button float-right"
                 @click="linkCourse"
             >
                 <icon name="link"/>

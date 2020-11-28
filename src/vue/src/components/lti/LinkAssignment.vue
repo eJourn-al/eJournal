@@ -36,7 +36,7 @@
         <div v-if="selectedAssignment !== null">
             <hr/>
             <b-button
-                class="change-button float-right"
+                class="orange-button float-right"
                 type="submit"
                 @click="linkAssignment"
             >
