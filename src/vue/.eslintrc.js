@@ -58,6 +58,8 @@ module.exports = {
         'no-plusplus': 'off',
         'no-alert': 'off', // allow alerts (we should create a custom component for this)
         'function-paren-newline': 'off',
+        'complexity': ['error', { 'max': 26 }],
+        'max-lines-per-function': ['error', { 'max': 121 }],
     },
     settings: {
         'import/resolver': {
