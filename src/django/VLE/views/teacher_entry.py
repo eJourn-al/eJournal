@@ -192,7 +192,7 @@ class TeacherEntryView(viewsets.ViewSet):
                 )
                 grades.append(grade)
 
-        Node.objects.bulk_create(nodes)
+        Node.objects.bulk_create(nodes, new_node_notifications=False)
         grades = Grade.objects.bulk_create(grades)
 
         # Set the grade field of the newly created entries to the newly created grades.
