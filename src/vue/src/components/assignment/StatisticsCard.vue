@@ -1,7 +1,7 @@
 <template>
     <b-card
         :class="$root.getBorderClass($route.params.cID)"
-        class="no-hover"
+        class="no-hover statistics-card"
     >
         <div class="multi-form">
             <b>Needs marking</b>
@@ -52,3 +52,8 @@ export default {
     props: ['stats'],
 }
 </script>
+
+<style lang="sass">
+.statistics-card .badge
+    font-size: 1em
+</style>

@@ -51,22 +51,22 @@
                             AIG: {
                                 text: 'Approve including grades',
                                 icon: 'check',
-                                class: 'add-button',
+                                class: 'green-button',
                             },
                             AEG: {
                                 text: 'Approve excluding grades',
                                 icon: 'check',
-                                class: 'add-button',
+                                class: 'green-button',
                             },
                             AWGZ: {
                                 text: 'Approve with grades zeroed',
                                 icon: 'check',
-                                class: 'change-button',
+                                class: 'orange-button',
                             },
                             DEC: {
                                 text: 'Decline',
                                 icon: 'times',
-                                class: 'delete-button',
+                                class: 'red-button',
                             },
                         }"
                         class="float-right"
@@ -77,9 +77,7 @@
                 </div>
 
                 <div v-else>
-                    <h4 class="theme-h4">
-                        No outstanding journal import requests.
-                    </h4>
+                    <b>No outstanding journal import requests.</b>
                 </div>
             </load-wrapper>
         </b-card>

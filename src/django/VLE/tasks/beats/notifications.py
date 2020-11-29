@@ -238,7 +238,7 @@ def send_digest_notifications():
         email = EmailMultiAlternatives(
             subject='Recent notification digest - eJournal',
             body=text_content,
-            from_email='eJournal | Noreply<noreply@{}>'.format(settings.EMAIL_SENDER_DOMAIN),
+            from_email=settings.EMAILS.noreply.sender,
             headers={'Content-Type': 'text/plain'},
             to=[user.email]
         )

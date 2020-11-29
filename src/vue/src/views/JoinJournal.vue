@@ -23,10 +23,11 @@
             </div>
             <main-card
                 v-else
-                line1="No journals for this assignment"
-                line2="Please ask your teacher to create a journal for you to join."
-                class="no-hover border-dark-grey"
-            />
+                text="No journals for this assignment"
+                class="no-hover"
+            >
+                Please ask your teacher to create a journal for you to join.
+            </main-card>
         </load-wrapper>
     </content-columns>
 </template>

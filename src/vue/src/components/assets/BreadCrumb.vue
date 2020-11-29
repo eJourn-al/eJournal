@@ -7,52 +7,46 @@
 
 <template>
     <div class="breadcrumb-container">
-        <div>
-            <div v-if="crumbs.length > 1">
-                <h4 class="theme-h4">
-                    <span>
-                        <span
-                            v-for="crumb in crumbs.slice(0, -1)"
-                            :key="crumb.route"
-                        >
-                            <b-link
-                                :to="{ name: crumb.routeName }"
-                                tag="b-button"
-                            >
-                                {{ crumb.displayName }}
-                            </b-link> /
-                        </span>
-                        <span>
-                            <b-link
-                                :to="{ name: crumbs[crumbs.length-2].routeName }"
-                                tag="b-button"
-                            >
-                                <icon
-                                    name="level-up-alt"
-                                    class="shift-up-2 action-icon"
-                                />
-                            </b-link>
-                        </span>
-                    </span>
-                </h4>
-                <br/>
-            </div>
-            <h1 class="theme-h1">
-                <span class="title">
-                    {{ crumbs.slice(-1)[0].displayName }}
-                    <slot/>
-                </span>
-                <b-button
-                    v-if="canEdit()"
-                    class="change-button edit-button"
-                    @click="editClick()"
+        <h4
+            v-if="crumbs.length > 1"
+            class="theme-h4"
+        >
+            <span>
+                <b-link
+                    v-for="crumb in crumbs.slice(0, -1)"
+                    :key="crumb.route"
+                    :to="{ name: crumb.routeName }"
+                    class="crumb"
                 >
-                    <icon name="edit"/>
-                    Edit
-                </b-button>
-            </h1>
-        </div>
-        <version-alert/>
+                    {{ crumb.displayName }}
+                </b-link>
+                <b-link :to="{ name: crumbs[crumbs.length-2].routeName }">
+                    <icon
+                        name="level-up-alt"
+                        class="shift-up-2 cursor-pointer"
+                    />
+                </b-link>
+            </span>
+        </h4>
+        <h1
+            v-if="crumbs.length > 0 && crumbs.slice(-1)[0].displayName"
+            class="theme-h1"
+        >
+            <span class="title">
+                {{ crumbs.slice(-1)[0].displayName }}
+                <slot/>
+            </span>
+            <b-button
+                v-if="canEdit()"
+                class="orange-button edit-button"
+                pill
+                @click="editClick()"
+            >
+                <icon name="edit"/>
+                Edit
+            </b-button>
+        </h1>
+        <version-alert class="d-block"/>
     </div>
 </template>
 
@@ -77,6 +71,7 @@ export default {
                     Home: 'Courses',
                     FormatEdit: 'Assignment Editor',
                     CourseEdit: 'Course Editor',
+                    AdminPanel: 'Admin Panel',
                     AssignmentsOverview: 'Assignments',
                     UserRoleConfiguration: 'Permission Manager',
                     JoinJournal: 'Join a Journal',
@@ -157,8 +152,7 @@ export default {
         canEdit () {
             const pageName = this.$route.name
 
-            if ((pageName === 'Home' && this.$hasPermission('can_edit_institute_details'))
-                || (pageName === 'Course' && this.$hasPermission('can_edit_course_details'))
+            if ((pageName === 'Course' && this.$hasPermission('can_edit_course_details'))
                 || (pageName === 'Assignment' && this.$hasPermission('can_edit_assignment'))) {
                 return true
             }
@@ -172,12 +166,13 @@ export default {
 <style lang="sass">
 .breadcrumb-container
     padding-right: 10px
+    .crumb:after
+        content: ' / '
     .alert
         margin-right: -10px
     .title
         margin-right: 10px
     .edit-button
-        font-size: 0.667em
+        font-size: 0.7em !important
         vertical-align: middle
-        border-radius: 2em !important
 </style>

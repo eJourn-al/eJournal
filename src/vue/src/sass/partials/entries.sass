@@ -1,4 +1,5 @@
 .grade-section
+    @extend .theme-shadow
     border-radius: 5px !important
     border: 1px solid $theme-dark-grey
     min-width: 3em
@@ -10,22 +11,20 @@
     &.grade
         line-height: 3em
         font-weight: bold
-    .theme-input, .theme-input:hover, .theme-input:focus, .btn, .btn:hover, .btn:focus
-        box-shadow: none
+    .theme-input, .theme-input:hover, .theme-input:focus, .btn, .btn:hover:not(.no-hover), .btn:focus
+        box-shadow: none !important
     .theme-input, .theme-input:hover, .theme-input:focus
         width: 3em
         display: inline-block
         border: none !important
         margin: 2px 0px 0px 20px
         padding: 0px !important
-        font-family: 'Roboto', sans-serif
         font-weight: bold
         font-size: 1.5em
         text-align: center
     .grade-history-button
         border-width: 0px 0px 0px 1px !important
         border-radius: 0px 5px 0px 0px !important
-        box-shadow: none
     .dropdown-button
         display: block
         width: 100%
@@ -43,7 +42,6 @@ hr.full-width
 .timestamp
     text-align: right
     float: right
-    font-family: 'Roboto Condensed', sans-serif
     &, span
         color: grey
     svg

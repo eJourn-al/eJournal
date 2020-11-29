@@ -20,7 +20,7 @@
         </div>
         <b-button
             v-if="attachNew"
-            class="btn change-button mr-2"
+            class="btn orange-button mr-2"
             @click="$refs['file-upload'].openFileUpload()"
         >
             <icon name="paperclip"/>

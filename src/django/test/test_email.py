@@ -35,10 +35,10 @@ class EmailAPITest(TestCase):
         assert len(mail.outbox) == 1, 'An actual mail should be sent'
         assert mail.outbox[0].to == [self.student.email], 'Email should be sent to the mail adress of the student'
         assert self.student.full_name in mail.outbox[0].body, 'Full name is expected to be used to increase delivery'
-        assert '{}/PasswordRecovery/{}/'.format(settings.BASELINK, self.student.username) in \
+        assert '{}/SetPassword/{}/'.format(settings.BASELINK, self.student.username) in \
             mail.outbox[0].alternatives[0][0], 'Recovery token link should be in email'
 
-        token = re.search(r'PasswordRecovery\/(.*)\/([^"]*)', mail.outbox[0].alternatives[0][0]).group(0).split('/')[-1]
+        token = re.search(r'SetPassword\/(.*)\/([^"]*)', mail.outbox[0].alternatives[0][0]).group(0).split('/')[-1]
         assert PasswordResetTokenGenerator().check_token(self.student, token), 'Token should be valid'
 
         resp = api.post(self, 'forgot_password', params={'identifier': self.student.email})
@@ -58,7 +58,7 @@ class EmailAPITest(TestCase):
             self, 'recover_password',
             params={
                 'username': self.student.username,
-                'recovery_token': 'invalid_token',
+                'token': 'invalid_token',
                 'new_password': self.valid_pass},
             status=400)
         # Test invalid password
@@ -67,7 +67,7 @@ class EmailAPITest(TestCase):
             self, 'recover_password',
             params={
                 'username': self.student.username,
-                'recovery_token': token,
+                'token': token,
                 'new_password': 'new_invalid_pass'},
             status=400)
         # Test invalid username
@@ -75,7 +75,7 @@ class EmailAPITest(TestCase):
             self, 'recover_password',
             params={
                 'username': factory.Student().username,
-                'recovery_token': token,
+                'token': token,
                 'new_password': self.valid_pass},
             status=400)
 
@@ -84,8 +84,27 @@ class EmailAPITest(TestCase):
             self, 'recover_password',
             params={
                 'username': self.student.username,
-                'recovery_token': token,
+                'token': token,
                 'new_password': self.valid_pass})
+
+        self.student.is_active = False
+        self.student.verified_email = False
+        self.student.set_unusable_password()
+        self.student.save()
+
+        # Test whether password recovery makes user active (for invitations).
+        token = PasswordResetTokenGenerator().make_token(self.student)
+        api.post(
+            self, 'recover_password',
+            params={
+                'username': self.student.username,
+                'token': token,
+                'new_password': self.valid_pass})
+
+        self.student.refresh_from_db()
+        assert self.student.is_active
+        assert self.student.check_password(self.valid_pass)
+        assert self.student.verified_email
 
     def test_verify_email(self):
         api.post(self, 'verify_email', status=400)
@@ -142,21 +161,50 @@ class EmailAPITest(TestCase):
         resp = api.post(self, 'request_email_verification', user=self.is_test_student, status=200)
         assert 'email was sent' in resp['description']
 
+    @override_settings(EMAIL_BACKEND='anymail.backends.test.EmailBackend', CELERY_TASK_ALWAYS_EAGER=True)
     def test_send_feedback(self):
         # needs to be logged in
         api.post(self, 'send_feedback', status=401)
+        assert len(mail.outbox) == 0
         # cannot send without valid email
         api.post(self, 'send_feedback', user=self.not_verified, status=403)
+        assert len(mail.outbox) == 0
         # Require params
         api.post(self, 'send_feedback', user=self.student, status=400)
+        assert len(mail.outbox) == 0
         api.post(self, 'send_feedback',
                  params={
                      'topic': 'topic',
-                     'feedback': 'feedback',
+                     'feedback': 'actual_feedback_content_here',
                      'ftype': 'ftype',
-                     'user_agent': 'user_agent',
-                     'url': 'url'
+                     'user_agent': 'someBrowser',
+                     'url': 'current_user_url.com'
                  }, user=self.student)
+
+        assert len(mail.outbox) == 2, 'Two emails should be sent: one to user and another to developers'
+        assert len(mail.outbox[0].to) == 1 and mail.outbox[0].to[0] == self.student.email, \
+            'Confirmation email should be sent to user who gave the feedback'
+        assert len(mail.outbox[0].bcc) == 1 and mail.outbox[0].bcc[0] == f'support@{settings.EMAIL_SENDER_DOMAIN}', \
+            'Confirmation email should be also sent to developers via BCC'
+        assert mail.outbox[0].subject == 'Re: topic', 'Feedback topic should be in confirmation email title'
+        assert 'actual_feedback_content_here' in mail.outbox[0].body, \
+            'Feedback should be repeated in confirmation mail'
+
+        assert len(mail.outbox[1].to) == 1 and mail.outbox[1].to[0] == f'support@{settings.EMAIL_SENDER_DOMAIN}', \
+            'Additional support info should be sent to developers'
+        assert mail.outbox[1].subject == 'Additional support info: topic', \
+            'Feedback topic should be in developer support email title'
+        assert 'actual_feedback_content_here' in mail.outbox[1].body, \
+            'Feedback should be repeated in developer support email'
+        assert 'ftype' in mail.outbox[1].body, \
+            'Feedback type should be in developer support email'
+        assert 'someBrowser' in mail.outbox[1].body, \
+            'User agent should be in developer support email'
+        assert 'current_user_url.com' in mail.outbox[1].body, \
+            'Current URL should be in developer support email'
+
+        assert all(mail.outbox[i].from_email == settings.EMAILS.support.sender for i in range(len(mail.outbox))), \
+            'All emails should be sent with eJournal | Support as the sender'
 
     def test_deadline_email_standalone(self):
         assignment = factory.Assignment()

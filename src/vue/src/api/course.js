@@ -21,8 +21,8 @@ export default {
             .then(response => response.data)
     },
 
-    getUserEnrolled (connArgs = auth.DEFAULT_CONN_ARGS) {
-        return auth.get('courses', null, connArgs)
+    list (data = { get_all: false }, connArgs = auth.DEFAULT_CONN_ARGS) {
+        return auth.get('courses', data, connArgs)
             .then(response => response.data.courses)
     },
 

@@ -1,47 +1,56 @@
 <template>
-    <content-single-table-column>
+    <wide-content>
         <bread-crumb/>
         <b-card class="no-hover">
-            <table class="table table-bordered table-hover">
-                <thead>
-                    <tr>
-                        <th/>
-                        <th
+            <b-alert
+                v-if="isChanged"
+                show
+            >
+                <b>Note</b>: changes are not saved.
+            </b-alert>
+            <b-table-simple
+                striped
+                responsive
+                class="role-config-table"
+            >
+                <b-thead>
+                    <b-tr>
+                        <b-th/>
+                        <b-th
                             v-for="role in roles"
                             :key="`th-${role}`"
                         >
-                            <b-button
+                            {{ role }}
+                            <icon
                                 v-if="!undeleteableRoles.includes(role)"
-                                class="delete-button"
-                                @click="deleteRole(role)"
-                            >
-                                {{ role }}
-                                <icon name="trash"/>
-                            </b-button>
-                            <span v-else>
-                                {{ role }}
-                            </span>
-                        </th>
-                        <th>
-                            <b-button
-                                class="add-button"
+                                name="trash"
+                                class="trash-icon"
+                                @click.native="deleteRole(role)"
+                            />
+                        </b-th>
+                        <b-th>
+                            <span
+                                class="darken-on-hover text-grey cursor-pointer unselectable"
                                 @click="modalShow = !modalShow"
                             >
-                                <icon name="plus-square"/>
+                                <icon
+                                    name="plus"
+                                    class="shift-up-3"
+                                />
                                 Add Role
-                            </b-button>
-                        </th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr
+                            </span>
+                        </b-th>
+                    </b-tr>
+                </b-thead>
+                <b-tbody>
+                    <b-tr
                         v-for="permission in permissions"
                         :key="permission"
                     >
-                        <td class="permission-column">
+                        <b-td class="permission-column">
                             <b>{{ formatPermissionString(permission) }}</b>
-                        </td>
-                        <td
+                        </b-td>
+                        <b-td
                             v-for="role in roles"
                             :key="`${role}-${permission}`"
                         >
@@ -50,16 +59,21 @@
                                 :class="{ 'input-disabled': essentialPermission(role, permission) }"
                                 inline
                             />
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
+                        </b-td>
+                        <b-td>
+                            <b-form-checkbox
+                                class="input-disabled"
+                            />
+                        </b-td>
+                    </b-tr>
+                </b-tbody>
+            </b-table-simple>
         </b-card>
 
         <transition name="fade">
             <b-button
                 v-if="isChanged"
-                class="add-button fab"
+                class="green-button fab"
                 @click="update()"
             >
                 <icon
@@ -87,14 +101,14 @@
                     @keyup.enter.native="addRole"
                 />
                 <b-button
-                    class="delete-button float-left"
+                    class="red-button float-left"
                     @click="modalShow = false"
                 >
                     <icon name="ban"/>
                     Cancel
                 </b-button>
                 <b-button
-                    class="add-button float-right"
+                    class="green-button float-right"
                     @click="addRole"
                 >
                     <icon name="user-plus"/>
@@ -102,20 +116,21 @@
                 </b-button>
             </b-card>
         </b-modal>
-    </content-single-table-column>
+    </wide-content>
 </template>
 
 <script>
-import breadCrumb from '@/components/assets/BreadCrumb.vue'
-import contentSingleTableColumn from '@/components/columns/ContentSingleTableColumn.vue'
+import BreadCrumb from '@/components/assets/BreadCrumb.vue'
+import WideContent from '@/components/columns/WideContent.vue'
+
 import roleAPI from '@/api/role.js'
 import commonAPI from '@/api/common.js'
 
 export default {
     name: 'UserRoleConfiguration',
     components: {
-        contentSingleTableColumn,
-        breadCrumb,
+        WideContent,
+        BreadCrumb,
     },
     props: {
         cID: {
@@ -286,16 +301,15 @@ export default {
 </script>
 
 <style lang="sass">
-.select-center
-    text-align: center
-.table th
-    text-align: center
-.table td
-    text-align: center
-    align-items: center
-    .custom-checkbox
-        margin: 0px
-        padding-left: 2em
-.permission-column
-    text-align: left !important
+.role-config-table
+    th
+        text-align: center
+    td
+        text-align: center
+        align-items: center
+        .custom-checkbox
+            margin: 0px
+            padding-left: 2em
+    .permission-column
+        text-align: left !important
 </style>

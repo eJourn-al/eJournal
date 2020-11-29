@@ -1,3 +1,7 @@
+@import url('https://fonts.googleapis.com/css?family=Roboto:400,700')
+
+$font-family-sans-serif: 'Roboto', sans-serif
+
 .theme-h1
     font-weight: bold
     font-size: 1.8em
@@ -33,17 +37,19 @@
 .theme-h4
     font-weight: bold
     font-size: 1.2em
-    display: inline-block
+    display: block
     margin-bottom: 0px
     max-width: 100%
     word-wrap: break-word
     margin-bottom: 0.4em
     a
         color: $theme-dark-blue
+    a:hover, svg:hover
+        color: grey
     span
+        background-color: white
         padding: 0.2em 0.6em
         border-radius: 1.4em !important
-        background-color: white
         color: $theme-dark-blue
         box-decoration-break: clone
         line-height: 1.6em
@@ -55,12 +61,8 @@
     margin-bottom: 0px
 
 .field-heading
-    font-size: 20px
-    line-height: 25px
     margin-bottom: 5px
+    font-size: 1em
     &.required::after
         content: " *"
         color: $theme-red
-
-.text-condensed
-    font-family: 'Roboto Condensed'

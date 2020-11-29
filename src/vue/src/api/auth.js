@@ -152,7 +152,7 @@ export default {
             .then(response => response.data.user)
     },
 
-    /* Change password. */
+    /* Change password (old password is known by user). */
     changePassword (newPassword, oldPassword, connArgs = DEFAULT_CONN_ARGS) {
         return this.update('users/password', { new_password: newPassword, old_password: oldPassword }, connArgs)
     },
@@ -163,11 +163,11 @@ export default {
         return initRequest(connection.conn.post, improveUrl('forgot_password'), { identifier }, connArgs)
     },
 
-    /* Recover password */
-    recoverPassword (username, recoveryToken, newPassword, connArgs = DEFAULT_CONN_ARGS) {
+    /* Recover password (old password is not known by user, token is used). */
+    setPassword (username, token, newPassword, connArgs = DEFAULT_CONN_ARGS) {
         return initRequest(connection.conn.post, improveUrl('recover_password'), {
             username,
-            recovery_token: recoveryToken,
+            token,
             new_password: newPassword,
         }, connArgs)
     },

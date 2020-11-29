@@ -69,7 +69,7 @@
             All journals
         </b-button>
         <b-button
-            class="add-button float-right"
+            class="green-button float-right"
             :class="{ 'input-disabled': exportInProgress || !someExportOptionSelected }"
             @click="exportAssignmentSpreadsheet()"
         >

@@ -43,6 +43,7 @@ import 'vue-awesome/icons/users'
 import 'vue-awesome/icons/user-friends'
 import 'vue-awesome/icons/user-times'
 import 'vue-awesome/icons/user-plus'
+import 'vue-awesome/icons/user-shield'
 import 'vue-awesome/icons/edit'
 import 'vue-awesome/icons/undo'
 import 'vue-awesome/icons/sign-in-alt'
@@ -85,6 +86,7 @@ import 'vue-awesome/icons/play'
 import 'vue-awesome/icons/file-export'
 import 'vue-awesome/icons/file-import'
 import 'vue-awesome/icons/filter'
+import 'vue-awesome/icons/ellipsis-v'
 
 /* eslint-enable import/extensions */
 

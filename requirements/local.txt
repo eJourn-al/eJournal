@@ -3,6 +3,7 @@
 coverage==5.0.3 # Tests
 Faker==2.0.2 # Tests
 flake8==3.7.8 # Tests
+flake8-functions==0.0.4 # Linter, max function length and argument number
 mccabe==0.6.1 # Tests, plugin for flake8
 isort==4.3.21 # Organization
 pyflakes==2.1.1 # Tests

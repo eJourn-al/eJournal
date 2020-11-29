@@ -92,6 +92,7 @@ export default {
 .journal-details
     .journal-image
         @extend .theme-shadow
+        border: 2px solid $theme-dark-grey
         position: absolute
         width: 70px
         height: 70px

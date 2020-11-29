@@ -16,7 +16,7 @@
             />
             <b-button
                 v-if="selectedTeacherEntry"
-                class="change-button mr-2 flex-shrink-0 mb-2"
+                class="red-button mr-2 flex-shrink-0 mb-2"
                 @click="toggleUpdateTitle"
             >
                 <icon name="edit"/>
@@ -24,7 +24,7 @@
             </b-button>
             <b-button
                 v-if="selectedTeacherEntry && showTeacherEntryContent"
-                class="delete-button flex-shrink-0 mb-2"
+                class="red-button flex-shrink-0 mb-2"
                 @click="showTeacherEntryContent = false"
             >
                 <icon name="eye-slash"/>
@@ -32,7 +32,7 @@
             </b-button>
             <b-button
                 v-else-if="selectedTeacherEntry"
-                class="add-button flex-shrink-0 mb-2"
+                class="green-button flex-shrink-0 mb-2"
                 @click="showTeacherEntryContent = true"
             >
                 <icon name="eye"/>
@@ -118,13 +118,13 @@
                         v-for="(journal, i) in selectedJournals"
                         :key="journal.journal_id"
                     >
-                        <b-td>
+                        <b-td class="align-middle">
                             {{ journal.name }}
                         </b-td>
-                        <b-td>
+                        <b-td class="align-middle">
                             {{ journal.usernames }}
                         </b-td>
-                        <b-td>
+                        <b-td class="align-middle">
                             <b-form-input
                                 v-model="journal.grade"
                                 type="number"
@@ -137,7 +137,7 @@
                         <b-td>
                             <b-form-checkbox v-model="journal.published"/>
                         </b-td>
-                        <b-td>
+                        <b-td class="align-middle">
                             <icon
                                 name="trash"
                                 class="trash-icon"
@@ -149,7 +149,7 @@
             </b-table-simple>
 
             <b-button
-                class="delete-button float-left clearfix mr-2 mt-2"
+                class="red-button float-left clearfix mr-2 mt-2"
                 :class="{ 'input-disabled': requestInFlight }"
                 @click="deleteTeacherEntry"
             >
@@ -157,7 +157,7 @@
                 Delete
             </b-button>
             <b-button
-                class="add-button float-right clearfix ml-2 mt-2"
+                class="green-button float-right clearfix ml-2 mt-2"
                 :class="{ 'input-disabled': requestInFlight }"
                 @click="saveTeacherEntry"
             >

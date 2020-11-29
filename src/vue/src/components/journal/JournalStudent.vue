@@ -54,9 +54,7 @@
                         v-if="nodes[currentNode] && nodes[currentNode].type == 'a'"
                     >
                         <h4 class="theme-h4 mb-2 d-block">
-                            <span>
-                                New entry
-                            </span>
+                            <span>New entry</span>
                         </h4>
                         <b-form-select
                             v-if="nodes[currentNode].templates.length > 1"
@@ -149,7 +147,7 @@
             <b-button
                 v-if="!loadingNodes"
                 v-b-modal="'journal-import-modal'"
-                class="multi-form change-button full-width"
+                class="multi-form orange-button full-width"
             >
                 <icon name="file-import"/>
                 Import Journal

@@ -42,8 +42,11 @@ test-back:
 test-front:
 	${venv_activate} && npm run lint --prefix ./src/vue
 
-display-coverage:
+display-coverage-plain:
 	${venv_activate} && coverage report -m
+
+display-coverage-html:
+	${venv_activate} && coverage html
 
 test: test-front test-back
 

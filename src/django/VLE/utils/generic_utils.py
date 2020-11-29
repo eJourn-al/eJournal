@@ -13,7 +13,6 @@ from django.db.models import Case, When
 import VLE.factory
 import VLE.models
 import VLE.utils.error_handling
-from VLE.tasks.notifications import generate_new_node_notifications
 from VLE.utils import file_handling
 
 
@@ -61,7 +60,10 @@ def required_typed_params(post, *keys):
             if isinstance(post[key], list):
                 result.append([func(elem) for elem in post[key]])
             elif post[key] is not None:
-                result.append(func(post[key]))
+                if func == bool and post[key] == 'false':
+                    result.append(False)
+                else:
+                    result.append(func(post[key]))
             else:
                 result.append(None)
         except ValueError as err:
@@ -81,7 +83,10 @@ def optional_typed_params(post, *keys):
         if key and key in post and post[key] != '':
             try:
                 if post[key] is not None:
-                    result.append(func(post[key]))
+                    if func == bool and post[key] == 'false':
+                        result.append(False)
+                    else:
+                        result.append(func(post[key]))
                 else:
                     result.append(None)
             except ValueError as err:
@@ -189,14 +194,12 @@ def update_journals(journals, preset):
     journals -- the journals to update.
     preset -- the preset node to add to the journals.
     """
-    nodes = [VLE.models.Node(
+    VLE.models.Node.objects.bulk_create([VLE.models.Node(
         type=preset.type,
         entry=None,
         preset=preset,
         journal=journal
-    ) for journal in journals]
-    nodes = VLE.models.Node.objects.bulk_create(nodes)
-    generate_new_node_notifications.delay([n.pk for n in nodes])
+    ) for journal in journals])
 
 
 def update_presets(user, assignment, presets, new_ids):
