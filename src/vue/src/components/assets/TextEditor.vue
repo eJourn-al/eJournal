@@ -14,10 +14,10 @@
 </template>
 
 <script>
-/* eslint-disable import/extensions */
+/* eslint-disable */
+import tinymce from 'tinymce/tinymce' /* Needs to occur before icons and themes */
 import 'tinymce/icons/default'
 import 'tinymce/themes/silver'
-import tinymce from 'tinymce/tinymce'
 
 /* Only works with basic lists enabled. */
 import 'tinymce/plugins/advlist'
@@ -42,7 +42,7 @@ import 'tinymce/plugins/textpattern'
 /* Table of contents. */
 import 'tinymce/plugins/toc'
 import 'tinymce/plugins/wordcount'
-/* eslint-enable import/extensions */
+/* eslint-enable */
 
 import 'public/tinymce/plugins/placeholder.js'
 
