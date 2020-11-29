@@ -11,7 +11,7 @@ script: bash -c 'source ./venv/bin/activate && isort -rc src/django/ -c && deact
 after_success:
   - codecov
 git:
-  submodules: false
+  submodules: true
 branches:
   only:
     - master
