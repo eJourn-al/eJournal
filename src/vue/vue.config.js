@@ -26,6 +26,10 @@ module.exports = {
                 return options
             })
         }
+
+        if (config.plugins.has('optimize-css')) {
+            config.plugins.delete('optimize-css')
+        }
     },
     configureWebpack: {
         /* Splits all vendors into dedicated chunks */
@@ -71,14 +75,15 @@ module.exports = {
             new webpack.ProvidePlugin({
                 introJs: ['intro.js'],
             }),
-        ].concat(process.env.NODE_ENV === 'production' ?
-            new SentryWebpackPlugin({
-                include: './dist',
-                ignore: ['node_modules', 'webpack.config.js'],
-                release: process.env.RELEASE_VERSION,
-            })
-            : []
-        ),
+        ]
+        // .concat(process.env.NODE_ENV === 'production' ?
+        //     new SentryWebpackPlugin({
+        //         include: './dist',
+        //         ignore: ['node_modules', 'webpack.config.js'],
+        //         release: process.env.RELEASE_VERSION,
+        //     })
+        //     : []
+        // ),
     },
 
     css: {
@@ -88,7 +93,7 @@ module.exports = {
                     @import "~sass/modules/colors.sass"
                     @import "~sass/modules/breakpoints.sass"
                     @import "~sass/modules/dimensions.sass"
-                `
+                `,
             }
         }
     },
