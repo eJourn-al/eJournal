@@ -21,6 +21,7 @@ services:
 addons:
   # NOTE Travis is not compatible with postgres version 10+ (23/11/2018)
   postgresql: "9.6"
+  ssh_known_hosts: github.com
 env:
   global:
     - BASELINK="http://localhost:8080"
