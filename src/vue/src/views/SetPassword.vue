@@ -1,10 +1,17 @@
 <template>
     <content-single-column>
         <h1 class="theme-h1">
-            <span>Password Recovery</span>
+            <span>{{ title }}</span>
         </h1>
         <b-card class="no-hover">
-            <b-form @submit.prevent="recoverPassword()">
+            <h2 class="theme-h2 multi-form">
+                Set a password
+            </h2>
+            {{ instructions }}
+            <b-form
+                class="mt-2"
+                @submit.prevent="setPassword"
+            >
                 <h2 class="theme-h2 field-heading">
                     New password
                     <tooltip
@@ -29,7 +36,7 @@
                     placeholder="Repeat new password"
                 />
                 <b-button
-                    class="float-right multi-form add-button"
+                    class="float-right green-button"
                     type="submit"
                 >
                     <icon name="save"/>
@@ -45,31 +52,56 @@ import contentSingleColumn from '@/components/columns/ContentSingleColumn.vue'
 import tooltip from '@/components/assets/Tooltip.vue'
 
 import authAPI from '@/api/auth.js'
+import instanceAPI from '@/api/instance.js'
 import validation from '@/utils/validation.js'
 
 export default {
-    name: 'PasswordRecovery',
+    name: 'SetPassword',
     components: {
         contentSingleColumn,
         tooltip,
     },
-    props: ['username', 'recoveryToken'],
+    props: ['username', 'token'],
     data () {
         return {
+            instanceName: 'eJournal',
             password: '',
             passwordRepeated: '',
         }
     },
+    computed: {
+        title () {
+            if (this.$route.query.new_user) {
+                return 'Complete registration'
+            }
+            return 'Password recovery'
+        },
+        instructions () {
+            if (this.$route.query.new_user) {
+                return `To complete your registration at ${this.instanceName}, please set a password below.`
+            }
+            return `To continue using ${this.instanceName}, please please set a new password below. `
+        },
+    },
+    created () {
+        instanceAPI.get()
+            .then((instance) => {
+                this.name = instance.name
+            })
+    },
     methods: {
-        recoverPassword () {
+        setPassword () {
             if (validation.validatePassword(this.password, this.passwordRepeated)) {
-                authAPI.recoverPassword(
+                authAPI.setPassword(
                     this.username,
-                    this.recoveryToken,
+                    this.token,
                     this.password,
                     { responseSuccessToast: true },
                 )
-                    .then(() => { this.$router.push({ name: 'Login' }) })
+                    .then(() => {
+                        this.$store.dispatch('user/logout')
+                        this.$router.push({ name: 'Login' })
+                    })
             }
         },
     },

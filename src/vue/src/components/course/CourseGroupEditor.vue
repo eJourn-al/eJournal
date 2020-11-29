@@ -30,7 +30,7 @@
                         required
                     />
                     <b-button
-                        class="add-button float-right"
+                        class="green-button float-right"
                         type="submit"
                     >
                         <icon name="plus-square"/>

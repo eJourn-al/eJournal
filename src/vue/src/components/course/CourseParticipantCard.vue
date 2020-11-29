@@ -44,7 +44,7 @@
                     </b-form-select>
                     <b-button
                         v-if="$hasPermission('can_delete_course_users')"
-                        class="delete-button full-width"
+                        class="red-button full-width"
                         @click.prevent.stop="removeFromCourse()"
                     >
                         <icon name="user-times"/>

@@ -1,7 +1,7 @@
 <template>
     <div>
         <h4 class="theme-h4 mb-2">
-            <span>Manage course members</span>
+            Manage course members
         </h4>
         <div class="d-flex">
             <input

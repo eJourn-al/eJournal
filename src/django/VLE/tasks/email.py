@@ -50,7 +50,7 @@ def send_push_notification(notification_pk):
     email = EmailMultiAlternatives(
         subject='{} in {} - eJournal'.format(notification.title, context),
         body=text_content,
-        from_email='eJournal | Noreply<noreply@{}>'.format(settings.EMAIL_SENDER_DOMAIN),
+        from_email=settings.EMAILS.support.sender,
         headers={'Content-Type': 'text/plain'},
         to=[notification.user.email]
     )
@@ -91,13 +91,47 @@ def send_email_verification_link(user_pk):
     email = EmailMultiAlternatives(
         subject='eJournal email verification',
         body=text_content,
-        from_email='eJournal | Noreply<noreply@{}>'.format(settings.EMAIL_SENDER_DOMAIN),
+        from_email=settings.EMAILS.support.sender,
         headers={'Content-Type': 'text/plain'},
         to=[user.email]
     )
 
     email.attach_alternative(html_content, 'text/html')
     email.send()
+
+
+@shared_task
+def send_invite_emails(user_pks):
+    """Sends an invite link to join the platform to the users email adress."""
+    users = VLE.models.User.objects.filter(pk__in=user_pks)
+    instance_name = VLE.models.Instance.objects.get_or_create(pk=1)[0].name
+    token_generator = PasswordResetTokenGenerator()
+    for user in users:
+        email_data = {}
+        email_data['heading'] = 'Welcome to eJournal!'
+        token = token_generator.make_token(user)
+        email_data['main_content'] = """
+        You have been invited to eJournal by {}. Please click the button below to activate your account.""" \
+            .format(instance_name)
+        email_data['full_name'] = user.full_name
+        email_data['extra_content'] = 'Username: {}'.format(user.username)
+        email_data['button_url'] = '{}/SetPassword/{}/{}?new_user=true'.format(settings.BASELINK, user.username, token)
+        email_data['button_text'] = 'Activate account'
+        email_data['profile_url'] = '{}/Profile'.format(settings.BASELINK)
+
+        html_content = render_to_string('call_to_action.html', {'email_data': email_data})
+        text_content = strip_tags(html_content)
+
+        email = EmailMultiAlternatives(
+            subject='Complete your registration for eJournal at {}'.format(instance_name),
+            body=text_content,
+            from_email=settings.EMAILS.noreply.sender,
+            headers={'Content-Type': 'text/plain'},
+            to=[user.email]
+        )
+
+        email.attach_alternative(html_content, 'text/html')
+        email.send()
 
 
 @shared_task
@@ -114,7 +148,7 @@ def send_password_recovery_link(user_pk):
     request please ignore this email."""
     email_data['full_name'] = user.full_name
     email_data['extra_content'] = 'Token: {}'.format(token)
-    email_data['button_url'] = '{}/PasswordRecovery/{}/{}'.format(settings.BASELINK, user.username, token)
+    email_data['button_url'] = '{}/SetPassword/{}/{}'.format(settings.BASELINK, user.username, token)
     email_data['button_text'] = 'Set New Password'
     email_data['profile_url'] = '{}/Profile'.format(settings.BASELINK)
 
@@ -124,7 +158,7 @@ def send_password_recovery_link(user_pk):
     email = EmailMultiAlternatives(
         subject='eJournal password recovery',
         body=text_content,
-        from_email='eJournal | Noreply<noreply@{}>'.format(settings.EMAIL_SENDER_DOMAIN),
+        from_email=settings.EMAILS.noreply.sender,
         headers={'Content-Type': 'text/plain'},
         to=[user.email]
     )
@@ -154,8 +188,6 @@ def send_email_feedback(user_pk, topic, ftype, feedback, user_agent, url, file_c
     r_html_content = render_to_string('feedback.html', {'email_data': r_email_data})
     r_text_content = strip_tags(r_html_content)
 
-    from_email = 'eJournal | Support<support@{}>'.format(settings.EMAIL_SENDER_DOMAIN)
-
     attachments = []
     if user.feedback_file:
         r_email_data['attachments_added'] = True
@@ -165,18 +197,18 @@ def send_email_feedback(user_pk, topic, ftype, feedback, user_agent, url, file_c
         subject='Re: {}'.format(topic),
         body=r_text_content,
         attachments=attachments,
-        from_email=from_email,
+        from_email=settings.EMAILS.support.sender,
         headers={'Content-Type': 'text/plain'},
         to=[user.email],
-        bcc=['support@{}'.format(settings.EMAIL_SENDER_DOMAIN)],
+        bcc=[settings.EMAILS.support.email],
     )
 
     forward = EmailMultiAlternatives(
         subject='Additional support info: {}'.format(topic),
         body=f_body,
         attachments=attachments,
-        from_email=from_email,
-        to=['support@{}'.format(settings.EMAIL_SENDER_DOMAIN)],
+        from_email=settings.EMAILS.support.sender,
+        to=[settings.EMAILS.support.email],
         headers={'Content-Type': 'text/plain'}
     )
 

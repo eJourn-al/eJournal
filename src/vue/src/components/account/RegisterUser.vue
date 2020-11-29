@@ -69,7 +69,7 @@
                 required
             />
             <b-button
-                class="float-left change-button multi-form"
+                class="float-left orange-button multi-form"
                 type="reset"
             >
                 <icon name="undo"/>

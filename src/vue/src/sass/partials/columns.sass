@@ -1,14 +1,14 @@
 .left-content
     padding: 30px 30px 10px 30px !important
     @include xl
-        height: calc(100vh - 70px)
+        height: calc(100vh - $header-height)
         overflow-y: auto
         overflow-x: hidden
 
 .main-content
     padding: 30px 10px 10px 10px !important
     @include lg
-        height: calc(100vh - 70px)
+        height: calc(100vh - $header-height)
         overflow-y: auto
         overflow-x: hidden
     @include md-max
@@ -17,14 +17,14 @@
 .right-content
     padding: 10px 10px 30px 10px !important
     @include lg
-        height: calc(100vh - 70px)
+        height: calc(100vh - $header-height)
         overflow-y: auto
         overflow-x: hidden
         padding: 30px 30px 10px 30px !important
 
 .content-single-column
     @include lg
-        height: calc(100vh - 70px)
+        height: calc(100vh - $header-height)
         overflow-y: auto
         overflow-x: hidden
     .content

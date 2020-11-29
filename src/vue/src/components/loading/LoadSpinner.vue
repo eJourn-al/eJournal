@@ -1,6 +1,6 @@
 <template>
     <b-card
-        class="large-load-spinner no-hover"
+        class="large-load-spinner no-hover no-left-border"
     >
         <img
             src="/ejournal-book.svg"

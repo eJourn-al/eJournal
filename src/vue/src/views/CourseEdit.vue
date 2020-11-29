@@ -33,7 +33,7 @@
             </h3>
             <b-button
                 v-if="$hasPermission('can_edit_course_details')"
-                class="multi-form change-button full-width"
+                class="multi-form orange-button full-width"
                 @click="activeView = 'courseData'"
             >
                 <icon name="edit"/>
@@ -41,7 +41,7 @@
             </b-button>
             <b-button
                 v-if="$hasPermission('can_edit_course_details')"
-                class="multi-form change-button full-width"
+                class="multi-form orange-button full-width"
                 @click="activeView = 'courseMembers'"
             >
                 <icon name="user"/>
@@ -49,7 +49,7 @@
             </b-button>
             <b-button
                 v-if="$hasPermission('can_edit_course_details')"
-                class="multi-form change-button full-width"
+                class="multi-form orange-button full-width"
                 @click="activeView = 'courseGroups'"
             >
                 <icon name="users"/>
@@ -57,7 +57,7 @@
             </b-button>
             <b-button
                 v-if="$hasPermission('can_edit_course_roles')"
-                class="multi-form change-button full-width"
+                class="multi-form orange-button full-width"
                 @click.prevent.stop="$router.push({ name: 'UserRoleConfiguration', params: { cID: cID } })"
             >
                 <icon name="cog"/>
@@ -65,7 +65,7 @@
             </b-button>
             <b-button
                 v-if="$hasPermission('can_delete_course')"
-                class="multi-form delete-button full-width"
+                class="multi-form red-button full-width"
                 @click.prevent.stop="deleteCourse()"
             >
                 <icon name="trash"/>

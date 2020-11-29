@@ -9,7 +9,7 @@
         <hr class="full-width"/>
         <span
             v-if="assignment.due_date"
-            class="text-grey text-condensed"
+            class="text-grey"
         >
             <span v-if="new Date() > new Date(assignment.due_date) && !assignment.lock_date">
                 The due date for this assignment has passed<br/>
@@ -18,7 +18,7 @@
         </span>
         <span
             v-if="assignment.lock_date"
-            class="text-grey text-condensed"
+            class="text-grey"
         >
             <span v-if="new Date(assignment.lock_date) < new Date()">
                 This assignment has been locked<br/>
@@ -27,7 +27,7 @@
         </span>
         <span
             v-else-if="!assignment.due_date"
-            class="text-grey text-condensed"
+            class="text-grey"
         >
             There is no due date set for this assignment
         </span>

@@ -57,19 +57,28 @@ class CourseAPITest(TestCase):
         assert Participation.objects.filter(course=course, role=teacher_role, user=course.author).exists(), \
             'Author of the course is made a teacher by default'
 
-    def test_get(self):
+    def test_get_course(self):
         factory.Participation(user=self.teacher2, course=self.course2)
 
         # Get all courses
         get_resp = api.get(self, 'courses', user=self.teacher1)['courses']
-        assert len(get_resp) == 2, 'The teacher did not get all the courses it is the author of'
+        assert len(get_resp) == 2, 'Teacher should get all courses they are the author of'
         assert {self.course1.pk, self.course2.pk} == set([c['id'] for c in get_resp]), \
-            'The teacher did not get all the courses it is the author of'
+            'Teacher should get all courses they are the author of'
 
         get_resp = api.get(self, 'courses', user=self.teacher2)['courses']
-        assert len(get_resp) == 2, 'The teacher did not get all the courses it is the author of or is participating in'
+        assert len(get_resp) == 2, 'Teacher should get all courses they are the author of or are participating in'
         assert is_response(get_resp, self.course2, self.course3), \
-            'The teacher did not get all the courses it is the author of'
+            'Teacher should get all courses they are the author of or are participating in'
+
+        get_resp = api.get(self, 'courses', params={'get_all': True}, user=self.admin)['courses']
+        assert len(get_resp) == Course.objects.count(), 'Superuser can get all courses on the instance'
+
+        # Get all should work only for superusers.
+        api.get(self, 'courses', params={'get_all': 'true'}, user=self.teacher1, status=403)
+        api.get(self, 'courses', params={'get_all': 'true'}, user=self.student, status=403)
+        api.get(self, 'courses', params={'get_all': 'false'}, user=self.teacher1)
+        api.get(self, 'courses', params={'get_all': 'false'}, user=self.student)
 
         # Get author course
         get_resp = api.get(self, 'courses', params={'pk': self.course1.pk}, user=self.teacher1)

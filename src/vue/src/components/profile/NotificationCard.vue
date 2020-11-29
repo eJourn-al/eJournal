@@ -8,7 +8,7 @@
             :class="$root.getBorderClass($route.params.uID)"
             class="no-hover multi-form"
         >
-            <b-row>
+            <b-row class="small">
                 <b-col
                     xs="3"
                     class="text-center"
@@ -17,7 +17,7 @@
                         name="bell"
                         class="fill-grey shift-up-3 mr-1"
                     />
-                    Day and week before
+                    Day &amp; week before
                 </b-col>
                 <b-col
                     xs="3"
@@ -62,22 +62,22 @@
                         {
                             value: 'p',
                             icon: 'bell',
-                            class: 'add-button',
+                            class: 'green-button',
                         },
                         {
                             value: 'd',
                             icon: 'clock',
-                            class: 'add-button',
+                            class: 'green-button',
                         },
                         {
                             value: 'w',
                             icon: 'calendar',
-                            class: 'add-button',
+                            class: 'green-button',
                         },
                         {
                             value: 'o',
                             icon: 'times',
-                            class: 'delete-button',
+                            class: 'red-button',
                         },
                     ]"
                     class="float-right"
@@ -95,7 +95,7 @@
             :class="$root.getBorderClass($route.params.uID)"
             class="no-hover multi-form"
         >
-            <b-row>
+            <b-row class="small">
                 <b-col
                     xs="3"
                     class="text-center"
@@ -149,22 +149,22 @@
                         {
                             value: 'p',
                             icon: 'bell',
-                            class: 'add-button',
+                            class: 'green-button',
                         },
                         {
                             value: 'd',
                             icon: 'clock',
-                            class: 'add-button',
+                            class: 'green-button',
                         },
                         {
                             value: 'w',
                             icon: 'calendar',
-                            class: 'add-button',
+                            class: 'green-button',
                         },
                         {
                             value: 'o',
                             icon: 'times',
-                            class: 'delete-button',
+                            class: 'red-button',
                         },
                     ]"
                     class="float-right"
@@ -200,7 +200,7 @@
                 <h2 class="theme-h2 field-heading multi-form">
                     Receive notifications from
                     <tooltip
-                        tip="Only get notifications of people that are in groups that you are also in"
+                        tip="Only receive notifications for groups which you are also a member of."
                     />
                 </h2>
             </div>

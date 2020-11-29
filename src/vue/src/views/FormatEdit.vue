@@ -105,7 +105,7 @@
                                 'input-disabled': assignmentDetails.lti_count > 1 && assignmentDetails.active_lti_course
                                     && parseInt(assignmentDetails.active_lti_course.cID) ===
                                         parseInt($route.params.cID)}"
-                            class="delete-button full-width"
+                            class="red-button full-width"
                             @click="deleteAssignment"
                         >
                             <icon name="trash"/>
@@ -207,7 +207,7 @@
                         @delete-template="deleteTemplate(index)"
                     />
                     <b-button
-                        class="add-button mt-2 full-width"
+                        class="green-button mt-2 full-width"
                         @click="newTemplate()"
                     >
                         <icon name="plus"/>
@@ -215,7 +215,7 @@
                     </b-button>
                     <b-button
                         v-b-modal="'import-template-modal'"
-                        class="change-button mt-2 full-width"
+                        class="orange-button mt-2 full-width"
                     >
                         <icon name="file-import"/>
                         Import Template
@@ -227,7 +227,7 @@
         <b-button
             v-if="isChanged"
             :class="{ 'input-disabled' : saveRequestInFlight }"
-            class="add-button fab"
+            class="green-button fab"
             @click.prevent.stop="saveFormat"
         >
             <icon

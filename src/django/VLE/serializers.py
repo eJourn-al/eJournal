@@ -216,7 +216,6 @@ class UserSerializer(ExtendedModelSerializer):
     def get_groups(self, user):
         """Only serialized if course is set in context"""
         values, prefetched = prefetched_objects(user, 'participation_set')
-
         # The participation_set is prefetched filtered on the course so we can simply take the first element if found.
         if prefetched:
             participation = values[0]
