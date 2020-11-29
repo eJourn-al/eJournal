@@ -36,9 +36,9 @@
 </template>
 
 <script>
+import { mapGetters } from 'vuex'
 import contentSingleColumn from '@/components/columns/ContentSingleColumn.vue'
 import sentryFeedbackForm from '@/components/sentry/SentryFeedbackForm.vue'
-import { mapGetters } from 'vuex'
 
 export default {
     name: 'ErrorPage',

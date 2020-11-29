@@ -83,8 +83,8 @@
 </template>
 
 <script>
-import pdf from 'vue-pdf'
 import auth from '@/api/auth.js'
+import pdf from 'vue-pdf'
 import sanitization from '@/utils/sanitization.js'
 
 export default {

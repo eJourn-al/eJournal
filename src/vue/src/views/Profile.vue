@@ -13,13 +13,13 @@
 </template>
 
 <script>
+import breadCrumb from '@/components/assets/BreadCrumb.vue'
 import contentSingleColumn from '@/components/columns/ContentSingleColumn.vue'
 import customFooter from '@/components/assets/Footer.vue'
 import gradingCard from '@/components/profile/GradingCard.vue'
-import profileData from '@/components/profile/ProfileData.vue'
 import notificationCard from '@/components/profile/NotificationCard.vue'
 import passwordCard from '@/components/profile/PasswordCard.vue'
-import breadCrumb from '@/components/assets/BreadCrumb.vue'
+import profileData from '@/components/profile/ProfileData.vue'
 
 export default {
     name: 'Profile',

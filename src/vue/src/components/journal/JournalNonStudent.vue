@@ -201,20 +201,20 @@
 </template>
 
 <script>
-import EntryNonStudent from '@/components/entry/EntryNonStudent.vue'
-import Timeline from '@/components/timeline/Timeline.vue'
-import JournalDetails from '@/components/journal/JournalDetails.vue'
 import BreadCrumb from '@/components/assets/BreadCrumb.vue'
-import LoadWrapper from '@/components/loading/LoadWrapper.vue'
-import JournalStartCard from '@/components/journal/JournalStartCard.vue'
+import EntryNonStudent from '@/components/entry/EntryNonStudent.vue'
+import JournalDetails from '@/components/journal/JournalDetails.vue'
 import JournalEndCard from '@/components/journal/JournalEndCard.vue'
 import JournalImportRequestApprovalModal from '@/components/journal/JournalImportRequestApprovalModal.vue'
+import JournalStartCard from '@/components/journal/JournalStartCard.vue'
+import LoadWrapper from '@/components/loading/LoadWrapper.vue'
 import ProgressNode from '@/components/entry/ProgressNode.vue'
+import Timeline from '@/components/timeline/Timeline.vue'
 
-import store from '@/Store.vue'
-import journalAPI from '@/api/journal.js'
-import assignmentAPI from '@/api/assignment.js'
 import { mapGetters, mapMutations } from 'vuex'
+import assignmentAPI from '@/api/assignment.js'
+import journalAPI from '@/api/journal.js'
+import store from '@/Store.vue'
 
 export default {
     components: {

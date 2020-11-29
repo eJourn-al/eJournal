@@ -177,17 +177,17 @@
 
 <script>
 import Entry from '@/components/entry/Entry.vue'
-import timeline from '@/components/timeline/Timeline.vue'
 import breadCrumb from '@/components/assets/BreadCrumb.vue'
-import loadWrapper from '@/components/loading/LoadWrapper.vue'
-import journalStartCard from '@/components/journal/JournalStartCard.vue'
-import journalEndCard from '@/components/journal/JournalEndCard.vue'
 import journalDetails from '@/components/journal/JournalDetails.vue'
+import journalEndCard from '@/components/journal/JournalEndCard.vue'
 import journalImportModal from '@/components/journal/JournalImportModal.vue'
+import journalStartCard from '@/components/journal/JournalStartCard.vue'
+import loadWrapper from '@/components/loading/LoadWrapper.vue'
 import progressNode from '@/components/entry/ProgressNode.vue'
+import timeline from '@/components/timeline/Timeline.vue'
 
-import journalAPI from '@/api/journal.js'
 import assignmentAPI from '@/api/assignment.js'
+import journalAPI from '@/api/journal.js'
 
 export default {
     components: {

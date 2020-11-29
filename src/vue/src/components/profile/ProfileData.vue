@@ -74,10 +74,10 @@
 </template>
 
 <script>
+import { mapGetters } from 'vuex'
+import cropper from '@/components/assets/ImageCropper.vue'
 import email from '@/components/profile/Email.vue'
 import userAPI from '@/api/user.js'
-import cropper from '@/components/assets/ImageCropper.vue'
-import { mapGetters } from 'vuex'
 
 export default {
     components: {

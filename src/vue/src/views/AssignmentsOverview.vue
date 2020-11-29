@@ -100,13 +100,13 @@
 </template>
 
 <script>
-import contentSingleColumn from '@/components/columns/ContentSingleColumn.vue'
-import breadCrumb from '@/components/assets/BreadCrumb.vue'
-import loadWrapper from '@/components/loading/LoadWrapper.vue'
-import todoCard from '@/components/assets/TodoCard.vue'
-import mainCard from '@/components/assets/MainCard.vue'
 import assignmentAPI from '@/api/assignment.js'
+import breadCrumb from '@/components/assets/BreadCrumb.vue'
 import comparison from '@/utils/comparison.js'
+import contentSingleColumn from '@/components/columns/ContentSingleColumn.vue'
+import loadWrapper from '@/components/loading/LoadWrapper.vue'
+import mainCard from '@/components/assets/MainCard.vue'
+import todoCard from '@/components/assets/TodoCard.vue'
 
 import { mapGetters, mapMutations } from 'vuex'
 

@@ -144,10 +144,10 @@
 </template>
 
 <script>
-import fileUploadInput from '@/components/assets/file_handling/FileUploadInput.vue'
-import urlInput from '@/components/assets/UrlInput.vue'
 import fileDisplay from '@/components/assets/file_handling/FileDisplay.vue'
+import fileUploadInput from '@/components/assets/file_handling/FileUploadInput.vue'
 import sandboxedIframe from '@/components/assets/SandboxedIframe.vue'
+import urlInput from '@/components/assets/UrlInput.vue'
 
 export default {
     components: {

@@ -1,3 +1,4 @@
+/* eslint-disable */
 // See https://github.com/bootstrap-vue/bootstrap-vue/blob/dev/src/components/index.js for all available options
 import {
     BVConfigPlugin,

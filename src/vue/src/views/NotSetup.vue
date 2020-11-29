@@ -28,8 +28,8 @@
 </template>
 
 <script>
-import contentSingleColumn from '@/components/columns/ContentSingleColumn.vue'
 import * as Sentry from '@sentry/browser'
+import contentSingleColumn from '@/components/columns/ContentSingleColumn.vue'
 
 export default {
     name: 'NotSetup',

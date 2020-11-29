@@ -442,13 +442,13 @@ import PostTeacherEntry from '@/components/assignment/PostTeacherEntry.vue'
 import StatisticsCard from '@/components/assignment/StatisticsCard.vue'
 import TeacherEntries from '@/components/assignment/TeacherEntries.vue'
 
-import store from '@/Store.vue'
-import assignmentAPI from '@/api/assignment.js'
-import groupAPI from '@/api/group.js'
-import gradeAPI from '@/api/grade.js'
-import participationAPI from '@/api/participation.js'
-import journalAPI from '@/api/journal.js'
 import { mapGetters, mapMutations } from 'vuex'
+import assignmentAPI from '@/api/assignment.js'
+import gradeAPI from '@/api/grade.js'
+import groupAPI from '@/api/group.js'
+import journalAPI from '@/api/journal.js'
+import participationAPI from '@/api/participation.js'
+import store from '@/Store.vue'
 
 const AssignmentSpreadsheetExport = () => import(
     /* webpackChunkName: 'assignment-spreadsheet-export' */ '@/components/assignment/AssignmentSpreadsheetExport.vue')

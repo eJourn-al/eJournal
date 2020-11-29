@@ -71,12 +71,12 @@
 </template>
 
 <script>
-import contentColumns from '@/components/columns/ContentColumns.vue'
 import breadCrumb from '@/components/assets/BreadCrumb.vue'
-import loadWrapper from '@/components/loading/LoadWrapper.vue'
-import mainCard from '@/components/assets/MainCard.vue'
+import contentColumns from '@/components/columns/ContentColumns.vue'
 import createCourse from '@/components/course/CreateCourse.vue'
 import deadlineDeck from '@/components/assets/DeadlineDeck.vue'
+import loadWrapper from '@/components/loading/LoadWrapper.vue'
+import mainCard from '@/components/assets/MainCard.vue'
 
 import courseAPI from '@/api/course.js'
 

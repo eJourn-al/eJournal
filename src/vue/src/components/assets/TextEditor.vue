@@ -15,9 +15,9 @@
 
 <script>
 /* eslint-disable import/extensions */
-import tinymce from 'tinymce/tinymce'
 import 'tinymce/icons/default'
 import 'tinymce/themes/silver'
+import tinymce from 'tinymce/tinymce'
 
 /* Only works with basic lists enabled. */
 import 'tinymce/plugins/advlist'
@@ -26,15 +26,15 @@ import 'tinymce/plugins/autoresize'
 /* Allows direct manipulation of the html aswell as easy export. */
 import 'tinymce/plugins/code'
 import 'tinymce/plugins/fullscreen'
+import 'tinymce/plugins/hr'
 import 'tinymce/plugins/image'
 import 'tinymce/plugins/imagetools'
 import 'tinymce/plugins/link'
 import 'tinymce/plugins/lists'
 import 'tinymce/plugins/nonbreaking'
-import 'tinymce/plugins/preview'
 import 'tinymce/plugins/paste'
+import 'tinymce/plugins/preview'
 import 'tinymce/plugins/print'
-import 'tinymce/plugins/hr'
 import 'tinymce/plugins/searchreplace'
 import 'tinymce/plugins/spellchecker'
 import 'tinymce/plugins/table'

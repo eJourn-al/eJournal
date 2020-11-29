@@ -239,17 +239,17 @@
 </template>
 
 <script>
-import timeline from '@/components/timeline/Timeline.vue'
-import breadCrumb from '@/components/assets/BreadCrumb.vue'
 import assignmentDetails from '@/components/assignment/AssignmentDetails.vue'
-import formatTemplateLink from '@/components/format/FormatTemplateLink.vue'
-import formatPresetNodeCard from '@/components/format/FormatPresetNodeCard.vue'
+import breadCrumb from '@/components/assets/BreadCrumb.vue'
 import formatAddPresetNode from '@/components/format/FormatAddPresetNode.vue'
-import templateImportModal from '@/components/template/TemplateImportModal.vue'
+import formatPresetNodeCard from '@/components/format/FormatPresetNodeCard.vue'
+import formatTemplateLink from '@/components/format/FormatTemplateLink.vue'
 import templateEdit from '@/components/template/TemplateEdit.vue'
+import templateImportModal from '@/components/template/TemplateImportModal.vue'
+import timeline from '@/components/timeline/Timeline.vue'
 
-import formatAPI from '@/api/format.js'
 import assignmentAPI from '@/api/assignment.js'
+import formatAPI from '@/api/format.js'
 
 export default {
     name: 'FormatEdit',

@@ -127,9 +127,9 @@
 </template>
 
 <script>
-import SandboxedIframe from '@/components/assets/SandboxedIframe.vue'
-import EntryFields from '@/components/entry/EntryFields.vue'
 import Comments from '@/components/entry/Comments.vue'
+import EntryFields from '@/components/entry/EntryFields.vue'
+import SandboxedIframe from '@/components/assets/SandboxedIframe.vue'
 import filesList from '@/components/assets/file_handling/FilesList.vue'
 
 import entryAPI from '@/api/entry.js'

@@ -100,8 +100,8 @@
 </template>
 
 <script>
-import journalAPI from '@/api/journal.js'
 import assignmentAPI from '@/api/assignment.js'
+import journalAPI from '@/api/journal.js'
 
 import { mapGetters } from 'vuex'
 

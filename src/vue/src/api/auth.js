@@ -1,9 +1,9 @@
 import connection from '@/api/connection.js'
-import statuses from '@/utils/constants/status_codes.js'
-import router from '@/router/index.js'
-import store from '@/store/index.js'
-import sanitization from '@/utils/sanitization.js'
 import genericUtils from '@/utils/generic_utils.js'
+import router from '@/router/index.js'
+import sanitization from '@/utils/sanitization.js'
+import statuses from '@/utils/constants/status_codes.js'
+import store from '@/store/index.js'
 
 const ERRORS_TO_REDIRECT = new Set([
     statuses.FORBIDDEN,

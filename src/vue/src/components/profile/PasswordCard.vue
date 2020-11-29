@@ -56,8 +56,8 @@
 <script>
 import tooltip from '@/components/assets/Tooltip.vue'
 
-import validation from '@/utils/validation.js'
 import authAPI from '@/api/auth.js'
+import validation from '@/utils/validation.js'
 
 export default {
     components: {

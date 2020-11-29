@@ -133,9 +133,9 @@
 import addUsersToCourseCard from '@/components/course/AddUsersToCourseCard.vue'
 import courseParticipantCard from '@/components/course/CourseParticipantCard.vue'
 
+import groupAPI from '@/api/group.js'
 import participationAPI from '@/api/participation.js'
 import roleAPI from '@/api/role.js'
-import groupAPI from '@/api/group.js'
 
 import { mapGetters, mapMutations } from 'vuex'
 

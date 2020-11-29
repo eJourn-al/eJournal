@@ -241,8 +241,8 @@
 </template>
 
 <script>
-import tooltip from '@/components/assets/Tooltip.vue'
 import RadioButton from '@/components/assets/RadioButton.vue'
+import tooltip from '@/components/assets/Tooltip.vue'
 
 export default {
     name: 'AssignmentDetails',
