@@ -75,15 +75,14 @@ module.exports = {
             new webpack.ProvidePlugin({
                 introJs: ['intro.js'],
             }),
-        ]
-        // .concat(process.env.NODE_ENV === 'production' ?
-        //     new SentryWebpackPlugin({
-        //         include: './dist',
-        //         ignore: ['node_modules', 'webpack.config.js'],
-        //         release: process.env.RELEASE_VERSION,
-        //     })
-        //     : []
-        // ),
+        ].concat(process.env.NODE_ENV === 'production' ?
+            new SentryWebpackPlugin({
+                include: './dist',
+                ignore: ['node_modules', 'webpack.config.js'],
+                release: process.env.RELEASE_VERSION,
+            })
+            : []
+        ),
     },
 
     css: {
