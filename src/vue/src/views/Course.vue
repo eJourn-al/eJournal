@@ -76,14 +76,14 @@
 </template>
 
 <script>
-import contentColumns from '@/components/columns/ContentColumns.vue'
-import breadCrumb from '@/components/assets/BreadCrumb.vue'
-import loadWrapper from '@/components/loading/LoadWrapper.vue'
 import assignmentCard from '@/components/assignment/AssignmentCard.vue'
-import mainCard from '@/components/assets/MainCard.vue'
+import assignmentImportModal from '@/components/assignment/AssignmentImportModal.vue'
+import breadCrumb from '@/components/assets/BreadCrumb.vue'
+import contentColumns from '@/components/columns/ContentColumns.vue'
 import createAssignment from '@/components/assignment/CreateAssignment.vue'
 import deadlineDeck from '@/components/assets/DeadlineDeck.vue'
-import assignmentImportModal from '@/components/assignment/AssignmentImportModal.vue'
+import loadWrapper from '@/components/loading/LoadWrapper.vue'
+import mainCard from '@/components/assets/MainCard.vue'
 
 import assignmentAPI from '@/api/assignment.js'
 

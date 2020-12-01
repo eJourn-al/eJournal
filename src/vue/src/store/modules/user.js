@@ -1,8 +1,8 @@
+import * as types from '../constants/mutation-types.js'
 import Vue from 'vue'
 import connection from '@/api/connection.js'
 import genericUtils from '@/utils/generic_utils.js'
 import sanitization from '@/utils/sanitization.js'
-import * as types from '../constants/mutation-types.js'
 
 const getters = {
     jwtAccess: state => state.jwtAccess,

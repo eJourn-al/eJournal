@@ -71,8 +71,8 @@
 </template>
 
 <script>
-import tooltip from '@/components/assets/Tooltip.vue'
 import courseAPI from '@/api/course.js'
+import tooltip from '@/components/assets/Tooltip.vue'
 
 export default {
     name: 'CourseEdit',

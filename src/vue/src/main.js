@@ -1,24 +1,24 @@
-import Vue from 'vue'
 import 'flatpickr/dist/flatpickr.css' // eslint-disable-line import/no-extraneous-dependencies
 import 'flatpickr/dist/themes/material_blue.css' // eslint-disable-line import/no-extraneous-dependencies
-import 'intro.js/introjs.css'
+import 'intro.js/introjs.css' // eslint-disable-line import/no-extraneous-dependencies
+import Vue from 'vue'
 
 import '@/helpers/vue_awesome_icons.js'
-import initSentry from '@/helpers/sentry.js'
 import initBootstrap from '@/helpers/bootstrap.js'
+import initSentry from '@/helpers/sentry.js'
 
-import Toasted from 'vue-toasted'
-import flatPickr from 'vue-flatpickr-component'
-import VueIntro from 'vue-introjs'
 import Icon from 'vue-awesome/components/Icon.vue'
+import Toasted from 'vue-toasted'
+import VueIntro from 'vue-introjs'
+import flatPickr from 'vue-flatpickr-component'
 
 import connection from '@/api/connection.js'
 
-import ResetWrapper from '@/components/assets/ResetWrapper.vue'
 import App from './App.vue'
+import ResetWrapper from '@/components/assets/ResetWrapper.vue'
+import ThemeSelect from './components/assets/ThemeSelect.vue'
 import router from './router/index.js'
 import store from './store/index.js'
-import ThemeSelect from './components/assets/ThemeSelect.vue'
 
 Vue.config.productionTip = false
 Vue.use(Toasted, {

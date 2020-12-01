@@ -1,9 +1,9 @@
+import * as mutationTypes from '../constants/mutation-types.js'
+import * as types from '../constants/permission-types.js'
 import Vue from 'vue'
+import connection from '@/api/connection.js'
 import router from '@/router/index.js'
 import store from '@/store/index.js'
-import connection from '@/api/connection.js'
-import * as types from '../constants/permission-types.js'
-import * as mutationTypes from '../constants/mutation-types.js'
 
 /* If no update has been performed in the last thirty seconds, update permissions */
 function canRefreshPermissions () {

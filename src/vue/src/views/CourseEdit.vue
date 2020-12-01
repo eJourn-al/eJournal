@@ -78,12 +78,12 @@
 <script>
 import breadCrumb from '@/components/assets/BreadCrumb.vue'
 import contentColumns from '@/components/columns/ContentColumns.vue'
-import groupEditor from '@/components/course/CourseGroupEditor.vue'
 import detailEditor from '@/components/course/CourseDetailEditor.vue'
+import groupEditor from '@/components/course/CourseGroupEditor.vue'
 import membersEditor from '@/components/course/CourseMembersEditor.vue'
 
-import store from '@/Store.vue'
 import courseAPI from '@/api/course.js'
+import store from '@/Store.vue'
 
 export default {
     name: 'CourseEdit',

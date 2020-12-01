@@ -106,9 +106,9 @@
 </template>
 
 <script>
-import progressBar from '@/components/assets/ProgressBar.vue'
 import NumberBadge from '@/components/assets/NumberBadge.vue'
 import journalMembers from '@/components/journal/JournalMembers.vue'
+import progressBar from '@/components/assets/ProgressBar.vue'
 
 export default {
     components: {

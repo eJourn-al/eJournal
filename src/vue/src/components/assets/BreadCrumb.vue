@@ -51,8 +51,8 @@
 </template>
 
 <script>
-import versionAlert from '@/components/assets/VersionAlert.vue'
 import store from '@/Store.vue'
+import versionAlert from '@/components/assets/VersionAlert.vue'
 
 import commonAPI from '@/api/common.js'
 

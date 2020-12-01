@@ -85,10 +85,10 @@
 </template>
 
 <script>
+import dropdownButton from '@/components/assets/DropdownButton.vue'
+import journalCard from '@/components/assignment/JournalCard.vue'
 import loadWrapper from '@/components/loading/LoadWrapper.vue'
 import utils from '@/utils/generic_utils.js'
-import journalCard from '@/components/assignment/JournalCard.vue'
-import dropdownButton from '@/components/assets/DropdownButton.vue'
 
 import jirAPI from '@/api/journal_import_request.js'
 

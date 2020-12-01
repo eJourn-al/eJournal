@@ -110,8 +110,8 @@
 </template>
 
 <script>
-import connection from '@/api/connection.js'
 import { mapGetters } from 'vuex'
+import connection from '@/api/connection.js'
 import feedbackAPI from '@/api/feedback.js'
 
 export default {

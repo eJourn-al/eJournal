@@ -60,8 +60,8 @@
 </style>
 
 <script>
-import groupCard from '@/components/group/GroupCard.vue'
 import groupAPI from '@/api/group.js'
+import groupCard from '@/components/group/GroupCard.vue'
 import participationAPI from '@/api/participation.js'
 
 export default {

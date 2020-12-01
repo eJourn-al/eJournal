@@ -41,8 +41,8 @@
 </template>
 
 <script>
-import sandboxedIframe from '@/components/assets/SandboxedIframe.vue'
 import filesList from '@/components/assets/file_handling/FilesList.vue'
+import sandboxedIframe from '@/components/assets/SandboxedIframe.vue'
 
 export default {
     components: {
