@@ -56,12 +56,12 @@
 </template>
 
 <script>
-import WideContent from '@/components/columns/WideContent.vue'
 import BreadCrumb from '@/components/assets/BreadCrumb.vue'
-import EditInstance from '@/components/admin/EditInstance.vue'
 import CourseOverview from '@/components/admin/CourseOverview.vue'
-import UserOverview from '@/components/admin/UserOverview.vue'
+import EditInstance from '@/components/admin/EditInstance.vue'
 import InviteUsers from '@/components/admin/InviteUsers.vue'
+import UserOverview from '@/components/admin/UserOverview.vue'
+import WideContent from '@/components/columns/WideContent.vue'
 
 export default {
     name: 'AdminPanel',

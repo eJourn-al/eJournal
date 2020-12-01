@@ -70,9 +70,9 @@
 </template>
 
 <script>
+import commonAPI from '@/api/common.js'
 import courseAPI from '@/api/course.js'
 import tooltip from '@/components/assets/Tooltip.vue'
-import commonAPI from '@/api/common.js'
 
 export default {
     name: 'CreateCourse',

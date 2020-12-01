@@ -87,9 +87,9 @@
 import assignmentAPI from '@/api/assignment.js'
 import comparison from '@/utils/comparison.js'
 
-import todoCard from '@/components/assets/TodoCard.vue'
-import loadWrapper from '@/components/loading/LoadWrapper.vue'
 import { mapGetters, mapMutations } from 'vuex'
+import loadWrapper from '@/components/loading/LoadWrapper.vue'
+import todoCard from '@/components/assets/TodoCard.vue'
 
 export default {
     components: {

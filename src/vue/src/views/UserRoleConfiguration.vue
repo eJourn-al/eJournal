@@ -123,8 +123,8 @@
 import BreadCrumb from '@/components/assets/BreadCrumb.vue'
 import WideContent from '@/components/columns/WideContent.vue'
 
-import roleAPI from '@/api/role.js'
 import commonAPI from '@/api/common.js'
+import roleAPI from '@/api/role.js'
 
 export default {
     name: 'UserRoleConfiguration',

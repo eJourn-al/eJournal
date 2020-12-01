@@ -34,14 +34,14 @@
 
 
 <script>
-import contentColumns from '@/components/columns/ContentColumns.vue'
 import breadCrumb from '@/components/assets/BreadCrumb.vue'
-import mainCard from '@/components/assets/MainCard.vue'
+import contentColumns from '@/components/columns/ContentColumns.vue'
 import journalCard from '@/components/assignment/JournalCard.vue'
 import loadWrapper from '@/components/loading/LoadWrapper.vue'
+import mainCard from '@/components/assets/MainCard.vue'
 
-import journalAPI from '@/api/journal.js'
 import assignmentAPI from '@/api/assignment.js'
+import journalAPI from '@/api/journal.js'
 
 export default {
     name: 'JoinJournal',

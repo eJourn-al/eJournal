@@ -91,9 +91,9 @@
 </template>
 
 <script>
+import assignmentImportModal from '@/components/assignment/AssignmentImportModal.vue'
 import createAssignment from '@/components/assignment/CreateAssignment.vue'
 import linkAssignment from '@/components/lti/LinkAssignment.vue'
-import assignmentImportModal from '@/components/assignment/AssignmentImportModal.vue'
 
 export default {
     name: 'LtiCreateLinkAssignment',

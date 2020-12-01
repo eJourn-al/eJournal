@@ -9,7 +9,8 @@
     "serve": "vue-cli-service serve",
     "build": "vue-cli-service build",
     "build-report": "vue-cli-service build --report",
-    "lint": "vue-cli-service lint src --ext .js,.vue"
+    "lint": "vue-cli-service lint src --ext .js,.vue",
+    "lint:fix": "npm run lint -- --fix"
   },
   "dependencies": {
     "core-js": "^3.6.4",
@@ -37,17 +38,18 @@
     "vuex-persistedstate": "^2.7.1"
   },
   "devDependencies": {
+    "@sentry/webpack-plugin": "^1.12.1",
     "@vue/cli-plugin-babel": "^4.5.6",
     "@vue/cli-plugin-eslint": "^4.5.6",
     "@vue/cli-plugin-router": "~4.5.0",
     "@vue/cli-plugin-vuex": "~4.5.0",
     "@vue/cli-service": "^4.5.6",
-    "@sentry/webpack-plugin": "^1.12.1",
     "@vue/eslint-config-airbnb": "^4.0.1",
-    "eslint": "^6.8.0",
-    "eslint-plugin-vue": "^6.2.2",
-    "eslint-plugin-import": "^2.20.2",
     "babel-eslint": "^10.1.0",
+    "eslint": "^6.8.0",
+    "eslint-plugin-import": "^2.20.2",
+    "eslint-plugin-sort-imports-es6-autofix": "^0.5.0",
+    "eslint-plugin-vue": "^6.2.2",
     "sass": "^1.26.5",
     "sass-loader": "^8.0.1",
     "vue-template-compiler": "^2.6.11"

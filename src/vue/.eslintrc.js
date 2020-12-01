@@ -13,7 +13,8 @@ module.exports = {
         'airbnb-base',
     ],
     plugins: [
-        'vue'
+        'vue',
+        'sort-imports-es6-autofix',
     ],
     rules: {
         'generator-star-spacing': 'off',
@@ -60,6 +61,12 @@ module.exports = {
         'function-paren-newline': 'off',
         'complexity': ['error', { 'max': 26 }],
         'max-lines-per-function': ['error', { 'max': 121 }],
+        'import/order': 'off',  // conflicts with sort-imports
+        'sort-imports-es6-autofix/sort-imports-es6': [2, {
+            'ignoreCase': false,
+            'ignoreMemberSort': false,
+            'memberSyntaxSortOrder': ['none', 'all', 'multiple', 'single']
+        }],
     },
     settings: {
         'import/resolver': {

@@ -70,11 +70,11 @@
 </template>
 
 <script>
-import loadWrapper from '@/components/loading/LoadWrapper.vue'
-import utils from '@/utils/generic_utils.js'
 import assignmentAPI from '@/api/assignment.js'
 import courseAPI from '@/api/course.js'
 import jirAPI from '@/api/journal_import_request.js'
+import loadWrapper from '@/components/loading/LoadWrapper.vue'
+import utils from '@/utils/generic_utils.js'
 
 export default {
     components: {
