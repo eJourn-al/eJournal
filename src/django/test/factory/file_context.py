@@ -50,6 +50,16 @@ class FileContextFactory(factory.django.DjangoModelFactory):
             raise ValidationError('FC created without underlying file.')
 
 
+class TempRichTextFileContextFactory(FileContextFactory):
+    in_rich_text = True
+    is_temp = True
+    file = factory.django.FileField(filename=factory.Faker('file_name', category='image'))
+
+
+class TempFileContextFactory(FileContextFactory):
+    is_temp = True
+
+
 class RichTextFileContextFactory(FileContextFactory):
     in_rich_text = True
     file = factory.django.FileField(filename=factory.Faker('file_name', category='image'))

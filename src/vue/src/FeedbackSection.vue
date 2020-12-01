@@ -54,15 +54,12 @@ export default {
 </script>
 
 <style lang="sass">
-@import '~sass/modules/colors.sass'
-@import '~sass/modules/breakpoints.sass'
-
 .feedback-wrapper
     position: fixed
     bottom: 0px
     z-index: 1200
     .feedback-button
-        font-family: 'Roboto Condensed', sans-serif
+        font-weight: bold
         cursor: pointer
         padding: 2px 10px 2px 10px
         position: fixed

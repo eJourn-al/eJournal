@@ -69,7 +69,7 @@
             All journals
         </b-button>
         <b-button
-            class="add-button float-right"
+            class="green-button float-right"
             :class="{ 'input-disabled': exportInProgress || !someExportOptionSelected }"
             @click="exportAssignmentSpreadsheet()"
         >
@@ -80,6 +80,8 @@
 </template>
 
 <script>
+import ExcelJS from 'exceljs'
+import FileSaver from 'file-saver/src/FileSaver.js'
 import tooltip from '@/components/assets/Tooltip.vue'
 
 export default {
@@ -118,6 +120,33 @@ export default {
         },
     },
     methods: {
+        exportExcel (name, data) {
+            // Create a new workbook.
+            const workbook = new ExcelJS.Workbook()
+
+            // Specify metadata / source.
+            workbook.creator = 'eJournal'
+            workbook.created = new Date()
+            workbook.properties.date1904 = true
+
+            // Create a new worksheet with the first row frozen (for headers).
+            const sheet = workbook.addWorksheet(name, { views: [{ state: 'frozen', ySplit: 1 }] })
+
+            // Fill the sheet columns with each property of the data object as a column.
+            // The header of the column is the property name. Column indices start at 1.
+            Object.keys(data).forEach((header, key) => {
+                const beautifiedHeader = header.charAt(0).toUpperCase() + header.substring(1).replace('_', ' ')
+                sheet.getColumn(key + 1).values = [beautifiedHeader].concat(data[header])
+            })
+
+            // Write the spreadsheet to a buffer, then
+            return workbook.xlsx.writeBuffer(name)
+                .then((spreadsheetBuffer) => {
+                    FileSaver.saveAs(new Blob([spreadsheetBuffer],
+                        { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }),
+                    `${name}.xlsx`)
+                })
+        },
         exportAssignmentSpreadsheet () {
             const journalsToExport = this.exportFilteredResults ? this.filteredJournals : this.assignmentJournals
             const data = {}
@@ -148,7 +177,7 @@ export default {
                 data.bonus_points = journalsToExport.map(journal => journal.bonus_points)
             }
 
-            this.$root.exportExcel(`eJournal export ${this.assignment.name}`, data)
+            this.exportExcel(`eJournal export ${this.assignment.name}`, data)
                 .then(() => {
                     this.exportInProgress = false
                     this.$emit('spreadsheet-exported')

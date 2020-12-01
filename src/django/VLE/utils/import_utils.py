@@ -8,7 +8,7 @@ from VLE.models import Comment, Entry, Field, FileContext, Grade, JournalImportR
 from VLE.utils.error_handling import VLEProgrammingError
 
 
-def _copy_grade_based_on_jir_action(entry, author, action=JournalImportRequest.APPROVED_WITH_GRADES_ZEROED):
+def _copy_grade_based_on_jir_action(entry, grade, author, action=JournalImportRequest.APPROVED_WITH_GRADES_ZEROED):
     """
     Create a new grade instance with a fresh history. Could be ungraded, zeroed or none based on the action.
 
@@ -20,12 +20,12 @@ def _copy_grade_based_on_jir_action(entry, author, action=JournalImportRequest.A
         action (str): Choice of (:model:`VLE.JournalImportRequest`).APPROVED_STATES
     """
     if action not in JournalImportRequest.APPROVED_STATES:
-        raise VLEProgrammingError('Copy grade request based on unrecognized action')
+        raise VLEProgrammingError('Copy grade request based on unrecognized action.')
 
     if action == JournalImportRequest.APPROVED_INC_GRADES:
-        if entry.grade is None or not entry.grade.published:
+        if grade is None or not grade.published:
             return None
-        points = entry.grade.grade
+        points = grade.grade
     if action == JournalImportRequest.APPROVED_EXC_GRADES:
         return None
     if action == JournalImportRequest.APPROVED_WITH_GRADES_ZEROED:
@@ -46,7 +46,7 @@ def _select_vle_coupling_based_on_jir_action(action, entry):
         entry (:model:`VLE.entry`): The original entry.
     """
     if action not in JournalImportRequest.APPROVED_STATES:
-        raise VLEProgrammingError('Copy grade request based on unrecognized action')
+        raise VLEProgrammingError('Copy grade request based on unrecognized action.')
 
     if action == JournalImportRequest.APPROVED_INC_GRADES:
         if entry.grade is None:
@@ -87,10 +87,12 @@ def import_entry(entry, journal, jir=None, grade_author=None,
     copied_entry = copy_entry(
         entry,
         node=copied_node,
-        grade=_copy_grade_based_on_jir_action(entry, grade_author, grade_action),
         vle_coupling=_select_vle_coupling_based_on_jir_action(grade_action, entry),
         jir=jir
     )
+    grade = _copy_grade_based_on_jir_action(copied_entry, entry.grade, grade_author, grade_action)
+    if grade:
+        copied_entry.save()
 
     for comment in entry.comment_set.filter(published=True):
         import_comment(comment, copied_entry)
@@ -115,7 +117,7 @@ def import_comment(comment, entry):
         entry (:model:`VLE.entry`): Entry to attach content to.
     """
     if not comment.published:
-        raise VLEProgrammingError('Unpublished comments should not be imported')
+        raise VLEProgrammingError('Unpublished comments should not be imported.')
 
     last_edited = comment.last_edited
     source_comment_pk = comment.pk
@@ -167,7 +169,15 @@ def import_content(content, entry):
     content.entry = entry
     content.save()
 
-    for old_fc in FileContext.objects.filter(content=source_content_pk, is_temp=False):
+    files = FileContext.objects.filter(
+        content=source_content_pk,
+        is_temp=False,
+    ).unused_file_field_files('exclude').unused_rich_text_field_files('exclude').select_related(
+        'content__entry__node__journal',
+        'content__entry__node__journal__assignment',
+    )
+
+    for old_fc in files:
         new_fc = FileContext.objects.create(
             file=ContentFile(old_fc.file.file.read(), name=old_fc.file_name),
             file_name=old_fc.file_name,
@@ -175,6 +185,7 @@ def import_content(content, entry):
             is_temp=False,
             content=content,
             journal=content.entry.node.journal,
+            assignment=content.entry.node.journal.assignment,
             in_rich_text=old_fc.in_rich_text
         )
 
@@ -186,8 +197,8 @@ def import_content(content, entry):
                 raise VLEProgrammingError(
                     'Invalid content {} fc {} combo encountered during content import'.format(content.pk, old_fc.pk))
             content.data = str(new_fc.pk)
-
-    content.save()
+    if files.exists():
+        content.save()
 
     return content
 
@@ -210,21 +221,20 @@ def import_template(template, assignment, archived=None):
     return template
 
 
-def copy_entry(entry, node=None, grade=None, vle_coupling=None, teacher_entry=None, jir=None):
+def copy_entry(old_entry, node=None, grade=None, vle_coupling=None, teacher_entry=None, jir=None):
     """
     Create a copy of an entry instance
 
     Does not copy the associated template into the journal's assignment format
     """
-    last_edited = entry.last_edited
+    last_edited = old_entry.last_edited
     entry = Entry.objects.create(
         node=node,
-        template=entry.template,
-        grade=grade,
-        author=entry.author,
-        last_edited_by=entry.last_edited_by,
+        template=old_entry.template,
+        author=old_entry.author,
+        last_edited_by=old_entry.last_edited_by,
         teacher_entry=teacher_entry,
-        vle_coupling=vle_coupling if vle_coupling else entry.vle_coupling,
+        vle_coupling=vle_coupling if vle_coupling else old_entry.vle_coupling,
         jir=jir
     )
 

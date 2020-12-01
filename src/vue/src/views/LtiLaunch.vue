@@ -32,14 +32,14 @@
 </template>
 
 <script>
-import contentSingleColumn from '@/components/columns/ContentSingleColumn.vue'
-import loadSpinner from '@/components/loading/LoadSpinner.vue'
-import ltiCreateLinkCourse from '@/components/lti/LtiCreateLinkCourse.vue'
-import ltiCreateLinkAssignment from '@/components/lti/LtiCreateLinkAssignment.vue'
-import ltiAPI from '@/api/lti.js'
-import router from '@/router'
-import courseAPI from '@/api/course.js'
 import assignmentAPI from '@/api/assignment.js'
+import contentSingleColumn from '@/components/columns/ContentSingleColumn.vue'
+import courseAPI from '@/api/course.js'
+import loadSpinner from '@/components/loading/LoadSpinner.vue'
+import ltiAPI from '@/api/lti.js'
+import ltiCreateLinkAssignment from '@/components/lti/LtiCreateLinkAssignment.vue'
+import ltiCreateLinkCourse from '@/components/lti/LtiCreateLinkCourse.vue'
+import router from '@/router/index.js'
 
 export default {
     name: 'LtiLaunch',
@@ -172,15 +172,6 @@ export default {
             } else {
                 this.states.state = this.canAutoSetupState
             }
-        }).catch((error) => {
-            this.$router.push({
-                name: 'ErrorPage',
-                params: {
-                    code: error.response.status,
-                    reasonPhrase: error.response.statusText,
-                    description: error.response.data.description,
-                },
-            })
         })
     },
     methods: {

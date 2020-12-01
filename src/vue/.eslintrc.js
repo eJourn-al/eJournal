@@ -13,7 +13,8 @@ module.exports = {
         'airbnb-base',
     ],
     plugins: [
-        'vue'
+        'vue',
+        'sort-imports-es6-autofix',
     ],
     rules: {
         'generator-star-spacing': 'off',
@@ -48,7 +49,7 @@ module.exports = {
         'vue/require-prop-types': 'off', // Do not demand component property types
         'vue/script-indent': 'off', // clash with base eslint for some edge cases
         'vue/attribute-hyphenation': ['error', 'never'], // allow component properties as camelCase
-        'import/extensions': ['error', 'always'],
+        'import/extensions': ['error', 'ignorePackages'],
         'space-before-function-paren': ['error', 'always'],
         'max-len': ['error', { 'code': 120 }],
         'prefer-destructuring': 'off',
@@ -58,6 +59,14 @@ module.exports = {
         'no-plusplus': 'off',
         'no-alert': 'off', // allow alerts (we should create a custom component for this)
         'function-paren-newline': 'off',
+        'complexity': ['error', { 'max': 26 }],
+        'max-lines-per-function': ['error', { 'max': 121 }],
+        'import/order': 'off',  // conflicts with sort-imports
+        'sort-imports-es6-autofix/sort-imports-es6': [2, {
+            'ignoreCase': false,
+            'ignoreMemberSort': false,
+            'memberSyntaxSortOrder': ['none', 'all', 'multiple', 'single']
+        }],
     },
     settings: {
         'import/resolver': {
@@ -67,7 +76,6 @@ module.exports = {
         },
     },
     globals: {
-        SupportedBrowsers: true,
         CurrentRelease: true,
         CustomEnv: true,
     },

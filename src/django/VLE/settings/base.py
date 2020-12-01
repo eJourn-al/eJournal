@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/2.0/ref/settings/
 """
 import os
 from collections import OrderedDict
+from dataclasses import dataclass
 from datetime import timedelta
 
 import sentry_sdk
@@ -28,6 +29,9 @@ USER_MAX_FILE_SIZE_BYTES = 10 * MiB
 USER_MAX_TOTAL_STORAGE_BYTES = 100 * MiB
 USER_MAX_EMAIL_ATTACHMENT_BYTES = USER_MAX_FILE_SIZE_BYTES
 DATA_UPLOAD_MAX_MEMORY_SIZE = USER_MAX_FILE_SIZE_BYTES
+
+ALLOWED_DATE_FORMAT = '%Y-%m-%d'
+ALLOWED_DATETIME_FORMAT = '%Y-%m-%dT%H:%M:%S'
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 BASELINK = os.environ['BASELINK']
@@ -51,6 +55,28 @@ ANYMAIL = {
     'MAILGUN_SENDER_DOMAIN': os.environ['MAILGUN_SENDER_DOMAIN'],
 }
 EMAIL_SENDER_DOMAIN = ANYMAIL['MAILGUN_SENDER_DOMAIN']
+
+
+@dataclass
+class EmailToSender:
+    label: str
+
+    @property
+    def email(self) -> str:
+        return f'{self.label}@{EMAIL_SENDER_DOMAIN}'
+
+    @property
+    def sender(self) -> str:
+        name = self.email.split('@')[0].capitalize()
+        return f'eJournal | {name}<{self.email}>'
+
+
+class Emails:
+    support = EmailToSender('support')
+    noreply = EmailToSender('noreply')
+    contact = EmailToSender('contact')
+
+EMAILS = Emails()
 
 
 # LTI settings

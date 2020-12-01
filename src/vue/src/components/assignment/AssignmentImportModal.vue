@@ -41,9 +41,7 @@
             />
 
             <div v-if="!importableFormats">
-                <h4 class="theme-h4">
-                    No existing assignments available
-                </h4>
+                <b>No existing assignments available</b>
                 <hr class="m-0 mb-1"/>
                 Only assignments where you have permission to edit are available to import.
             </div>
@@ -84,13 +82,13 @@
                             id="months"
                             v-model="months"
                             type="number"
-                            class="theme-input"
+                            class="theme-input inline"
                         />
                         months
                     </div>
 
                     <b-button
-                        class="change-button float-right"
+                        class="orange-button float-right"
                         type="submit"
                     >
                         <icon name="file-import"/>
@@ -189,9 +187,6 @@ export default {
     color: grey
     margin-bottom: 10px
     display: inline-block
-    .theme-input
-        display: inline-block
-        width: 4em
     svg
         margin-top: -5px
         fill: grey

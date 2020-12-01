@@ -1,7 +1,7 @@
 <template>
     <div>
         <h4 class="theme-h4 mb-2">
-            <span>Manage course members</span>
+            Manage course members
         </h4>
         <div class="d-flex">
             <input
@@ -133,9 +133,9 @@
 import addUsersToCourseCard from '@/components/course/AddUsersToCourseCard.vue'
 import courseParticipantCard from '@/components/course/CourseParticipantCard.vue'
 
+import groupAPI from '@/api/group.js'
 import participationAPI from '@/api/participation.js'
 import roleAPI from '@/api/role.js'
-import groupAPI from '@/api/group.js'
 
 import { mapGetters, mapMutations } from 'vuex'
 
@@ -317,7 +317,6 @@ export default {
                         }
                     }
                 })
-                .catch((error) => { this.$toasted.error(error.response.data.description) })
         },
     },
 }

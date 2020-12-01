@@ -65,8 +65,8 @@
 </template>
 
 <script>
-import connection from '@/api/connection.js'
 import { mapGetters } from 'vuex'
+import connection from '@/api/connection.js'
 
 export default {
     name: 'SentryFeedbackForm',

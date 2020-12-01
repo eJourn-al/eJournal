@@ -16,7 +16,7 @@ import VLE.validators as validators
 
 def make_user(username, password=None, email=None, lti_id=None, profile_picture=settings.DEFAULT_PROFILE_PICTURE,
               is_superuser=False, is_teacher=False, full_name=None, verified_email=False, is_staff=False,
-              is_test_student=False):
+              is_test_student=False, is_active=True, save=True):
     """Create a user.
 
     Arguments:
@@ -30,16 +30,18 @@ def make_user(username, password=None, email=None, lti_id=None, profile_picture=
     user = VLE.models.User(
         username=username, email=email, lti_id=lti_id, is_superuser=is_superuser, is_teacher=is_teacher,
         verified_email=verified_email, is_staff=is_staff, full_name=full_name, profile_picture=profile_picture,
-        is_test_student=is_test_student)
+        is_test_student=is_test_student, is_active=is_active)
 
-    if is_test_student:
+    if is_test_student or not is_active:
         user.set_unusable_password()
     else:
         validators.validate_password(password)
         user.set_password(password)
 
     user.full_clean()
-    user.save()
+
+    if save:
+        user.save()
     return user
 
 
@@ -55,8 +57,7 @@ def make_participation(user=None, course=None, role=None, groups=None, notify_us
     participation = VLE.models.Participation(user=user, course=course, role=role)
     participation.save(notify_user=notify_user)
     if groups:
-        participation.groups.set(groups)
-        participation.save()
+        participation.set_groups(groups)
 
     return participation
 
@@ -320,17 +321,12 @@ def make_grade(entry, author, grade, published=False):
     grade -- the new grade
     published -- publishment state of the grade
     """
-    grade = VLE.models.Grade.objects.create(
+    return VLE.models.Grade.objects.create(
         entry=entry,
         author=VLE.models.User.objects.get(pk=author),
         grade=grade,
         published=published
     )
-
-    entry.grade = grade
-    entry.save()
-
-    return grade
 
 
 def make_journal_image(file, journal, author):

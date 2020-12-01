@@ -26,14 +26,13 @@ export default {
 </script>
 
 <style lang="sass">
-@import "~sass/modules/colors.sass"
-
 .theme-radio-button
     border-radius: 5px
     .btn.radio-button-option, .btn-secondary.radio-button-option
         box-shadow: none
         position: relative
         border-radius: 0px
+        color: darkgrey
         svg
             fill: darkgrey
         &:hover, &.active, &:hover:not(.no-hover)

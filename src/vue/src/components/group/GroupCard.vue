@@ -25,7 +25,7 @@
                         placeholder="Group name"
                     />
                     <b-button
-                        class="add-button multi-form"
+                        class="green-button multi-form"
                         type="submit"
                     >
                         <icon name="save"/>
@@ -46,7 +46,7 @@
                 >
                     <b>{{ member.full_name }}</b> ({{ member.username }})
                     <b-button
-                        class="float-right delete-button"
+                        class="float-right red-button"
                         type="submit"
                         @click.stop
                         @click="removeUser(member)"
@@ -72,7 +72,7 @@
                         class="multi-form no-right-radius"
                     />
                     <b-button
-                        class="add-button multi-form no-left-radius"
+                        class="green-button multi-form no-left-radius"
                         @click.prevent.stop="addToGroup()"
                     >
                         <icon name="user-plus"/>
@@ -83,7 +83,7 @@
 
             <b-button
                 v-if="$hasPermission('can_delete_course_user_group')"
-                class="float-left delete-button"
+                class="float-left red-button"
                 @click.prevent.stop="removeGroup()"
             >
                 <icon name="trash"/>

@@ -2,7 +2,7 @@ from django.conf import settings
 from django_test_migrations.contrib.unittest_case import MigratorTestCase
 
 
-class TestMigration0042(MigratorTestCase):
+class TestMigration0044(MigratorTestCase):
     """This class is used to test direct migrations."""
 
     migrate_from = ('VLE', '0043_comment_files')

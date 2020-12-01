@@ -28,12 +28,18 @@ if not os.path.exists(LOG_DIR):
 CORS_ORIGIN_ALLOW_ALL = True
 CSP_DEFAULT_SRC = ("'self'", "'unsafe-inline'")
 
-INSTALLED_APPS += ['silk']
+INSTALLED_APPS += ['django_prometheus', 'silk']
 
-MIDDLEWARE = [
-    'silk.middleware.SilkyMiddleware',
-    'corsheaders.middleware.CorsMiddleware'
-] + MIDDLEWARE
+MIDDLEWARE = (
+    [
+        'django_prometheus.middleware.PrometheusBeforeMiddleware',
+        'silk.middleware.SilkyMiddleware',
+        'corsheaders.middleware.CorsMiddleware'
+    ]
+    + MIDDLEWARE
+    + ['django_prometheus.middleware.PrometheusAfterMiddleware']
+)
+
 ALLOWED_HOSTS = ['*']
 
 SILKY_PYTHON_PROFILER = True

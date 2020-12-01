@@ -10,7 +10,7 @@
         />
         <b-button
             v-if="!autoUpload"
-            class="add-button float-right"
+            class="green-button float-right"
             :class="{ 'input-disabled': !file }"
             @click="uploadFile"
         >
@@ -123,7 +123,7 @@ export default {
         fileHandler (e) {
             const files = e.target.files
 
-            if (!files.length) { return }
+            if (!files || !files.length) { return }
             if (files[0].size > this.$root.maxFileSizeBytes) {
                 this.$toasted.error(
                     `The selected file exceeds the maximum file size of: ${this.$root.maxFileSizeBytes} bytes.`)

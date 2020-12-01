@@ -50,8 +50,8 @@ class FormatFactory(factory.django.DjangoModelFactory):
         elif isinstance(extracted, VLE.models.Template):
             self.template_set.add(extracted)
         elif extracted:
+            template = test.factory.Template(format=self)
             for kwargs in extracted:
-                template = test.factory.Template(format=self)
                 test.factory.Field(**{**kwargs, 'template': template})
         elif extracted is None:
             test.factory.TextTemplate(format=self)

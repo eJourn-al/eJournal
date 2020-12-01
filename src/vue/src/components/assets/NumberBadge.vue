@@ -1,18 +1,11 @@
 <template>
-    <div
-        :class="{'absolute': absolute}"
-        class="number-badge-container"
-    >
+    <div :class="{'absolute': absolute}">
         <b-badge
             v-for="(d, i) in displayedBadges"
             :key="`${keyPrefix}-badge-${i}`"
             v-b-tooltip.hover="('tooltip' in d.badge) ? tooltipToMsg(d.badge.tooltip, d.badge.value) : ''"
-            class="badge-part"
-            :class="{
-                'border-left': i == 0,
-                'border-right': i == displayedBadges.length - 1,
-            }"
-            :style="{ ...d.styles }"
+            pill
+            :class="d.class"
         >
             {{ d.badge.value ? Math.round(d.badge.value * 100) / 100 : 0 }}
         </b-badge>
@@ -46,15 +39,14 @@ export default {
     data () {
         return {
             colorsStyles: [
-                { 'background-color': '#22648A' }, // $theme-blue
-                { 'background-color': '#FFFFFF', color: '#252C39' },
-                { 'background-color': '#252C39' }, // $theme-dark-blue
-                { 'background-color': '#E8A723' }, // $theme-yellow
-                { 'background-color': '#E64769' }, // $theme-pink
-                { 'background-color': '#473E62' }, // $theme-purple
-                { 'background-color': '#007E33' }, // $theme-green
-                { 'background-color': '#CC0000' }, // $theme-red
-                { 'background-color': '#FF8800' }, // $theme-orange
+                'background-blue',
+                'background-dark-blue',
+                'background-yellow',
+                'background-pink',
+                'background-purple',
+                'background-green',
+                'background-red',
+                'background-orange',
             ],
         }
     },
@@ -66,7 +58,7 @@ export default {
              * zero not displayed value */
             this.badges.forEach((badge, index) => {
                 if ((badge.value === 0 && this.displayZeroValues) || badge.value) {
-                    result.push({ badge, styles: this.colorsStyles[index % this.colorsStyles.length] })
+                    result.push({ badge, class: this.colorsStyles[index % this.colorsStyles.length] })
                 }
             })
 
@@ -95,26 +87,8 @@ export default {
 </script>
 
 <style lang="sass">
-@import '~sass/modules/colors.sass'
-
 .absolute
     position: absolute
     right: 0px
     top: 0px
-
-.number-badge-container
-    font-size: 1em
-    .badge-part
-        border-top: 1px solid $theme-dark-grey !important
-        border-bottom: 1px solid $theme-dark-grey !important
-        border-radius: 0px !important
-        font-size: 1em
-        &.border-left
-            border-left: 1px solid $theme-dark-grey !important
-            border-top-left-radius: 5px !important
-            border-bottom-left-radius: 5px !important
-        &.border-right
-            border-right: 1px solid $theme-dark-grey !important
-            border-top-right-radius: 5px !important
-            border-bottom-right-radius: 5px !important
 </style>

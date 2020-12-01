@@ -14,24 +14,40 @@
                 :content="currentNode.description"
             />
         </p>
+        <files-list :files="currentNode.attached_files"/>
         <hr class="full-width"/>
-        <span v-if="!accomplished && new Date() < new Date(currentNode.due_date)">
-            <b>{{ score }}</b> out of <b>{{ currentNode.target }}</b> points.<br/>
+        <span
+            v-if="!accomplished && new Date() < new Date(currentNode.due_date)"
+            class="text-grey"
+        >
+            <b>{{ score }}</b> out of <b>{{ currentNode.target }}</b> points<br/>
 
-            <b>{{ Math.round(left * 1000) / 1000 }}</b> more required before <b>
-                {{ $root.beautifyDate(currentNode.due_date) }}</b>.<br/>
+            <b>{{ Math.round(left * 1000) / 1000 }}</b> more required before
+            {{ $root.beautifyDate(currentNode.due_date) }}<br/>
         </span>
-        <b v-else-if="!accomplished">Not achieved.</b>
-        <b v-else>Successfully achieved.</b>
+        <span
+            v-else-if="!accomplished"
+            class="text-grey"
+        >
+            Not achieved
+        </span>
+        <span
+            v-else
+            class="text-grey"
+        >
+            Successfully achieved
+        </span>
     </b-card>
 </template>
 
 <script>
+import filesList from '@/components/assets/file_handling/FilesList.vue'
 import sandboxedIframe from '@/components/assets/SandboxedIframe.vue'
 
 export default {
     components: {
         sandboxedIframe,
+        filesList,
     },
     props: ['nodes', 'currentNode', 'bonusPoints'],
     computed: {

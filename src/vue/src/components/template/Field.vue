@@ -84,7 +84,7 @@
                             @keyup.enter.native="addSelectionOption($event.target, field)"
                         />
                         <b-button
-                            class="float-right multi-form add-button"
+                            class="float-right multi-form green-button"
                             @click.stop="addSelectionOption($event.target.previousElementSibling, field)"
                         >
                             <icon name="plus"/>
@@ -95,7 +95,7 @@
                         <b-button
                             v-for="(option, index) in JSON.parse(field.options)"
                             :key="index"
-                            class="delete-button mr-2 mb-2"
+                            class="red-button mr-2 mb-2"
                             @click.stop="removeSelectionOption(option, field)"
                         >
                             <icon name="trash"/>
@@ -136,11 +136,9 @@
 </template>
 
 <script>
-import textEditor from '@/components/assets/TextEditor.vue'
-
 export default {
     components: {
-        textEditor,
+        TextEditor: () => import(/* webpackChunkName: 'text-editor' */ '@/components/assets/TextEditor.vue'),
     },
     props: {
         field: {

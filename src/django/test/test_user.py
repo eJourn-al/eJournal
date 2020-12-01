@@ -1,18 +1,24 @@
+import re
 import test.factory as factory
 import test.factory.user as user_factory
 from test.utils import api
 from test.utils.lti import gen_jwt_params
+from test.utils.performance import QueryContext
 
 import pytest
 from django.conf import settings
+from django.contrib.auth.tokens import PasswordResetTokenGenerator
+from django.core import mail
 from django.core.exceptions import ValidationError
 from django.test import TestCase
+from django.test.utils import override_settings
 from rest_framework.settings import api_settings
 
 import VLE.factory as creation_factory
 import VLE.permissions as permissions
 import VLE.validators as validators
-from VLE.models import Instance, Preferences, User
+from VLE.models import Instance, Preferences, Role, User
+from VLE.serializers import UserSerializer, prefetched_objects
 
 
 class UserAPITest(TestCase):
@@ -129,7 +135,8 @@ class UserAPITest(TestCase):
 
         # Standard LTI user creation
         jwt_params = factory.JWTParams()
-        jwt_params['custom_user_image'] = Instance.objects.get_or_create(pk=1)[0].default_lms_profile_picture
+        jwt_params['custom_user_image'] = 'https://canvas.uva.nl/' + \
+            Instance.objects.get_or_create(pk=1)[0].default_lms_profile_picture
         api.create(self, 'users', params={**user_params, **gen_jwt_params(jwt_params)})
         user = User.objects.get(username=user_params['username'])
         assert not user.is_test_student, 'A default user created via LTI parameters should not be flagged ' \
@@ -267,11 +274,9 @@ class UserAPITest(TestCase):
         # Test to delete user as other user
         api.delete(self, 'users', params={'pk': user2.pk}, user=user, status=403)
 
-        # Test to delete own user
-        api.delete(self, 'users', params={'pk': user.pk}, user=user)
-        api.get(self, 'users', params={'pk': user.pk}, user=admin, status=404)
-        api.delete(self, 'users', params={'pk': 0}, user=user2)
-        api.get(self, 'users', params={'pk': user2.pk}, user=admin, status=404)
+        # Test to delete own user (not possible, should still exist)
+        api.delete(self, 'users', params={'pk': user.pk}, user=user, status=403)
+        api.get(self, 'users', params={'pk': user.pk}, user=admin)
 
         # Test to delete user as admin
         api.delete(self, 'users', params={'pk': user3.pk}, user=admin)
@@ -401,3 +406,212 @@ class UserAPITest(TestCase):
         assert user1.can_view(user1), 'Non supervisor should not be able to see its students'
 
     # TODO: Test download, upload and set_profile_picture
+
+    def test_user_serializer(self):
+        group = factory.Group()
+        group2 = factory.Group(course=group.course)
+        student = factory.Student()
+        student2 = factory.Student()
+        p = factory.Participation(user=student, course=group.course, role=group.course.role_set.get(name='Student'))
+        p.groups.add(group, group2)
+        factory.Participation(user=student2, course=group.course, role=group.course.role_set.get(name='Student'))
+        p3 = factory.Participation(course=group.course, role=group.course.role_set.get(name='Student'))
+        student3 = p3.user
+
+        # Fairly best case (not all checks are exhausted)
+        student_permission_queries = 5
+        teacher_permission_queries = 2
+
+        # Student perspective
+        with QueryContext() as context_pre:
+            UserSerializer(
+                group.course.users.filter(pk__in=[student2.pk]),
+                many=True,
+                context={'user': student, 'course': group.course}
+            ).data
+        with QueryContext() as context_post:
+            UserSerializer(
+                group.course.users.filter(pk__in=[student2.pk, student3.pk]),
+                many=True,
+                context={'user': student, 'course': group.course}
+            ).data
+        assert len(context_post) - len(context_pre) <= student_permission_queries
+
+        # Teacher perspective
+        with QueryContext() as context_pre:
+            UserSerializer(
+                group.course.users.filter(pk__in=[student2.pk]),
+                many=True,
+                context={'user': group.course.author, 'course': group.course}
+            ).data
+        with QueryContext() as context_post:
+            UserSerializer(
+                group.course.users.filter(pk__in=[student2.pk, student3.pk]),
+                many=True,
+                context={'user': group.course.author, 'course': group.course}
+            ).data
+        assert len(context_post) - len(context_pre) <= teacher_permission_queries
+
+    def test_annotate_course_role(self):
+        c1 = factory.Course()
+        c2 = factory.Course()
+        p1 = factory.Participation(course=c1, role__name='role p1 c1 user')
+        user = p1.user
+        p2 = factory.Participation(course=c1, role__name='role p2 c1 user2')
+        user2 = p2.user
+
+        # Ensure user has multiple course participations (for query count check)
+        factory.Participation(course=c2, user=user, role=Role.objects.get(name='Student', course=c2))
+
+        assert user.participations.count() == 2
+
+        with self.assertNumQueries(1):
+            user = User.objects.filter(pk=user.pk).annotate_course_role(c1).get()
+        assert user.role_name == p1.role.name
+
+        with self.assertNumQueries(1):
+            users = list(User.objects.filter(participation__course=c1).annotate_course_role(c1))
+
+        assert user in users
+        assert user2 in users
+        for u in users:
+            if u == user:
+                assert u.role_name == p1.role.name, 'Annotation is correct'
+            if u == user2:
+                assert u.role_name == p2.role.name
+
+        user = User.objects.filter(pk=user2.pk).annotate_course_role(c2).get()
+        assert user.role_name is None, 'If the user is not part of the provided course, annotations yield None'
+
+    def test_prefetch_course_groups(self):
+        course = factory.Course()
+        group = factory.Group(course=course)
+        p1 = factory.Participation(course=course)
+        user = p1.user
+        p1.groups.add(group)
+        p2 = factory.Participation(course=course)
+        user2 = p2.user
+        p2.groups.add(group)
+
+        with self.assertNumQueries(3):  # Select user, 2 prefetches
+            qry = User.objects.filter(pk__in=[user.pk, user2.pk]).prefetch_course_groups(course)
+
+            for user in qry:
+                values, prefetched = prefetched_objects(user, 'participation_set')
+                participation = values[0]  # Test is setup so there no need to check if prefetched with alternative qry
+                assert list(participation.groups.all()) == [group], 'All groups are prefetched for all users'
+
+    @override_settings(EMAIL_BACKEND='anymail.backends.test.EmailBackend', CELERY_TASK_ALWAYS_EAGER=True)
+    def test_invite_invalid_users(self):
+        admin = factory.Admin()
+        pre_invite_user_count = User.objects.count()
+        users = [{
+            'full_name': user.full_name,
+            'username': user.username,
+            'email': user.email,
+        } for user in [factory.Student.build() for _ in range(7)]]
+
+        users[0]['full_name'] = ''
+        resp = api.post(self, 'users/invite_users', params={'users': users}, user=admin, status=400)
+        assert 'Please specify a full name for all users. No invites sent.' in resp['description']
+        del users[0]
+        assert User.objects.count() == pre_invite_user_count, 'No accounts should be created if some user is invalid'
+
+        users[0]['username'] = ''
+        resp = api.post(self, 'users/invite_users', params={'users': users}, user=admin, status=400)
+        assert 'Please specify a username for all users. No invites sent.' in resp['description']
+        del users[0]
+        assert User.objects.count() == pre_invite_user_count, 'No accounts should be created if some user is invalid'
+
+        users[0]['email'] = ''
+        resp = api.post(self, 'users/invite_users', params={'users': users}, user=admin, status=400)
+        assert 'Please specify an email for all users. No invites sent.' in resp['description']
+        del users[0]
+        assert User.objects.count() == pre_invite_user_count, 'No accounts should be created if some user is invalid'
+
+        users[0]['username'] = users[1]['username']
+        resp = api.post(self, 'users/invite_users', params={'users': users}, user=admin, status=400)
+        assert users[0]['username'] in resp['description']['duplicate_usernames']
+        del users[0]
+        assert User.objects.count() == pre_invite_user_count, 'No accounts should be created if some user is invalid'
+
+        users[0]['email'] = users[1]['email']
+        resp = api.post(self, 'users/invite_users', params={'users': users}, user=admin, status=400)
+        assert users[0]['email'] in resp['description']['duplicate_emails']
+        del users[0]
+        assert User.objects.count() == pre_invite_user_count, 'No accounts should be created if some user is invalid'
+
+        # Username and email should be unique and case-insensitive.
+        # All-uppercase versions of existing values should thus not be accepted.
+        users[0]['username'] = User.objects.all().first().username.upper()
+        resp = api.post(self, 'users/invite_users', params={'users': users}, user=admin, status=400)
+        assert users[0]['username'].lower() in resp['description']['existing_usernames']
+        del users[0]
+        assert User.objects.count() == pre_invite_user_count, 'No accounts should be created if some user is invalid'
+
+        users[0]['email'] = User.objects.all().first().email.upper()
+        resp = api.post(self, 'users/invite_users', params={'users': users}, user=admin, status=400)
+        assert users[0]['email'].lower() in resp['description']['existing_emails']
+        del users[0]
+        assert User.objects.count() == pre_invite_user_count, 'No accounts should be created if some user is invalid'
+
+    @override_settings(EMAIL_BACKEND='anymail.backends.test.EmailBackend', CELERY_TASK_ALWAYS_EAGER=True)
+    def test_invite_valid_users(self):
+        admin = factory.Admin()
+        pre_invite_user_count = User.objects.count()
+        pre_invite_teacher_count = User.objects.filter(is_teacher=True).count()
+        users = [{
+            'full_name': user.full_name,
+            'username': user.username,
+            'email': user.email,
+        } for user in [factory.Student.build() for _ in range(3)]]
+
+        # Add excess whitespace to some user details.
+        users[-1]['full_name'] = users[-1]['full_name'] + '   '
+        users[-1]['username'] = users[-1]['username'] + '   '
+        users[-1]['email'] = users[-1]['email'] + '   '
+
+        resp = api.post(self, 'users/invite_users', params={'users': users}, user=admin)
+        assert 'Successfully invited 3 users.' in resp['description']
+        assert User.objects.count() == pre_invite_user_count + 3
+        assert User.objects.filter(is_teacher=True).count() == pre_invite_teacher_count
+        assert not User.objects.last().full_name.endswith(' '), 'Whitespace should be removed from full names'
+        assert not User.objects.last().username.endswith(' '), 'Whitespace should be removed from usernames'
+        assert not User.objects.last().email.endswith(' '), 'Whitespace should be removed from emails'
+        assert all(Preferences.objects.filter(user__username=users[i]['username'].strip()).exists()
+                   for i in range(len(users))), 'All users should have preferences initialised after invitation'
+
+        assert len(mail.outbox) == 3, 'Invite email should be sent to all invited users'
+        assert all(mail.outbox[i].to == [users[i]['email'].strip()] for i in range(len(users))), \
+            'Email should be sent to the mail adress of each invited user'
+        assert all(users[i]['full_name'].strip() in mail.outbox[i].body for i in range(len(users))), \
+            'Invited user should be greeted by their full name'
+        assert all(f'{settings.BASELINK}/SetPassword/{users[i]["username"].strip()}/'
+                   in mail.outbox[i].alternatives[0][0] for i in range(len(users))), \
+            'Recovery token link should be in email'
+
+        # The recovery link should contain an indication that this is a new user, which is not part of the token
+        # itself.
+        for i in range(len(users)):
+            token = re.search(r'SetPassword\/(.*)\/([^"]*)\?new_user=true',
+                              mail.outbox[i].alternatives[0][0]).group(0).split('/')[-1][:-len('?new_user=true')]
+            assert PasswordResetTokenGenerator().check_token(User.objects.get(username=users[i]['username'].strip()),
+                                                             token), \
+                'Token for each user should be valid and new user should be indicated in URL'
+
+        resp = api.post(self, 'users/invite_users', params={'users': [{
+            'full_name': 'Invited Teacher Name',
+            'username': 'invitedteacherusername',
+            'email': 'invitedteacher@ejournal.app',
+            'is_teacher': True,
+        }]}, user=admin)
+        assert 'Successfully invited 1 users.' in resp['description']
+        assert User.objects.count() == pre_invite_user_count + 4
+        assert User.objects.filter(is_teacher=True).count() == pre_invite_teacher_count + 1
+
+        assert User.objects.filter(is_active=False).count() == 4, 'Invited user accounts are not yet active'
+
+        # Non-superusers may never invite new users.
+        admin.is_superuser = False
+        admin.save()
+        api.post(self, 'users/invite_users', params={'users': users}, user=admin, status=403)

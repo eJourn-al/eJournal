@@ -69,7 +69,7 @@
                 required
             />
             <b-button
-                class="float-left change-button multi-form"
+                class="float-left orange-button multi-form"
                 type="reset"
             >
                 <icon name="undo"/>
@@ -92,7 +92,6 @@ import tooltip from '@/components/assets/Tooltip.vue'
 
 import authAPI from '@/api/auth.js'
 import validation from '@/utils/validation.js'
-import statuses from '@/utils/constants/status_codes.js'
 
 export default {
     name: 'RegisterUser',
@@ -148,18 +147,8 @@ export default {
                                 + 'a system administrator or try registering again.')
                             })
                     })
-                    .catch((error) => {
+                    .catch(() => {
                         this.saveRequestInFlight = false
-                        if (error.response.status === statuses.FORBIDDEN) {
-                            this.$router.push({
-                                name: 'ErrorPage',
-                                params: {
-                                    code: error.response.status,
-                                    reasonPhrase: error.response.statusText,
-                                    description: error.response.data.description,
-                                },
-                            })
-                        }
                     })
             } else {
                 this.saveRequestInFlight = false

@@ -5,15 +5,80 @@ Generate preset data and save it to the database.
 """
 import random
 import test.factory as factory
+from test.test_lti_launch import create_request
 
 from dateutil.relativedelta import relativedelta
+from django.core.management import call_command
 from django.core.management.base import BaseCommand
 from django.utils import timezone
 from faker import Faker
 
-from VLE.models import Entry, Journal, Node, Role
+from VLE.models import Entry, Journal, Node, Role, User
+from VLE.views.lti import lti_launch
 
 faker = Faker()
+
+
+def _add_lti_launch_links_to_assignment_description(assignment, student, teacher):
+    """
+    Adds LTI launch links to the assignment description for the provided users.
+
+    NOTE: The launch links are valid for 15 minutes after generation.
+
+    Args:
+        user (:model:`VLE.user`): list of user instances for which a lti launch link should be added.
+        assignment (:model:`VLE.assignment`): assignment of which the description should be added.
+    """
+    launch_links = '<ol>'
+
+    def get_link_str(name, *args, **kwargs):
+        url = lti_launch(create_request(*args, **kwargs)).url
+        return f'<li><a href="{url}">{name}</a></li>'
+
+    course = assignment.courses.first()
+
+    launch_links += get_link_str(
+        name='Auto setup new student',
+        assignment=assignment,
+        course=course,
+    )
+    launch_links += get_link_str(
+        name='Connect to existing student',
+        user=student,
+        assignment=assignment,
+        course=course,
+    )
+    launch_links += get_link_str(
+        name='Student is early (course)',
+    )
+    launch_links += get_link_str(
+        name='Student is early (assignment)',
+        course=course,
+    )
+    # Fake lti id to generate consistent lti ids
+    teacher.lti_id = 'teacher_lti_id_872539'
+
+    launch_links += get_link_str(
+        name='Link to teacher -> new course -> new assignment',
+        user=teacher,
+        is_teacher=True,
+    )
+    launch_links += get_link_str(
+        name='Existing course -> import assignment',
+        user=teacher,
+        course=course,
+        is_teacher=True,
+    )
+    launch_links += get_link_str(
+        name='Link course -> link assignment',
+        user=teacher,
+        is_teacher=True,
+    )
+
+    launch_links += '</ol>'
+
+    assignment.description += '<br/>' + launch_links
+    assignment.save()
 
 
 class Command(BaseCommand):
@@ -27,18 +92,21 @@ class Command(BaseCommand):
             full_name='Lars van Hijfte',
             password='pass',
             email='lars@eJournal.app',
+            verified_email=False,
         )
         self.student2 = factory.Student(
             username='student2',
             full_name='Rick Watertor',
             password='pass',
             email='rick@eJournal.app',
+            verified_email=False,
         )
         self.student3 = factory.Student(
             username='student3',
             full_name='Dennis Wind',
             password='pass',
             email='dennis@eJournal.app',
+            verified_email=False,
         )
         self.student4 = factory.Student(
             username='student4',
@@ -60,20 +128,21 @@ class Command(BaseCommand):
             full_name='Engel Hamer',
             password='pass',
             email='test@eJournal.app',
+            verified_email=False,
         )
         self.ta = factory.Student(
             username='TA',
             full_name='De TA van TAing',
-            verified_email=False,
             password='pass',
             email='ta@eJournal.app',
+            verified_email=False,
         )
         self.ta2 = factory.Student(
             username='TA2',
             full_name='Backup TA van TAing',
-            verified_email=False,
             password='pass',
             email='ta2@eJournal.app',
+            verified_email=False,
         )
         self.superuser = factory.Admin(
             username='superuser',
@@ -117,7 +186,7 @@ class Command(BaseCommand):
                 'students': self.students + [self.test_user],
                 'tas': [self.ta2],
                 'student_group_names': ['Algol', 'Ruby']
-            }
+            },
         }
 
         for c in self.courses.values():
@@ -168,7 +237,16 @@ class Command(BaseCommand):
             lock_date=timezone.now() + relativedelta(years=1, days=2),
         )
 
-        self.assignments = [self.logboek, self.colloquium, self.group_assignment]
+        self.lti_assignment = factory.LtiAssignment(
+            name='Lti Assignment',
+            description=f'''Test Your LTI stuff with this. Launch URLs (works for 15 min after generation).''',
+            author=self.teacher,
+            is_published=True,
+        )
+
+        _add_lti_launch_links_to_assignment_description(self.lti_assignment, self.students[0], self.teacher)
+
+        self.assignments = [self.logboek, self.colloquium, self.group_assignment, self.lti_assignment]
 
     def gen_group_journals(self):
         """
@@ -270,6 +348,9 @@ class Command(BaseCommand):
         student_group_journal = self.group_assignment.journal_set.get(authors__user=self.student)
         factory.JournalImportRequest(source=student_group_journal, target=student_logboek, author=self.student)
 
+    def add_arguments(self, parser):
+        parser.add_argument('n_performance_students', type=int, nargs='?', default=0)
+
     def handle(self, *args, **options):
         """
         Generates a dummy data for a testing environment.
@@ -281,3 +362,9 @@ class Command(BaseCommand):
         self.gen_format()
         self.gen_entries()
         self.gen_journal_import_requests()
+        User.objects.filter(pk__in=[
+            self.student.pk, self.student2.pk, self.student3.pk, self.ta2.pk
+        ]).update(verified_email=True)
+
+        if options['n_performance_students']:
+            call_command('add_performance_course', options['n_performance_students'])

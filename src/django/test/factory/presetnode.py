@@ -22,9 +22,8 @@ class PresetNodeFactory(factory.django.DjangoModelFactory):
         if 'exclude' in kwargs:
             journals = journals.exclude(pk__in=[j.pk for j in kwargs['exclude']])
 
-        for j in journals:
-            if not j.node_set.filter(preset=self).exists():
-                utils.update_journals([j], self)
+        journals = journals.exclude(node__preset=self)
+        utils.update_journals(journals, self)
 
 
 class ProgressPresetNodeFactory(PresetNodeFactory):

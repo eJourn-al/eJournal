@@ -19,14 +19,14 @@
                 </div>
                 <div v-else-if="node.entry.editable">
                     <b-button
-                        class="ml-2 delete-button float-right multi-form"
+                        class="ml-2 red-button float-right multi-form"
                         @click="deleteEntry"
                     >
                         <icon name="trash"/>
                         Delete
                     </b-button>
                     <b-button
-                        class="ml-2 change-button float-right multi-form"
+                        class="ml-2 orange-button float-right multi-form"
                         @click="edit = true"
                     >
                         <icon name="edit"/>
@@ -42,6 +42,10 @@
                 v-if="node && node.description && (edit || create)"
                 :content="node.description"
             />
+            <files-list
+                v-if="node && node.description && (edit || create)"
+                :files="node.attached_files"
+            />
             <entry-fields
                 :template="template"
                 :content="newEntryContent"
@@ -53,7 +57,7 @@
 
             <template v-if="edit">
                 <b-button
-                    class="add-button float-right mt-2"
+                    class="green-button float-right mt-2"
                     :class="{ 'input-disabled': requestInFlight || uploadingFiles > 0 }"
                     @click="saveChanges"
                 >
@@ -61,7 +65,7 @@
                     Save
                 </b-button>
                 <b-button
-                    class="delete-button mt-2"
+                    class="red-button mt-2"
                     @click="edit = false"
                 >
                     <icon name="ban"/>
@@ -70,48 +74,50 @@
             </template>
             <b-button
                 v-else-if="create"
-                class="add-button float-right"
+                class="green-button float-right"
                 :class="{ 'input-disabled': requestInFlight || uploadingFiles > 0 }"
                 @click="createEntry"
             >
                 <icon name="paper-plane"/>
                 Post
             </b-button>
-            <template v-else>
+            <div
+                v-else
+                class="full-width timestamp"
+            >
                 <hr class="full-width"/>
-                <span class="timestamp">
-                    <template
-                        v-if="(new Date(node.entry.last_edited).getTime() - new Date(node.entry.creation_date)
-                            .getTime()) / 1000 < 3"
-                    >
-                        Submitted:
-                    </template>
-                    <template v-else>
-                        Last edited:
-                    </template>
-                    {{ $root.beautifyDate(node.entry.last_edited) }} by {{ node.entry.last_edited_by }}
-                    <b-badge
-                        v-if="node.due_date
-                            && new Date(node.due_date) < new Date(node.entry.last_edited)"
-                        v-b-tooltip:hover="'This entry was submitted after the due date'"
-                        class="late-submission-badge"
-                    >
-                        LATE
-                    </b-badge>
-                    <b-badge
-                        v-if="node.entry.jir"
-                        v-b-tooltip:hover="
-                            `This entry has been imported from the assignment
-                            ${node.entry.jir.source.assignment.name}
-                            (${node.entry.jir.source.assignment.course.abbreviation}), approved by
-                            ${node.entry.jir.processor.full_name}`
-                        "
-                        class="imported-entry-badge"
-                    >
-                        IMPORTED
-                    </b-badge>
-                </span>
-            </template>
+                <template
+                    v-if="(new Date(node.entry.last_edited).getTime() - new Date(node.entry.creation_date)
+                        .getTime()) / 1000 < 3"
+                >
+                    Submitted:
+                </template>
+                <template v-else>
+                    Last edited:
+                </template>
+                {{ $root.beautifyDate(node.entry.last_edited) }} by {{ node.entry.last_edited_by }}
+                <b-badge
+                    v-if="node.due_date
+                        && new Date(node.due_date) < new Date(node.entry.last_edited)"
+                    v-b-tooltip:hover="'This entry was submitted after the due date'"
+                    pill
+                    class="late-submission-badge"
+                >
+                    LATE
+                </b-badge>
+                <b-badge
+                    v-if="node.entry.jir"
+                    v-b-tooltip:hover="
+                        `This entry has been imported from the assignment
+                        ${node.entry.jir.source.assignment.name}
+                        (${node.entry.jir.source.assignment.course.abbreviation}), approved by
+                        ${node.entry.jir.processor.full_name}`"
+                    pill
+                    class="imported-entry-badge"
+                >
+                    IMPORTED
+                </b-badge>
+            </div>
         </b-card>
         <comments
             v-if="node && node.entry"
@@ -121,9 +127,10 @@
 </template>
 
 <script>
-import SandboxedIframe from '@/components/assets/SandboxedIframe.vue'
-import EntryFields from '@/components/entry/EntryFields.vue'
 import Comments from '@/components/entry/Comments.vue'
+import EntryFields from '@/components/entry/EntryFields.vue'
+import SandboxedIframe from '@/components/assets/SandboxedIframe.vue'
+import filesList from '@/components/assets/file_handling/FilesList.vue'
 
 import entryAPI from '@/api/entry.js'
 
@@ -132,6 +139,7 @@ export default {
         EntryFields,
         SandboxedIframe,
         Comments,
+        filesList,
     },
     props: {
         template: {

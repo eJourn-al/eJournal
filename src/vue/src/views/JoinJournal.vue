@@ -23,24 +23,25 @@
             </div>
             <main-card
                 v-else
-                line1="No journals for this assignment"
-                line2="Please ask your teacher to create a journal for you to join."
-                class="no-hover border-dark-grey"
-            />
+                text="No journals for this assignment"
+                class="no-hover"
+            >
+                Please ask your teacher to create a journal for you to join.
+            </main-card>
         </load-wrapper>
     </content-columns>
 </template>
 
 
 <script>
-import contentColumns from '@/components/columns/ContentColumns.vue'
 import breadCrumb from '@/components/assets/BreadCrumb.vue'
-import mainCard from '@/components/assets/MainCard.vue'
+import contentColumns from '@/components/columns/ContentColumns.vue'
 import journalCard from '@/components/assignment/JournalCard.vue'
 import loadWrapper from '@/components/loading/LoadWrapper.vue'
+import mainCard from '@/components/assets/MainCard.vue'
 
-import journalAPI from '@/api/journal.js'
 import assignmentAPI from '@/api/assignment.js'
+import journalAPI from '@/api/journal.js'
 
 export default {
     name: 'JoinJournal',

@@ -8,7 +8,7 @@
             :class="$root.getBorderClass($route.params.uID)"
             class="no-hover multi-form"
         >
-            <b-row>
+            <b-row class="small">
                 <b-col
                     xs="3"
                     class="text-center"
@@ -17,7 +17,7 @@
                         name="bell"
                         class="fill-grey shift-up-3 mr-1"
                     />
-                    Day and week before
+                    Day &amp; week before
                 </b-col>
                 <b-col
                     xs="3"
@@ -62,22 +62,22 @@
                         {
                             value: 'p',
                             icon: 'bell',
-                            class: 'add-button',
+                            class: 'green-button',
                         },
                         {
                             value: 'd',
                             icon: 'clock',
-                            class: 'add-button',
+                            class: 'green-button',
                         },
                         {
                             value: 'w',
                             icon: 'calendar',
-                            class: 'add-button',
+                            class: 'green-button',
                         },
                         {
                             value: 'o',
                             icon: 'times',
-                            class: 'delete-button',
+                            class: 'red-button',
                         },
                     ]"
                     class="float-right"
@@ -95,7 +95,7 @@
             :class="$root.getBorderClass($route.params.uID)"
             class="no-hover multi-form"
         >
-            <b-row>
+            <b-row class="small">
                 <b-col
                     xs="3"
                     class="text-center"
@@ -149,22 +149,22 @@
                         {
                             value: 'p',
                             icon: 'bell',
-                            class: 'add-button',
+                            class: 'green-button',
                         },
                         {
                             value: 'd',
                             icon: 'clock',
-                            class: 'add-button',
+                            class: 'green-button',
                         },
                         {
                             value: 'w',
                             icon: 'calendar',
-                            class: 'add-button',
+                            class: 'green-button',
                         },
                         {
                             value: 'o',
                             icon: 'times',
-                            class: 'delete-button',
+                            class: 'red-button',
                         },
                     ]"
                     class="float-right"
@@ -174,6 +174,33 @@
                     {{ preference['name'] }}
                     <tooltip
                         :tip="preference['tooltip']"
+                    />
+                </h2>
+            </div>
+            <hr/>
+            <div class="clearfix">
+                <b-button
+                    v-if="$store.getters['preferences/saved'].group_only_notifications"
+                    class="float-right"
+                    @click.stop
+                    @click="$store.commit('preferences/CHANGE_PREFERENCES', { group_only_notifications: false })"
+                >
+                    <icon name="user-friends"/>
+                    Your Groups
+                </b-button>
+                <b-button
+                    v-else
+                    class="float-right"
+                    @click.stop
+                    @click="$store.commit('preferences/CHANGE_PREFERENCES', { group_only_notifications: true })"
+                >
+                    <icon name="users"/>
+                    All Users
+                </b-button>
+                <h2 class="theme-h2 field-heading multi-form">
+                    Receive notifications from
+                    <tooltip
+                        tip="Only receive notifications for groups which you are also a member of."
                     />
                 </h2>
             </div>
@@ -223,6 +250,11 @@ export default {
                     name: 'New comments',
                     key: 'new_comment_notifications',
                     tooltip: 'Receive an email when a new comment is posted.',
+                },
+                {
+                    name: 'New journal import requests',
+                    key: 'new_journal_import_request_notifications',
+                    tooltip: 'Receive an email when a student wants to import the entries from an older journal.',
                 },
             ],
             reminderPreferences: [

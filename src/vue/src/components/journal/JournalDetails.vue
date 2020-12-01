@@ -88,12 +88,11 @@ export default {
 
 <style lang="sass">
 @import '~sass/partials/shadows.sass'
-@import '~sass/modules/breakpoints.sass'
-@import '~sass/modules/colors.sass'
 
 .journal-details
     .journal-image
         @extend .theme-shadow
+        border: 2px solid $theme-dark-grey
         position: absolute
         width: 70px
         height: 70px

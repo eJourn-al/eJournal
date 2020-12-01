@@ -2,7 +2,7 @@
     <div>
         <div
             v-if="teacherEntries && teacherEntries.length > 0"
-            class="d-flex"
+            class="d-lg-flex"
         >
             <theme-select
                 v-model="selectedTeacherEntry"
@@ -12,21 +12,31 @@
                 :multiple="false"
                 :searchable="true"
                 placeholder="Select A Teacher Entry"
-                class="flex-shrink-1"
+                class="flex-shrink-1 mb-2 mr-md-2"
             />
             <b-button
-                v-if=" selectedTeacherEntry && showTeacherEntryContent"
-                class="delete-button ml-2"
+                v-if="selectedTeacherEntry"
+                class="orange-button mr-2 flex-shrink-0 mb-2"
+                @click="toggleUpdateTitle"
+            >
+                <icon name="edit"/>
+                Edit title
+            </b-button>
+            <b-button
+                v-if="selectedTeacherEntry && showTeacherEntryContent"
+                class="red-button flex-shrink-0 mb-2"
                 @click="showTeacherEntryContent = false"
             >
                 <icon name="eye-slash"/>
+                Hide Content
             </b-button>
             <b-button
                 v-else-if="selectedTeacherEntry"
-                class="add-button ml-2"
+                class="green-button flex-shrink-0 mb-2"
                 @click="showTeacherEntryContent = true"
             >
                 <icon name="eye"/>
+                Show&nbsp;Content
             </b-button>
         </div>
         <span
@@ -36,6 +46,12 @@
             No teacher entries for this assignment. Once you have posted a teacher entry you can manage it here.
         </span>
         <div v-if="selectedTeacherEntry">
+            <b-input
+                v-if="showUpdateTitle"
+                v-model="updatedTitle"
+                placeholder="New title"
+                class="theme-input mt-2"
+            />
             <entry-fields
                 v-if="showTeacherEntryContent"
                 :template="selectedTeacherEntry.template"
@@ -50,8 +66,8 @@
             <theme-select
                 v-model="selectedJournals"
                 label="name"
-                trackBy="id"
-                :options="assignmentJournals"
+                trackBy="journal_id"
+                :options="selectableJournals"
                 :multiple="true"
                 :searchable="true"
                 placeholder="Select Journals"
@@ -99,33 +115,33 @@
                 </b-thead>
                 <b-tbody>
                     <b-tr
-                        v-for="journal in selectedJournals"
-                        :key="journal.id"
+                        v-for="(journal, i) in selectedJournals"
+                        :key="journal.journal_id"
                     >
-                        <b-td>
+                        <b-td class="align-middle">
                             {{ journal.name }}
                         </b-td>
-                        <b-td>
+                        <b-td class="align-middle">
                             {{ journal.usernames }}
                         </b-td>
-                        <b-td>
+                        <b-td class="align-middle">
                             <b-form-input
-                                v-model="grades[journal.id]"
+                                v-model="journal.grade"
                                 type="number"
                                 min="0"
                                 placeholder="-"
-                                class="theme-input teacher-entry-grade"
+                                class="theme-input inline"
                                 size="3"
                             />
                         </b-td>
                         <b-td>
-                            <b-form-checkbox v-model="publishGrade[journal.id]"/>
+                            <b-form-checkbox v-model="journal.published"/>
                         </b-td>
-                        <b-td>
+                        <b-td class="align-middle">
                             <icon
                                 name="trash"
                                 class="trash-icon"
-                                @click.native="selectedJournals.pop(journal)"
+                                @click.native="selectedJournals.splice(i, 1)"
                             />
                         </b-td>
                     </b-tr>
@@ -133,7 +149,7 @@
             </b-table-simple>
 
             <b-button
-                class="delete-button float-left clearfix mr-2 mt-2"
+                class="red-button float-left clearfix mr-2 mt-2"
                 :class="{ 'input-disabled': requestInFlight }"
                 @click="deleteTeacherEntry"
             >
@@ -141,7 +157,7 @@
                 Delete
             </b-button>
             <b-button
-                class="add-button float-right clearfix ml-2 mt-2"
+                class="green-button float-right clearfix ml-2 mt-2"
                 :class="{ 'input-disabled': requestInFlight }"
                 @click="saveTeacherEntry"
             >
@@ -175,6 +191,7 @@ export default {
     data () {
         return {
             selectedJournals: [],
+            selectableJournals: [],
             showUsernameInput: false,
             usernameInput: null,
             requestInFlight: false,
@@ -183,11 +200,14 @@ export default {
             showTeacherEntryContent: false,
             grades: Object(),
             publishGrade: Object(),
+            showUpdateTitle: false,
+            updatedTitle: null,
         }
     },
     computed: {
-        selectedJournalIDs () {
-            return this.selectedJournals.map(journal => journal.id)
+        hasRemovedJournal () {
+            const journalIds = this.selectedJournals.map(journal => journal.id)
+            return this.selectedTeacherEntry.journals.some(journal => !journalIds.includes(journal.id))
         },
     },
     watch: {
@@ -195,10 +215,9 @@ export default {
             handler () {
                 this.showTeacherEntryContent = false
                 if (this.selectedTeacherEntry) {
-                    this.selectedJournals = this.assignmentJournals.filter(
-                        journal => this.selectedTeacherEntry.journal_ids.includes(journal.id))
-                    this.grades = Object.assign({}, this.selectedTeacherEntry.grades)
-                    this.publishGrade = Object.assign({}, this.selectedTeacherEntry.grade_published)
+                    this.updatedTitle = this.selectedTeacherEntry.title
+                    this.showUpdateTitle = false
+                    this.selectedJournals = this.selectedTeacherEntry.journals
                 }
             },
             immediate: true,
@@ -207,6 +226,15 @@ export default {
     created () {
         assignmentAPI.getTeacherEntries(this.aID).then((entries) => {
             this.teacherEntries = entries
+        })
+        this.assignmentJournals.forEach((journal) => {
+            this.selectableJournals.push({
+                journal_id: journal.id,
+                grade: this.grade,
+                published: this.publishSameGrade,
+                name: journal.name,
+                usernames: journal.usernames,
+            })
         })
     },
     methods: {
@@ -217,9 +245,15 @@ export default {
                     .some(journalUsername => journalUsername === username))
 
                 if (!journalFromUsername) {
-                    this.$toasted.error(`${username} does not exist!`)
+                    this.$toasted.error(`${username} does not exist`)
                 } else if (!this.selectedJournals.includes(journalFromUsername)) {
-                    this.selectedJournals.push(journalFromUsername)
+                    this.selectedJournals.push({
+                        journal_id: journalFromUsername.id,
+                        grade: null,
+                        published: false,
+                        name: journalFromUsername.name,
+                        usernames: journalFromUsername.usernames,
+                    })
                 }
             })
 
@@ -228,26 +262,24 @@ export default {
         saveTeacherEntry () {
             if (this.selectedJournals.length === 0) {
                 this.$toasted.error('No journals selected.')
-            } else if (this.selectedJournals.some(journal => this.selectedTeacherEntry.grades[journal.id]
-                && !this.grades[journal.id])) {
-                this.$toasted.error('It is not possible to remove grades from entries that have previously been '
-                    + 'graded. Ensure a grade is provided for each of these.')
-            } else if (this.selectedJournals.some(journal => !this.grades[journal.id])
+            } else if (!this.updatedTitle) {
+                this.$toasted.error('Title cannot be empty.')
+            } else if (this.selectedJournals.some(journal => !journal.grade)
                 && !window.confirm('Students will be able to edit the entry if no grade is set. Are you sure you'
                 + ' want to post ungraded entries?')) {
                 this.$toasted.error('Changes not saved: no grade set.')
-            } else if (this.selectedTeacherEntry.journal_ids.some(
-                journalID => !this.selectedJournalIDs.includes(journalID)) && !window.confirm('The entry will be '
+            } else if (this.hasRemovedJournal && !window.confirm('The entry will be '
                     + 'deleted from journals that have been unselected. Are you sure you want to proceed? This action '
                     + 'is irreversible!')) {
                 this.$toasted.error('Canceled updating the entry.')
             } else {
                 this.requestInFlight = true
                 teacherEntryAPI.update(this.selectedTeacherEntry.id, {
-                    journal_ids: this.selectedJournalIDs,
-                    grades: this.grades,
-                    publish_grade: this.publishGrade,
-                }, { customSuccessToast: 'Teacher entry successfully updated.' })
+                    journals: this.selectedJournals,
+                    title: this.updatedTitle,
+                }, {
+                    customSuccessToast: 'Teacher entry successfully updated.',
+                })
                     .then((data) => {
                         this.requestInFlight = false
                         this.$emit('teacher-entry-updated', data)
@@ -260,7 +292,7 @@ export default {
                 + 'journals it is in and cannot be undone!')) {
                 this.requestInFlight = true
                 teacherEntryAPI.delete(this.selectedTeacherEntry.id,
-                    { customSuccessToast: 'Teacher entry successfully updated.' })
+                    { customSuccessToast: 'Teacher entry successfully deleted.' })
                     .then((data) => {
                         this.requestInFlight = false
                         this.$emit('teacher-entry-updated', data)
@@ -268,12 +300,12 @@ export default {
                     .catch(() => { this.requestInFlight = false })
             }
         },
+        toggleUpdateTitle () {
+            if (this.showUpdateTitle && this.selectedTeacherEntry) {
+                this.updatedTitle = this.selectedTeacherEntry.title
+            }
+            this.showUpdateTitle = !this.showUpdateTitle
+        },
     },
 }
 </script>
-
-<style lang="sass">
-.teacher-entry-grade
-    width: 4em
-    display: inline-block
-</style>

@@ -54,9 +54,7 @@
                         v-if="nodes[currentNode] && nodes[currentNode].type == 'a'"
                     >
                         <h4 class="theme-h4 mb-2 d-block">
-                            <span>
-                                New entry
-                            </span>
+                            <span>New entry</span>
                         </h4>
                         <b-form-select
                             v-if="nodes[currentNode].templates.length > 1"
@@ -149,7 +147,7 @@
             <b-button
                 v-if="!loadingNodes"
                 v-b-modal="'journal-import-modal'"
-                class="multi-form change-button full-width"
+                class="multi-form orange-button full-width"
             >
                 <icon name="file-import"/>
                 Import Journal
@@ -179,17 +177,17 @@
 
 <script>
 import Entry from '@/components/entry/Entry.vue'
-import timeline from '@/components/timeline/Timeline.vue'
 import breadCrumb from '@/components/assets/BreadCrumb.vue'
-import loadWrapper from '@/components/loading/LoadWrapper.vue'
-import journalStartCard from '@/components/journal/JournalStartCard.vue'
-import journalEndCard from '@/components/journal/JournalEndCard.vue'
 import journalDetails from '@/components/journal/JournalDetails.vue'
+import journalEndCard from '@/components/journal/JournalEndCard.vue'
 import journalImportModal from '@/components/journal/JournalImportModal.vue'
+import journalStartCard from '@/components/journal/JournalStartCard.vue'
+import loadWrapper from '@/components/loading/LoadWrapper.vue'
 import progressNode from '@/components/entry/ProgressNode.vue'
+import timeline from '@/components/timeline/Timeline.vue'
 
-import journalAPI from '@/api/journal.js'
 import assignmentAPI from '@/api/assignment.js'
+import journalAPI from '@/api/journal.js'
 
 export default {
     components: {
@@ -272,22 +270,23 @@ export default {
             .then((assignment) => {
                 this.assignment = assignment
 
-                if (!this.assignment.unlock_date || new Date(this.assignment.unlock_date) < new Date()) {
-                    journalAPI.getNodes(this.jID)
-                        .then((nodes) => {
-                            this.nodes = nodes
-                            this.loadingNodes = false
-                            if (this.$route.query.nID !== undefined) {
-                                this.currentNode = this.findEntryNode(parseInt(this.$route.query.nID, 10))
-                            }
-                        })
-                } else {
-                    this.loadingNodes = false
-                }
-            })
+                const initialCalls = []
+                initialCalls.push(journalAPI.get(this.jID))
 
-        journalAPI.get(this.jID)
-            .then((journal) => { this.journal = journal })
+                if (!this.assignment.unlock_date || new Date(this.assignment.unlock_date) < new Date()) {
+                    initialCalls.push(journalAPI.getNodes(this.jID))
+                }
+                Promise.all(initialCalls).then((results) => {
+                    this.journal = results[0]
+                    if (results.length > 1) {
+                        this.nodes = results[1]
+                        if (this.$route.query.nID !== undefined) {
+                            this.currentNode = this.findEntryNode(parseInt(this.$route.query.nID, 10))
+                        }
+                    }
+                    this.loadingNodes = false
+                })
+            })
     },
     methods: {
         removeCurrentEntry () {
@@ -299,7 +298,7 @@ export default {
             }
         },
         selectNode (selectedNode) {
-            if (selectedNode !== this.currentNode || this.safeToLeave()) {
+            if (selectedNode !== this.currentNode && this.safeToLeave()) {
                 this.currentNode = selectedNode
             }
         },

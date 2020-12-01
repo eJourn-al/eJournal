@@ -14,8 +14,8 @@
 </template>
 
 <script>
-/* eslint-disable import/extensions */
-import tinymce from 'tinymce/tinymce'
+/* eslint-disable */
+import tinymce from 'tinymce/tinymce' /* Needs to occur before icons and themes */
 import 'tinymce/icons/default'
 import 'tinymce/themes/silver'
 
@@ -26,15 +26,15 @@ import 'tinymce/plugins/autoresize'
 /* Allows direct manipulation of the html aswell as easy export. */
 import 'tinymce/plugins/code'
 import 'tinymce/plugins/fullscreen'
+import 'tinymce/plugins/hr'
 import 'tinymce/plugins/image'
 import 'tinymce/plugins/imagetools'
 import 'tinymce/plugins/link'
 import 'tinymce/plugins/lists'
 import 'tinymce/plugins/nonbreaking'
-import 'tinymce/plugins/preview'
 import 'tinymce/plugins/paste'
+import 'tinymce/plugins/preview'
 import 'tinymce/plugins/print'
-import 'tinymce/plugins/hr'
 import 'tinymce/plugins/searchreplace'
 import 'tinymce/plugins/spellchecker'
 import 'tinymce/plugins/table'
@@ -42,11 +42,13 @@ import 'tinymce/plugins/textpattern'
 /* Table of contents. */
 import 'tinymce/plugins/toc'
 import 'tinymce/plugins/wordcount'
-/* eslint-enable import/extensions */
+/* eslint-enable */
 
 import 'public/tinymce/plugins/placeholder.js'
 
 import auth from '@/api/auth.js'
+
+import themeColors from 'sass/modules/colors.sass'
 
 export default {
     name: 'TextEditor',
@@ -293,7 +295,7 @@ export default {
 
             input.onchange = () => {
                 const files = this.files
-                if (!files.length) { return }
+                if (!files || !files.length) { return }
 
                 const file = files[0]
                 if (files[0].size > this.$root.maxFileSizeBytes) {
@@ -312,12 +314,13 @@ export default {
             input.click()
         },
         setCustomColors () {
-            /* Enables some basic colors to chose from, inline with the websites theme colors. */
+            /* Enables some basic colors to chose from, inline with the websites theme colors.
+             * Strips the leading # of the color codes */
             this.config.color_map = [
-                '252C39', 'Theme dark blue',
-                '007E33', 'Theme positive selected',
-                'FF8800', 'Theme change selected',
-                'CC0000', 'Theme negative selected',
+                themeColors.darkblue.substring(1), 'Theme dark blue',
+                themeColors.green.substring(1), 'Theme positive selected',
+                themeColors.oranga.substring(1), 'Theme change selected',
+                themeColors.red.substring(1), 'Theme negative selected',
             ]
             this.config.custom_colors = false
         },
@@ -381,8 +384,7 @@ export default {
     width: 100%
     .tox-tinymce
         border-radius: 5px !important
-    .tox
-        font-family: 'Roboto Condensed', sans-serif
+        font-family: 'Roboto'
     .tox-edit-area
         border-radius: 0px !important
         &::before
@@ -398,7 +400,7 @@ export default {
 
 
 div.mce-fullscreen
-    padding-top: 70px
+    padding-top: $header-height
 
 .modal .mce-fullscreen
     padding-top: 0px

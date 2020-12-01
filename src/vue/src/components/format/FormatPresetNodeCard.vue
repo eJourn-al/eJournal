@@ -84,17 +84,17 @@
             Description
         </h2>
         <text-editor
-            :id="`preset-description-${currentPreset.id}`"
-            :key="`preset-description-${currentPreset.id}`"
+            :id="`preset-description-${newPreset ? currentPreset.type : currentPreset.id}`"
+            :key="`preset-description-${newPreset ? currentPreset.type : currentPreset.id}`"
             v-model="currentPreset.description"
             class="multi-form"
             placeholder="Description"
             footer="false"
         />
 
-        <div v-if="currentPreset.type === 'd'">
+        <template v-if="currentPreset.type === 'd'">
             <h2 class="theme-h2 field-heading required">
-                Preset Template
+                Template
                 <tooltip tip="The template students can use for this entry"/>
             </h2>
             <div class="d-flex">
@@ -119,7 +119,7 @@
                 </b-form-select>
                 <b-button
                     v-if="showTemplatePreview"
-                    class="multi-form delete-button flex-shrink-0"
+                    class="multi-form red-button flex-shrink-0"
                     @click="showTemplatePreview = false"
                 >
                     <icon name="eye-slash"/>
@@ -127,29 +127,39 @@
                 </b-button>
                 <b-button
                     v-if="!showTemplatePreview"
-                    class="multi-form add-button flex-shrink-0"
+                    class="multi-form green-button flex-shrink-0"
                     @click="showTemplatePreview = true"
                 >
                     <icon name="eye"/>
                     Show Preview
                 </b-button>
             </div>
-            <div v-if="showTemplatePreview">
-                <b-card class="no-hover">
-                    <entry-fields
-                        v-if="currentPreset.template"
-                        :template="currentPreset.template"
-                        :content="() => Object()"
-                        :edit="true"
-                        :readOnly="true"
-                    />
-                    <span v-else>
-                        Select a template to preview
-                    </span>
-                </b-card>
-            </div>
-        </div>
-        <div v-else-if="currentPreset.type === 'p'">
+            <p>
+                Or
+                <span
+                    class="text-blue cursor-pointer"
+                    @click="$emit('new-template', currentPreset)"
+                >
+                    create a new template</span>.
+                <br/>
+            </p>
+            <b-card
+                v-if="showTemplatePreview"
+                class="no-hover"
+            >
+                <entry-fields
+                    v-if="currentPreset.template"
+                    :template="currentPreset.template"
+                    :content="() => Object()"
+                    :edit="true"
+                    :readOnly="true"
+                />
+                <span v-else>
+                    Select a template to preview
+                </span>
+            </b-card>
+        </template>
+        <template v-else-if="currentPreset.type === 'p'">
             <h2 class="theme-h2 field-heading required">
                 Amount of points
                 <tooltip
@@ -160,15 +170,39 @@
             <b-input
                 v-model="currentPreset.target"
                 type="number"
-                class="theme-input"
+                class="theme-input mb-2"
                 placeholder="Amount of points"
                 min="1"
                 :max="assignmentDetails.points_possible"
             />
-        </div>
+        </template>
+
+        <h2
+            v-if="currentPreset.attached_files.length > 0"
+            class="theme-h2 field-heading"
+        >
+            Files
+        </h2>
+        <files-list
+            :attachNew="true"
+            :files="currentPreset.attached_files"
+            @uploading-file="uploadingFiles ++"
+            @fileUploadSuccess="currentPreset.attached_files.push($event) && uploadingFiles --"
+            @fileUploadFailed="uploadingFiles --"
+            @fileRemoved="(i) => currentPreset.attached_files.splice(i, 1)"
+        />
+
         <b-button
-            v-if="!newPreset"
-            class="delete-button full-width mt-2"
+            v-if="newPreset"
+            class="green-button float-right"
+            @click.prevent="$emit('add-preset')"
+        >
+            <icon name="plus"/>
+            Add preset
+        </b-button>
+        <b-button
+            v-else
+            class="red-button float-right"
             @click.prevent="emitDeletePreset"
         >
             <icon name="trash"/>
@@ -178,20 +212,22 @@
 </template>
 
 <script>
-import TextEditor from '@/components/assets/TextEditor.vue'
 import EntryFields from '@/components/entry/EntryFields.vue'
 import Tooltip from '@/components/assets/Tooltip.vue'
+import filesList from '@/components/assets/file_handling/FilesList.vue'
 
 export default {
     components: {
+        TextEditor: () => import(/* webpackChunkName: 'text-editor' */ '@/components/assets/TextEditor.vue'),
         EntryFields,
         Tooltip,
-        TextEditor,
+        filesList,
     },
     props: ['newPreset', 'currentPreset', 'templates', 'assignmentDetails'],
     data () {
         return {
             showTemplatePreview: false,
+            uploadingFiles: 0,
         }
     },
     computed: {
@@ -282,7 +318,7 @@ export default {
     },
     methods: {
         emitDeletePreset () {
-            if (window.confirm('Are you sure you want to remove this preset from this format?')) {
+            if (window.confirm('Are you sure you want to remove this preset from this assignment?')) {
                 this.$emit('delete-preset')
             }
         },

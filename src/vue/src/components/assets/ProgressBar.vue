@@ -131,8 +131,6 @@ export default {
 </script>
 
 <style lang="sass">
-@import '~sass/modules/colors.sass'
-
 .progress-percentage
     float: right
     color: $theme-blue

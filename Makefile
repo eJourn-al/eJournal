@@ -35,14 +35,18 @@ venv_activate = source ./venv/bin/activate
 test-back:
 	${venv_activate} \
 	&& flake8 ./src/django \
+	&& ./src/django/manage.py check --fail-level=WARNING \
 	&& pytest ${TOTEST} src/django/test/
 	make isort
 
 test-front:
 	${venv_activate} && npm run lint --prefix ./src/vue
 
-display-coverage:
+display-coverage-plain:
 	${venv_activate} && coverage report -m
+
+display-coverage-html:
+	${venv_activate} && coverage html
 
 test: test-front test-back
 
@@ -65,9 +69,12 @@ setup:
 	@read -r a
 	make setup-no-input
 	make setup-sentry-cli
+	make update-submodules
 	make run-preset-db
 setup-no-input:
 	@make clean
+
+	make setup-git
 
 	# Install apt dependencies and ppa's.
 	(sudo apt-cache show python3.6 | grep "Package: python3.6") || \
@@ -114,6 +121,22 @@ setup-sentry-cli:
 	@if ! [ $(shell which 'sentry-cli' > /dev/null 2>&1; echo $$?) -eq 0 ]; then \
 		${venv_activate} && curl -sL https://sentry.io/get-cli/ | bash; \
 	fi
+
+setup-git:
+	make git-update-submodules
+	make git-set-custom-hooks-path
+
+git-set-custom-hooks-path:
+	git config core.hooksPath .githooks
+
+git-update-submodules:
+	git submodule update --remote --merge
+
+output-webpack-config:
+	${venv_activate} && cd ./src/vue && vue inspect > webpack_config_output.js
+
+output-vue-build-report:
+	${venv_activate} && npm run build-report --prefix ./src/vue
 
 ##### DEPLOY COMMANDS ######
 
@@ -193,7 +216,10 @@ preset-db-no-input:
 	make run-preset-db
 
 run-preset-db:
-	${venv_activate} && cd ./src/django && python manage.py preset_db
+	${venv_activate} && cd ./src/django && python manage.py preset_db $(n_performance_students)
+
+run-add-performance-course:
+	${venv_activate} && cd ./src/django && python manage.py add_performance_course $(n_performance_students)
 
 migrate-back:
 	${venv_activate} && cd ./src/django && python manage.py makemigrations VLE && python manage.py migrate

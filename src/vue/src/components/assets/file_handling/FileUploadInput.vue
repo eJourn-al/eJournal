@@ -69,7 +69,7 @@ export default {
         fileHandler (e) {
             const files = e.target.files
 
-            if (!files.length) { return }
+            if (!files || !files.length) { return }
             if (files[0].size > this.maxSizeBytes) {
                 this.$toasted.error(`The selected file exceeds the maximum file size of: ${this.maxSizeBytes} bytes.`)
                 return

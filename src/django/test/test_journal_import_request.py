@@ -2,6 +2,7 @@ import re
 import test.factory as factory
 import test.utils.generic_utils as test_utils
 from test.utils import api
+from test.utils.performance import assert_num_queries_less_than
 from unittest import mock
 
 from dateutil.relativedelta import relativedelta
@@ -9,8 +10,9 @@ from django.test import TestCase
 from django.utils import timezone
 
 import VLE.utils.generic_utils as utils
-from VLE.models import (AssignmentParticipation, Comment, Content, Entry, Field, FileContext, JournalImportRequest,
-                        Node, PresetNode)
+from VLE.models import (AssignmentParticipation, Comment, Content, Entry, Field, FileContext, Journal,
+                        JournalImportRequest, Node, PresetNode)
+from VLE.serializers import JournalImportRequestSerializer
 
 
 class JournalImportRequestTest(TestCase):
@@ -187,7 +189,9 @@ class JournalImportRequestTest(TestCase):
         assert JournalImportRequest.objects.filter(pk=jir.pk).exists()
 
     def test_list_jir(self):
-        jir = factory.JournalImportRequest()
+        course = factory.Course()
+        jir = factory.JournalImportRequest(
+            source__assignment__author=course.author, target__assignment__author=course.author)
         supervisor = jir.target.assignment.author
         unrelated_teacher = factory.Teacher()
         data = {'journal_target_id': jir.target.pk}
@@ -221,9 +225,8 @@ class JournalImportRequestTest(TestCase):
         assert jir_resp['source']['journal']['id'] == jir.source.pk \
             and jir_resp['target']['journal']['id'] == jir.target.pk, \
             'The correct source and target journal are serialized'
-        assert jir_resp['source']['journal']['import_requests'] is None, \
-            'JIR import_requests (count) are only serialized for the target journal'
-        assert jir_resp['target']['journal']['import_requests'] == 2
+        assert jir_resp['source']['journal']['import_requests'] == 0, 'Source has no import requests with it as target'
+        assert jir_resp['target']['journal']['import_requests'] == 2, 'Two JIRs are pending for the targer journal'
 
     def test_create_jir(self):
         source_journal = factory.Journal()
@@ -340,6 +343,7 @@ class JournalImportRequestTest(TestCase):
         student = source_journal.authors.first().user
         assignment2 = factory.Assignment(courses=[course])
         target_journal = factory.Journal(assignment=assignment2, ap__user=student)
+        target_journal = Journal.objects.get(pk=target_journal.pk)
         jir = factory.JournalImportRequest(source=source_journal, target=target_journal)
 
         entry1 = factory.UnlimitedEntry(node__journal=source_journal)
@@ -363,8 +367,8 @@ class JournalImportRequestTest(TestCase):
 
         data = {'pk': jir.pk, 'jir_action': JournalImportRequest.APPROVED_INC_GRADES}
         api.update(self, 'journal_import_request', params=data, user=course.author, status=200)
-        target_journal.refresh_from_db()
-        source_journal.refresh_from_db()
+        target_journal = Journal.objects.get(pk=target_journal.pk)
+        source_journal = Journal.objects.get(pk=source_journal.pk)
 
         for entry in Entry.objects.filter(node__journal=jir.target):
             entry.node in jir.target.node_set.all(), 'Created nodes correctly linked via node set'
@@ -458,7 +462,7 @@ class JournalImportRequestTest(TestCase):
                         test_utils.check_equality_of_imported_file_context(
                             source_fc, imported_fc,
                             ignore_keys=['last_edited', 'creation_date', 'update_date', 'id', 'access_id', 'content',
-                                         'journal']
+                                         'journal', 'assignment']
                         )
                         assert imported_fc.journal == jir.target, 'FC is linked to the target journal'
                     # Assume working with Field.RICH_TEXT
@@ -616,3 +620,86 @@ class JournalImportRequestTest(TestCase):
         check_db_state_after_exception(self, 'VLE.utils.import_utils.copy_entry')
         check_db_state_after_exception(self, 'VLE.utils.import_utils.import_comment')
         check_db_state_after_exception(self, 'VLE.utils.import_utils.import_content')
+
+    def test_jir_does_not_crash_due_to_temp_files(self):
+        course = factory.Course()
+        rich_text_and_file_template = [{'type': Field.RICH_TEXT}, {'type': Field.FILE}]
+        assignment_source = factory.Assignment(courses=[course], format__templates=rich_text_and_file_template)
+        assignment_target = factory.Assignment(courses=[course], format__templates=rich_text_and_file_template)
+        source = factory.Journal(assignment=assignment_source, entries__n=1)
+        entry = Entry.objects.get(node__journal=source)
+        student = source.authors.first().user
+        target = factory.Journal(assignment=assignment_target, ap__user=student, entries__n=0)
+        jir = factory.JournalImportRequest(source=source, target=target)
+
+        source_field_fc = FileContext.objects.get(
+            content__entry__node__journal=source, content__field__type=Field.FILE)
+        source_rt_fc = FileContext.objects.get(
+            content__entry__node__journal=source, content__field__type=Field.RICH_TEXT)
+
+        # Create a new entry for the JIR source in order to leave old files in place.
+        entry_update_params = {
+            'pk': entry.pk,
+            'content': factory.EntryContentCreationParams(
+                template=assignment_source.format.template_set.first(),
+                author=student,
+            )['content']
+        }
+        api.update(self, 'entries', params=entry_update_params, user=student)
+        assert FileContext.objects.filter(content__entry__node__journal=source).count() == 4, \
+            'For both fields (FILE and RICH_TEXT) no longer used files exist.'
+
+        unused_source_field_fc = FileContext.objects.filter(
+            content__entry__node__journal=source,
+            content__field__type=Field.FILE,
+        ).unused_file_field_files('filter').get()
+        unused_source_rt_fc = FileContext.objects.filter(
+            content__entry__node__journal=source,
+            content__field__type=Field.RICH_TEXT,
+        ).unused_rich_text_field_files('filter').get()
+        assert source_field_fc == unused_source_field_fc, 'Field fc is no longer used'
+        assert source_rt_fc == unused_source_rt_fc, 'RT fc is no longer used'
+
+        # Fetch the new (updated) FCs
+        source_field_fc = FileContext.objects.filter(
+            content__entry__node__journal=source,
+            content__field__type=Field.FILE,
+        ).unused_file_field_files('exclude').get()
+        source_rt_fc = FileContext.objects.filter(
+            content__entry__node__journal=source,
+            content__field__type=Field.RICH_TEXT,
+        ).unused_rich_text_field_files('exclude').get()
+
+        # Despite the source journal holding files which are no longer used (and are scheduled for cleanup)
+        # Importing a journal will not crash
+        data = {'pk': jir.pk, 'jir_action': JournalImportRequest.APPROVED_INC_GRADES}
+        api.update(self, 'journal_import_request', params=data, user=course.author)
+
+        # Check if the target FCs match the source FCs
+        target_field_fc = FileContext.objects.get(
+            content__entry__node__journal=target, content__field__type=Field.FILE)
+        target_rt_fc = FileContext.objects.get(
+            content__entry__node__journal=target, content__field__type=Field.RICH_TEXT)
+        for source_fc, target_fc in zip([source_field_fc, source_rt_fc], [target_field_fc, target_rt_fc]):
+            test_utils.check_equality_of_imported_file_context(
+                source_fc, target_fc,
+                ignore_keys=['last_edited', 'creation_date', 'update_date', 'id', 'access_id', 'content',
+                             'journal', 'assignment']
+            )
+
+    def test_jir_serializer(self):
+        jir = factory.JournalImportRequest()
+        teacher = jir.target.assignment.author
+
+        with assert_num_queries_less_than(34):
+            data = JournalImportRequestSerializer(
+                JournalImportRequestSerializer.setup_eager_loading(
+                    JournalImportRequest.objects.filter(pk=jir.pk)
+                ).get(),
+                context={'user': teacher},
+            ).data
+
+        assert data['source']['assignment']
+        assert data['source']['assignment']['course']
+        assert data['source']['journal']
+        assert data['target']['assignment']

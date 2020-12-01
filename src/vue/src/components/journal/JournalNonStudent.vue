@@ -39,7 +39,7 @@
                     <span v-if="assignment.is_group_assignment">
                         <b>Warning:</b> The following journal members have not visited the assignment in the active LMS
                         (Canvas) course '{{ assignment.active_lti_course.name }}' yet:
-                        <ul>
+                        <ul class="pt-1 pb-1 mb-0">
                             <li
                                 v-for="name in journal.needs_lti_link"
                                 :key="`lti-author-${name}`"
@@ -160,7 +160,7 @@
                             Bonus points
                         </div>
                         <b-button
-                            class="add-button"
+                            class="green-button"
                             @click="commitBonus"
                         >
                             <icon
@@ -172,7 +172,7 @@
                     </div>
                     <b-button
                         v-if="$hasPermission('can_publish_grades')"
-                        class="add-button mb-2 full-width"
+                        class="green-button mb-2 full-width"
                         @click="publishGradesJournal"
                     >
                         <icon name="upload"/>
@@ -182,7 +182,7 @@
                         <b-button
                             v-if="journal.import_requests"
                             v-b-modal="'journal-import-request-approval-modal'"
-                            class="multi-form change-button mb-2 full-width"
+                            class="multi-form orange-button mb-2 full-width"
                         >
                             <icon name="file-import"/>
                             Manage Import Requests
@@ -201,20 +201,20 @@
 </template>
 
 <script>
-import EntryNonStudent from '@/components/entry/EntryNonStudent.vue'
-import Timeline from '@/components/timeline/Timeline.vue'
-import JournalDetails from '@/components/journal/JournalDetails.vue'
 import BreadCrumb from '@/components/assets/BreadCrumb.vue'
-import LoadWrapper from '@/components/loading/LoadWrapper.vue'
-import JournalStartCard from '@/components/journal/JournalStartCard.vue'
+import EntryNonStudent from '@/components/entry/EntryNonStudent.vue'
+import JournalDetails from '@/components/journal/JournalDetails.vue'
 import JournalEndCard from '@/components/journal/JournalEndCard.vue'
 import JournalImportRequestApprovalModal from '@/components/journal/JournalImportRequestApprovalModal.vue'
+import JournalStartCard from '@/components/journal/JournalStartCard.vue'
+import LoadWrapper from '@/components/loading/LoadWrapper.vue'
 import ProgressNode from '@/components/entry/ProgressNode.vue'
+import Timeline from '@/components/timeline/Timeline.vue'
 
-import store from '@/Store.vue'
-import journalAPI from '@/api/journal.js'
-import assignmentAPI from '@/api/assignment.js'
 import { mapGetters, mapMutations } from 'vuex'
+import assignmentAPI from '@/api/assignment.js'
+import journalAPI from '@/api/journal.js'
+import store from '@/Store.vue'
 
 export default {
     components: {
@@ -421,7 +421,6 @@ export default {
 </script>
 
 <style lang="sass">
-@import '~sass/modules/colors.sass'
 @import '~sass/partials/shadows.sass'
 
 .grade-section.bonus-section
@@ -431,9 +430,9 @@ export default {
         width: 100%
         border-width: 1px 0px 0px 0px !important
         border-radius: 0px 0px 5px 5px !important
+        box-shadow: none
     .theme-input, .theme-input:hover, .theme-input:focus
         margin-left: 0px
-        font-size: 1.3em
         width: 3.5em
         display: inline-block
         padding-right: 0px !important

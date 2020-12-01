@@ -1,7 +1,7 @@
-import genericUtils from '@/utils/generic_utils.js'
-import router from '@/router'
-import statuses from '@/utils/constants/status_codes.js'
 import * as types from '../constants/mutation-types.js'
+import genericUtils from '@/utils/generic_utils.js'
+import router from '@/router/index.js'
+import statuses from '@/utils/constants/status_codes.js'
 
 function invalidAccessToken (status, error) {
     return status === statuses.UNAUTHORIZED && genericUtils.invalidAccessToken(error)

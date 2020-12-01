@@ -53,3 +53,6 @@ urlpatterns = [
 
 if 'silk' in settings.INSTALLED_APPS:
     urlpatterns.append(url(r'^silk/', include('silk.urls', namespace='silk')))
+
+if 'django_prometheus' in settings.INSTALLED_APPS:
+    urlpatterns.append(url('', include('django_prometheus.urls')))

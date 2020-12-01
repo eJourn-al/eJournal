@@ -28,13 +28,8 @@ def get_user_lists_with_scopes(assignment, user, course=None):
         shared_courses = assignment.courses.filter(users=user)
     else:
         shared_courses = VLE.models.Course.objects.filter(pk=course.pk, users=user)
-    p_all = VLE.models.Participation.objects.filter(
-        course__in=shared_courses,
-        user__in=assignment.assignmentparticipation_set.values('user')
-    )
-    p_own = p_all.filter(groups__in=user.participation_set.values('groups'))
 
     return {
-        'all': p_all.values('user').distinct(),
-        'own': p_own.values('user').distinct()
+        'all': assignment.get_all_users(courses=shared_courses, user=user),
+        'own': assignment.get_users_in_own_groups(courses=shared_courses, user=user)
     }

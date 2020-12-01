@@ -38,8 +38,6 @@ export default {
 </script>
 
 <style lang="sass">
-@import '~sass/modules/colors.sass'
-
 footer
     color: grey
     text-align: center

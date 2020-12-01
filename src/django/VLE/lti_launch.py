@@ -1,6 +1,7 @@
 from urllib.parse import urljoin
 
 import oauth2
+import sentry_sdk
 from django.conf import settings
 
 import VLE.factory as factory
@@ -73,7 +74,7 @@ def get_user_lti(request):
         user = users.first()
         set_sentry_user_scope(user)
         if 'custom_user_image' in request and \
-           request['custom_user_image'] != Instance.objects.get_or_create(pk=1)[0].default_lms_profile_picture:
+           Instance.objects.get_or_create(pk=1)[0].default_lms_profile_picture not in request['custom_user_image']:
             user.profile_picture = request['custom_user_image']
             user.save()
 
@@ -101,16 +102,26 @@ def add_groups_if_not_exists(participation, group_ids):
 
     This will only be done if there are no other groups already bound to the participant.
     """
-    for group_id in group_ids:
-        group = Group.objects.filter(lti_id=group_id, course=participation.course)
-        if group.exists():
-            participation.groups.add(group.first())
-        else:
-            n_groups = Group.objects.filter(course=participation.course).count()
-            group = factory.make_course_group('Group {:d}'.format(n_groups + 1), participation.course, group_id)
-            participation.groups.add(group)
+    # Get all existing groups passed by lti that are also in the course
+    groups = Group.objects.filter(lti_id__in=group_ids, course=participation.course)
+    # Get all to-be-created groups
+    non_existing_group_ids = set(group_ids) - set(group.lti_id for group in groups)
+    # Get the groups of the course which the user is not participating in
+    non_participating_groups = groups.exclude(pk__in=participation.groups.all())
 
-    participation.save()
+    # Create new groups
+    n_groups = Group.objects.filter(course=participation.course).count()
+    new_groups = [
+        Group(name='Group {:d}'.format(n_groups + i + 1), course=participation.course, lti_id=group_id)
+        for i, group_id in enumerate(non_existing_group_ids)
+    ]
+    if new_groups:
+        new_groups = Group.objects.bulk_create(new_groups)
+
+    # Add missing newly-created and existing groups and update participation for computed fields
+    if new_groups or non_participating_groups:
+        participation.groups.add(*new_groups, *non_participating_groups)
+
     return participation.groups
 
 
@@ -123,6 +134,9 @@ def _make_lti_participation(user, course, lti_role):
         if role in lti_role:
             return factory.make_participation(
                 user, course, Role.objects.get(name=role, course=course), notify_user=False)
+
+    sentry_sdk.capture_message(f'Unrecognized LTI role encountered. User {user.pk}, roles {lti_role}', level='warning')
+
     return factory.make_participation(
         user, course, Role.objects.get(name='Student', course=course), notify_user=False)
 
@@ -176,7 +190,8 @@ def update_lti_assignment_if_exists(request):
     # Assignment and lti_id_set values are unique together (no two assignments set contain the same lti id)
     assignment = assignment.first()
 
-    if 'custom_assignment_publish' in request:
+    # Only update is_published when needed, NOTE: this triggers the computedfields on all connected journals
+    if 'custom_assignment_publish' in request and assignment.is_published != request['custom_assignment_publish']:
         assignment.is_published = request['custom_assignment_publish']
         assignment.save()
     return assignment
@@ -190,19 +205,24 @@ def select_create_journal(request, user, assignment):
         return None
 
     author = AssignmentParticipation.objects.get_or_create(user=user, assignment=assignment)[0]
-    journal = Journal.objects.filter(authors__in=[author], assignment=assignment).first()
-    # Update the grade_url and sourcedid if the active LMS link is followed.
-    if assignment.active_lti_id == request['custom_assignment_id']:
-        passback_changed = False
-        if 'lis_outcome_service_url' in request and author.grade_url != request['lis_outcome_service_url']:
-            passback_changed = True
-            author.grade_url = request['lis_outcome_service_url']
-            author.save()
-        if 'lis_result_sourcedid' in request and author.sourcedid != request['lis_result_sourcedid']:
-            passback_changed = True
-            author.sourcedid = request['lis_result_sourcedid']
-            author.save()
-        if passback_changed and journal:
-            grading.task_author_status_to_LMS.delay(journal.pk, author.pk)
+    journal = Journal.objects.filter(authors__user=user, assignment=assignment).first()
+    # Update the grade_url and sourcedid only for the active LMS link.
+    if assignment.active_lti_id != request['custom_assignment_id']:
+        return journal
+
+    # Only update if something is actually changed
+    if (
+        author.grade_url == request.get('lis_outcome_service_url') and
+        author.sourcedid == request.get('lis_result_sourcedid')
+    ):
+        return journal
+
+    author.grade_url = request.get('lis_outcome_service_url')
+    author.sourcedid = request.get('lis_result_sourcedid')
+    author.save()
+
+    if journal:
+        grading.task_author_status_to_LMS.delay(journal.pk, author.pk)
+        journal = Journal.objects.get(pk=journal.pk)
 
     return journal

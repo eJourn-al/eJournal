@@ -20,7 +20,7 @@ class FileView(viewsets.ViewSet):
         file = FileContext.objects.get(pk=pk)
 
         if file.is_temp and not request.user == file.author:
-            return response.forbidden('You are not allowed to view this file')
+            return response.forbidden('You are not allowed to view this file.')
 
         if file.comment:
             request.user.check_can_view(file.comment)
@@ -30,7 +30,7 @@ class FileView(viewsets.ViewSet):
             request.user.check_can_view(file.assignment)
         else:
             if not request.user.can_view(file.author):
-                return response.forbidden('You are not allowed to view this file')
+                return response.forbidden('You are not allowed to view this file.')
 
         return response.file(file, file.file_name)
 
@@ -48,7 +48,7 @@ class FileView(viewsets.ViewSet):
             in_rich_text='in_rich_text' in request.POST
         )
 
-        return response.created(FileSerializer(file).data)
+        return response.created(FileSerializer(file, context={'user': request.user}).data)
 
     @action(['get'], detail=True)
     def access_id(self, request, pk):

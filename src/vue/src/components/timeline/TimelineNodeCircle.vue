@@ -178,7 +178,6 @@ export default {
 </script>
 
 <style lang="sass">
-@import '~sass/modules/colors.sass'
 @import '~sass/partials/shadows.sass'
 
 .timeline-node-circle-border
@@ -221,7 +220,6 @@ export default {
         transition: all 0.3s cubic-bezier(.25,.8,.25,1)
     .timeline-node-circle-text
         color: white
-        font-family: 'Roboto Condensed', sans-serif
         font-weight: bold
         font-size: 1.5em
 </style>

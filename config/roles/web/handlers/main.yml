@@ -1,7 +1,0 @@
----
-
-- name: restart application
-  supervisorctl: name={{ application_name }} state=restarted
-
-- name: deactivate maintenance page
-  command: mv {{ maintenance_dir }}/maintenance_on.html {{ maintenance_dir }}/maintenance_off.html

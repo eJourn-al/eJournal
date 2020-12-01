@@ -97,7 +97,6 @@ def add_notifications_to_content(content, notifications, period, name):
         return []
 
     sending = []
-    user = notifications.first().user
     content.append({
         'name': name,
         'notifications': [],
@@ -105,10 +104,7 @@ def add_notifications_to_content(content, notifications, period, name):
 
     for notification in notifications:
         notification.refresh_from_db()
-        if not notification.sent and \
-           getattr(
-            user.preferences, VLE.models.Notification.TYPES[notification.type]['name'], VLE.models.Preferences.DAILY) \
-           in period:
+        if not notification.sent and notification.email_preference in period:
             notification.sent = True
             notification.save()
 
@@ -186,6 +182,10 @@ def gen_content_from_notifications(notifications, period):
                 period=period,
                 name=assignment.name,
             )
+
+        # If nothing is sent, remove it from the list
+        if not content[-1]['subcontent']:
+            content.pop()
     return content, sending
 
 
@@ -238,7 +238,7 @@ def send_digest_notifications():
         email = EmailMultiAlternatives(
             subject='Recent notification digest - eJournal',
             body=text_content,
-            from_email='eJournal | Noreply<noreply@{}>'.format(settings.EMAIL_SENDER_DOMAIN),
+            from_email=settings.EMAILS.noreply.sender,
             headers={'Content-Type': 'text/plain'},
             to=[user.email]
         )

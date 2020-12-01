@@ -30,12 +30,12 @@
                         s: {
                             text: 'Save grade',
                             icon: 'save',
-                            class: 'add-button',
+                            class: 'green-button',
                         },
                         p: {
                             text: 'Save & publish grade',
                             icon: 'save',
-                            class: 'add-button',
+                            class: 'green-button',
                         },
                     }"
                     @click="commitGrade"
@@ -64,8 +64,8 @@
                 :content="entryNode.entry.content"
                 :edit="false"
             />
-            <hr class="full-width"/>
-            <div class="timestamp">
+            <div class="full-width timestamp">
+                <hr class="full-width"/>
                 <template
                     v-if="(new Date(entryNode.entry.last_edited).getTime() - new Date(entryNode.entry.creation_date)
                         .getTime()) / 1000 < 3"
@@ -79,6 +79,7 @@
                 <b-badge
                     v-if="entryNode.due_date && new Date(entryNode.due_date) < new Date(entryNode.entry.last_edited)"
                     v-b-tooltip:hover="'This entry was submitted after the due date'"
+                    pill
                     class="late-submission-badge"
                 >
                     LATE
@@ -90,6 +91,7 @@
                         ${entryNode.entry.jir.source.assignment.name}
                         (${entryNode.entry.jir.source.assignment.course.abbreviation}), approved by
                         ${entryNode.entry.jir.processor.full_name}`"
+                    pill
                     class="imported-entry-badge"
                 >
                     IMPORTED
@@ -143,9 +145,7 @@
                     </template>
                 </b-table>
                 <div v-else>
-                    <h4 class="theme-h4">
-                        No grades available
-                    </h4>
+                    <b>No grades available</b>
                     <hr class="m-0 mb-1"/>
                     This entry has not yet been graded.
                 </div>
@@ -160,7 +160,9 @@
         <h2 class="theme-h2 mb-2">
             {{ entryNode.template.name }}
         </h2>
-        <b>No submission for this student</b>
+        <span class="text-grey">
+            No submission for this student
+        </span>
     </b-card>
 </template>
 

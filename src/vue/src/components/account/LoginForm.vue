@@ -33,7 +33,7 @@
                 </b-button>
                 <b-button
                     v-b-modal.forgotPasswordModal
-                    class="multi-form change-button mr-2"
+                    class="multi-form orange-button mr-2"
                 >
                     <icon name="question"/>
                     Forgot password
@@ -71,14 +71,14 @@
                         class="theme-input multi-form"
                     />
                     <b-button
-                        class="float-right change-button"
+                        class="float-right orange-button"
                         type="submit"
                     >
                         <icon name="key"/>
                         Recover password
                     </b-button>
                     <b-button
-                        class="delete-button"
+                        class="red-button"
                         @click="$refs.forgotPasswordModalRef.hide()"
                     >
                         <icon name="times"/>
@@ -111,7 +111,7 @@ export default {
             })
     },
     mounted () {
-        if (this.$root.previousPage && this.$root.previousPage.name === 'PasswordRecovery') {
+        if (this.$root.previousPage && this.$root.previousPage.name === 'SetPassword') {
             this.username = this.$root.previousPage.params.username
         }
     },

@@ -64,17 +64,27 @@ def compress_all_user_data(user, extra_data_dict=None, archive_extension='zip'):
     return archive_ouput_path, '{}.{}'.format(archive_name, archive_extension)
 
 
-def _set_file_context(fc, assignment=None, journal=None, content=None, comment=None, in_rich_text=False):
+def _set_file_context(
+    fc, assignment=None, journal=None, content=None, comment=None, preset_node=None, in_rich_text=False
+    # NOTE: when updating this list of parameters, update it in the functions: establish_file, establish_rich_text,
+    # _set_file_context and inside the functions establish_file&establish_rich_text where _set_file_context is called.
+):
     if comment:
         journal = comment.entry.node.journal
     if content:
-        journal = content.entry.node.journal
+        if type(content.entry).__name__ == 'TeacherEntry':
+            assignment = content.entry.assignment
+        else:
+            journal = content.entry.node.journal
     if journal:
         assignment = journal.assignment
+    if preset_node:
+        assignment = preset_node.format.assignment
 
     fc.comment = comment
     fc.content = content
     fc.journal = journal
+    fc.preset_node = preset_node
     fc.assignment = assignment
     fc.is_temp = False
     fc.in_rich_text = in_rich_text
@@ -106,19 +116,34 @@ def _move_newly_established_file_context_to_permanent_location(fc):
     os.rename(initial_path, str(new_path))
 
 
-def establish_file(author, identifier, assignment=None, journal=None, content=None, comment=None, in_rich_text=False):
+def establish_file(
+    author, file_context=None, identifier=None, assignment=None, journal=None, content=None, comment=None,
+    preset_node=None, in_rich_text=False
+    # NOTE: when updating this list of parameters, update it in the functions: establish_file, establish_rich_text,
+    # _set_file_context and inside the functions establish_file&establish_rich_text where _set_file_context is called.
+):
     """Sets the context of a temporary file, and moves it to a permanent location."""
-    if str(identifier).isdigit():
+    if isinstance(file_context, VLE.models.FileContext):
+        pass  # Work with the given FC
+    elif str(identifier).isdigit():
         file_context = VLE.models.FileContext.objects.get(pk=identifier)
     else:
         file_context = VLE.models.FileContext.objects.get(access_id=identifier)
 
     if file_context.author != author:
-        raise VLE.utils.error_handling.VLEPermissionError('You are not allowed to update files of other users')
+        raise VLE.utils.error_handling.VLEPermissionError('You are not allowed to update files of other users.')
     if not file_context.is_temp:
-        raise VLE.utils.error_handling.VLEBadRequest('You are not allowed to update established files')
+        raise VLE.utils.error_handling.VLEBadRequest('You are not allowed to update established files.')
 
-    _set_file_context(file_context, assignment, journal, content, comment, in_rich_text)
+    _set_file_context(
+        file_context,
+        in_rich_text=in_rich_text,
+        assignment=assignment,
+        journal=journal,
+        content=content,
+        comment=comment,
+        preset_node=preset_node
+    )
     _move_newly_established_file_context_to_permanent_location(file_context)
 
     file_context.save()
@@ -141,6 +166,19 @@ def get_temp_files_from_rich_text(rich_text):
     return get_files_from_rich_text(rich_text).filter(is_temp=True)
 
 
-def establish_rich_text(author, rich_text, assignment=None, journal=None, comment=None, content=None):
-    for file in get_temp_files_from_rich_text(rich_text):
-        establish_file(author, file.access_id, assignment, journal, content, comment, in_rich_text=True)
+def establish_rich_text(
+    author, rich_text, assignment=None, journal=None, content=None, comment=None, preset_node=None, in_rich_text=True
+    # NOTE: when updating this list of parameters, update it in the functions: establish_file, establish_rich_text,
+    # _set_file_context and inside the functions establish_file&establish_rich_text where _set_file_context is called.
+):
+    for file_context in get_temp_files_from_rich_text(rich_text):
+        establish_file(
+            author,
+            file_context=file_context,
+            assignment=assignment,
+            journal=journal,
+            content=content,
+            comment=comment,
+            preset_node=preset_node,
+            in_rich_text=in_rich_text
+        )

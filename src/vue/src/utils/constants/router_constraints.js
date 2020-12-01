@@ -4,7 +4,7 @@ const PERMISSIONLESS_CONTENT = new Set([
     'LtiLaunch',
     'Register',
     'ErrorPage',
-    'PasswordRecovery',
+    'SetPassword',
     'EmailVerification',
     'Guest',
 ])

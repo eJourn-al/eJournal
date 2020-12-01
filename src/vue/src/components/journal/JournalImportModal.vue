@@ -49,7 +49,7 @@
                     />
 
                     <b-button
-                        class="change-button float-right"
+                        class="orange-button float-right"
                         :class="{ 'input-disabled': !selectedAssignment }"
                         @click="importJournal(selectedAssignment)"
                     >
@@ -59,9 +59,7 @@
                 </div>
 
                 <div v-else>
-                    <h4 class="theme-h4">
-                        No importable journals available.
-                    </h4>
+                    <b>No importable journals available</b>
                     <hr class="m-0 mb-1"/>
                     You can only import journal your own journals, and you cannot import a journal from within the same
                     assignment.
@@ -72,11 +70,11 @@
 </template>
 
 <script>
-import loadWrapper from '@/components/loading/LoadWrapper.vue'
-import utils from '@/utils/generic_utils.js'
 import assignmentAPI from '@/api/assignment.js'
 import courseAPI from '@/api/course.js'
 import jirAPI from '@/api/journal_import_request.js'
+import loadWrapper from '@/components/loading/LoadWrapper.vue'
+import utils from '@/utils/generic_utils.js'
 
 export default {
     components: {
@@ -118,7 +116,7 @@ export default {
     created () {
         const initCalls = []
 
-        courseAPI.getUserEnrolled()
+        courseAPI.list()
             .then((courses) => {
                 this.fetchedCourses = courses
                 courses.forEach((c) => {

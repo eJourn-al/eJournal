@@ -3,13 +3,41 @@ format.py.
 
 In this file are all the Format api requests.
 """
+from django.core.exceptions import ValidationError
 from rest_framework import viewsets
 
 import VLE.utils.generic_utils as utils
 import VLE.utils.responses as response
-from VLE.models import Assignment, Course, Field, Group, PresetNode
+from VLE.models import Assignment, Course, Field, Format, Group, PresetNode
 from VLE.serializers import AssignmentFormatSerializer, FormatSerializer
 from VLE.utils import file_handling
+
+
+def _update_assigned_groups(assignment, course_id, requested_group_ids):
+    """
+    Updates an assignment's assigned groups based on the provided id list from the perspective of the provided
+    course. Only groups associated with that course are added or removed.
+
+    Args:
+        assignment (:model:`VLE.assignment`): The assignment whose m2m field 'assigned_groups' should be updated.
+        course_id (int):
+        requested_group_ids ([int]): unvalidated, desired list of group ids the assignment should be assigned to.
+    """
+    db_group_ids = set(assignment.assigned_groups.values_list('pk', flat=True))
+    db_assignment_course_group_ids = set(
+        assignment.assigned_groups.filter(course_id=course_id).values_list('pk', flat=True))
+
+    # Ensure the requested group ids are part of the provided course
+    req_course_group_ids = set(Group.objects.filter(
+        course_id=course_id, pk__in=requested_group_ids).values_list('pk', flat=True))
+
+    group_ids_to_add = req_course_group_ids - db_assignment_course_group_ids
+    group_ids_to_remove = db_assignment_course_group_ids - req_course_group_ids
+    assigned_groups = (db_group_ids - group_ids_to_remove) | group_ids_to_add
+
+    # Only update the DB if there is an actual difference
+    if db_group_ids != assigned_groups:
+        assignment.assigned_groups.set(assigned_groups)
 
 
 class FormatView(viewsets.ViewSet):
@@ -39,10 +67,15 @@ class FormatView(viewsets.ViewSet):
         request.user.check_can_view(assignment)
         request.user.check_permission('can_edit_assignment', assignment)
 
-        serializer = FormatSerializer(assignment.format)
-        assignment_details = AssignmentFormatSerializer(assignment, context={'user': request.user, 'course': course})
-
-        return response.success({'format': serializer.data, 'assignment_details': assignment_details.data})
+        return response.success({
+            'format': FormatSerializer(
+                FormatSerializer.setup_eager_loading(Format.objects.filter(pk=assignment.format_id)).get()
+            ).data,
+            'assignment_details': AssignmentFormatSerializer(
+                assignment,
+                context={'user': request.user, 'course': course}
+            ).data
+        })
 
     def partial_update(self, request, pk):
         """Update an existing journal format.
@@ -64,61 +97,55 @@ class FormatView(viewsets.ViewSet):
             bad_request -- when there is invalid data in the request
         On success:
             success -- with the new assignment data
-
         """
-        assignment_details, templates, presets, removed_templates, removed_presets \
-            = utils.required_params(request.data, 'assignment_details', 'templates', 'presets',
-                                    'removed_templates', 'removed_presets')
+        assignment_details, templates, presets, removed_templates, removed_presets = utils.required_params(
+            request.data,
+            'assignment_details',
+            'templates',
+            'presets',
+            'removed_templates',
+            'removed_presets'
+        )
+        assignment_details = {k: (None if v == '' else v) for k, v in assignment_details.items()} \
+            if assignment_details else {}
 
         assignment = Assignment.objects.get(pk=pk)
         course = None
-        format = assignment.format
 
         request.user.check_permission('can_edit_assignment', assignment)
 
-        is_published, can_set_journal_name, can_set_journal_image, can_lock_journal = \
-            utils.optional_typed_params(
-                assignment_details, (bool, 'is_published'), (bool, 'can_set_journal_name'),
-                (bool, 'can_set_journal_image'), (bool, 'can_lock_journal'))
-
-        # Remove data that must not be changed by the serializer
-        req_data = assignment_details or {}
-        req_data.pop('author', None)
-
-        for key in req_data:
-            if req_data[key] == '':
-                req_data[key] = None
-
-        # Update the assignment details
-        if 'assigned_groups' in req_data:
+        if 'assigned_groups' in assignment_details:
             course_id, = utils.required_typed_params(request.data, (int, 'course_id'))
-            course = Course.objects.get(pk=course_id)
-            assigned_groups = req_data.pop('assigned_groups')
-            assignment.assigned_groups.remove(*assignment.assigned_groups.filter(course=course))
-            for group_id in assigned_groups:
-                group = Group.objects.get(pk=group_id['id'])
-                if group.course == course:
-                    assignment.assigned_groups.add(group)
+            if not Course.objects.filter(pk=course_id, assignment=assignment).exists():
+                raise ValidationError('Provided course id is unrelated to the assignment')
+
+            requested_group_ids = [group['id'] for group in assignment_details.pop('assigned_groups')]
+            _update_assigned_groups(assignment, course_id, requested_group_ids)
 
         serializer = AssignmentFormatSerializer(
-            assignment, data=req_data, context={'user': request.user, 'course': course}, partial=True)
+            assignment, data=assignment_details, context={'user': request.user, 'course': course}, partial=True)
         if not serializer.is_valid():
             return response.bad_request('Invalid assignment data.')
         serializer.save()
 
-        new_ids = utils.update_templates(format, templates)
-        utils.update_presets(assignment, presets, new_ids)
+        new_ids = utils.update_templates(assignment.format, templates)
+        utils.update_presets(request.user, assignment, presets, new_ids)
 
         utils.delete_presets(removed_presets)
         utils.archive_templates(removed_templates)
 
         file_handling.establish_rich_text(author=request.user, rich_text=assignment.description, assignment=assignment)
-        for field in Field.objects.filter(template__format=format):
+        for field in Field.objects.filter(template__format=assignment.format):
             file_handling.establish_rich_text(author=request.user, rich_text=field.description, assignment=assignment)
-        for node in PresetNode.objects.filter(format=format):
+        for node in PresetNode.objects.filter(format=assignment.format):
             file_handling.establish_rich_text(author=request.user, rich_text=node.description, assignment=assignment)
 
-        serializer = FormatSerializer(format)
-        assignment_details = AssignmentFormatSerializer(assignment, context={'user': request.user, 'course': course})
-
-        return response.success({'format': serializer.data, 'assignment_details': assignment_details.data})
+        return response.success({
+            'format': FormatSerializer(
+                FormatSerializer.setup_eager_loading(Format.objects.filter(pk=assignment.format_id)).get()
+            ).data,
+            'assignment_details': AssignmentFormatSerializer(
+                assignment,
+                context={'user': request.user, 'course': course}
+            ).data
+        })

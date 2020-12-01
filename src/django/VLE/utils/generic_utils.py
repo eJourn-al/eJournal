@@ -13,6 +13,7 @@ from django.db.models import Case, When
 import VLE.factory
 import VLE.models
 import VLE.utils.error_handling
+from VLE.utils import file_handling
 
 
 # START: API-POST functions
@@ -59,7 +60,10 @@ def required_typed_params(post, *keys):
             if isinstance(post[key], list):
                 result.append([func(elem) for elem in post[key]])
             elif post[key] is not None:
-                result.append(func(post[key]))
+                if func == bool and post[key] == 'false':
+                    result.append(False)
+                else:
+                    result.append(func(post[key]))
             else:
                 result.append(None)
         except ValueError as err:
@@ -79,7 +83,10 @@ def optional_typed_params(post, *keys):
         if key and key in post and post[key] != '':
             try:
                 if post[key] is not None:
-                    result.append(func(post[key]))
+                    if func == bool and post[key] == 'false':
+                        result.append(False)
+                    else:
+                        result.append(func(post[key]))
                 else:
                     result.append(None)
             except ValueError as err:
@@ -97,8 +104,10 @@ def get_sorted_nodes(journal):
     Get all the nodes of a journal in sorted order.
     Order is default by due_date.
     """
-    return journal.node_set.annotate(
-        sort_due_date=Case(
+    return journal.node_set.select_related(
+        'entry',
+        'preset'
+    ).annotate(sort_due_date=Case(
             When(type=VLE.models.Node.ENTRY, then='entry__creation_date'),
             default='preset__due_date')
     ).order_by('sort_due_date')
@@ -185,11 +194,15 @@ def update_journals(journals, preset):
     journals -- the journals to update.
     preset -- the preset node to add to the journals.
     """
-    for journal in journals:
-        VLE.factory.make_node(journal, None, preset.type, preset)
+    VLE.models.Node.objects.bulk_create([VLE.models.Node(
+        type=preset.type,
+        entry=None,
+        preset=preset,
+        journal=journal
+    ) for journal in journals])
 
 
-def update_presets(assignment, presets, new_ids):
+def update_presets(user, assignment, presets, new_ids):
     """Update preset nodes in the assignment according to the passed list.
 
     Arguments:
@@ -204,8 +217,8 @@ def update_presets(assignment, presets, new_ids):
         id, template = required_typed_params(preset, (int, 'id'), (dict, 'template'))
         target, unlock_date, lock_date = optional_typed_params(
             preset, (float, 'target'), (str, 'unlock_date'), (str, 'lock_date'))
-        type, description, due_date = required_params(
-            preset, 'type', 'description', 'due_date')
+        type, description, due_date, attached_files = required_params(
+            preset, 'type', 'description', 'due_date', 'attached_files')
 
         if id > 0:
             preset_node = VLE.models.PresetNode.objects.get(pk=id)
@@ -217,18 +230,33 @@ def update_presets(assignment, presets, new_ids):
         preset_node.due_date = due_date
         preset_node.lock_date = lock_date if lock_date else None
 
-        if preset_node.type == VLE.models.Node.PROGRESS:
+        if preset_node.is_progress:
             if target > 0 and target <= assignment.points_possible:
                 preset_node.target = target
             else:
                 raise VLE.utils.error_handling.VLEBadRequest(
                     'Progress goal needs to be between 0 and the maximum amount for the assignment: {}'
                     .format(assignment.points_possible))
-        elif preset_node.type == VLE.models.Node.ENTRYDEADLINE:
+        elif preset_node.is_deadline:
             if template['id'] in new_ids:
                 preset_node.forced_template = VLE.models.Template.objects.get(pk=new_ids[template['id']])
             else:
                 preset_node.forced_template = VLE.models.Template.objects.get(pk=template['id'])
+
+        # New preset nodes need to be saved first before files can be established using that node
+        if id <= 0 and attached_files:
+            preset_node.save()
+
+        # Add new attached_files
+        for file_data in attached_files:
+            file = VLE.models.FileContext.objects.get(pk=file_data['id'])
+            if not preset_node.attached_files.filter(pk=file.pk).exists():
+                preset_node.attached_files.add(file)
+                file_handling.establish_file(author=user, identifier=file.access_id, preset_node=preset_node)
+        # Remove old attached attached_files, NOTE: new preset_nodes cannot have old attached_files
+        if id > 0:
+            preset_node.attached_files.exclude(pk__in=[file['id'] for file in attached_files]).delete()
+
         preset_node.save()
         if id < 0:
             update_journals(VLE.models.Journal.all_objects.filter(assignment=assignment), preset_node)

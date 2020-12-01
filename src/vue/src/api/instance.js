@@ -10,5 +10,4 @@ export default {
         return auth.update('instance/0', data, connArgs)
             .then(response => response.data.instance)
     },
-
 }

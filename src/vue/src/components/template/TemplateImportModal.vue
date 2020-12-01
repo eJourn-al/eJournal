@@ -29,7 +29,8 @@
                     @select="() => {
                         selectedAssignment = null
                         selectedTemplate = null
-                        previewTemplate = null
+                        previewTemplate = false
+                        templates = []
                     }"
                 />
                 <theme-select
@@ -44,8 +45,10 @@
                     class="multi-form"
                     @select="() => {
                         selectedTemplate = null
-                        previewTemplate = null
+                        previewTemplate = false
+                        templates = []
                     }"
+                    @input="getTemplatesForSelectedAssignment"
                 />
                 <theme-select
                     v-if="selectedAssignment"
@@ -71,7 +74,7 @@
                     class="no-hover multi-form"
                 >
                     <entry-fields
-                        :template="previewTemplate"
+                        :template="selectedTemplate"
                         :content="() => Object()"
                         :edit="true"
                         :readOnly="true"
@@ -80,26 +83,26 @@
 
                 <b-button
                     v-if="!previewTemplate"
-                    class="add-button"
+                    class="green-button"
                     :class="{ 'input-disabled': !selectedTemplate }"
-                    @click="showTemplatePreview"
+                    @click="previewTemplate = true"
                 >
                     <icon name="eye"/>
                     Show preview
                 </b-button>
                 <b-button
                     v-else
-                    class="delete-button"
-                    @click="previewTemplate = null"
+                    class="red-button"
+                    @click="previewTemplate = false"
                 >
                     <icon name="eye-slash"/>
                     Hide preview
                 </b-button>
 
                 <b-button
-                    class="change-button float-right"
+                    class="orange-button float-right"
                     :class="{ 'input-disabled': !selectedTemplate }"
-                    @click="importTemplate(selectedTemplate.id)"
+                    @click="importTemplate(selectedTemplate)"
                 >
                     <icon name="file-import"/>
                     Import template
@@ -107,9 +110,7 @@
             </div>
 
             <div v-else>
-                <h4 class="theme-h4">
-                    No existing templates available
-                </h4>
+                <b>No existing templates available</b>
                 <hr class="m-0 mb-1"/>
                 Only templates in assignments where you have permission to edit are available to import.
             </div>
@@ -142,6 +143,9 @@ export default {
             selectedTemplate: null,
             previewTemplate: null,
             importableTemplates: [],
+
+            // The actual templates (so containing fields, description etc.) which can be selected.
+            templates: [],
         }
     },
     computed: {
@@ -156,9 +160,6 @@ export default {
             return this.importableTemplates.find(importable => importable.course.id === this.selectedCourse.id)
                 .assignments
         },
-        templates () {
-            return this.selectedAssignment.templates
-        },
     },
     created () {
         assignmentAPI.getImportable()
@@ -170,20 +171,22 @@ export default {
             })
     },
     methods: {
-        showTemplatePreview () {
-            assignmentAPI.importTemplate(this.aID, { template_id: this.selectedTemplate.id }).then((template) => {
-                this.previewTemplate = template
-            })
+        importTemplate (template) {
+            this.$emit('imported-template', template)
+            this.$refs[this.modalID].hide()
+            this.selectedCourse = null
+            this.selectedAssignment = null
+            this.selectedTemplate = null
+            this.previewTemplate = false
         },
-        importTemplate () {
-            assignmentAPI.importTemplate(this.aID, { template_id: this.selectedTemplate.id }).then((template) => {
-                this.$emit('imported-template', template)
-                this.$refs[this.modalID].hide()
-                this.selectedCourse = null
-                this.selectedAssignment = null
-                this.selectedTemplate = null
-                this.previewTemplate = null
-            })
+        getTemplatesForSelectedAssignment () {
+            assignmentAPI.getTemplates(this.selectedAssignment.id)
+                .then((templates) => {
+                    this.templates = templates
+                })
+                .catch(() => {
+                    this.$toasted.error('Something went wrong while loading templates to import.')
+                })
         },
     },
 }

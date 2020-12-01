@@ -52,14 +52,14 @@
             </b-row>
             <hr class="mt-2"/>
             <b-button
-                class="float-left change-button"
+                class="float-left orange-button"
                 type="reset"
             >
                 <icon name="undo"/>
                 Reset
             </b-button>
             <b-button
-                class="float-right add-button"
+                class="float-right green-button"
                 type="submit"
             >
                 <icon name="plus-square"/>
@@ -70,9 +70,9 @@
 </template>
 
 <script>
+import commonAPI from '@/api/common.js'
 import courseAPI from '@/api/course.js'
 import tooltip from '@/components/assets/Tooltip.vue'
-import commonAPI from '@/api/common.js'
 
 export default {
     name: 'CreateCourse',

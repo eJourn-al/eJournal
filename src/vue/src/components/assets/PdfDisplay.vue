@@ -1,7 +1,7 @@
 <template>
     <div>
         <div
-            class="pdf-controls mb-2 unselectable"
+            class="controls unselectable"
             @click="handleDownload"
         >
             <icon
@@ -11,6 +11,7 @@
             <b class="ml-1">
                 {{ file.file_name }}
             </b>
+            <slot/>
         </div>
         <div class="position-relative">
             <div
@@ -44,7 +45,7 @@
                     :max="numPages"
                     type="number"
                     min="1"
-                    class="theme-input"
+                    class="theme-input inline"
                     @input="validatePageInput"
                 />
                 / {{ numPages }}
@@ -82,8 +83,8 @@
 </template>
 
 <script>
-import pdf from 'vue-pdf'
 import auth from '@/api/auth.js'
+import pdf from 'vue-pdf'
 import sanitization from '@/utils/sanitization.js'
 
 export default {
@@ -170,7 +171,6 @@ export default {
 </script>
 
 <style lang="sass">
-@import '~sass/modules/colors.sass'
 @import '~sass/partials/shadows.sass'
 
 .pdf-menu-container
@@ -194,10 +194,6 @@ export default {
         padding: 5px
         &:hover
             cursor: pointer
-    .theme-input
-        width: 4em
-        font-size: 0.9em
-        padding: 0.1em !important
 
 .pdf-controls
     margin: 5px

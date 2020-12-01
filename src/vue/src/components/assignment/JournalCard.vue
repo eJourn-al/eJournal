@@ -36,7 +36,8 @@
                             v-if="journal.author_limit > 1"
                             v-b-tooltip:hover="`This journal currently has ${ journal.author_count } of max `
                                 + `${ journal.author_limit } members`"
-                            class="text-white mr-1"
+                            pill
+                            class="background-medium-grey text-grey mr-1"
                         >
                             {{ journal.author_count }}/{{ journal.author_limit }}
                         </b-badge>
@@ -44,12 +45,14 @@
                             v-if="journal.author_limit === 0"
                             v-b-tooltip:hover="`This journal currently has ${ journal.author_count } members `
                                 + 'and no member limit'"
-                            class="text-white mr-1"
+                            pill
+                            class="background-medium-grey text-grey mr-1"
                         >
                             {{ journal.author_count }}
                         </b-badge>
                         <b-badge
                             v-if="journal.locked"
+                            pill
                             class="background-red"
                         >
                             <icon
@@ -103,9 +106,9 @@
 </template>
 
 <script>
-import progressBar from '@/components/assets/ProgressBar.vue'
 import NumberBadge from '@/components/assets/NumberBadge.vue'
 import journalMembers from '@/components/journal/JournalMembers.vue'
+import progressBar from '@/components/assets/ProgressBar.vue'
 
 export default {
     components: {
@@ -157,8 +160,6 @@ export default {
 
 <style lang="sass">
 @import '~sass/partials/shadows.sass'
-@import '~sass/modules/breakpoints.sass'
-@import '~sass/modules/colors.sass'
 
 .journal-card
     .portrait-wrapper

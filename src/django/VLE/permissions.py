@@ -95,10 +95,17 @@ def is_user_supervisor_of(supervisor, user):
         course__in=VLE.models.Participation.objects.filter(user=user).values('course')).exists()
 
 
-def get_supervisors_of(journal):
+def get_supervisors_of(journal, with_permissions=[]):
+    """Get all the supervisors connected to a journal.
+
+    Args:
+    journal -- the journal to get the supervisors from
+    with_permissions -- the supervisors should have those permissions as well
+    """
     return VLE.models.User.objects.filter(pk__in=VLE.models.Participation.objects.filter(
         role__can_view_all_journals=True,
-        role__course__in=journal.assignment.courses.all()
+        role__course__in=journal.assignment.courses.all(),
+        **{f'role__{permission}': True for permission in with_permissions},
     ).values('user')).distinct()
 
 
@@ -110,14 +117,15 @@ def can_edit(user, obj):
 
 
 def _can_edit_entry(user, entry):
-    user.check_permission('can_have_journal', entry.node.journal.assignment)
+    journal = VLE.models.Journal.objects.filter(node__entry=entry).select_related('assignment').get()
+    user.check_permission('can_have_journal', journal.assignment)
 
     if (
-        not entry.node.journal.authors.filter(user=user).exists() or
-        entry.node.journal.assignment.is_locked() or
+        not journal.authors.filter(user=user).exists() or
+        journal.assignment.is_locked() or
         entry.is_graded() or
         entry.is_locked() or
-        len(entry.node.journal.needs_lti_link) > 0
+        len(journal.needs_lti_link) > 0
     ):
         return False
 

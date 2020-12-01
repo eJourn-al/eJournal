@@ -1,6 +1,6 @@
-<!-- TODO Is this check really required if we redirect, or even better have correct flow anyway? -->
-<template v-if="$hasPermission('can_view_all_journals')">
-    <content-columns>
+<template>
+    <!-- This check helps prevent user seeing the teacher view of the assignment user is not allowed to -->
+    <content-columns v-if="$hasPermission('can_view_all_journals')">
         <bread-crumb
             slot="main-content-column"
             @edit-click="handleEdit()"
@@ -218,7 +218,7 @@
                     on your LMS at least once.<br/>
                     <hr/>
                     <b-button
-                        class="add-button d-block float-right"
+                        class="green-button d-block float-right"
                         :class="{'input-disabled': assignment.active_lti_course.cID === newActiveLTICourse}"
                         @click="saveNewActiveLTICourse"
                     >
@@ -256,20 +256,22 @@
             </div>
             <main-card
                 v-if="assignmentJournals.length === 0"
-                line1="No journals for this assignment"
-                :line2="assignment.is_group_assignment ? 'Create journals by using the button below.' :
-                    'No participants with a journal'"
-                class="no-hover border-dark-grey"
-            />
+                text="No journals for this assignment"
+                class="no-hover"
+            >
+                {{ assignment.is_group_assignment ? 'Create journals by using the button below.' :
+                    'No participants with a journal' }}
+            </main-card>
             <main-card
                 v-else-if="filteredJournals.length === 0"
-                line1="No journals found"
-                line2="There are no journals that match your search query."
-                class="no-hover border-dark-grey"
-            />
+                text="No journals found"
+                class="no-hover"
+            >
+                There are no journals that match your search query.
+            </main-card>
             <b-button
                 v-if="$hasPermission('can_manage_journals') && assignment.is_group_assignment"
-                class="multi-form add-button"
+                class="multi-form green-button"
                 @click="showModal('createJournalModal')"
             >
                 <icon name="plus"/>
@@ -335,7 +337,7 @@
                                 v-model="newJournalCount"
                                 type="number"
                                 min="2"
-                                class="theme-input"
+                                class="theme-input inline"
                                 required
                             />
                             times
@@ -343,7 +345,7 @@
 
                         <b-button
                             type="submit"
-                            class="add-button d-block float-right"
+                            class="green-button d-block float-right"
                             :class="{'input-disabled': newJournalRequestInFlight}"
                         >
                             <icon name="plus-square"/>
@@ -367,7 +369,7 @@
                 <statistics-card :stats="stats"/>
             </b-col>
             <b-col
-                v-if="canPerformActions"
+                v-if="canPerformActions && !loadingJournals"
                 slot="right-content-column"
                 md="6"
                 lg="12"
@@ -377,7 +379,7 @@
                 </h3>
                 <b-button
                     v-if="canPublishGradesAssignment"
-                    class="add-button multi-form full-width"
+                    class="green-button multi-form full-width"
                     @click="publishGradesAssignment"
                 >
                     <icon name="upload"/>
@@ -386,7 +388,7 @@
                 </b-button>
                 <b-button
                     v-if="canManageLTI"
-                    class="add-button multi-form full-width"
+                    class="green-button multi-form full-width"
                     @click="showModal('manageLTIModal')"
                 >
                     <icon name="graduation-cap"/>
@@ -394,7 +396,7 @@
                 </b-button>
                 <b-button
                     v-if="canImportBonusPoints"
-                    class="change-button multi-form full-width"
+                    class="orange-button multi-form full-width"
                     @click="showModal('bonusPointsModal')"
                 >
                     <icon name="star"/>
@@ -402,7 +404,7 @@
                 </b-button>
                 <b-button
                     v-if="canExportResults"
-                    class="add-button multi-form full-width"
+                    class="green-button multi-form full-width"
                     @click="showModal('assignmentExportSpreadsheetModal')"
                 >
                     <icon name="file-export"/>
@@ -410,7 +412,7 @@
                 </b-button>
                 <b-button
                     v-if="$hasPermission('can_post_teacher_entries')"
-                    class="add-button multi-form full-width mb-2"
+                    class="green-button multi-form full-width mb-2"
                     @click="showModal('postTeacherEntry')"
                 >
                     <icon name="plus"/>
@@ -418,7 +420,7 @@
                 </b-button>
                 <b-button
                     v-if="$hasPermission('can_post_teacher_entries') && assignment.has_teacher_entries"
-                    class="change-button multi-form full-width"
+                    class="orange-button multi-form full-width"
                     @click="showModal('manageTeacherEntries')"
                 >
                     <icon name="edit"/>
@@ -430,7 +432,6 @@
 </template>
 
 <script>
-import AssignmentSpreadsheetExport from '@/components/assignment/AssignmentSpreadsheetExport.vue'
 import BonusFileUploadInput from '@/components/assets/file_handling/BonusFileUploadInput.vue'
 import BreadCrumb from '@/components/assets/BreadCrumb.vue'
 import ContentColumns from '@/components/columns/ContentColumns.vue'
@@ -441,13 +442,16 @@ import PostTeacherEntry from '@/components/assignment/PostTeacherEntry.vue'
 import StatisticsCard from '@/components/assignment/StatisticsCard.vue'
 import TeacherEntries from '@/components/assignment/TeacherEntries.vue'
 
-import store from '@/Store.vue'
-import assignmentAPI from '@/api/assignment.js'
-import groupAPI from '@/api/group.js'
-import gradeAPI from '@/api/grade.js'
-import participationAPI from '@/api/participation.js'
-import journalAPI from '@/api/journal.js'
 import { mapGetters, mapMutations } from 'vuex'
+import assignmentAPI from '@/api/assignment.js'
+import gradeAPI from '@/api/grade.js'
+import groupAPI from '@/api/group.js'
+import journalAPI from '@/api/journal.js'
+import participationAPI from '@/api/participation.js'
+import store from '@/Store.vue'
+
+const AssignmentSpreadsheetExport = () => import(
+    /* webpackChunkName: 'assignment-spreadsheet-export' */ '@/components/assignment/AssignmentSpreadsheetExport.vue')
 
 export default {
     name: 'Assignment',
@@ -549,15 +553,12 @@ export default {
         },
     },
     created () {
-        // TODO Should be moved to the breadcrumb, ensuring there is no more natural flow left that can get you to this
-        // page without manipulating the url manually. If someone does this, simply let the error be thrown
-        // (no checks required)
-        if (!this.$hasPermission('can_view_all_journals', 'assignment', String(this.aID))) {
-            if (this.$root.previousPage) {
-                this.$router.push({ name: this.$root.previousPage.name, params: this.$root.previousPage.params })
-            } else {
-                this.$router.push({ name: 'Home' })
-            }
+        // If a teacher manually links somewhere to an assignment
+        // students will now be directly navigated to their journal
+        if (!this.$hasPermission('can_view_all_journals', 'assignment', this.aID)) {
+            assignmentAPI.get(this.aID, this.cID).then((assignment) => {
+                this.$router.push(this.$root.assignmentRoute(assignment))
+            })
             return
         }
 
@@ -723,17 +724,3 @@ export default {
     },
 }
 </script>
-
-<style lang="sass">
-.create-journals-repeat
-    font-weight: bold
-    color: grey
-    margin-bottom: 10px
-    display: inline-block
-    .theme-input
-        display: inline-block
-        width: 4em
-    svg
-        margin-top: -5px
-        fill: grey
-</style>
