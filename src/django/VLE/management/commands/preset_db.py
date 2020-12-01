@@ -19,7 +19,7 @@ from VLE.views.lti import lti_launch
 faker = Faker()
 
 
-def _add_lti_launch_links_to_assignment_description(assignment, users):
+def _add_lti_launch_links_to_assignment_description(assignment, student, teacher):
     """
     Adds LTI launch links to the assignment description for the provided users.
 
@@ -29,20 +29,53 @@ def _add_lti_launch_links_to_assignment_description(assignment, users):
         user (:model:`VLE.user`): list of user instances for which a lti launch link should be added.
         assignment (:model:`VLE.assignment`): assignment of which the description should be added.
     """
-    launch_links = '<ul>'
+    launch_links = '<ol>'
 
-    for user in users:
-        launch_links += '<li><a href="{url}">{full_name} ({username})</a></li>'.format(
-            url=lti_launch(create_request(
-                user=user,
-                assignment=assignment,
-                course=assignment.courses.first(),
-            )).url,
-            full_name=user.full_name,
-            username=user.username
-        )
+    def get_link_str(name, *args, **kwargs):
+        url = lti_launch(create_request(*args, **kwargs)).url
+        return f'<li><a href="{url}">{name}</a></li>'
 
-    launch_links += '</ul>'
+    course = assignment.courses.first()
+
+    launch_links += get_link_str(
+        name='Auto setup new student',
+        assignment=assignment,
+        course=course,
+    )
+    launch_links += get_link_str(
+        name='Connect to existing student',
+        user=student,
+        assignment=assignment,
+        course=course,
+    )
+    launch_links += get_link_str(
+        name='Student is early (course)',
+    )
+    launch_links += get_link_str(
+        name='Student is early (assignment)',
+        course=course,
+    )
+    # Fake lti id to generate consistent lti ids
+    teacher.lti_id = 'teacher_lti_id_872539'
+
+    launch_links += get_link_str(
+        name='Link to teacher -> new course -> new assignment',
+        user=teacher,
+        is_teacher=True,
+    )
+    launch_links += get_link_str(
+        name='Existing course -> import assignment',
+        user=teacher,
+        course=course,
+        is_teacher=True,
+    )
+    launch_links += get_link_str(
+        name='Link course -> link assignment',
+        user=teacher,
+        is_teacher=True,
+    )
+
+    launch_links += '</ol>'
 
     assignment.description += '<br/>' + launch_links
     assignment.save()
@@ -211,7 +244,7 @@ class Command(BaseCommand):
             is_published=True,
         )
 
-        _add_lti_launch_links_to_assignment_description(self.lti_assignment, self.users)
+        _add_lti_launch_links_to_assignment_description(self.lti_assignment, self.students[0], self.teacher)
 
         self.assignments = [self.logboek, self.colloquium, self.group_assignment, self.lti_assignment]
 

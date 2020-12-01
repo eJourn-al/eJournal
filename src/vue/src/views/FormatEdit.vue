@@ -96,7 +96,8 @@
                             :presetNodes="presets"
                         />
                     </b-card>
-                    <b-card
+                    <!-- TODO: Re-enable after UI changes. -->
+                    <!-- <b-card
                         v-if="$hasPermission('can_delete_assignment')"
                         class="no-hover border-red"
                     >
@@ -111,7 +112,7 @@
                             <icon name="trash"/>
                             {{ assignmentDetails.course_count > 1 ? 'Remove' : 'Delete' }} assignment
                         </b-button>
-                    </b-card>
+                    </b-card> -->
                 </div>
 
                 <preset-node-card

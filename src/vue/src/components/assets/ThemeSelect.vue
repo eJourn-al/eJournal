@@ -192,6 +192,16 @@ export default {
             padding-bottom: 10px
             padding-top: 0px
             transform: translateY(10px)
+    span.multiselect__option--selected, span.multiselect__option--selected::after
+        background: $theme-light-grey !important
+        color: $theme-dark-blue
+    span.multiselect__option--selected::before
+        content: '\2022'
+        font-size: 2em
+        line-height: 10px
+        vertical-align: middle
+        margin-right: 4px
+        color: $theme-blue
     span.multiselect__option--highlight, span.multiselect__option--highlight::after
         background: $theme-medium-grey !important
         color: $theme-dark-blue

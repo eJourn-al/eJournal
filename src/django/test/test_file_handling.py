@@ -135,12 +135,15 @@ class FileHandlingTest(TestCase):
         api.get(self, 'files', params={'pk': file.pk}, user=factory.Teacher(), status=403)
 
     def test_file_context_model(self):
+        # Dedicated file due to possible race conditions across tests
+        isolated_file = SimpleUploadedFile('isolted_file.mp4', b'file_content', content_type='video/mp4')
+
         file = FileContext.objects.filter(author=self.student.pk, file_name=self.video.name)
         assert not file.exists(), "Assumes the student has no apriori user files."
 
-        file = FileContext.objects.create(file=self.video, author=self.student, file_name=self.video.name)
+        file = FileContext.objects.create(file=isolated_file, author=self.student, file_name=isolated_file.name)
 
-        file_get = FileContext.objects.filter(author=self.student.pk, file_name=self.video.name).first()
+        file_get = FileContext.objects.filter(author=self.student.pk, file_name=isolated_file.name).first()
         assert file, "The student should have successfully created a temp user file."
         assert file == file_get, "The created user file should be equal to the gotten user file from db."
         path = file.file.path
@@ -155,26 +158,26 @@ class FileHandlingTest(TestCase):
             "The user file's file path should follow the get_path logic"
 
         file.delete()
-        assert not FileContext.objects.filter(author=self.student.pk, file_name=self.video.name).exists(), \
+        assert not FileContext.objects.filter(author=self.student.pk, file_name=isolated_file.name).exists(), \
             "User file should be deleted from DB."
         assert not os.path.exists(path), \
             "Deleting a user file instance should delete the corresponding file as well."
 
         # Check if path moves after establishing
-        file = FileContext.objects.create(file=self.video, author=self.student, file_name=self.video.name)
+        file = FileContext.objects.create(file=isolated_file, author=self.student, file_name=isolated_file.name)
         file_handling.establish_file(author=self.student, file_context=file, assignment=self.assignment)
-        file = FileContext.objects.get(author=self.student, file_name=self.video.name)
+        file = FileContext.objects.get(author=self.student, file_name=isolated_file.name)
 
         assert file_handling.get_file_path(file, file.file_name) in file.file.path, \
             "The user file's file path should follow the get_path logic once made a permanent file"
 
         # Two files with the same name should be able to be established to the same folder
-        file1 = FileContext.objects.create(file=self.video, author=self.student, file_name=self.video.name)
-        file2 = FileContext.objects.create(file=self.video, author=self.student, file_name=self.video.name)
+        file1 = FileContext.objects.create(file=isolated_file, author=self.student, file_name=isolated_file.name)
+        file2 = FileContext.objects.create(file=isolated_file, author=self.student, file_name=isolated_file.name)
         file_handling.establish_file(author=self.student, file_context=file1, assignment=self.assignment)
         file_handling.establish_file(author=self.student, file_context=file2, assignment=self.assignment)
         # After established files, another file with same name should be able to be established
-        file3 = FileContext.objects.create(file=self.video, author=self.student, file_name=self.video.name)
+        file3 = FileContext.objects.create(file=isolated_file, author=self.student, file_name=isolated_file.name)
         file_handling.establish_file(author=self.student, file_context=file3, assignment=self.assignment)
 
         # Files should be on their own
