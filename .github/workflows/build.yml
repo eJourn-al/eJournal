@@ -30,9 +30,6 @@ jobs:
         uses: actions/setup-python@v2
         with:
           python-version: 3.6.9
-      - uses: harmon758/postgresql-action@v1
-        with:
-          postgresql version: '12.5'
       - name: Setup
         run: make setup-ci
       - name: Test
