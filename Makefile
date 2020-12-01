@@ -85,7 +85,7 @@ setup-no-input:
 
 	make setup-venv requirements_file=local.txt
 
-	# Reinstall nodejs dependencies.
+	# Istall nodejs dependencies.
 	npm install --prefix ./src/vue
 
 	make postgres-init
@@ -94,16 +94,14 @@ setup-no-input:
 
 	@echo "DONE!"
 
-setup-travis:
-	(sudo apt-cache show python3.6 | grep "Package: python3.6") || (sudo add-apt-repository ppa:deadsnakes/ppa -y; sudo apt update) || echo "0"
-	sudo apt install npm -y
-	sudo apt install nodejs python3 python3-pip python3-setuptools -y
-
+setup-ci:
 	sudo pip3 install virtualenv
 	virtualenv -p python3 venv
-	${venv_activate} && pip install -r requirements/ci.txt --use-feature=2020-resolver
 
-	# Reinstall nodejs dependencies.
+	# Istall python dependencies.
+	${venv_activate} && pip install -r requirements/ci.txt
+
+	# Istall nodejs dependencies.
 	npm install --prefix ./src/vue
 
 	@echo "DONE!"
