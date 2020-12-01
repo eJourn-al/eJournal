@@ -11,10 +11,11 @@ jobs:
         image: postgres
         # Provide the password for postgres
         env:
+          POSTGRES_USER: postgres
+          POSTGRES_DB: postgres
           POSTGRES_PASSWORD: password
           POSTGRES_HOST: localhost
           POSTGRES_PORT: 5432
-          POSTGRES_USER: ejournal
         # Set health checks to wait until postgres has started
         options: >-
           --health-cmd pg_isready
@@ -37,7 +38,7 @@ jobs:
         env:
           BASELINK: 'http://localhost:8080'
           DJANGO_SECRET_KEY: '@a4c3cpgfe0@8s!be=23d5+3e30vyj7!q%tolqpewafp^-@=br'
-          DATABASE_NAME: 'ejournal'
+          DATABASE_NAME: 'postgres'
           DATABASE_USER: 'postgres'
           DATABASE_PASSWORD: 'password'
           DATABASE_HOST: 'localhost'
