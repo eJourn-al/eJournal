@@ -49,33 +49,18 @@ SILKY_PYTHON_PROFILER_RESULT_PATH = '/'
 # TODO implement a testing environment, which does use background workers moving closer to production.
 CELERY_TASK_ALWAYS_EAGER = True if 'TRAVIS' in os.environ else False
 
-if 'TRAVIS' in os.environ:
-    DATABASES = {
-        'default': {
-            'ENGINE':   'django.db.backends.postgresql_psycopg2',
-            'NAME':     'travisci',
-            'USER':     'postgres',
-            'PASSWORD': '',
-            'HOST':     'localhost',
-            'PORT':     '',
-            'TEST': {
-                'NAME': 'test_travisci'
-            }
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.postgresql_psycopg2',
+        'NAME': os.environ['DATABASE_NAME'],
+        'USER': os.environ['DATABASE_USER'],
+        'PASSWORD': os.environ['DATABASE_PASSWORD'],
+        'HOST': os.environ['DATABASE_HOST'],
+        'PORT': os.environ['DATABASE_PORT'],
+        'TEST': {
+            'NAME': 'test_ejournal'
         }
     }
-else:
-    DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.postgresql_psycopg2',
-            'NAME': os.environ['DATABASE_NAME'],
-            'USER': os.environ['DATABASE_USER'],
-            'PASSWORD': os.environ['DATABASE_PASSWORD'],
-            'HOST': os.environ['DATABASE_HOST'],
-            'PORT': os.environ['DATABASE_PORT'],
-            'TEST': {
-                'NAME': 'test_ejournal'
-            }
-        }
-    }
+}
 
 DEBUG = True

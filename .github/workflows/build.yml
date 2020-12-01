@@ -2,39 +2,37 @@ name: eJournal CI
 on: push
 
 jobs:
-  test:
+  backend-tests:
+    name: Run Django Tests
     runs-on: ubuntu-18.04
     services:
-      # Label used to access the service container
       postgres:
-        # Docker Hub image
-        image: postgres
-        # Provide the password for postgres
+        image: postgres:12.3-alpine
         env:
           POSTGRES_USER: postgres
           POSTGRES_DB: postgres
           POSTGRES_PASSWORD: password
           POSTGRES_HOST: localhost
           POSTGRES_PORT: 5432
-        # Set health checks to wait until postgres has started
         options: >-
+          --mount type=tmpfs,destination=/var/lib/postgresql/data
           --health-cmd pg_isready
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
         ports:
-          # Maps tcp port 5432 on service container to the host
           - 5432:5432
     steps:
-      - uses: actions/checkout@v2
-      - name: Setup Python
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Set up Python 3.6.9
         uses: actions/setup-python@v2
         with:
           python-version: 3.6.9
-      - name: Setup
-        run: make setup-ci
-      - name: Test
-        run: make test
+      - name: Install dependencies
+        run: pip3 install -r requirements/ci.txt
+      - name: Run tests
+        run: python3 src/django/manage.py test -k --parallel --failfast
         env:
           BASELINK: 'http://localhost:8080'
           DJANGO_SECRET_KEY: '@a4c3cpgfe0@8s!be=23d5+3e30vyj7!q%tolqpewafp^-@=br'
@@ -43,7 +41,7 @@ jobs:
           DATABASE_PASSWORD: 'password'
           DATABASE_HOST: 'localhost'
           DATABASE_PORT: '5432'
-          BROKER_URL: 'amqp://ejournal:password@localhost/ejournal'
+          BROKER_URL: 'amqp://postgres:password@localhost/postgres'
           DEFAULT_LMS_PROFILE_PICTURE: 'images/messages/avatar-50.png'
           LTI_SECRET: '4339900ae5861f3086861ea492772864'
           LTI_KEY: '0cd500938a8e7414ccd31899710c98ce'
@@ -56,4 +54,3 @@ jobs:
           API_URL: 'http://localhost:8000'
           RELEASE_VERSION: '1.0.0'
           CODE_VERSION: '937aa7be86b36e1d30444336c073bbf6a4e72b2f'
-      - uses: codecov/codecov-action@v1
