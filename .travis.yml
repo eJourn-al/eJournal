@@ -4,9 +4,9 @@ python:
 sudo: enabled
 before_install:
 - openssl aes-256-cbc -K $encrypted_73b7bc399f7f_key -iv $encrypted_73b7bc399f7f_iv
-  -in id_ejournal_ci.pub -out id_ejournal_ci.pub -d
+  -in id_ejournal_ci.pub -out id_ejournal.pub -d
 - openssl aes-256-cbc -K $encrypted_68204e0c85f6_key -iv $encrypted_68204e0c85f6_iv
-  -in id_ejournal_ci -out id_ejournal_ci -d
+  -in id_ejournal_ci -out id_ejournal -d
 - npm install -g npm@latest
 install:
 - make setup-ci

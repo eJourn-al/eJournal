@@ -95,7 +95,7 @@ setup-no-input:
 	@echo "DONE!"
 
 setup-ci:
-	ssh-add id_ejournal_ci
+	ssh-add id_ejournal
 	git submodule update --remote --merge
 	sudo pip3 install virtualenv
 	virtualenv -p python3 venv
