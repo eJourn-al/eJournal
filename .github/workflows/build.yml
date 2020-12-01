@@ -4,6 +4,26 @@ on: push
 jobs:
   test:
     runs-on: ubuntu-18.04
+    services:
+      # Label used to access the service container
+      postgres:
+        # Docker Hub image
+        image: postgres
+        # Provide the password for postgres
+        env:
+          POSTGRES_PASSWORD: password
+          POSTGRES_HOST: localhost
+          POSTGRES_PORT: 5432
+          POSTGRES_USER: ejournal
+        # Set health checks to wait until postgres has started
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          # Maps tcp port 5432 on service container to the host
+          - 5432:5432
     steps:
       - uses: actions/checkout@v2
       - name: Setup Python
@@ -21,7 +41,7 @@ jobs:
           BASELINK: 'http://localhost:8080'
           DJANGO_SECRET_KEY: '@a4c3cpgfe0@8s!be=23d5+3e30vyj7!q%tolqpewafp^-@=br'
           DATABASE_NAME: 'ejournal'
-          DATABASE_USER: 'ejournal'
+          DATABASE_USER: 'postgres'
           DATABASE_PASSWORD: 'password'
           DATABASE_HOST: 'localhost'
           DATABASE_PORT: '5432'
