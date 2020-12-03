@@ -2792,8 +2792,6 @@ class Category(CreateUpdateModel):
     E.g. Grammar with templates
         - Master Compound and Complex Sentences
         - Learn to Use Infinitives and Gerunds
-    Which can be accompanied of a respective target, e.g. 5 entries related to complex sentences,
-    and weighed respectively.
     """
     name = models.TextField()
     description = models.TextField(
@@ -2836,6 +2834,15 @@ class AssessmentTemplateGoal(CreateUpdateModel):
 
 
 class AssessmentCategoryGoal(CreateUpdateModel):
+    """
+    AssessmentCategoryGoal (ACG)
+
+    Upto a number of X categories contribute to progress goal Y with weight Z
+
+    target: number of templates desired to fullfil this target
+    weight: factor the entry grade weigh towards
+    overflow_weight: factor with which entry grades should contribute past the set target
+    """
     category = models.ForeignKey(
         'Category',
         on_delete=models.CASCADE,
