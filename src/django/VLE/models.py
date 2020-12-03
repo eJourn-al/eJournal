@@ -2761,3 +2761,93 @@ def validate_jir_before_save(sender, instance, **kwargs):
             existing_import_qry = existing_import_qry.exclude(pk=instance.pk)
         if existing_import_qry.exists():
             raise ValidationError('You cannot import the same journal multiple times.')
+
+
+class Track(CreateUpdateModel):
+    """
+    Visualization: Parallel lines / Tabs
+
+    Allows grouping of categories into more abstract skills
+
+    E.g. Language track with nested categories
+        - Grammar
+        - Vocabulary
+        - Listening
+        - Fluency
+        - Pronunciation
+    """
+    name = models.TextField()
+    description = models.TextField(
+        null=True,
+    )
+    categories = models.ManyToManyField(
+        'Category'
+    )
+
+
+class Category(CreateUpdateModel):
+    """
+    Group of multiple templates contributing to a specific category / skill
+
+    E.g. Grammar with templates
+        - Master Compound and Complex Sentences
+        - Learn to Use Infinitives and Gerunds
+    Which can be accompanied of a respective target, e.g. 5 entries related to complex sentences,
+    and weighed respectively.
+    """
+    name = models.TextField()
+    description = models.TextField(
+        null=True,
+    )
+    templates = models.ManyToManyField(
+        'Template'
+    )  # Would we ever need more information for this relation? (Explicit through table)
+
+
+class AssessmentTemplateGoal(CreateUpdateModel):
+    """
+    AssessmentTemplateGoal (ATG)
+    (Long name, but goals could be set at the template or category level, as well as be self set by students or set
+    by teachers for assessment)
+
+    Upto a number of X templates contribute to progress goal Y with weight Z
+
+    target: number of templates desired to fullfil this target
+    weight: factor the entry grade weigh towards
+    overflow_weight: factor with which entry grades should contribute past the set target
+    """
+    template = models.ForeignKey(
+        'Template',
+        on_delete=models.CASCADE,
+    )
+    preset = models.ForeignKey(
+        'PresetNode',
+        on_delete=models.CASCADE,
+    )
+    # Could play with the structure, e.g. create a parent model "AssessmentGoal" with these fields
+    # Assessment prefix since student set goals will not translate to these fields.
+    target = models.IntegerField()
+    weight = models.FloatField(
+        default=1.0,
+    )
+    overflow_weight = models.FloatField(
+        default=0.0,
+    )
+
+
+class AssessmentCategoryGoal(CreateUpdateModel):
+    category = models.ForeignKey(
+        'Category',
+        on_delete=models.CASCADE,
+    )
+    preset = models.ForeignKey(
+        'PresetNode',
+        on_delete=models.CASCADE,
+    )
+    target = models.IntegerField()
+    weight = models.FloatField(
+        default=1.0,
+    )
+    overflow_weight = models.FloatField(
+        default=0.0,
+    )
