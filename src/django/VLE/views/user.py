@@ -35,7 +35,7 @@ def get_lti_params(request, *keys):
        Instance.objects.get_or_create(pk=1)[0].default_lms_profile_picture in lti_params['custom_user_image']:
         lti_params['custom_user_image'] = settings.DEFAULT_PROFILE_PICTURE
     values = utils.optional_params(lti_params, *keys)
-    values.append(settings.ROLES['Teacher'] in lti_launch.roles_to_list(lti_params))
+    values.append(any(role in lti_launch.roles_to_list(lti_params) for role in settings.ROLES['Teacher']))
     return values
 
 

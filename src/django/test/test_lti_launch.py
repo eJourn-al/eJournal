@@ -656,12 +656,22 @@ class LtiLaunchTest(TestCase):
             assert_msg='When a student tries to create a new course, with also a new Instructor role, \
                         it should grand its permissions')
 
+    def test_get_lti_params_from_jwt_administrator_role(self):
+        get_jwt(
+            self, user=self.student, status=200,
+            request_body={
+                'user_id': self.student.lti_id,
+                'roles': 'Learner,Administrator'},
+            response_value=lti_view.LTI_STATES.NEW_COURSE.value,
+            assert_msg='When a student tries to create a new course, with also a new Administrator role, \
+                        it should grand its permissions')
+
     def test_get_lti_params_from_jwt_unknown_role(self):
         get_jwt(
             self, user=self.teacher, status=200,
             request_body={
                 'user_id': self.teacher.lti_id,
-                'roles': 'urn:lti:instrole:ims/lis/Administrator'},
+                'roles': 'urn:lti:instrole:ims/lis/nothing'},
             response_value=lti_view.LTI_STATES.LACKING_PERMISSION_TO_SETUP_COURSE.value,
             assert_msg='When a teacher goes to the platform without a teacher role, it should lose its teacher powers')
 
@@ -703,7 +713,7 @@ class LtiLaunchTest(TestCase):
         course = factory.LtiCourse(author=self.teacher, name=REQUEST['custom_course_name'])
         selected_course = lti.update_lti_course_if_exists(
             {'custom_course_id': course.active_lti_id},
-            user=self.teacher, role=settings.ROLES['Teacher'])
+            user=self.teacher, role=settings.ROLES['Teacher'][0])
         assert selected_course == course
 
     def test_select_course_with_participation_and_groups(self):
@@ -714,7 +724,7 @@ class LtiLaunchTest(TestCase):
         selected_course = lti.update_lti_course_if_exists({
                 'custom_course_id': course.active_lti_id,
                 'custom_section_id': ','.join(['1000', '1001', '1002', '1003']),
-            }, user=self.teacher, role=settings.ROLES['Teacher'])
+            }, user=self.teacher, role=settings.ROLES['Teacher'][0])
         assert selected_course == course
         assert Group.objects.filter(course=course, name='Group 3').exists(), \
             'Groups with an LTI id that are do not exist need to get renamed'
@@ -726,7 +736,7 @@ class LtiLaunchTest(TestCase):
         lti.update_lti_course_if_exists({
                 'custom_course_id': course.active_lti_id,
                 'custom_section_id': ','.join(['1000', '1001', '1002', '1003']),
-            }, user=self.teacher, role=settings.ROLES['Teacher'])
+            }, user=self.teacher, role=settings.ROLES['Teacher'][0])
 
         assert Group.objects.filter(course=course).count() == 4, \
             'No new groups should be created'
@@ -739,7 +749,7 @@ class LtiLaunchTest(TestCase):
         lti.update_lti_course_if_exists({
                 'custom_course_id': course.active_lti_id,
                 'custom_section_id': ','.join(groups),
-            }, user=student, role=settings.ROLES['Teacher'])
+            }, user=student, role=settings.ROLES['Teacher'][0])
 
         journal = Journal.objects.get(pk=journal.pk)
         assert set(journal.groups) == set(Group.objects.filter(lti_id__in=groups).values_list('pk', flat=True)), \
@@ -749,7 +759,7 @@ class LtiLaunchTest(TestCase):
         """Hopefully select a journal."""
         selected_journal = lti.select_create_journal(
             {
-                'roles': settings.ROLES['Student'],
+                'roles': settings.ROLES['Student'][0],
                 'custom_assignment_id': self.assignment.active_lti_id,
                 'lis_result_sourcedid': "267-686-2694-585-0afc8c37342732c97b011855389af1f2c2f6d552",
                 'lis_outcome_service_url': "https://uvadlo-tes.instructure.com/api/lti/v1/tools/267/grade_passback"
@@ -767,7 +777,7 @@ class LtiLaunchTest(TestCase):
         new_id = "267-686-2694-585-0afc8c37342732c97b011855gfdshsdbfaf1f2c2f6d552"
         selected_journal = lti.select_create_journal(
             {
-                'roles': settings.ROLES['Student'],
+                'roles': settings.ROLES['Student'][0],
                 'custom_assignment_id': new_assignment.active_lti_id,
                 'lis_result_sourcedid': new_id,
                 'lis_outcome_service_url': new_url,
@@ -784,7 +794,7 @@ class LtiLaunchTest(TestCase):
         """Hopefully select None."""
         selected_journal = lti.select_create_journal(
             {
-                'roles': settings.ROLES['Student'],
+                'roles': settings.ROLES['Student'][0],
                 'custom_assignment_id': self.assignment.active_lti_id,
                 'lis_result_sourcedid': "267-686-2694-585-0afc8c37342732c97b011855389af1f2c2f6d552",
                 'lis_outcome_service_url': "https://uvadlo-tes.instructure.com/api/lti/v1/tools/267/grade_passback"
