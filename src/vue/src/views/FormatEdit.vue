@@ -431,8 +431,9 @@ export default {
                 }
             })
 
+            let invalidAssignmentDetails = false
             if (this.$refs.assignmentDetails && !this.$refs.assignmentDetails.validateDetails()) {
-                return
+                invalidAssignmentDetails = true
             }
 
             presetErrors.forEach((error) => {
@@ -451,7 +452,8 @@ export default {
                     hasError = true
                 }
             })
-            if (hasError) {
+
+            if (untitledTemplates || invalidAssignmentDetails || hasError) {
                 return
             }
 
