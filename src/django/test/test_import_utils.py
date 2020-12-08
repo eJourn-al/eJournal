@@ -16,8 +16,20 @@ class ImportTest(TestCase):
         assert True
 
     def test_check_github2(self):
-        c1 = factory.Course()
-        assert c1 == c1
+        a = [1, 2]
+        b = [1, 2, 3]
+
+        with self.assertRaises(ValueError):
+            for a, b in zip_equal(a, b):
+                assert a == b
+
+        with self.assertRaises(ValueError):
+            for b, a in zip_equal(b, a):
+                assert a == b
+
+        a = [1, 2, 3]
+        for a, b in zip_equal(a, b):
+            assert a == b
 
     def test_generic_test_utils_equal_models(self):
         a = {'a': {'b': 1}}
