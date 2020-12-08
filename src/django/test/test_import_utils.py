@@ -11,36 +11,6 @@ from VLE.utils.error_handling import VLEProgrammingError
 
 
 class ImportTest(TestCase):
-    def test_check_github(self):
-        a = {'a': {'b': 1}}
-        b = {'a': {'b': 2}}
-
-        assert not test_utils.equal_models(a, b)
-        b['a']['b'] = 1
-        assert test_utils.equal_models(a, b)
-
-        c1 = factory.Course()
-        c2 = factory.Course(author=c1.author, startdate=c1.startdate, enddate=c1.enddate, name=c1.name,
-                            abbreviation=c1.abbreviation)
-
-        assert test_utils.equal_models(c1, c2, ignore_keys=['id', 'creation_date', 'update_date'])
-
-    def test_check_github2(self):
-        a = [1, 2]
-        b = [1, 2, 3]
-
-        with self.assertRaises(ValueError):
-            for a, b in zip_equal(a, b):
-                assert a == b
-
-        with self.assertRaises(ValueError):
-            for b, a in zip_equal(b, a):
-                assert a == b
-
-        a = [1, 2, 3]
-        for a, b in zip_equal(a, b):
-            assert a == b
-
     def test_generic_test_utils_equal_models(self):
         a = {'a': {'b': 1}}
         b = {'a': {'b': 2}}
