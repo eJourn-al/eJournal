@@ -25,7 +25,7 @@ class ImportTest(TestCase):
 
         assert test_utils.equal_models(c1, c2, ignore_keys=['id', 'creation_date', 'update_date'])
 
-    def test_generic_test_utils_zip_equal(self):
+    def test_generic_test_utils_equal_models2(self):
         a = [1, 2]
         b = [1, 2, 3]
 
