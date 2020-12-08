@@ -32,7 +32,7 @@ jobs:
       - name: Install dependencies
         run: pip3 install -r requirements/ci.txt
       - name: Run tests
-        run: cd src/django && pytest -c /dev/null src/django/test test_code_version_in_utils_json_response
+        run: pytest -c /dev/null src/django/test test_code_version_in_utils_json_response
         env:
           BASELINK: 'http://localhost:8080'
           DJANGO_SECRET_KEY: '@a4c3cpgfe0@8s!be=23d5+3e30vyj7!q%tolqpewafp^-@=br'
