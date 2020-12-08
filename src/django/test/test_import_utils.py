@@ -12,10 +12,12 @@ from VLE.utils.error_handling import VLEProgrammingError
 
 class ImportTest(TestCase):
     def test_check_github(self):
+        c1 = factory.Course()
         assert True
 
     def test_check_github2(self):
-        assert 1 == 1
+        c1 = factory.Course()
+        assert c1 == c1
 
     def test_generic_test_utils_equal_models(self):
         a = {'a': {'b': 1}}
