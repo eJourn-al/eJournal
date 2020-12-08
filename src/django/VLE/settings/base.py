@@ -19,7 +19,7 @@ from sentry_sdk.integrations.celery import CeleryIntegration
 from sentry_sdk.integrations.django import DjangoIntegration
 
 sentry_sdk.init(
-    dsn=None if 'TRAVIS' in os.environ else os.environ['SENTRY_DSN'],
+    dsn=None if 'CI_CD' in os.environ else os.environ['SENTRY_DSN'],
     integrations=[DjangoIntegration(), CeleryIntegration()],
     release=os.environ['RELEASE_VERSION']
 )
