@@ -11,6 +11,12 @@ from VLE.utils.error_handling import VLEProgrammingError
 
 
 class ImportTest(TestCase):
+    def test_check_github(self):
+        assert True
+
+    def test_check_github2(self):
+        assert 1 == 1
+
     def test_generic_test_utils_equal_models(self):
         a = {'a': {'b': 1}}
         b = {'a': {'b': 2}}
@@ -25,7 +31,7 @@ class ImportTest(TestCase):
 
         assert test_utils.equal_models(c1, c2, ignore_keys=['id', 'creation_date', 'update_date'])
 
-    def test_generic_test_utils_equal_models2(self):
+    def test_generic_test_utils_zip_equal(self):
         a = [1, 2]
         b = [1, 2, 3]
 

@@ -32,7 +32,7 @@ jobs:
       - name: Install dependencies
         run: pip3 install -r requirements/ci.txt
       - name: Run tests
-        run: pytest -c /dev/null src/django/test -k test_import_utils
+        run: pytest -c /dev/null src/django/test -k test_check_github
         env:
           BASELINK: 'http://localhost:8080'
           DJANGO_SECRET_KEY: '@a4c3cpgfe0@8s!be=23d5+3e30vyj7!q%tolqpewafp^-@=br'
