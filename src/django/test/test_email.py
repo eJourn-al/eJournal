@@ -51,7 +51,7 @@ class EmailAPITest(TestCase):
         assert 'no known email address' in resp['description'], \
             'Test student without email address cannot retrieve their password via email.'
 
-    def test_recover_password(self):
+    def test_forgot_password2(self):
         api.post(self, 'recover_password', status=400)
         # Test invalid token
         api.post(
