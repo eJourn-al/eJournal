@@ -78,7 +78,8 @@ def get_user_lti(request):
             user.profile_picture = request['custom_user_image']
             user.save()
 
-        if 'roles' in request and settings.ROLES['Teacher'] in roles_to_list(request):
+        # NOTE: Canvas can also provide Institution wide roles, we should use this in stead of just any teacher role
+        if 'roles' in request and any(lti_role in roles_to_list(request) for lti_role in settings.ROLES['Teacher']):
             user.is_teacher = True
             user.save()
         return user

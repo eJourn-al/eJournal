@@ -35,7 +35,7 @@ export default {
 
 <style lang="sass">
 #code-version-alert
-    position: absolute
+    position: fixed
     margin: 2px
     bottom: 10px
     left: 10px

@@ -96,7 +96,8 @@
                             :presetNodes="presets"
                         />
                     </b-card>
-                    <b-card
+                    <!-- TODO: Re-enable after UI changes. -->
+                    <!-- <b-card
                         v-if="$hasPermission('can_delete_assignment')"
                         class="no-hover border-red"
                     >
@@ -111,7 +112,7 @@
                             <icon name="trash"/>
                             {{ assignmentDetails.course_count > 1 ? 'Remove' : 'Delete' }} assignment
                         </b-button>
-                    </b-card>
+                    </b-card> -->
                 </div>
 
                 <preset-node-card
@@ -430,8 +431,9 @@ export default {
                 }
             })
 
+            let invalidAssignmentDetails = false
             if (this.$refs.assignmentDetails && !this.$refs.assignmentDetails.validateDetails()) {
-                return
+                invalidAssignmentDetails = true
             }
 
             presetErrors.forEach((error) => {
@@ -450,7 +452,8 @@ export default {
                     hasError = true
                 }
             })
-            if (hasError) {
+
+            if (untitledTemplates || invalidAssignmentDetails || hasError) {
                 return
             }
 

@@ -83,8 +83,17 @@ EMAILS = Emails()
 # LTI settings
 LTI_SECRET = os.environ['LTI_SECRET']
 LTI_KEY = os.environ['LTI_KEY']
-ROLES = OrderedDict({'Teacher': 'instructor', 'TA': 'teachingassistant', 'Student': 'learner'})
-LTI_ROLES = OrderedDict({'instructor': 'Teacher', 'teachingassistant': 'TA', 'learner': 'Student'})
+ROLES = OrderedDict({
+    'Teacher': ['instructor', 'administrator'],
+    'TA': ['teachingassistant'],
+    'Student': ['learner']
+})
+LTI_ROLES = OrderedDict({
+    'instructor': 'Teacher',
+    'administrator': 'Teacher',
+    'teachingassistant': 'TA',
+    'learner': 'Student',
+})
 LTI_TEST_STUDENT_FULL_NAME = 'Test student'
 
 

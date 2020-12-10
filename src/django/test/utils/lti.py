@@ -34,7 +34,7 @@ def gen_jwt_params(params={}, user=None):
         req = {
             **req,
             **{
-                'roles': settings.ROLES['Teacher'] if user.is_teacher else settings.ROLES['Student'],
+                'roles': settings.ROLES['Teacher'][0] if user.is_teacher else settings.ROLES['Student'][0],
                 'user_id': user.lti_id,
                 'custom_username': user.username,
                 'custom_user_email': user.email,

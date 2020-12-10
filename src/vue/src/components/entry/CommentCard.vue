@@ -117,7 +117,7 @@
                 <template v-else>
                     <b-button
                         v-if="comment.can_edit"
-                        class="multi-form red-button"
+                        class="red-button"
                         @click="resetComment()"
                     >
                         <icon name="ban"/>
@@ -186,6 +186,10 @@ export default {
         createComment (option) {
             if (this.comment.text !== '' || this.comment.files.length > 0) {
                 if (option === 'g') {
+                    if (this.$parent.$parent.grade.grade === '') {
+                        this.$toasted.error('A grade needs to be set before it can be published.')
+                        return
+                    }
                     this.$emit('publish-grade')
                 }
 
