@@ -28,6 +28,9 @@ if not os.path.exists(LOG_DIR):
 CORS_ORIGIN_ALLOW_ALL = True
 CSP_DEFAULT_SRC = ("'self'", "'unsafe-inline'")
 
+# Purely for speed
+PASSWORD_HASHERS = ['django.contrib.auth.hashers.MD5PasswordHasher']
+
 MIDDLEWARE = [
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -39,7 +42,7 @@ ALLOWED_HOSTS = ['*']
 
 # If this is True, all tasks will be executed locally by blocking until the task returns.
 # TODO implement a testing environment, which does use background workers moving closer to production.
-CELERY_TASK_ALWAYS_EAGER = True if 'CI_CD' in os.environ else False
+CELERY_TASK_ALWAYS_EAGER = True
 
 DATABASES = {
     'default': {
@@ -56,4 +59,5 @@ DATABASES = {
 }
 
 BROKER_BACKEND = 'memory'
-DEBUG = True
+
+DEBUG = False

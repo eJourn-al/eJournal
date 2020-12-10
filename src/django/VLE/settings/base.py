@@ -19,7 +19,8 @@ from sentry_sdk.integrations.celery import CeleryIntegration
 from sentry_sdk.integrations.django import DjangoIntegration
 
 sentry_sdk.init(
-    dsn=None if 'CI_CD' in os.environ else os.environ['SENTRY_DSN'],
+    # Setting DSN to None will disable the SDK
+    dsn=os.environ.get('SENTRY_DSN', None),
     integrations=[DjangoIntegration(), CeleryIntegration()],
     release=os.environ['RELEASE_VERSION']
 )
