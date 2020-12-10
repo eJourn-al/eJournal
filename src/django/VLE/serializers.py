@@ -1088,3 +1088,22 @@ class JournalImportRequestSerializer(serializers.ModelSerializer, EagerLoadingMi
             'journal': JournalSerializer(target, context=self.context, read_only=True).data,
             'assignment': SmallAssignmentSerializer(jir.target.assignment, context=self.context, read_only=True).data,
         }
+
+
+class CategorySerializer(serializers.ModelSerializer, EagerLoadingMixin):
+    class Meta:
+        model = VLE.models.Category
+        fields = (
+            'id',
+            'name',
+            'description',
+            'assignment',
+            'templates',
+        )
+        read_only_fields = ()
+
+    prefetch_related = [
+        Prefetch('templates__field_set', queryset=VLE.models.Field.objects.order_by('location')),
+    ]
+
+    templates = TemplateSerializer(read_only=True, many=True)
