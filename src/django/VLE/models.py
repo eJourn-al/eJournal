@@ -2768,6 +2768,7 @@ class Category(CreateUpdateModel):
     Grouping of multiple templates contributing to a specific category / skill
     """
     class Meta:
+        ordering = ['name']
         constraints = [
             CheckConstraint(check=~Q(name=''), name='non_empty_name'),
         ]

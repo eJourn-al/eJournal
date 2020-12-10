@@ -21,6 +21,9 @@ class Migration(migrations.Migration):
                 ('description', models.TextField(null=True)),
                 ('assignment', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='VLE.Assignment')),
             ],
+            options={
+                'ordering': ['name'],
+            },
         ),
         migrations.CreateModel(
             name='TemplateCategoryLink',
