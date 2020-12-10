@@ -34,6 +34,14 @@ jobs:
         with:
           python-version: 3.6.9
 
+      - name: Cache pip
+        uses: actions/cache@v2
+        with:
+          path: ~/.cache/pip
+          key: python-${{ hashFiles('requirements/base.txt') }}-${{ hashFiles('requirements/ci.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
       - name: Install dependencies
         run: pip3 install -r requirements/ci.txt
 
