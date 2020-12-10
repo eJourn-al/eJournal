@@ -49,7 +49,7 @@ jobs:
           LTI_SECRET: 4339900ae5861f3086861ea492772864
           LTI_KEY: 0cd500938a8e7414ccd31899710c98ce
           DJANGO_SETTINGS_MODULE: 'VLE.settings.ci_cd'
-          SENTRY_DSN: 'https://dummydsn@sentry.io/000001'
+          SENTRY_DSN: ''
           SENTRY_SENTRY_ORG: ejournal
           SENTRY_PROJECT: ejournal
           MAILGUN_API_KEY: placeholder
