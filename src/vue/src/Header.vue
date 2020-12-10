@@ -230,13 +230,16 @@ export default {
         img
             height: 25px
     .navbar-toggler
+        width: 40px
+        height: 40px
+        padding: 0px
         .collapse-icon
             fill: white !important
         @include md-max
             position: absolute
             left: 50%
             right: 50%
-            top: 15px
+            top: 8px
             transform: translateX(-50%)
             border-radius: 50% !important
     /* Handles rotation of the arrow icon. */
@@ -282,7 +285,7 @@ export default {
         border-radius: 0px 0px 5px 5px !important
         padding: 10px 5px 5px 5px !important
         @include sm-max
-            padding-top: 60px !important
+            margin-top: 10px !important
 
     .spinner
         background: white

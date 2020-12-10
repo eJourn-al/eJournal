@@ -16,7 +16,7 @@
             />
             <b-button
                 v-if="selectedTeacherEntry"
-                class="red-button mr-2 flex-shrink-0 mb-2"
+                class="orange-button mr-2 flex-shrink-0 mb-2"
                 @click="toggleUpdateTitle"
             >
                 <icon name="edit"/>

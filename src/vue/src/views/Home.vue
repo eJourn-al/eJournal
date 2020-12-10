@@ -17,11 +17,11 @@
                             :class="$root.getBorderClass(c.id)"
                         >
                             <b-badge
+                                v-if="c.startdate || c.enddate"
                                 pill
                                 class="background-blue"
                             >
-                                {{ c.startdate ? (c.startdate.substring(0, 4) +
-                                    (c.enddate ? ` - ${c.enddate.substring(0, 4)}` : '')) : '' }}
+                                {{ courseDateDisplay(c) }}
                             </b-badge>
                         </main-card>
                     </b-link>
@@ -119,6 +119,15 @@ export default {
         },
         hideModal (ref) {
             this.$refs[ref].hide()
+        },
+        courseDateDisplay (course) {
+            let display = ''
+
+            if (course.startdate) { display += course.startdate.substring(0, 4) }
+            if (course.startdate && course.enddate) { display += ' - ' }
+            if (course.enddate) { display += course.enddate.substring(0, 4) }
+
+            return display
         },
     },
 }

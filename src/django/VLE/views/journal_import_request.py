@@ -3,7 +3,7 @@ from rest_framework import viewsets
 import VLE.utils.generic_utils as utils
 import VLE.utils.import_utils as import_utils
 import VLE.utils.responses as response
-from VLE.models import Assignment, AssignmentParticipation, Entry, Journal, JournalImportRequest, Node
+from VLE.models import Assignment, Entry, Journal, JournalImportRequest, Node
 from VLE.serializers import JournalImportRequestSerializer
 from VLE.utils import grading
 
@@ -26,7 +26,7 @@ class JournalImportRequestView(viewsets.ViewSet):
                 journal_target.import_request_targets.filter(state=JournalImportRequest.PENDING)
             ),
             context={'user': request.user},
-            many=True
+            many=True,
         )
 
         return response.success({'journal_import_requests': serializer.data})
@@ -37,10 +37,8 @@ class JournalImportRequestView(viewsets.ViewSet):
 
         assignment_target = Assignment.objects.get(pk=assignment_target_id)
 
-        journal_source = AssignmentParticipation.objects.get(
-            user=request.user, assignment=assignment_source_id).journal
-        journal_target = AssignmentParticipation.objects.get(
-            user=request.user, assignment=assignment_target).journal
+        journal_source = Journal.objects.get(assignment=assignment_source_id, authors__user=request.user)
+        journal_target = Journal.objects.get(assignment=assignment_target, authors__user=request.user)
 
         if JournalImportRequest.objects.filter(state=JournalImportRequest.PENDING, target=journal_target,
                                                source=journal_source).exists():
@@ -50,7 +48,7 @@ class JournalImportRequestView(viewsets.ViewSet):
         jir = JournalImportRequest.objects.create(source=journal_source, target=journal_target, author=request.user)
 
         serializer = JournalImportRequestSerializer(
-            JournalImportRequestSerializer.setup_eager_loading(JournalImportRequest.objects.filter(pk=jir.pk))[0],
+            JournalImportRequestSerializer.setup_eager_loading(JournalImportRequest.objects.filter(pk=jir.pk)).get(),
             context={'user': request.user},
         )
         return response.created({'journal_import_request': serializer.data})

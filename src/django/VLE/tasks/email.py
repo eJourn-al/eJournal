@@ -91,7 +91,7 @@ def send_email_verification_link(user_pk):
     email = EmailMultiAlternatives(
         subject='eJournal email verification',
         body=text_content,
-        from_email=settings.EMAILS.support.sender,
+        from_email=settings.EMAILS.noreply.sender,
         headers={'Content-Type': 'text/plain'},
         to=[user.email]
     )
