@@ -13,8 +13,8 @@ from django.contrib.postgres.aggregates import ArrayAgg, StringAgg
 from django.contrib.postgres.fields import ArrayField, CIEmailField, CITextField
 from django.core.exceptions import ValidationError
 from django.db import models, transaction
-from django.db.models import (Case, CharField, Count, F, FloatField, IntegerField, Min, OuterRef, Prefetch, Q, Subquery,
-                              Sum, TextField, Value, When)
+from django.db.models import (Case, CharField, CheckConstraint, Count, F, FloatField, IntegerField, Min, OuterRef,
+                              Prefetch, Q, Subquery, Sum, TextField, Value, When)
 from django.db.models.deletion import CASCADE, SET_NULL
 from django.db.models.functions import Cast, Coalesce
 from django.dispatch import receiver
@@ -2761,3 +2761,45 @@ def validate_jir_before_save(sender, instance, **kwargs):
             existing_import_qry = existing_import_qry.exclude(pk=instance.pk)
         if existing_import_qry.exists():
             raise ValidationError('You cannot import the same journal multiple times.')
+
+
+class Category(CreateUpdateModel):
+    """
+    Grouping of multiple templates contributing to a specific category / skill
+    """
+    class Meta:
+        constraints = [
+            CheckConstraint(check=~Q(name=''), name='non_empty_name'),
+        ]
+
+    name = models.TextField()
+    description = models.TextField(
+        null=True,
+    )
+    assignment = models.ForeignKey(
+        'assignment',
+        on_delete=models.CASCADE,
+    )
+    templates = models.ManyToManyField(
+        'Template',
+        related_name='category',
+        through='TemplateCategoryLink',
+        through_fields=('category', 'template'),
+    )
+
+
+class TemplateCategoryLink(CreateUpdateModel):
+    """
+    Explicit M2M table, linking Templates to Categories.
+    """
+    class Meta:
+        unique_together = ('template', 'category')
+
+    template = models.ForeignKey(
+        'template',
+        on_delete=models.CASCADE,
+    )
+    category = models.ForeignKey(
+        'category',
+        on_delete=models.CASCADE,
+    )
