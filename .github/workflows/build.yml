@@ -34,7 +34,7 @@ jobs:
         with:
           python-version: 3.6.9
 
-      - name: Cache python env
+      - name: Cache python environment
         uses: actions/cache@v2
         with:
           path: ${{ env.pythonLocation }}
