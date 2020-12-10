@@ -29,8 +29,12 @@ CORS_ORIGIN_ALLOW_ALL = True
 CSP_DEFAULT_SRC = ("'self'", "'unsafe-inline'")
 
 MIDDLEWARE = [
-    'corsheaders.middleware.CorsMiddleware'
-] + MIDDLEWARE
+    'django.contrib.sessions.middleware.SessionMiddleware',
+    'django.middleware.common.CommonMiddleware',
+    'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'django.contrib.messages.middleware.MessageMiddleware',
+    'VLE.utils.error_handling.ErrorMiddleware',
+]
 ALLOWED_HOSTS = ['*']
 
 # If this is True, all tasks will be executed locally by blocking until the task returns.
@@ -51,4 +55,5 @@ DATABASES = {
     }
 }
 
+BROKER_BACKEND = 'memory'
 DEBUG = True
