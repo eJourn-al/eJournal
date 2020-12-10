@@ -2763,6 +2763,18 @@ def validate_jir_before_save(sender, instance, **kwargs):
             raise ValidationError('You cannot import the same journal multiple times.')
 
 
+class CategoryQuerySet(models.QuerySet):
+    def create(self, templates=None, *args, **kwargs):
+        """Creates a category, setting templates in the same transaction"""
+        with transaction.atomic():
+            category = super().create(*args, **kwargs)
+
+            if templates is not None:
+                category.templates.set(templates)
+
+            return category
+
+
 class Category(CreateUpdateModel):
     """
     Grouping of multiple templates contributing to a specific category / skill
@@ -2772,6 +2784,8 @@ class Category(CreateUpdateModel):
         constraints = [
             CheckConstraint(check=~Q(name=''), name='non_empty_name'),
         ]
+
+    objects = models.Manager.from_queryset(CategoryQuerySet)()
 
     name = models.TextField()
     description = models.TextField(

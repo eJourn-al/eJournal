@@ -1,6 +1,7 @@
 from rest_framework import routers
 
 from VLE.views.assignment import AssignmentView
+from VLE.views.category import CategoryView
 from VLE.views.comment import CommentView
 from VLE.views.course import CourseView
 from VLE.views.entry import EntryView
@@ -38,5 +39,6 @@ router.register(r'formats', FormatView, basename='format')
 router.register(r'files', FileView, basename='file')
 router.register(r'teacher_entries', TeacherEntryView, basename='teacher_entry')
 router.register(r'journal_import_request', JournalImportRequestView, basename='journal_import_request')
+router.register(r'categories', CategoryView, basename='categories')
 
 urlpatterns = router.urls

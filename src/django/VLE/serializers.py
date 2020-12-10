@@ -1097,7 +1097,6 @@ class CategorySerializer(serializers.ModelSerializer, EagerLoadingMixin):
             'id',
             'name',
             'description',
-            'assignment',
             'templates',
         )
         read_only_fields = ()
