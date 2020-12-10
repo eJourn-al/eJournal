@@ -28,14 +28,17 @@ jobs:
         with:
           token: ${{ secrets.ACTIONS_TOKEN }}
           submodules: recursive
+
       - name: Set up Python 3.6.9
         uses: actions/setup-python@v2
         with:
           python-version: 3.6.9
+
       - name: Install dependencies
         run: pip3 install -r requirements/ci.txt
+
       - name: Run tests
-        run: cd src/django && python3 manage.py test -k --failfast -v3
+        run: cd src/django && python3 manage.py test --failfast --verbosity 0
         env:
           BASELINK: 'http://localhost:8080'
           DJANGO_SECRET_KEY: '@a4c3cpgfe0@8s!be=23d5+3e30vyj7!q%tolqpewafp^-@=br'
@@ -58,4 +61,5 @@ jobs:
           RELEASE_VERSION: '1.0.0'
           CODE_VERSION: 937aa7be86b36e1d30444336c073bbf6a4e72b2f
           CI_CD: true
+
       - uses: codecov/codecov-action@v1
