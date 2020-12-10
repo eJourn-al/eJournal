@@ -43,6 +43,7 @@ def rel_factory(instance, create, extracted, key, model, factory=None, size=1, n
 
 from test.factory.assignment import AssignmentFactory as Assignment  # noqa: F401
 from test.factory.assignment import LtiAssignmentFactory as LtiAssignment  # noqa: F401
+from test.factory.category import CategoryFactory as Category  # noqa: F401
 from test.factory.comment import StudentCommentFactory as StudentComment  # noqa: F401
 from test.factory.comment import TeacherCommentFactory as TeacherComment  # noqa: F401
 from test.factory.content import ContentFactory as Content  # noqa: F401
