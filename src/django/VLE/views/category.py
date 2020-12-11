@@ -93,3 +93,12 @@ class CategoryView(viewsets.ViewSet):
         )
 
         return response.success({'category': serializer.data})
+
+    def destroy(self, request, pk):
+        category = Category.objects.filter(pk=pk).select_related('assignment').get()
+
+        request.user.check_permission('can_edit_assignment', category.assignment)
+
+        category.delete()
+
+        return response.success(description=f'Successfully deleted {category.name}.')

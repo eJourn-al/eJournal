@@ -92,3 +92,12 @@ class FormatAPITest(TestCase):
         assert resp['description'] == valid_patch_data['description']
         for template in resp['templates']:
             assert template['id'] in valid_patch_data['templates'], 'All templates are correctly linked'
+
+    def test_category_delete(self):
+        category = factory.Category(assignment=self.assignment)
+
+        with mock.patch('VLE.models.User.check_permission') as check_permission_mock:
+            api.delete(self, 'categories', params={'pk': category.pk}, user=self.assignment.author)
+            check_permission_mock.assert_called_with('can_edit_assignment', category.assignment)
+
+        assert not Category.objects.filter(pk=category.pk).exists()
