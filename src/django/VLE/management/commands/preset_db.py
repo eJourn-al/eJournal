@@ -316,6 +316,20 @@ class Command(BaseCommand):
         # Group Assignment
         factory.ProgressPresetNode(format=self.group_assignment.format, target=10)
 
+    def gen_categories(self):
+        for a in self.assignments:
+            templates = list(a.format.template_set.all())
+            template_count = len(templates)
+
+            for _ in range(random.randint(1, 10)):
+                n_templates = random.randint(0, template_count)
+
+                factory.Category(
+                    assignment=a,
+                    description=faker.paragraph(),
+                    templates=random.sample(templates, n_templates),
+                )
+
     def gen_entries(self):
         for a in self.assignments:
             # NOTE: carefull to use a.journal_set or query via AP, both will yield teacher journals
@@ -360,6 +374,7 @@ class Command(BaseCommand):
         self.gen_assignments()
         self.gen_group_journals()
         self.gen_format()
+        self.gen_categories()
         self.gen_entries()
         self.gen_journal_import_requests()
         User.objects.filter(pk__in=[
