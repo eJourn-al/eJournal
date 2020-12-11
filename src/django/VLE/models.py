@@ -150,6 +150,11 @@ class FileContext(CreateUpdateModel):
         on_delete=models.CASCADE,
         null=True
     )
+    category = models.ForeignKey(
+        'Category',
+        on_delete=models.CASCADE,
+        null=True
+    )
     content = models.ForeignKey(
         'Content',
         on_delete=models.CASCADE,
@@ -2772,6 +2777,8 @@ class CategoryQuerySet(models.QuerySet):
             if templates is not None:
                 category.templates.set(templates)
 
+            file_handling.establish_rich_text(author=category.author, rich_text=category.description, category=category)
+
             return category
 
 
@@ -2791,6 +2798,12 @@ class Category(CreateUpdateModel):
     name = models.TextField()
     description = models.TextField(
         null=True,
+    )
+    author = models.ForeignKey(
+        'User',
+        blank=True,
+        null=True,
+        on_delete=models.SET_NULL,
     )
     assignment = models.ForeignKey(
         'assignment',
