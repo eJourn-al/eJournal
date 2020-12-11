@@ -2784,6 +2784,7 @@ class Category(CreateUpdateModel):
         constraints = [
             CheckConstraint(check=~Q(name=''), name='non_empty_name'),
         ]
+        unique_together = ('name', 'assignment')
 
     objects = models.Manager.from_queryset(CategoryQuerySet)()
 

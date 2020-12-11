@@ -32,6 +32,9 @@ class FormatAPITest(TestCase):
         with self.assertRaises(IntegrityError):
             Category.objects.create(name='', assignment=self.assignment)
 
+        with self.assertRaises(IntegrityError):
+            Category.objects.create(name=self.category.name, assignment=self.assignment)
+
     def test_category_serializer(self):
         factory.Category(assignment=self.assignment)
 
