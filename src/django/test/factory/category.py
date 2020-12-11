@@ -13,9 +13,12 @@ class CategoryFactory(factory.django.DjangoModelFactory):
 
     @factory.post_generation
     def templates(self, create, extracted, **kwargs):
-        if not create:
+        if not create or extracted is False:
             return
 
-        template = VLE.models.Template.objects.filter(format__assignment=self.assignment).order_by('?').first()
-        if template:
-            self.templates.add(template)
+        if isinstance(extracted, list):
+            self.templates.set(extracted)
+        else:
+            template = VLE.models.Template.objects.filter(format__assignment=self.assignment).order_by('?').first()
+            if template:
+                self.templates.add(template)
