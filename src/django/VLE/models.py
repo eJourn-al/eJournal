@@ -2302,6 +2302,13 @@ class Entry(CreateUpdateModel):
         null=True,
     )
 
+    categories = models.ManyToManyField(
+        'Category',
+        related_name='entries',
+        through='EntryCategoryLink',
+        through_fields=('entry', 'category'),
+    )
+
     def is_locked(self):
         return (self.node.preset and self.node.preset.is_locked()) or self.node.journal.assignment.is_locked()
 
@@ -2343,6 +2350,31 @@ class Entry(CreateUpdateModel):
 
     def to_string(self, user=None):
         return "Entry"
+
+
+class EntryCategoryLink(CreateUpdateModel):
+    """
+    Explicit M2M table, linking Entries to Categories.
+
+    When an Entry is graded, the requested Categories are linked.
+    """
+    class Meta:
+        unique_together = ('entry', 'category')
+
+    entry = models.ForeignKey(
+        'entry',
+        on_delete=models.CASCADE,
+    )
+    category = models.ForeignKey(
+        'category',
+        on_delete=models.CASCADE,
+    )
+    author = models.ForeignKey(
+        'user',
+        blank=True,
+        null=True,
+        on_delete=models.SET_NULL,
+    )
 
 
 class TeacherEntry(Entry):
