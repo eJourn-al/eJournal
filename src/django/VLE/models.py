@@ -2817,7 +2817,7 @@ class Category(CreateUpdateModel):
     )
     templates = models.ManyToManyField(
         'Template',
-        related_name='category',
+        related_name='categories',
         through='TemplateCategoryLink',
         through_fields=('category', 'template'),
     )
