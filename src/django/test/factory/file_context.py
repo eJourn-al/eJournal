@@ -296,3 +296,17 @@ class RichTextPresetNodeDescriptionFileContextFactory(RichTextFileContextFactory
             })
             preset.description = _none_to_str(preset.description) + _fc_to_rt_img_element(self)
             preset.save()
+
+
+class RichTextCategoryDescriptionFileContextFactory(RichTextFileContextFactory):
+    """Generates a RT file embedded in the description of a category."""
+    category = factory.SubFactory('test.factory.category.CategoryFactory')
+    author = factory.SelfAttribute('category.author')
+
+    @factory.post_generation
+    def update_category_description(self, create, extracted):
+        if not create:
+            return
+
+        self.category.description = _none_to_str(self.category.description) + _fc_to_rt_img_element(self)
+        self.category.save()

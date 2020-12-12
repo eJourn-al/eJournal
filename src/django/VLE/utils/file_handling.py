@@ -64,10 +64,17 @@ def compress_all_user_data(user, extra_data_dict=None, archive_extension='zip'):
     return archive_ouput_path, '{}.{}'.format(archive_name, archive_extension)
 
 
+# NOTE: when updating this list of parameters, update it in the functions: establish_file, establish_rich_text,
+# _set_file_context and inside the functions establish_file&establish_rich_text where _set_file_context is called.
 def _set_file_context(
-    fc, assignment=None, journal=None, content=None, comment=None, preset_node=None, in_rich_text=False
-    # NOTE: when updating this list of parameters, update it in the functions: establish_file, establish_rich_text,
-    # _set_file_context and inside the functions establish_file&establish_rich_text where _set_file_context is called.
+    fc,
+    assignment=None,
+    journal=None,
+    content=None,
+    comment=None,
+    preset_node=None,
+    category=None,
+    in_rich_text=False,
 ):
     if comment:
         journal = comment.entry.node.journal
@@ -85,6 +92,7 @@ def _set_file_context(
     fc.content = content
     fc.journal = journal
     fc.preset_node = preset_node
+    fc.category = category
     fc.assignment = assignment
     fc.is_temp = False
     fc.in_rich_text = in_rich_text
@@ -116,11 +124,19 @@ def _move_newly_established_file_context_to_permanent_location(fc):
     os.rename(initial_path, str(new_path))
 
 
+# NOTE: when updating this list of parameters, update it in the functions: establish_file, establish_rich_text,
+# _set_file_context and inside the functions establish_file&establish_rich_text where _set_file_context is called.
 def establish_file(
-    author, file_context=None, identifier=None, assignment=None, journal=None, content=None, comment=None,
-    preset_node=None, in_rich_text=False
-    # NOTE: when updating this list of parameters, update it in the functions: establish_file, establish_rich_text,
-    # _set_file_context and inside the functions establish_file&establish_rich_text where _set_file_context is called.
+    author,
+    file_context=None,
+    identifier=None,
+    assignment=None,
+    journal=None,
+    content=None,
+    comment=None,
+    preset_node=None,
+    category=None,
+    in_rich_text=False,
 ):
     """Sets the context of a temporary file, and moves it to a permanent location."""
     if isinstance(file_context, VLE.models.FileContext):
@@ -142,7 +158,8 @@ def establish_file(
         journal=journal,
         content=content,
         comment=comment,
-        preset_node=preset_node
+        preset_node=preset_node,
+        category=category,
     )
     _move_newly_established_file_context_to_permanent_location(file_context)
 
@@ -167,7 +184,15 @@ def get_temp_files_from_rich_text(rich_text):
 
 
 def establish_rich_text(
-    author, rich_text, assignment=None, journal=None, content=None, comment=None, preset_node=None, in_rich_text=True
+    author,
+    rich_text,
+    assignment=None,
+    journal=None,
+    content=None,
+    comment=None,
+    preset_node=None,
+    category=None,
+    in_rich_text=True,
     # NOTE: when updating this list of parameters, update it in the functions: establish_file, establish_rich_text,
     # _set_file_context and inside the functions establish_file&establish_rich_text where _set_file_context is called.
 ):
@@ -180,5 +205,6 @@ def establish_rich_text(
             content=content,
             comment=comment,
             preset_node=preset_node,
-            in_rich_text=in_rich_text
+            category=category,
+            in_rich_text=in_rich_text,
         )

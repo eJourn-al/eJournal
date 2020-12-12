@@ -1,5 +1,6 @@
 import test.factory as factory
 from copy import deepcopy
+from test.factory.file_context import _fc_to_rt_img_element
 from test.utils import api
 from unittest import mock
 
@@ -10,10 +11,10 @@ from VLE.models import Category
 from VLE.serializers import CategorySerializer
 
 
-class FormatAPITest(TestCase):
+class CategoryAPITest(TestCase):
     def setUp(self):
         self.assignment = factory.Assignment()
-        self.category = factory.Category(assignment=self.assignment, name='aaa')
+        self.category = factory.Category(assignment=self.assignment, name='aaa', n_rt_files=1)
 
         self.valid_creation_data = {
             'name': 'Non empty',
@@ -23,10 +24,15 @@ class FormatAPITest(TestCase):
         }
 
     def test_category_factory(self):
+        fc = self.category.filecontext_set.first()
+
         assert self.category.name != ''
-        assert self.category.description == ''
+        assert fc.access_id in self.category.description
         assert self.assignment.format.template_set.filter(pk=self.category.templates.first().pk).exists(), \
             'By default a template is randomly selected from the corresponding category\'s assignment'
+        assert fc.category == self.category
+        assert not fc.is_temp
+        assert fc.in_rich_text
 
     def test_category_constraints(self):
         with self.assertRaises(IntegrityError):
@@ -63,15 +69,22 @@ class FormatAPITest(TestCase):
             can_view_mock.assert_called_with(self.assignment)
 
     def test_category_create(self):
+        creation_data = deepcopy(self.valid_creation_data)
+        fc = factory.TempRichTextFileContext(author=self.assignment.author)
+        creation_data['description'] = f"<p>TEXT</p><p>{_fc_to_rt_img_element(fc)}</p>"
+
         with mock.patch('VLE.models.User.check_permission') as check_permission_mock:
             resp = api.create(
-                self, 'categories', params=self.valid_creation_data, user=self.assignment.author)['category']
+                self, 'categories', params=creation_data, user=self.assignment.author)['category']
             check_permission_mock.assert_called_with('can_edit_assignment', self.assignment)
 
-        assert resp['name'] == self.valid_creation_data['name']
-        assert resp['description'] == self.valid_creation_data['description']
+        assert resp['name'] == creation_data['name']
+        assert resp['description'] == creation_data['description']
         for template in resp['templates']:
-            assert template['id'] in self.valid_creation_data['templates'], 'All templates are correctly linked'
+            assert template['id'] in creation_data['templates'], 'All templates are correctly linked'
+        fc.refresh_from_db()
+        assert not fc.is_temp
+        assert fc.category.pk == resp['id']
 
         invalid_templates = deepcopy(self.valid_creation_data)
         invalid_templates['assignment_id'] = factory.Assignment(author=self.assignment.author).pk
@@ -87,9 +100,12 @@ class FormatAPITest(TestCase):
             'templates': list(self.assignment.format.template_set.values_list('pk', flat=True))
         }
 
-        with mock.patch('VLE.models.User.check_permission') as check_permission_mock:
+        with mock.patch('VLE.models.User.check_permission') as check_permission_mock, mock.patch(
+                'VLE.utils.file_handling.establish_rich_text') as establish_rich_text_mock:
             resp = api.patch(self, 'categories', params=valid_patch_data, user=self.assignment.author)['category']
             check_permission_mock.assert_called_with('can_edit_assignment', category.assignment)
+            establish_rich_text_mock.assert_called_with(
+                author=self.assignment.author, rich_text=valid_patch_data['description'], category=category)
 
         assert resp['name'] == valid_patch_data['name']
         assert resp['description'] == valid_patch_data['description']

@@ -106,6 +106,12 @@ class FileContextQuerySet(models.QuerySet):
             content__field__type=VLE.models.Field.RICH_TEXT,
         )
 
+    def unused_category_description_files(self, func='filter'):
+        return getattr(self, func)(
+            ~Q(category__description__contains=F('access_id')),
+            category__isnull=False,
+        )
+
 
 class FileContext(CreateUpdateModel):
     """FileContext.

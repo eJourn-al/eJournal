@@ -68,6 +68,8 @@ from test.factory.file_context import JournalFileContextFactory as JournalFileCo
 from test.factory.file_context import ProfilePictureFileContextFactory as ProfilePictureFileContext  # noqa: F401
 from test.factory.file_context import \
     RichTextAssignmentDescriptionFileContextFactory as RichTextAssignmentDescriptionFileContext  # noqa: F401, E501
+from test.factory.file_context import \
+    RichTextCategoryDescriptionFileContextFactory as RichTextCategoryDescriptionFileContext  # noqa: F401, E501
 from test.factory.file_context import RichTextCommentFileContextFactory as RichTextCommentFileContext  # noqa: F401
 from test.factory.file_context import RichTextContentFileContextFactory as RichTextContentFileContext  # noqa: F401
 from test.factory.file_context import RichTextFieldDescriptionFileContextFactory as RichTextFieldDescriptionFileContext  # noqa: F401, E501

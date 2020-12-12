@@ -6,6 +6,7 @@ import VLE.utils.generic_utils as utils
 import VLE.utils.responses as response
 from VLE.models import Assignment, Category
 from VLE.serializers import CategorySerializer
+from VLE.utils import file_handling
 
 
 def _validate_templates(templates, assignment):
@@ -54,6 +55,7 @@ class CategoryView(viewsets.ViewSet):
             name=name,
             description=description,
             assignment=assignment,
+            author=request.user,
             templates=templates,
         )
 
@@ -84,6 +86,7 @@ class CategoryView(viewsets.ViewSet):
             category.description = description
             category.templates.set(templates)
             category.save()
+            file_handling.establish_rich_text(author=request.user, rich_text=description, category=category)
 
         serializer = CategorySerializer(
             CategorySerializer.setup_eager_loading(

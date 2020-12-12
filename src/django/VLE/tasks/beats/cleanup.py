@@ -71,6 +71,10 @@ def remove_unused_assignment_files():
             fc.delete()
 
 
+def remove_unused_category_files():
+    VLE.models.FileContext.objects.unused_category_description_files().delete()
+
+
 @shared_task
 def remove_unused_files(older_lte=None):
     """Deletes floating user files."""
@@ -80,3 +84,4 @@ def remove_unused_files(older_lte=None):
     remove_unused_journal_files()
     remove_unused_profile_pictures()
     remove_unused_assignment_files()
+    remove_unused_category_files()
