@@ -14,7 +14,7 @@ from django.contrib.postgres.fields import ArrayField, CIEmailField, CITextField
 from django.core.exceptions import ValidationError
 from django.db import models, transaction
 from django.db.models import (Case, CharField, Count, F, FloatField, IntegerField, Min, OuterRef, Prefetch, Q, Subquery,
-                              Sum, TextField, Value, When)
+                              Sum, TextField, Value, When, CheckConstraint)
 from django.db.models.deletion import CASCADE, SET_NULL
 from django.db.models.functions import Cast, Coalesce
 from django.dispatch import receiver
@@ -2776,12 +2776,44 @@ class Track(CreateUpdateModel):
         - Fluency
         - Pronunciation
     """
+    class Meta:
+        ordering = ['name']
+        constraints = [
+            CheckConstraint(check=~Q(name=''), name='non_empty_name'),
+        ]
+        unique_together = ('name', 'assignment')
+
     name = models.TextField()
     description = models.TextField(
         null=True,
     )
+    # Should tracks be bound to a specific assignment?
+    assignment = models.ForeignKey(
+        'assignment',
+        on_delete=models.CASCADE,
+    )
     categories = models.ManyToManyField(
-        'Category'
+        'Category',
+        related_name='track',
+        through='CategoryTrackLink',
+        through_fields=('track', 'category'),
+    )
+
+
+class CategoryTrackLink(CreateUpdateModel):
+    """
+    Explicit M2M table, linking Templates to Categories.
+    """
+    class Meta:
+        unique_together = ('category', 'track')
+
+    category = models.ForeignKey(
+        'category',
+        on_delete=models.CASCADE,
+    )
+    track = models.ForeignKey(
+        'track',
+        on_delete=models.CASCADE,
     )
 
 
@@ -2793,13 +2825,50 @@ class Category(CreateUpdateModel):
         - Master Compound and Complex Sentences
         - Learn to Use Infinitives and Gerunds
     """
+    class Meta:
+        ordering = ['name']
+        constraints = [
+            CheckConstraint(check=~Q(name=''), name='non_empty_name'),
+        ]
+        unique_together = ('name', 'assignment')
+
     name = models.TextField()
     description = models.TextField(
         null=True,
     )
+    author = models.ForeignKey(
+        'User',
+        blank=True,
+        null=True,
+        on_delete=models.SET_NULL,
+    )
+    assignment = models.ForeignKey(
+        'assignment',
+        on_delete=models.CASCADE,
+    )
     templates = models.ManyToManyField(
-        'Template'
-    )  # Would we ever need more information for this relation? (Explicit through table)
+        'Template',
+        related_name='category',
+        through='TemplateCategoryLink',
+        through_fields=('category', 'template'),
+    )
+
+
+class TemplateCategoryLink(CreateUpdateModel):
+    """
+    Explicit M2M table, linking Templates to Categories.
+    """
+    class Meta:
+        unique_together = ('template', 'category')
+
+    template = models.ForeignKey(
+        'template',
+        on_delete=models.CASCADE,
+    )
+    category = models.ForeignKey(
+        'category',
+        on_delete=models.CASCADE,
+    )
 
 
 class AssessmentTemplateGoal(CreateUpdateModel):
