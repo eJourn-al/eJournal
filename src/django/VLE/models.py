@@ -2861,6 +2861,9 @@ class Category(CreateUpdateModel):
     E.g. Grammar with templates
         - Master Compound and Complex Sentences
         - Learn to Use Infinitives and Gerunds
+
+    Categories can also be suggested by students via an entry if they find the existing (teacher created) set of
+    categories does not cover their use case.
     """
     class Meta:
         ordering = ['name']
