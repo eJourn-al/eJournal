@@ -2864,6 +2864,16 @@ class Category(CreateUpdateModel):
 
     Categories can also be suggested by students via an entry if they find the existing (teacher created) set of
     categories does not cover their use case.
+    How should such 'pending' categories be implemented?
+    Category model flag 'pending', or dedicated model?
+
+    Adv flag:
+        - Reuse existing model
+
+    Adv dedicated model:
+        - Explicit logic, no need to filter
+        - A student might not have be required to manage all fields (e.g. what other templates are related)
+            or in the future, what color code / icon represents the category.
     """
     class Meta:
         ordering = ['name']
