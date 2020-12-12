@@ -2828,7 +2828,7 @@ class TemplateCategoryLink(CreateUpdateModel):
     Explicit M2M table, linking Templates to Categories.
     """
     class Meta:
-        unique_together = ('template', 'category')
+        unique_together = ('template', 'category')  # TODO: Is this required? How are duplicate M2M handled?
 
     template = models.ForeignKey(
         'template',
