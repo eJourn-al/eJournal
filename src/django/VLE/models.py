@@ -13,8 +13,8 @@ from django.contrib.postgres.aggregates import ArrayAgg, StringAgg
 from django.contrib.postgres.fields import ArrayField, CIEmailField, CITextField
 from django.core.exceptions import ValidationError
 from django.db import models, transaction
-from django.db.models import (Case, CharField, Count, F, FloatField, IntegerField, Min, OuterRef, Prefetch, Q, Subquery,
-                              Sum, TextField, Value, When, CheckConstraint)
+from django.db.models import (Case, CharField, CheckConstraint, Count, F, FloatField, IntegerField, Min, OuterRef,
+                              Prefetch, Q, Subquery, Sum, TextField, Value, When)
 from django.db.models.deletion import CASCADE, SET_NULL
 from django.db.models.functions import Cast, Coalesce
 from django.dispatch import receiver
@@ -2291,6 +2291,13 @@ class Entry(CreateUpdateModel):
         null=True,
     )
 
+    categories = models.ManyToManyField(
+        'Category',
+        related_name='entries',
+        through='TemplateCategoryLink',
+        through_fields=('category', 'template'),
+    )
+
     def is_locked(self):
         return (self.node.preset and self.node.preset.is_locked()) or self.node.journal.assignment.is_locked()
 
@@ -2332,6 +2339,36 @@ class Entry(CreateUpdateModel):
 
     def to_string(self, user=None):
         return "Entry"
+
+
+class EntryCategoryLink(CreateUpdateModel):
+    """
+    Explicit M2M table, linking Entries to Categories.
+
+    When an Entry is graded, the requested Categories are linked.
+
+    This link could also be placed on a grade, the advantage would be that a grade already holds an author field
+    (bookkeeping is done on the grade already).
+
+    I chose to link to entries over grade, as conceptually an Entry belongs to categories (a grade's categories?)
+
+    Are there alternatives? What would yield simpler code?
+    """
+    class Meta:
+        unique_together = ('entry', 'category')
+
+    entry = models.ForeignKey(
+        'entry',
+        on_delete=models.CASCADE,
+    )
+    category = models.ForeignKey(
+        'category',
+        on_delete=models.CASCADE,
+    )
+    author = models.ForeignKey(
+        'user',
+        on_delete=models.SET_NULL,
+    )
 
 
 class TeacherEntry(Entry):
