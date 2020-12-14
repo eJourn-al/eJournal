@@ -895,6 +895,7 @@ class EntrySerializer(serializers.ModelSerializer, EagerLoadingMixin):
             'author',
             'last_edited_by',
             'jir',
+            'categories',
         )
         read_only_fields = (
             'creation_date',
@@ -916,6 +917,7 @@ class EntrySerializer(serializers.ModelSerializer, EagerLoadingMixin):
         'content_set',
         'content_set__field',
         'content_set__filecontext_set',
+        Prefetch('categories', queryset=VLE.models.Category.objects.only('pk')),
         # NOTE: Too uncommon, not worth the additional prefetch.
         # 'jir__source__assignment__courses',
     ]

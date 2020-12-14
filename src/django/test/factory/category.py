@@ -9,7 +9,7 @@ class CategoryFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = 'VLE.Category'
 
-    name = factory.Faker('word')
+    name = factory.Sequence(lambda n: f"{factory.Faker('word').generate()} {n}")
     description = ''
     assignment = factory.SubFactory('test.factory.assignment.AssignmentFactory')
     author = factory.SelfAttribute('assignment.author')

@@ -13,8 +13,8 @@ from django.test import TestCase
 from django.utils import timezone
 from faker import Faker
 
-from VLE.models import (Assignment, Comment, Content, Course, Entry, Field, FileContext, Format, Grade, Journal,
-                        JournalImportRequest, Node, PresetNode, Template, User)
+from VLE.models import (Assignment, Category, Comment, Content, Course, Entry, Field, FileContext, Format, Grade,
+                        Journal, JournalImportRequest, Node, PresetNode, Template, User)
 from VLE.serializers import EntrySerializer
 from VLE.utils import generic_utils as utils
 from VLE.utils.error_handling import VLEMissingRequiredField, VLEPermissionError
@@ -62,9 +62,10 @@ class EntryAPITest(TestCase):
         cont_c = Content.objects.count()
         grade_c = Grade.objects.count()
         template_c = Template.objects.count()
+        category_c = Category.objects.count()
 
         assignment = factory.Assignment(format__templates=[{'type': Field.TEXT}])
-        entry = factory.UnlimitedEntry(node__journal__assignment=assignment, node__journal__entries__n=0)
+        entry = factory.UnlimitedEntry(node__journal__assignment=assignment, node__journal__entries__n=0, categories=1)
         assignment.refresh_from_db()
 
         assert template_c + 1 == Template.objects.count(), \
@@ -82,6 +83,7 @@ class EntryAPITest(TestCase):
         assert field_c + 1 == Field.objects.count(), 'A single field is created'
         assert cont_c + 1 == Content.objects.count(), 'Content is created for the entry with a single field'
         assert grade_c == Grade.objects.count(), 'No grade instances are created for the entry (default ungraded)'
+        assert category_c + 1 == Category.objects.count(), 'A single category is created'
 
         journal = entry.node.journal
         assert Content.objects.filter(entry=entry).exists(), 'Content is created for the generated entry'
@@ -90,14 +92,21 @@ class EntryAPITest(TestCase):
         assert Node.objects.filter(type=Node.ENTRY, journal__assignment=assignment, entry=entry).count() == 1, \
             'An entry node is correctly attached and of the correct type'
         assert entry.grade is None, 'Entry is ungraded by default'
+        assert entry.categories.first().assignment == assignment
 
         grade = 7
         grade_c = Grade.objects.count()
 
+        category = factory.Category(assignment=assignment)
         entry = factory.UnlimitedEntry(
-            node__journal__assignment=assignment, node__journal__entries__n=0, grade__grade=grade)
+            node__journal__assignment=assignment,
+            node__journal__entries__n=0,
+            grade__grade=grade,
+            categories=[category]
+        )
         assert grade_c + 1 == Grade.objects.count(), 'A single grade instance is created for the grade entry'
         assert entry.grade.grade == grade, 'Deep syntax works for entry grade instance'
+        assert entry.categories.first() == category, 'Passing categories directly works'
 
         assignment = factory.Assignment()
         template_c = Template.objects.count()

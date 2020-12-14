@@ -332,9 +332,16 @@ class Command(BaseCommand):
 
     def gen_entries(self):
         for a in self.assignments:
+            category_choices = list(a.categories.all())
             # NOTE: carefull to use a.journal_set or query via AP, both will yield teacher journals
             for j in Journal.objects.filter(assignment=a):
-                entry = factory.UnlimitedEntry(node__journal=j, gen_content__from_file=True)
+                categories = random.sample(category_choices, random.randint(0, min(len(category_choices), 3)))
+
+                entry = factory.UnlimitedEntry(
+                    node__journal=j,
+                    gen_content__from_file=True,
+                    categories=categories,
+                )
                 random.choice([factory.Grade(grade=random.randint(0, 3), entry=entry), None])
 
                 # Colloquium holds some preset nodes

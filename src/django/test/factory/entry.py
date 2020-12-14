@@ -82,6 +82,18 @@ class BaseEntryFactory(factory.django.DjangoModelFactory):
     last_edited = factory.LazyFunction(timezone.now)
     template = None
 
+    @factory.post_generation
+    def categories(self, create, extracted):
+        if not create:
+            return
+
+        if isinstance(extracted, int):
+            categories = [test.factory.Category(assignment=self.node.journal.assignment) for _ in range(extracted)]
+            self.categories.set(categories)
+
+        elif extracted and isinstance(extracted, list) and isinstance(extracted[0], VLE.models.Category):
+            self.categories.set(extracted)
+
 
 class UnlimitedEntryFactory(BaseEntryFactory):
     """
