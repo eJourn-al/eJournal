@@ -321,7 +321,7 @@ class Command(BaseCommand):
             templates = list(a.format.template_set.all())
             template_count = len(templates)
 
-            for _ in range(random.randint(1, 10)):
+            for _ in range(random.randint(4, 10)):
                 n_templates = random.randint(0, template_count)
 
                 factory.Category(

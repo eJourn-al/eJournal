@@ -2845,6 +2845,7 @@ class Category(CreateUpdateModel):
     )
     assignment = models.ForeignKey(
         'assignment',
+        related_name='categories',
         on_delete=models.CASCADE,
     )
     templates = models.ManyToManyField(

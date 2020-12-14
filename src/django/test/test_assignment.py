@@ -1413,12 +1413,14 @@ class AssignmentAPITest(TestCase):
         factory.Journal(assignment=assignment)
         factory.DeadlinePresetNode(format=assignment.format)
         factory.ProgressPresetNode(format=assignment.format)
+        factory.Category(assignment=assignment, author=assignment.author)
 
         def add_state():
             factory.TextTemplate(**{'format': assignment.format})
             factory.Journal(**{'assignment': assignment})
             factory.UnlimitedEntry(**{'node__journal': journal, 'grade__grade': 1})
             factory.UnlimitedEntry(**{'node__journal': journal, 'grade__grade': 1, 'grade__published': False})
+            factory.Category(assignment=assignment, author=assignment.author)
 
         # Student perspective
         with QueryContext() as context_pre:
@@ -1432,7 +1434,7 @@ class AssignmentAPITest(TestCase):
                 AssignmentSerializer.setup_eager_loading(Assignment.objects.filter(pk=assignment.pk)).get(),
                 context={'user': student, 'course': course, 'serialize_journals': True}
             ).data
-        assert len(context_pre) == len(context_post) and len(context_pre) <= 31
+        assert len(context_pre) == len(context_post) and len(context_pre) <= 36
 
         # Teacher perspective
         with QueryContext() as context_pre:
@@ -1446,7 +1448,7 @@ class AssignmentAPITest(TestCase):
                 AssignmentSerializer.setup_eager_loading(Assignment.objects.filter(pk=assignment.pk)).get(),
                 context={'user': assignment.author, 'course': course, 'serialize_journals': True}
             ).data
-        assert len(context_pre) == len(context_post) and len(context_pre) <= 22
+        assert len(context_pre) == len(context_post) and len(context_pre) <= 27
 
     def test_small_assignment_serializer(self):
         assignment = factory.Assignment(format__templates=False)

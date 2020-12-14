@@ -44,11 +44,11 @@ class CategoryAPITest(TestCase):
     def test_category_serializer(self):
         factory.Category(assignment=self.assignment)
 
-        # select all categories, prefetch templates, prefetch fields
-        with self.assertNumQueries(3):
+        # select all categories, prefetch templates
+        with self.assertNumQueries(2):
             data = CategorySerializer(
                 CategorySerializer.setup_eager_loading(
-                    self.assignment.category_set.all()
+                    self.assignment.categories.all()
                 ),
                 many=True,
             ).data
@@ -80,8 +80,9 @@ class CategoryAPITest(TestCase):
 
         assert resp['name'] == creation_data['name']
         assert resp['description'] == creation_data['description']
-        for template in resp['templates']:
-            assert template['id'] in creation_data['templates'], 'All templates are correctly linked'
+        assert len(resp['templates']) == len(creation_data['templates'])
+        assert all(id in creation_data['templates'] for id in resp['templates']), \
+            'All templates are correctly linked'
         fc.refresh_from_db()
         assert not fc.is_temp
         assert fc.category.pk == resp['id']
@@ -109,8 +110,9 @@ class CategoryAPITest(TestCase):
 
         assert resp['name'] == valid_patch_data['name']
         assert resp['description'] == valid_patch_data['description']
-        for template in resp['templates']:
-            assert template['id'] in valid_patch_data['templates'], 'All templates are correctly linked'
+        assert len(resp['templates']) == len(valid_patch_data['templates'])
+        assert all(id in valid_patch_data['templates'] for id in resp['templates']), \
+            'All templates are correctly linked'
 
     def test_category_delete(self):
         category = factory.Category(assignment=self.assignment)

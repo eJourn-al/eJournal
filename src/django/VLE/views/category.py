@@ -29,7 +29,7 @@ class CategoryView(viewsets.ViewSet):
 
         serializer = CategorySerializer(
             CategorySerializer.setup_eager_loading(
-                assignment.category_set.all()
+                assignment.categories.all()
             ),
             context={'user': request.user},
             many=True,
