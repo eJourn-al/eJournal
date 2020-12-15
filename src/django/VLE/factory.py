@@ -205,8 +205,14 @@ def make_node(journal, entry=None, type=VLE.models.Node.ENTRY, preset=None):
     return VLE.models.Node.objects.get_or_create(type=type, entry=entry, preset=preset, journal=journal)[0]
 
 
-def make_entry(template, author, node=None):
+def make_entry(template, author, node=None, category_ids=None):
     entry = VLE.models.Entry.objects.create(template=template, author=author, node=node)
+
+    if template.fixed_categories or category_ids is None:
+        entry.categories.set(template.categories.all())
+    else:
+        entry.categories.set(category_ids)
+
     if node:
         entry.node.entry = entry
         entry.node.save()

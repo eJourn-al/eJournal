@@ -2,10 +2,12 @@ import copy
 import json
 import os
 import test.factory as factory
+from copy import deepcopy
 from datetime import date, timedelta
 from test.utils import api
 from test.utils.generic_utils import equal_models
 from test.utils.performance import QueryContext, assert_num_queries_less_than
+from unittest import mock
 
 from django.conf import settings
 from django.core.exceptions import ValidationError
@@ -16,8 +18,9 @@ from faker import Faker
 
 from VLE.models import (Assignment, Category, Comment, Content, Course, Entry, Field, FileContext, Format, Grade,
                         Journal, JournalImportRequest, Node, PresetNode, Template, User)
-from VLE.serializers import EntrySerializer, TemplateSerializer
+from VLE.serializers import CategoryConcreteFieldsSerializer, EntrySerializer, TemplateSerializer
 from VLE.utils import generic_utils as utils
+from VLE.utils.entry_utils import check_categories
 from VLE.utils.error_handling import VLEMissingRequiredField, VLEPermissionError
 from VLE.validators import validate_entry_content
 
@@ -461,6 +464,16 @@ class EntryAPITest(TestCase):
             'When the active LTI uplink is outdated no more entries can be created.'
         self.group_journal.assignment.active_lti_id = assignment_old_lti_id
         self.group_journal.assignment.save()
+
+        # Check entry categories
+        cat = factory.Category(assignment=self.g_assignment, templates=self.template)
+        payload = deepcopy(self.valid_create_params)
+        payload['categories'] = CategoryConcreteFieldsSerializer(Category.objects.filter(pk=cat.pk), many=True).data
+
+        with mock.patch('VLE.utils.entry_utils.check_categories') as check_categories_mock:
+            resp = api.create(self, 'entries', params=payload, user=self.student)['entry']
+            check_categories_mock.assert_called_with(payload['categories'], self.g_assignment, self.template)
+        assert resp['categories'][0]['id'] == cat.pk
 
         # TODO: Test for entry bound to entrydeadline
         # TODO: Test with file upload
@@ -963,3 +976,30 @@ class EntryAPITest(TestCase):
         assert data['jir']['source']['assignment']['name'] == jir.source.assignment.name
         assert data['jir']['source']['assignment']['course']['abbreviation'] == \
             jir.source.assignment.courses.first().abbreviation
+
+    def test_check_categories(self):
+        assignment = factory.Assignment(format__templates=[{'type': Field.TEXT}])
+        template = assignment.format.template_set.first()
+        cat1 = factory.Category(assignment=assignment, templates=template)
+
+        category_ids = check_categories(None, assignment, template)
+        assert not category_ids, 'If no categories are provided, the category_ids should be empty'
+
+        serialized_categories = CategoryConcreteFieldsSerializer(Category.objects.filter(pk=cat1.pk), many=True).data
+        category_ids = check_categories(serialized_categories, assignment, template)
+        assert category_ids == set([cat1.pk]), 'If validated, a set of the category pks should be returned'
+
+        # Categories must be part of the provided assignment
+        cat2 = factory.Category(assignment=factory.Assignment())
+        serialized_categories = CategoryConcreteFieldsSerializer(
+            Category.objects.filter(pk__in=[cat1.pk, cat2.pk]), many=True).data
+        with self.assertRaises(ValidationError):
+            check_categories(serialized_categories, assignment, template)
+
+        # If the template has fixed categories, the categories must be part of the template
+        cat2 = factory.Category(assignment=factory.Assignment())
+        serialized_categories = CategoryConcreteFieldsSerializer(Category.objects.filter(pk=cat1.pk), many=True).data
+        template.categories.set([])
+        assert template.fixed_categories
+        with self.assertRaises(ValidationError):
+            check_categories(serialized_categories, assignment, template)

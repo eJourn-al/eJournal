@@ -3,6 +3,8 @@ Entry utilities.
 
 A library with utilities related to entries.
 """
+from django.core.exceptions import ValidationError
+
 import VLE.timeline as timeline
 import VLE.utils.generic_utils as utils
 import VLE.validators as validators
@@ -40,7 +42,32 @@ def check_fields(template, content_dict):
             raise VLEMissingRequiredField(field)
 
 
-def add_entry_to_node(node, template, author):
+def check_categories(categories, assignment, template):
+    """
+    Checks whether the provided categories belong to the assignment.
+
+    If the template has locked categories, checks if the provided categories exactly match the template's assigned
+    categories.
+    """
+
+    if not categories:
+        return {}
+
+    category_ids = set(category['id'] for category in categories)
+    assignment_category_ids = set(assignment.categories.values_list('pk', flat=True))
+
+    if not category_ids.issubset(assignment_category_ids):
+        raise ValidationError('Entry can only be linked to categories which are part of the assignment.')
+
+    if template.fixed_categories:
+        template_category_ids = set(template.categories.values_list('pk', flat=True))
+        if category_ids != template_category_ids:
+            raise ValidationError('An entry of this type has fixed categories.')
+
+    return category_ids
+
+
+def add_entry_to_node(node, template, author, category_ids=None):
     if not (node.preset and node.preset.forced_template == template):
         raise VLEBadRequest('Invalid template for preset node.')
 
@@ -53,7 +80,7 @@ def add_entry_to_node(node, template, author):
     if node.preset.is_locked():
         raise VLEBadRequest('The lock date for this node has passed.')
 
-    entry = factory.make_entry(template, author, node)
+    entry = factory.make_entry(template, author, node, category_ids)
     node.entry = entry
     node.save()
     return entry
