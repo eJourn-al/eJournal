@@ -2499,7 +2499,7 @@ class Template(CreateUpdateModel):
         default=False
     )
 
-    locked_categories = models.BooleanField(
+    fixed_categories = models.BooleanField(
         default=True,
     )
 

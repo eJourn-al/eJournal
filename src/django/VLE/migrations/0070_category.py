@@ -29,7 +29,7 @@ class Migration(migrations.Migration):
         ),
         migrations.AddField(
             model_name='template',
-            name='locked_categories',
+            name='fixed_categories',
             field=models.BooleanField(default=True),
         ),
         migrations.CreateModel(

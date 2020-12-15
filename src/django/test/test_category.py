@@ -8,7 +8,7 @@ from django.db.utils import IntegrityError
 from django.test import TestCase
 
 from VLE.models import Category
-from VLE.serializers import CategorySerializer
+from VLE.serializers import CategoryConcreteFieldsSerializer, CategorySerializer
 
 
 class CategoryAPITest(TestCase):
@@ -58,6 +58,19 @@ class CategoryAPITest(TestCase):
         assert sample['name'] == self.category.name
         assert sample['description'] == self.category.description
         assert 'templates' in sample, 'Template serialization itself is tested elsewhere'
+
+        # select all categories
+        with self.assertNumQueries(1):
+            data = CategoryConcreteFieldsSerializer(
+                self.assignment.categories.all(),
+                many=True,
+            ).data
+
+        sample = data[0]
+        assert sample['id'] == self.category.pk
+        assert sample['name'] == self.category.name
+        assert sample['description'] == self.category.description
+        assert 'templates' not in sample, 'Only concrete fields should be serialized'
 
     def test_category_list(self):
         ap = factory.AssignmentParticipation(assignment=self.assignment, user=factory.Student())
