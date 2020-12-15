@@ -120,6 +120,30 @@ class FileSerializer(serializers.ModelSerializer):
         return file.download_url(access_id=file.in_rich_text)
 
 
+class TemplateConcreteFieldsSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = VLE.models.Template
+        fields = (
+            'id',
+            'name',
+            'format',
+            'preset_only',
+            'archived',
+        )
+        read_only_fields = fields
+
+
+class CategoryConcreteFieldsSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = VLE.models.Category
+        fields = (
+            'id',
+            'name',
+            'description',
+        )
+        read_only_fields = fields
+
+
 class CategorySerializer(serializers.ModelSerializer, EagerLoadingMixin):
     class Meta:
         model = VLE.models.Category
@@ -132,21 +156,32 @@ class CategorySerializer(serializers.ModelSerializer, EagerLoadingMixin):
         read_only_fields = ()
 
     prefetch_related = [
-        Prefetch('templates', queryset=VLE.models.Template.objects.only('pk')),
+        'templates',
     ]
+
+    templates = TemplateConcreteFieldsSerializer(many=True, read_only=True)
 
 
 class TemplateSerializer(serializers.ModelSerializer, EagerLoadingMixin):
     class Meta:
         model = VLE.models.Template
-        fields = ('id', 'name', 'preset_only', 'archived', 'field_set',)
+        fields = (
+            'id',
+            'name',
+            'preset_only',
+            'archived',
+            'field_set',
+            'categories',
+        )
         read_only_fields = ()
 
     prefetch_related = [
+        'categories',
         Prefetch('field_set', queryset=VLE.models.Field.objects.order_by('location')),
     ]
 
     field_set = FieldSerializer(many=True, read_only=True)
+    categories = CategoryConcreteFieldsSerializer(many=True, read_only=True)
 
 
 class UserSerializer(ExtendedModelSerializer):
@@ -374,12 +409,10 @@ class PresetNodeSerializer(serializers.ModelSerializer, EagerLoadingMixin):
         )
         read_only_fields = ('type',)
 
-    select_related = [
-        'forced_template',
-    ]
+    select_related = []
 
     prefetch_related = [
-        Prefetch('forced_template__field_set', queryset=VLE.models.Field.objects.order_by('location')),
+        Prefetch('forced_template', queryset=TemplateSerializer.setup_eager_loading(VLE.models.Template.objects.all())),
         'attached_files',
     ]
 
@@ -417,7 +450,11 @@ class PresetNodeSerializer(serializers.ModelSerializer, EagerLoadingMixin):
 class FormatSerializer(serializers.ModelSerializer, EagerLoadingMixin):
     class Meta:
         model = VLE.models.Format
-        fields = ('id', 'templates', 'presets',)
+        fields = (
+            'id',
+            'templates',
+            'presets',
+        )
         read_only_fields = ()
 
     presets = PresetNodeSerializer(many=True, source='presetnode_set', read_only=True)
@@ -474,17 +511,11 @@ class AssignmentSerializer(ExtendedModelSerializer, EagerLoadingMixin):
         )
         read_only_fields = ()
 
-    select_related = [
-        'format',
-    ]
+    select_related = []
 
     prefetch_related = [
         'courses',
-        'categories',
-        Prefetch(
-            'categories__templates',
-            queryset=VLE.models.Template.objects.only('pk'),
-        ),
+        'categories__templates',
         Prefetch(
             'format__presetnode_set',
             queryset=PresetNodeSerializer.setup_eager_loading(
@@ -917,12 +948,14 @@ class EntrySerializer(serializers.ModelSerializer, EagerLoadingMixin):
         'content_set',
         'content_set__field',
         'content_set__filecontext_set',
-        Prefetch('categories', queryset=VLE.models.Category.objects.only('pk')),
+        'categories',
+        Prefetch('template', queryset=TemplateSerializer.setup_eager_loading(VLE.models.Template.objects.all())),
         # NOTE: Too uncommon, not worth the additional prefetch.
         # 'jir__source__assignment__courses',
     ]
 
     template = TemplateSerializer(read_only=True)
+    categories = CategoryConcreteFieldsSerializer(read_only=True, many=True)
     editable = serializers.BooleanField(read_only=True, source='is_editable')
     author = serializers.CharField(source='author.full_name', default=VLE.models.User.UNKNOWN_STR)
     last_edited_by = serializers.CharField(source='last_edited_by.full_name', default=VLE.models.User.UNKNOWN_STR)

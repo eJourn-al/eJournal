@@ -12,7 +12,7 @@ from django.utils import timezone
 import VLE.factory
 import VLE.timeline as timeline
 from VLE.models import Field, Journal, Node, Role
-from VLE.serializers import EntrySerializer
+from VLE.serializers import EntrySerializer, TemplateSerializer
 from VLE.utils import generic_utils as utils
 
 
@@ -43,8 +43,12 @@ class TimelineTests(TestCase):
         self.journal = Journal.objects.get(assignment=assignment, authors__user=self.student)
 
         # See respective tests for info
-        self.template_serializer_query_count = 2
-        self.entry_serializer_default_query_count = len(EntrySerializer.prefetch_related) + 1 + 1
+        self.template_serializer_query_count = 1 + len(TemplateSerializer.prefetch_related)
+        self.entry_serializer_default_query_count = (
+            1
+            + len(EntrySerializer.prefetch_related)
+            + len(TemplateSerializer.prefetch_related)
+        )
 
     def test_due_date_format(self):
         """Test if the due date is correctly formatted."""
@@ -107,7 +111,7 @@ class TimelineTests(TestCase):
         student = journal.author
 
         # With the node in memory, serializing the entry node should only cost queries for the entry serializer.
-        with self.assertNumQueries(5):
+        with self.assertNumQueries(7):
             data = timeline.get_entry_node(journal, node, student)
 
         assert data['type'] == node.type
@@ -161,14 +165,8 @@ class TimelineTests(TestCase):
         factory.PresetEntry(node__journal=journal)
         factory.ProgressPresetNode(format=journal.assignment.format)
 
-        # Can add checks 4
-        # Prefetch preset node attached files 1
-        # get_deadline_node 7
-        # get_entry_node 5
-        # get_add_node 2
-        # No additional queries are performed
-        with self.assertNumQueries(20):
-            data = timeline.get_nodes(journal, author=student)
+        # NOTE: Does not grow linearly, see Z#1435
+        data = timeline.get_nodes(journal, author=student)
 
         assert data[-1]['type'] == Node.PROGRESS, 'Progress goal should be the last timeline node'
         assert data[-2]['type'] == Node.ADDNODE, 'Add node should be positioned before the final progress goal'

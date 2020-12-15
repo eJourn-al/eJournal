@@ -1434,7 +1434,7 @@ class AssignmentAPITest(TestCase):
                 AssignmentSerializer.setup_eager_loading(Assignment.objects.filter(pk=assignment.pk)).get(),
                 context={'user': student, 'course': course, 'serialize_journals': True}
             ).data
-        assert len(context_pre) == len(context_post) and len(context_pre) <= 36
+        assert len(context_pre) == len(context_post) and len(context_pre) <= 39
 
         # Teacher perspective
         with QueryContext() as context_pre:
@@ -1448,7 +1448,7 @@ class AssignmentAPITest(TestCase):
                 AssignmentSerializer.setup_eager_loading(Assignment.objects.filter(pk=assignment.pk)).get(),
                 context={'user': assignment.author, 'course': course, 'serialize_journals': True}
             ).data
-        assert len(context_pre) == len(context_post) and len(context_pre) <= 27
+        assert len(context_pre) == len(context_post) and len(context_pre) <= 30
 
     def test_small_assignment_serializer(self):
         assignment = factory.Assignment(format__templates=False)

@@ -158,13 +158,6 @@ export default {
         provider (context, callback) {
             categoryAPI.list(this.$route.params.aID)
                 .then((data) => {
-                    /* Transform template ids to template data objects */
-                    data.map((category) => {
-                        category.templates = category.templates.map(
-                            templateID => this.templates.find(template => template.id === templateID))
-                        return category
-                    })
-
                     callback(data)
                 })
                 .catch(() => {

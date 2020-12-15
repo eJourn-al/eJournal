@@ -19,7 +19,9 @@ class CategoryFactory(factory.django.DjangoModelFactory):
         if not create or extracted is False:
             return
 
-        if isinstance(extracted, list):
+        if isinstance(extracted, VLE.models.Template):
+            self.templates.set([extracted])
+        elif isinstance(extracted, list):
             self.templates.set(extracted)
         else:
             template = VLE.models.Template.objects.filter(format__assignment=self.assignment).order_by('?').first()

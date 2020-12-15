@@ -5,6 +5,7 @@ import test.factory as factory
 from datetime import date, timedelta
 from test.utils import api
 from test.utils.generic_utils import equal_models
+from test.utils.performance import QueryContext, assert_num_queries_less_than
 
 from django.conf import settings
 from django.core.exceptions import ValidationError
@@ -15,7 +16,7 @@ from faker import Faker
 
 from VLE.models import (Assignment, Category, Comment, Content, Course, Entry, Field, FileContext, Format, Grade,
                         Journal, JournalImportRequest, Node, PresetNode, Template, User)
-from VLE.serializers import EntrySerializer
+from VLE.serializers import EntrySerializer, TemplateSerializer
 from VLE.utils import generic_utils as utils
 from VLE.utils.error_handling import VLEMissingRequiredField, VLEPermissionError
 from VLE.validators import validate_entry_content
@@ -45,10 +46,11 @@ class EntryAPITest(TestCase):
         fields = Field.objects.filter(template=self.template)
         self.valid_create_params['content'] = {field.id: 'test data' for field in fields}
 
-        # Queries:
-        # Select Entry and related tables 1
-        # Template is selected, but its field set is also serialized 1
-        self.entry_serializer_base_query_count = len(EntrySerializer.prefetch_related) + 1 + 1
+        self.entry_serializer_base_query_count = (
+            1
+            + len(EntrySerializer.prefetch_related)
+            + len(TemplateSerializer.prefetch_related)
+        )
 
     def test_entry_factory(self):
         course_c = Course.objects.count()
@@ -806,21 +808,33 @@ class EntryAPITest(TestCase):
         assert not Content.objects.all().exclude(pk__in=all_pre_setup_contents).exists(), \
             'Cascade works properly on bulk delete as well'
 
-    def test_entry_serializer(self):
+    def test_entry_serializer_specific(self):
         grade = 3
         entry = factory.UnlimitedEntry(
             node__journal__assignment__format__templates=[{'type': Field.TEXT}],
-            grade__grade=grade
+            grade__grade=grade,
+            categories=2,
         )
         journal = entry.node.journal
         student = journal.author
         teacher = journal.assignment.author
 
-        with self.assertNumQueries(self.entry_serializer_base_query_count):
+        def add_state(entry):
+            category = factory.Category(assignment=journal.assignment, templates=entry.template)
+            entry.categories.add(category)
+
+        with QueryContext() as context_pre:
             data = EntrySerializer(
-                EntrySerializer.setup_eager_loading(Entry.objects.filter(pk=entry.pk))[0],
+                EntrySerializer.setup_eager_loading(Entry.objects.filter(pk=entry.pk)).get(),
                 context={'user': student}
             ).data
+        add_state(entry)
+        with QueryContext() as context_post:
+            data = EntrySerializer(
+                EntrySerializer.setup_eager_loading(Entry.objects.filter(pk=entry.pk)).get(),
+                context={'user': student}
+            ).data
+        assert len(context_pre) == len(context_post) and len(context_pre) <= self.entry_serializer_base_query_count
 
         assert data['grade']['grade'] == grade
 
@@ -832,11 +846,19 @@ class EntryAPITest(TestCase):
         )
 
         # Teacher requires one additional query to check can_grade
-        with self.assertNumQueries(self.entry_serializer_base_query_count + 1):
+        expected_queries = self.entry_serializer_base_query_count + 1
+        with QueryContext() as context_pre:
             data = EntrySerializer(
-                EntrySerializer.setup_eager_loading(Entry.objects.filter(pk=entry.pk))[0],
+                EntrySerializer.setup_eager_loading(Entry.objects.filter(pk=entry.pk)).get(),
                 context={'user': teacher}
             ).data
+        add_state(entry)
+        with QueryContext() as context_post:
+            data = EntrySerializer(
+                EntrySerializer.setup_eager_loading(Entry.objects.filter(pk=entry.pk)).get(),
+                context={'user': teacher}
+            ).data
+        assert len(context_pre) == len(context_post) and len(context_pre) <= expected_queries
 
         def check_is_editable():
             assignment = journal.assignment
@@ -902,9 +924,9 @@ class EntryAPITest(TestCase):
         student = journal.author
 
         # The entry serializer query count is invariant to the number of FILE fields.
-        with self.assertNumQueries(self.entry_serializer_base_query_count):
+        with assert_num_queries_less_than(self.entry_serializer_base_query_count):
             data = EntrySerializer(
-                EntrySerializer.setup_eager_loading(Entry.objects.filter(pk=entry.pk))[0],
+                EntrySerializer.setup_eager_loading(Entry.objects.filter(pk=entry.pk)).get(),
                 context={'user': student}
             ).data
 
@@ -930,7 +952,7 @@ class EntryAPITest(TestCase):
 
         # Jir requires a can_view_course check
         # Jir requires access to all source assignment's courses to provide the correct abbreviation
-        with self.assertNumQueries(self.entry_serializer_base_query_count + 2):
+        with assert_num_queries_less_than(self.entry_serializer_base_query_count + 2):
             data = EntrySerializer(
                 EntrySerializer.setup_eager_loading(Entry.objects.filter(pk=entry.pk))[0],
                 context={'user': student}

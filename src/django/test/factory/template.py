@@ -1,8 +1,8 @@
-from test.factory.field import FieldFactory
+import test.factory
 
 import factory
 
-from VLE.models import Field
+from VLE.models import Category, Field
 
 
 class TemplateFactory(factory.django.DjangoModelFactory):
@@ -21,7 +21,20 @@ class TemplateFactory(factory.django.DjangoModelFactory):
 
         if isinstance(extracted, list):
             for kwargs in extracted:
-                FieldFactory(**{**kwargs, 'template': self})
+                test.factory.Field(**{**kwargs, 'template': self})
+
+    @factory.post_generation
+    def categories(self, create, extracted, **kwargs):
+        if not create:
+            return
+
+        if isinstance(extracted, Category):
+            self.categories.set([extracted])
+        elif isinstance(extracted, list):
+            self.categories.set(extracted)
+        elif isinstance(extracted, int):
+            for _ in range(extracted):
+                test.factory.Category(assignment=self.format.assignment, templates=self)
 
 
 class MentorgesprekTemplateFactory(TemplateFactory):
@@ -29,7 +42,7 @@ class MentorgesprekTemplateFactory(TemplateFactory):
 
     @factory.post_generation
     def gen_fields(self, create, extracted):
-        FieldFactory(type=Field.RICH_TEXT, title='Title', template=self, required=True)
+        test.factory.Field(type=Field.RICH_TEXT, title='Title', template=self, required=True)
 
 
 class TextTemplateFactory(TemplateFactory):
@@ -37,9 +50,9 @@ class TextTemplateFactory(TemplateFactory):
 
     @factory.post_generation
     def gen_fields(self, create, extracted):
-        FieldFactory(type=Field.TEXT, title='Title', template=self, required=True)
-        FieldFactory(type=Field.TEXT, title='Summary', template=self, required=True)
-        FieldFactory(type=Field.TEXT, title='Optional', template=self, required=False)
+        test.factory.Field(type=Field.TEXT, title='Title', template=self, required=True)
+        test.factory.Field(type=Field.TEXT, title='Summary', template=self, required=True)
+        test.factory.Field(type=Field.TEXT, title='Optional', template=self, required=False)
 
 
 class FilesTemplateFactory(TemplateFactory):
@@ -47,10 +60,10 @@ class FilesTemplateFactory(TemplateFactory):
 
     @factory.post_generation
     def gen_fields(self, create, extracted):
-        FieldFactory(type=Field.FILE, title='IMG', template=self,
-                     options='bmp, gif, ico, cur, jpg, jpeg, jfif, pjpeg, pjp, png, svg', required=False)
-        FieldFactory(type=Field.FILE, title='FILE', template=self, required=False)
-        FieldFactory(type=Field.FILE, title='PDF', template=self, options='pdf', required=False)
+        test.factory.Field(type=Field.FILE, title='IMG', template=self,
+                           options='bmp, gif, ico, cur, jpg, jpeg, jfif, pjpeg, pjp, png, svg', required=False)
+        test.factory.Field(type=Field.FILE, title='FILE', template=self, required=False)
+        test.factory.Field(type=Field.FILE, title='PDF', template=self, options='pdf', required=False)
 
 
 class ColloquiumTemplateFactory(TemplateFactory):
@@ -58,11 +71,11 @@ class ColloquiumTemplateFactory(TemplateFactory):
 
     @factory.post_generation
     def gen_fields(self, create, extracted):
-        FieldFactory(type=Field.TEXT, title='Title', template=self, required=True)
-        FieldFactory(type=Field.RICH_TEXT, title='Summary', template=self, required=True)
-        FieldFactory(type=Field.RICH_TEXT, title='Experience', template=self, required=True)
-        FieldFactory(type=Field.TEXT, title='Requested Points', template=self, required=True)
-        FieldFactory(type=Field.FILE, title='Proof', template=self, options='png, jpg, svg', required=False)
+        test.factory.Field(type=Field.TEXT, title='Title', template=self, required=True)
+        test.factory.Field(type=Field.RICH_TEXT, title='Summary', template=self, required=True)
+        test.factory.Field(type=Field.RICH_TEXT, title='Experience', template=self, required=True)
+        test.factory.Field(type=Field.TEXT, title='Requested Points', template=self, required=True)
+        test.factory.Field(type=Field.FILE, title='Proof', template=self, options='png, jpg, svg', required=False)
 
 
 class TemplateAllTypesFactory(TemplateFactory):
@@ -70,6 +83,6 @@ class TemplateAllTypesFactory(TemplateFactory):
 
     @factory.post_generation
     def gen_fields(self, create, extracted):
-        [FieldFactory(type=t, template=self, required=False) for t, _ in Field.TYPES]
+        [test.factory.Field(type=t, template=self, required=False) for t, _ in Field.TYPES]
         # Create an additional file field which only allows images
-        FieldFactory(type=Field.FILE, template=self, required=False, options='png, jpg, svg')
+        test.factory.Field(type=Field.FILE, template=self, required=False, options='png, jpg, svg')

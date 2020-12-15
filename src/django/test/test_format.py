@@ -1,5 +1,6 @@
 import test.factory as factory
 from test.utils import api
+from test.utils.performance import QueryContext
 
 from dateutil.relativedelta import relativedelta
 from django.core.files.uploadedfile import SimpleUploadedFile
@@ -279,22 +280,39 @@ class FormatAPITest(TestCase):
         assignment = factory.Assignment(format__templates=False)
         format = assignment.format
 
+        def add_state():
+            factory.Template(
+                format=format,
+                add_fields=[{'type': Field.TEXT, 'location': 1}, {'type': Field.URL, 'location': 0}],
+                categories=1,
+            )
+
         def check_field_set_serialization_order(serialized_template):
             for i, field in enumerate(serialized_template['field_set']):
                 assert field['location'] == i, 'Fields are ordered by location'
 
         def test_template_list_serializer():
-            factory.Template(format=format, add_fields=[
-                {'type': Field.TEXT, 'location': 1}, {'type': Field.URL, 'location': 0}])
-            factory.Template(format=format, add_fields=[
-                {'type': Field.URL}, {'type': Field.TEXT}])
+            factory.Template(
+                format=format,
+                add_fields=[{'type': Field.TEXT, 'location': 1}, {'type': Field.URL, 'location': 0}],
+                categories=1,
+            )
+            factory.Template(format=format, add_fields=[{'type': Field.URL}, {'type': Field.TEXT}])
 
-            # Minimum number of queries is performed (select templates, prefetch all fields)
-            with self.assertNumQueries(2):
+            with QueryContext() as context_pre:
                 data = TemplateSerializer(
                     TemplateSerializer.setup_eager_loading(format.template_set.all()),
                     many=True
                 ).data
+            add_state()
+            with QueryContext() as context_post:
+                data = TemplateSerializer(
+                    TemplateSerializer.setup_eager_loading(format.template_set.all()),
+                    many=True
+                ).data
+
+            expected_number_of_queries = len(TemplateSerializer.prefetch_related) + 1
+            assert len(context_pre) == len(context_post) and len(context_pre) <= expected_number_of_queries
 
             # Fields are ordered by location
             for template in data:
@@ -305,8 +323,8 @@ class FormatAPITest(TestCase):
                 {'type': Field.TEXT, 'location': 1},
                 {'type': Field.URL, 'location': 0}
             ])
-            # Template is already in memory, we still need one query to fetch the template set
-            with self.assertNumQueries(1):
+            # Template is already in memory, we still need one query to fetch the template set and categories
+            with self.assertNumQueries(len(TemplateSerializer.prefetch_related)):
                 data = TemplateSerializer(template).data
 
             check_field_set_serialization_order(data)
@@ -315,13 +333,13 @@ class FormatAPITest(TestCase):
         test_template_instance_serializer()
 
     def test_format_serializer(self):
-        # Fetch the format itself (1), prefetches (presetnodes, templates, fields, field_set of forced templates 4
-        # and attached_files for preset node
-        expected_number_of_queries = 6
+        # Fetch the format itself (1) + prefetches:
+        expected_number_of_queries = 9
         assignment = factory.Assignment(format__templates=False)
         factory.TextTemplate(format=assignment.format)
-        factory.DeadlinePresetNode(format=assignment.format)
+        deadline = factory.DeadlinePresetNode(format=assignment.format)
         factory.ProgressPresetNode(format=assignment.format)
+        factory.Category(assignment=assignment, templates=deadline.forced_template)
 
         with self.assertNumQueries(expected_number_of_queries):
             FormatSerializer(
@@ -330,8 +348,9 @@ class FormatAPITest(TestCase):
 
         # Additional fields and templates have no impact on the serialization of a format
         factory.TextTemplate(format=assignment.format)
-        factory.DeadlinePresetNode(format=assignment.format)
+        deadline = factory.DeadlinePresetNode(format=assignment.format)
         factory.ProgressPresetNode(format=assignment.format)
+        factory.Category(assignment=assignment, templates=deadline.forced_template)
         with self.assertNumQueries(expected_number_of_queries):
             FormatSerializer(
                 FormatSerializer.setup_eager_loading(Format.objects.filter(pk=assignment.format.pk)).get()

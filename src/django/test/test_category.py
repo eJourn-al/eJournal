@@ -81,7 +81,7 @@ class CategoryAPITest(TestCase):
         assert resp['name'] == creation_data['name']
         assert resp['description'] == creation_data['description']
         assert len(resp['templates']) == len(creation_data['templates'])
-        assert all(id in creation_data['templates'] for id in resp['templates']), \
+        assert all(template['id'] in creation_data['templates'] for template in resp['templates']), \
             'All templates are correctly linked'
         fc.refresh_from_db()
         assert not fc.is_temp
@@ -111,7 +111,7 @@ class CategoryAPITest(TestCase):
         assert resp['name'] == valid_patch_data['name']
         assert resp['description'] == valid_patch_data['description']
         assert len(resp['templates']) == len(valid_patch_data['templates'])
-        assert all(id in valid_patch_data['templates'] for id in resp['templates']), \
+        assert all(template['id'] in valid_patch_data['templates'] for template in resp['templates']), \
             'All templates are correctly linked'
 
     def test_category_delete(self):

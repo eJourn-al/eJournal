@@ -3,6 +3,7 @@ import test.factory as factory
 from copy import deepcopy
 from datetime import date, timedelta
 from test.utils import api
+from test.utils.performance import QueryContext
 from unittest import mock
 
 from django.db import transaction
@@ -399,7 +400,7 @@ class TeacherEntryAPITest(TestCase):
         params = factory.TeacherEntryCreationParams(assignment=assignment, grade=1, published=True)
         te_id = api.create(self, 'teacher_entries', params=params, user=teacher)['teacher_entry']['id']
 
-        with self.assertNumQueries(6):
+        with QueryContext() as context_pre:
             TeacherEntrySerializer(
                 TeacherEntrySerializer.setup_eager_loading(TeacherEntry.objects.filter(pk=te_id)).get()
             ).data
@@ -408,8 +409,8 @@ class TeacherEntryAPITest(TestCase):
         params = factory.TeacherEntryCreationParams(assignment=assignment, grade=1, published=True)
         te_id = api.create(self, 'teacher_entries', params=params, user=teacher)['teacher_entry']['id']
 
-        # Queries count is not affected by the number of journals
-        with self.assertNumQueries(6):
+        with QueryContext() as context_post:
             TeacherEntrySerializer(
                 TeacherEntrySerializer.setup_eager_loading(TeacherEntry.objects.filter(pk=te_id)).get()
             ).data
+        assert len(context_pre) == len(context_post) and len(context_pre) <= 8
