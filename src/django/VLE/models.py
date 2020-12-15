@@ -2499,6 +2499,10 @@ class Template(CreateUpdateModel):
         default=False
     )
 
+    locked_categories = models.BooleanField(
+        default=True,
+    )
+
     def to_string(self, user=None):
         return "Template"
 
