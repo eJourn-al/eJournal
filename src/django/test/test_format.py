@@ -327,6 +327,13 @@ class FormatAPITest(TestCase):
             with self.assertNumQueries(len(TemplateSerializer.prefetch_related)):
                 data = TemplateSerializer(template).data
 
+            assert data['id'] == template.pk
+            assert data['name'] == template.name
+            assert data['format'] == template.format.pk
+            assert data['preset_only'] == template.preset_only
+            assert data['archived'] == template.archived
+            assert data['fixed_categories'] == template.fixed_categories
+
             check_field_set_serialization_order(data)
 
         test_template_list_serializer()

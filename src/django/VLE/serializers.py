@@ -129,6 +129,7 @@ class TemplateConcreteFieldsSerializer(serializers.ModelSerializer):
             'format',
             'preset_only',
             'archived',
+            'fixed_categories',
         )
         read_only_fields = fields
 
@@ -148,9 +149,7 @@ class CategorySerializer(serializers.ModelSerializer, EagerLoadingMixin):
     class Meta:
         model = VLE.models.Category
         fields = (
-            'id',
-            'name',
-            'description',
+            *CategoryConcreteFieldsSerializer.Meta.fields,
             'templates',
         )
         read_only_fields = ()
@@ -166,10 +165,7 @@ class TemplateSerializer(serializers.ModelSerializer, EagerLoadingMixin):
     class Meta:
         model = VLE.models.Template
         fields = (
-            'id',
-            'name',
-            'preset_only',
-            'archived',
+            *TemplateConcreteFieldsSerializer.Meta.fields,
             'field_set',
             'categories',
         )
