@@ -20,6 +20,14 @@ def _validate_templates(templates, assignment):
     return templates
 
 
+def _validate_category_data(name, color, assignment):
+    if Category.objects.filter(name=name, assignment=assignment).exists():
+        raise ValidationError('Please provide a unqiue category name.')
+
+    if Category.objects.filter(color=color, assignment=assignment).exists():
+        raise ValidationError('Please provide a unqiue category color.')
+
+
 class CategoryView(viewsets.ViewSet):
     def list(self, request):
         assignment_id, = utils.required_typed_params(request.query_params, (int, 'assignment_id'))
@@ -51,6 +59,7 @@ class CategoryView(viewsets.ViewSet):
         assignment = Assignment.objects.filter(pk=assignment_id).select_related('format').get()
         request.user.check_permission('can_edit_assignment', assignment)
 
+        _validate_category_data(name, color, assignment)
         templates = _validate_templates(templates, assignment)
 
         category = Category.objects.create(
@@ -83,6 +92,7 @@ class CategoryView(viewsets.ViewSet):
         category = Category.objects.filter(pk=pk).select_related('assignment').get()
         request.user.check_permission('can_edit_assignment', category.assignment)
 
+        _validate_category_data(name, color, category.assignment)
         templates = _validate_templates(templates, category.assignment)
 
         with transaction.atomic():
