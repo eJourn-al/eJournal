@@ -33,8 +33,9 @@
                 <b-table
                     id="user-table"
                     ref="table"
-                    :items="provider"
+                    :items="categories"
                     :fields="fields"
+                    :busy="categories === null"
                     responsive
                     striped
                     class="mt-2 mb-0 user-overview"
@@ -45,6 +46,14 @@
                     <!-- eslint-enable vue/attribute-hyphenation -->
                     <template #table-busy>
                         <load-spinner class="mt-2"/>
+                    </template>
+
+                    <template #cell(name)="data">
+                        <category-display
+                            :id="`category-${data.item.id}-display`"
+                            :editable="false"
+                            :categories="[data.item]"
+                        />
                     </template>
 
                     <template #cell(templates)="data">
@@ -73,18 +82,10 @@
                     </template>
 
                     <template #row-details="data">
-                        <edit-category
+                        <category-edit
                             :templates="templates"
                             :data="data.item"
                         />
-
-                        <b-button
-                            class="green-button float-right"
-                            @click="patchCategory(data)"
-                        >
-                            <icon name="save"/>
-                            Save Category
-                        </b-button>
                     </template>
                 </b-table>
 
@@ -100,7 +101,7 @@
                 <template v-if="newCategory">
                     <hr/>
 
-                    <edit-category
+                    <category-edit
                         :templates="templates"
                         :data="newCategory"
                     />
@@ -119,15 +120,18 @@
 </template>
 
 <script>
+import CategoryDisplay from '@/components/category/CategoryDisplay.vue'
+import CategoryEdit from '@/components/category/CategoryEdit.vue'
 import categoryAPI from '@/api/category.js'
-import editCategory from '@/components/format/EditCategory.vue'
+import colorUtils from '@/utils/colors.js'
 import loadSpinner from '@/components/loading/LoadSpinner.vue'
 
 export default {
-    name: 'Categories',
+    name: 'ManageAssignmentCategories',
     components: {
         loadSpinner,
-        editCategory,
+        CategoryDisplay,
+        CategoryEdit,
     },
     props: {
         templates: {
@@ -152,36 +156,25 @@ export default {
                     label: '',
                 },
             ],
+            categories: null,
         }
     },
+    created () {
+        categoryAPI.list(this.$route.params.aID).then((categories) => {
+            this.categories = categories
+        })
+    },
     methods: {
-        provider (context, callback) {
-            categoryAPI.list(this.$route.params.aID)
-                .then((data) => {
-                    callback(data)
-                })
-                .catch(() => {
-                    callback([])
-                })
-
-            return null
-        },
-        patchCategory (data) {
-            const payload = JSON.parse(JSON.stringify(data.item))
-            payload.templates = data.item.templates.map(elem => elem.id)
-
-            categoryAPI.update(payload.id, payload, { customSuccessToast: `${payload.name} succesfully updated.` })
-                .then(() => { data.toggleDetails() })
-        },
         deleteCategory (category) {
             categoryAPI.delete(category.id)
-                .then(() => { this.$refs.table.refresh() })
+                .then(() => { this.categories = this.categories.filter(elem => elem.id !== category.id) })
         },
         addCategory () {
             this.newCategory = {
                 id: -1,
                 name: null,
                 description: '',
+                color: colorUtils.randomBrightRGBcolor(),
                 templates: [],
             }
         },
@@ -190,10 +183,10 @@ export default {
             payload.templates = this.newCategory.templates.map(elem => elem.id)
             payload.assignment_id = this.$route.params.aID
 
-            categoryAPI.create(payload, { customSuccessToast: `${payload.name} succesfully created.` })
-                .then(() => {
-                    this.newCategory = null
-                    this.$refs.table.refresh()
+            categoryAPI.create(payload)
+                .then((category) => {
+                    this.categories.push(category)
+                    this.addCategory()
                 })
         },
     },

@@ -227,7 +227,7 @@
             <h3 class="theme-h3">
                 Actions
             </h3>
-            <categories
+            <manage-assignment-categories
                 :templates="templates"
             />
         </b-col>
@@ -247,9 +247,9 @@
 </template>
 
 <script>
+import ManageAssignmentCategories from '@/components/format/ManageAssignmentCategories.vue'
 import assignmentDetails from '@/components/assignment/AssignmentDetails.vue'
 import breadCrumb from '@/components/assets/BreadCrumb.vue'
-import categories from '@/components/format/Categories.vue'
 import formatAddPresetNode from '@/components/format/FormatAddPresetNode.vue'
 import formatPresetNodeCard from '@/components/format/FormatPresetNodeCard.vue'
 import formatTemplateLink from '@/components/format/FormatTemplateLink.vue'
@@ -271,7 +271,7 @@ export default {
         'template-editor': templateEdit,
         templateImportModal,
         timeline,
-        categories,
+        ManageAssignmentCategories,
     },
     props: ['cID', 'aID'],
     data () {

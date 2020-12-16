@@ -64,6 +64,15 @@
                 :content="entryNode.entry.content"
                 :edit="false"
             />
+
+            <entry-categories
+                :id="`entry-${entryNode.entry.id}-category-edit`"
+                :entry="entryNode.entry"
+                :create="false"
+                :template="entryNode.entry.template"
+                :categories="entryNode.entry.categories"
+            />
+
             <div class="full-width timestamp">
                 <hr class="full-width"/>
                 <template
@@ -167,6 +176,7 @@
 </template>
 
 <script>
+import EntryCategories from '@/components/category/EntryCategories.vue'
 import comments from '@/components/entry/Comments.vue'
 import dropdownButton from '@/components/assets/DropdownButton.vue'
 import entryFields from '@/components/entry/EntryFields.vue'
@@ -177,6 +187,7 @@ export default {
         comments,
         dropdownButton,
         entryFields,
+        EntryCategories,
     },
     props: ['entryNode', 'journal', 'assignment'],
     data () {

@@ -27,13 +27,24 @@
             placeholder="Search and add or remove templates"
             class="multi-form"
         />
+
+        <color-picker
+            v-model="data.color"
+            :height="100"
+            :width="100"
+        />
     </div>
 </template>
 
 <script>
+import ColorPicker from 'vue-color-picker-wheel';
+import categoryAPI from '@/api/category.js'
+
+
 export default {
-    name: 'EditCategory',
+    name: 'CategoryEdit',
     components: {
+        ColorPicker,
         textEditor: () => import(/* webpackChunkName: 'text-editor' */ '@/components/assets/TextEditor.vue'),
     },
     props: {
@@ -44,6 +55,32 @@ export default {
         templates: {
             required: true,
             type: Array,
+        },
+    },
+    data () {
+        return {
+            updateCall: null,
+            color: '#ffffff',
+        }
+    },
+    watch: {
+        data: {
+            deep: true,
+            handler (val) {
+                if (val.id !== -1) {
+                    this.patchCategory(val)
+                }
+            },
+        },
+    },
+    methods: {
+        patchCategory (data) {
+            window.clearTimeout(this.updateCall)
+
+            const payload = JSON.parse(JSON.stringify(data))
+            payload.templates = data.templates.map(elem => elem.id)
+
+            this.updateCall = window.setTimeout(() => { categoryAPI.update(payload.id, payload) }, 3000)
         },
     },
 }

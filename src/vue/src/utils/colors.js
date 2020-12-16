@@ -46,10 +46,10 @@ export default {
     randomBrightHSLColor () {
         const hue = Math.random()
 
-        const saturationFloor = 0.75
+        const saturationFloor = 0.8
         const saturation = Math.random() * (1 - saturationFloor) + saturationFloor
 
-        const lightnessFloor = 0.2
+        const lightnessFloor = 0.4
         const lightness = Math.random() * (1 - lightnessFloor) + lightnessFloor
 
         return { hue, saturation, lightness }

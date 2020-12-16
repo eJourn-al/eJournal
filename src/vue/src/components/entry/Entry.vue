@@ -55,6 +55,14 @@
                 @finished-uploading-file="uploadingFiles --"
             />
 
+            <entry-categories
+                :id="`entry-${(create) ? Math.random() : node.entry.id}-categories`"
+                :create="create"
+                :edit="edit"
+                :entry="(create) ? newEntryContent : node.entry"
+                :template="template"
+            />
+
             <template v-if="edit">
                 <b-button
                     class="green-button float-right mt-2"
@@ -81,43 +89,44 @@
                 <icon name="paper-plane"/>
                 Post
             </b-button>
-            <div
-                v-else
-                class="full-width timestamp"
-            >
+
+            <template v-else>
                 <hr class="full-width"/>
-                <template
-                    v-if="(new Date(node.entry.last_edited).getTime() - new Date(node.entry.creation_date)
-                        .getTime()) / 1000 < 3"
-                >
-                    Submitted:
-                </template>
-                <template v-else>
-                    Last edited:
-                </template>
-                {{ $root.beautifyDate(node.entry.last_edited) }} by {{ node.entry.last_edited_by }}
-                <b-badge
-                    v-if="node.due_date
-                        && new Date(node.due_date) < new Date(node.entry.last_edited)"
-                    v-b-tooltip:hover="'This entry was submitted after the due date'"
-                    pill
-                    class="late-submission-badge"
-                >
-                    LATE
-                </b-badge>
-                <b-badge
-                    v-if="node.entry.jir"
-                    v-b-tooltip:hover="
-                        `This entry has been imported from the assignment
-                        ${node.entry.jir.source.assignment.name}
-                        (${node.entry.jir.source.assignment.course.abbreviation}), approved by
-                        ${node.entry.jir.processor.full_name}`"
-                    pill
-                    class="imported-entry-badge"
-                >
-                    IMPORTED
-                </b-badge>
-            </div>
+
+                <div class="full-width timestamp">
+                    <template
+                        v-if="(new Date(node.entry.last_edited).getTime() - new Date(node.entry.creation_date)
+                            .getTime()) / 1000 < 3"
+                    >
+                        Submitted:
+                    </template>
+                    <template v-else>
+                        Last edited:
+                    </template>
+                    {{ $root.beautifyDate(node.entry.last_edited) }} by {{ node.entry.last_edited_by }}
+                    <b-badge
+                        v-if="node.due_date
+                            && new Date(node.due_date) < new Date(node.entry.last_edited)"
+                        v-b-tooltip:hover="'This entry was submitted after the due date'"
+                        pill
+                        class="late-submission-badge"
+                    >
+                        LATE
+                    </b-badge>
+                    <b-badge
+                        v-if="node.entry.jir"
+                        v-b-tooltip:hover="
+                            `This entry has been imported from the assignment
+                            ${node.entry.jir.source.assignment.name}
+                            (${node.entry.jir.source.assignment.course.abbreviation}), approved by
+                            ${node.entry.jir.processor.full_name}`"
+                        pill
+                        class="imported-entry-badge"
+                    >
+                        IMPORTED
+                    </b-badge>
+                </div>
+            </template>
         </b-card>
         <comments
             v-if="node && node.entry"
@@ -128,6 +137,7 @@
 
 <script>
 import Comments from '@/components/entry/Comments.vue'
+import EntryCategories from '@/components/category/EntryCategories.vue'
 import EntryFields from '@/components/entry/EntryFields.vue'
 import SandboxedIframe from '@/components/assets/SandboxedIframe.vue'
 import filesList from '@/components/assets/file_handling/FilesList.vue'
@@ -140,6 +150,7 @@ export default {
         SandboxedIframe,
         Comments,
         filesList,
+        EntryCategories,
     },
     props: {
         template: {
@@ -209,11 +220,17 @@ export default {
         createEntry () {
             if (this.checkRequiredFields()) {
                 this.requestInFlight = true
+
+                /* Move categories on object level higher */
+                const categories = JSON.parse(JSON.stringify(this.newEntryContent.categories))
+                delete this.newEntryContent.categories
+
                 entryAPI.create({
                     journal_id: this.$route.params.jID,
                     template_id: this.template.id,
                     content: this.newEntryContent,
                     node_id: this.node && this.node.nID > 0 ? this.node.nID : null,
+                    categories,
                 }, { customSuccessToast: 'Entry successfully posted.' })
                     .then((data) => {
                         this.requestInFlight = false
