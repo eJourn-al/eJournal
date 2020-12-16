@@ -24,9 +24,10 @@
         :placeholder="(!multiple && value) ? value[label] : placeholder"
         open-direction="bottom"
         @input="newValue => $emit('input', newValue)"
+        @select="(selectedOption, id) => $emit('select', selectedOption, id)"
+        @remove="(removedOption, id) => $emit('remove', removedOption, id)"
         @open="() => { isOpen = true }"
         @close="() => { isOpen = false }"
-        @select="(e) => $emit('select', e)"
     >
         <span slot="limit">
             {{ (value && value.length) ? value.length : 'No' }} {{ multiSelectText }}
