@@ -25,4 +25,9 @@ export default {
         return auth.delete(`categories/${id}`, null, connArgs)
             .then(response => response.data)
     },
+
+    editEntry (id, data, connArgs = auth.DEFAULT_CONN_ARGS) {
+        return auth.update(`categories/${id}/edit_entry`, data, connArgs)
+            .then(response => response.data)
+    },
 }
