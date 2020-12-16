@@ -1,40 +1,31 @@
 import assignmentAPI from '@/api/assignment.js'
-import router from '@/router/index.js'
 
-function cache ({ state, commit }, id, fn, force = false) {
-    if (!('aID' in state.assignments) || force) {
-        commit('setAssignment', { id, assignment: fn() })
+function fromCache ({ state, commit }, cache, cacheKey, fn, force = false) {
+    if (!(cacheKey in state[cache]) || force) {
+        commit('updateCache', { cache, cacheKey, data: fn() })
     }
 
-    return state.assignments[id]
-}
-
-const getters = {
-    assignments: state => state.assignments,
-    assignment (state) {
-        return state.assignments[router.currentRoute.params.aID]
-    },
+    return state[cache][cacheKey]
 }
 
 const mutations = {
-    setAssignment (state, { id, assignment }) {
-        state.assignments[id] = assignment
+    updateCache (state, { cache, cacheKey, data }) {
+        state[cache][cacheKey] = data
     },
 }
 
 const actions = {
     retrieve (context, { id, force = false }) {
         const fn = assignmentAPI.get.bind(null, id)
-        return cache(context, id, fn, force)
+        return fromCache(context, 'retrieveCache', id, fn, force)
     },
 }
 
 export default {
     namespaced: true,
     state: {
-        assignments: {},
+        retrieveCache: {},
     },
-    getters,
     mutations,
     actions,
 }

@@ -209,4 +209,9 @@ router.beforeEach((to, from, next) => {
     } else { next() }
 })
 
+router.afterEach((to) => {
+    if ('aID' in to.params) { store.dispatch('assignment/retrieve', { id: to.params.aID }) }
+})
+
+
 export default router
