@@ -1,11 +1,12 @@
 from django.core.exceptions import ValidationError
 from django.db import transaction
 from rest_framework import viewsets
+from rest_framework.decorators import action
 
 import VLE.utils.generic_utils as utils
 import VLE.utils.responses as response
-from VLE.models import Assignment, Category
-from VLE.serializers import CategorySerializer
+from VLE.models import Assignment, Category, Entry
+from VLE.serializers import CategoryConcreteFieldsSerializer, CategorySerializer
 from VLE.utils import file_handling
 
 
@@ -105,3 +106,30 @@ class CategoryView(viewsets.ViewSet):
         category.delete()
 
         return response.success(description=f'Successfully deleted {category.name}.')
+
+    @action(methods=['patch'], detail=True)
+    def edit_entry(self, request, pk):
+        entry_id, add = utils.required_typed_params(request.data, (int, 'entry_id'), (bool, 'add'))
+
+        category = Category.objects.get(pk=pk)
+        entry = Entry.objects.select_related('node__journal__assignment', 'template').get(pk=entry_id)
+        template = entry.template
+        assignment = entry.node.journal.assignment
+
+        if request.user.has_permission('can_grade', assignment):
+            pass
+        elif request.user.has_permission('can_have_journal', assignment):
+            if template.fixed_categories:
+                return response.forbidden('This entry\'s template\'s categories are fixed.')
+            if not request.user.can_edit(entry):
+                return response.forbidden('You can no longer edit the entry\'s categories.')
+        else:
+            return response.forbidden('You are not allowed to edit the entry\'s categories.')
+
+        if add:
+            if not Category.objects.filter(assignment=assignment, pk=category.pk).exists():
+                raise ValidationError('Categories can only be linked to entries which are part of the same assignment.')
+
+        entry.categories.add(category) if add else entry.categories.remove(category)
+
+        return response.success(CategoryConcreteFieldsSerializer(category).data)

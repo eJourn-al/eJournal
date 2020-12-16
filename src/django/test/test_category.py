@@ -6,14 +6,16 @@ from unittest import mock
 
 from django.db.utils import IntegrityError
 from django.test import TestCase
+from django.utils import timezone
 
-from VLE.models import Category
+from VLE.models import Assignment, Category
 from VLE.serializers import CategoryConcreteFieldsSerializer, CategorySerializer
 
 
 class CategoryAPITest(TestCase):
     def setUp(self):
         self.assignment = factory.Assignment()
+        self.assignment2 = factory.Assignment()
         self.category = factory.Category(assignment=self.assignment, name='aaa', n_rt_files=1)
 
         self.valid_creation_data = {
@@ -135,3 +137,53 @@ class CategoryAPITest(TestCase):
             check_permission_mock.assert_called_with('can_edit_assignment', category.assignment)
 
         assert not Category.objects.filter(pk=category.pk).exists()
+
+    def test_category_edit_entry(self):
+        entry = factory.UnlimitedEntry(node__journal__assignment=self.assignment)
+        template = entry.template
+        teacher = self.assignment.author
+        student = entry.author
+        params = {'pk': self.category.pk, 'entry_id': entry.pk, 'add': True}
+
+        def test_as_student():
+            assert template.fixed_categories
+            for add in [True, False]:
+                # with mock.patch('VLE.models.User.has_permission') as has_permission_mock:
+                api.patch(self, 'categories/edit_entry', params={**params, 'add': add}, user=student, status=403)
+                # has_permission_mock.assert_called_with('can_grade', self.assignment)
+                # has_permission_mock.assert_called_with('can_have_journal', self.assignment)
+
+            template.fixed_categories = False
+            template.save()
+            # with mock.patch('VLE.models.User.can_edit') as can_edit_mock:
+            api.patch(self, 'categories/edit_entry', params={**params}, user=student)
+            # can_edit_mock.assert_called_with(entry)
+            assert entry.categories.filter(pk=self.category.pk).exists(), 'Category has been succesfully added'
+
+            api.patch(self, 'categories/edit_entry', params={**params, 'add': False}, user=student)
+            assert not entry.categories.filter(pk=self.category.pk).exists(), 'Category has been succesfully removed'
+
+        def test_as_teacher():
+            template.fixed_categories = True
+            template.save()
+            api.patch(self, 'categories/edit_entry', params={**params}, user=teacher)
+
+            lock_date = self.assignment.lock_date
+            Assignment.objects.filter(pk=self.assignment.pk).update(lock_date=timezone.now())
+            api.patch(self, 'categories/edit_entry', params={**params}, user=teacher)
+            Assignment.objects.filter(pk=self.assignment.pk).update(lock_date=lock_date)
+
+        def test_as_admin():
+            admin = factory.Admin()
+            # QUESTION: Should superusers be blocked from graging (and thus fail user.has_permission('can_grade'))
+            api.patch(self, 'categories/edit_entry', params={**params}, user=admin, status=200)
+
+        def test_category_linked_to_entry_assignment():
+            category_assignment2 = factory.Category(assignment=self.assignment2)
+            api.patch(self, 'categories/edit_entry', params={**params, 'pk': category_assignment2.pk},
+                      user=teacher, status=400)
+
+        test_as_student()
+        test_as_teacher()
+        test_as_admin()
+        test_category_linked_to_entry_assignment()

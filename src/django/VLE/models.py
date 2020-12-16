@@ -390,6 +390,9 @@ class User(AbstractUser):
 
         return False
 
+    def can_edit(self, obj):
+        return VLE.permissions.can_edit(self, obj)
+
     def check_can_edit(self, obj):
         if not VLE.permissions.can_edit(self, obj):
             raise VLEPermissionError(message='You are not allowed to edit {}'.format(str(obj)))
@@ -2352,31 +2355,6 @@ class Entry(CreateUpdateModel):
         return "Entry"
 
 
-class EntryCategoryLink(CreateUpdateModel):
-    """
-    Explicit M2M table, linking Entries to Categories.
-
-    When an Entry is graded, the requested Categories are linked.
-    """
-    class Meta:
-        unique_together = ('entry', 'category')
-
-    entry = models.ForeignKey(
-        'entry',
-        on_delete=models.CASCADE,
-    )
-    category = models.ForeignKey(
-        'category',
-        on_delete=models.CASCADE,
-    )
-    author = models.ForeignKey(
-        'user',
-        blank=True,
-        null=True,
-        on_delete=models.SET_NULL,
-    )
-
-
 class TeacherEntry(Entry):
     """TeacherEntry.
 
@@ -2874,4 +2852,25 @@ class TemplateCategoryLink(CreateUpdateModel):
     category = models.ForeignKey(
         'category',
         on_delete=models.CASCADE,
+    )
+
+
+class EntryCategoryLink(CreateUpdateModel):
+    """Explicit M2M table, linking Entries to Categories."""
+    class Meta:
+        unique_together = ('entry', 'category')
+
+    entry = models.ForeignKey(
+        'entry',
+        on_delete=models.CASCADE,
+    )
+    category = models.ForeignKey(
+        'category',
+        on_delete=models.CASCADE,
+    )
+    author = models.ForeignKey(
+        'user',
+        blank=True,
+        null=True,
+        on_delete=models.SET_NULL,
     )
