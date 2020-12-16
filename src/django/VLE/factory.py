@@ -8,6 +8,7 @@ from datetime import timedelta
 
 import requests
 from django.conf import settings
+from django.db import transaction
 from django.utils import timezone
 
 import VLE.models
@@ -205,17 +206,21 @@ def make_node(journal, entry=None, type=VLE.models.Node.ENTRY, preset=None):
     return VLE.models.Node.objects.get_or_create(type=type, entry=entry, preset=preset, journal=journal)[0]
 
 
-def make_entry(template, author, node=None, category_ids=None):
-    entry = VLE.models.Entry.objects.create(template=template, author=author, node=node)
-
+def make_entry(template, author, node, category_ids=None):
     if template.fixed_categories or category_ids is None:
-        entry.categories.set(template.categories.all())
-    else:
-        entry.categories.set(category_ids)
+        category_ids = list(template.categories.values_list('pk', flat=True))
 
-    if node:
+    with transaction.atomic():
+        entry = VLE.models.Entry.objects.create(template=template, author=author, node=node)
+        entry_category_links = [
+            VLE.models.EntryCategoryLink(entry=entry, category_id=id, author=author)
+            for id in category_ids
+        ]
+        VLE.models.EntryCategoryLink.objects.bulk_create(entry_category_links)
+
         entry.node.entry = entry
         entry.node.save()
+
     return entry
 
 

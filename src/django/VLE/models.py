@@ -2321,6 +2321,16 @@ class Entry(CreateUpdateModel):
     def is_graded(self):
         return not (self.grade is None or self.grade.grade is None)
 
+    def add_category(self, category, author):
+        """Should be used over entry.categories.add() so the author is set and the link can be reused."""
+        link = EntryCategoryLink.objects.filter(entry=self, category=category).first()
+
+        if link:
+            link.author = author
+            link.save()
+        else:
+            EntryCategoryLink.objects.create(entry=self, category=category, author=author)
+
     def save(self, *args, **kwargs):
         is_new = not self.pk
         author_id = self.__dict__.get('author_id', None)

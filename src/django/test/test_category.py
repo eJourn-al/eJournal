@@ -8,7 +8,7 @@ from django.db.utils import IntegrityError
 from django.test import TestCase
 from django.utils import timezone
 
-from VLE.models import Assignment, Category
+from VLE.models import Assignment, Category, EntryCategoryLink
 from VLE.serializers import CategoryConcreteFieldsSerializer, CategorySerializer
 
 
@@ -105,6 +105,7 @@ class CategoryAPITest(TestCase):
         assert len(resp['templates']) == len(creation_data['templates'])
         assert all(template['id'] in creation_data['templates'] for template in resp['templates']), \
             'All templates are correctly linked'
+
         fc.refresh_from_db()
         assert not fc.is_temp
         assert fc.category.pk == resp['id']
@@ -166,6 +167,9 @@ class CategoryAPITest(TestCase):
             template.save()
             # with mock.patch('VLE.models.User.can_edit') as can_edit_mock:
             api.patch(self, 'categories/edit_entry', params={**params}, user=student)
+            assert EntryCategoryLink.objects.filter(entry=entry, category=self.category, author=student).exists(), \
+                'The author is correctly set on the through M2M table.'
+
             # can_edit_mock.assert_called_with(entry)
             assert entry.categories.filter(pk=self.category.pk).exists(), 'Category has been succesfully added'
 
@@ -184,7 +188,7 @@ class CategoryAPITest(TestCase):
 
         def test_as_admin():
             admin = factory.Admin()
-            # QUESTION: Should superusers be blocked from graging (and thus fail user.has_permission('can_grade'))
+            # QUESTION: Should superusers be blocked from grading (and thus fail user.has_permission('can_grade'))?
             api.patch(self, 'categories/edit_entry', params={**params}, user=admin, status=200)
 
         def test_category_linked_to_entry_assignment():

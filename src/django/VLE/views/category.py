@@ -134,6 +134,9 @@ class CategoryView(viewsets.ViewSet):
             if not Category.objects.filter(assignment=assignment, pk=category.pk).exists():
                 raise ValidationError('Categories can only be linked to entries which are part of the same assignment.')
 
-        entry.categories.add(category) if add else entry.categories.remove(category)
+        if add:
+            entry.add_category(category=category, author=request.user)
+        else:
+            entry.categories.remove(category)
 
         return response.success(CategoryConcreteFieldsSerializer(category).data)

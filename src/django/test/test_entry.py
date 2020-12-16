@@ -474,6 +474,7 @@ class EntryAPITest(TestCase):
             resp = api.create(self, 'entries', params=payload, user=self.student)['entry']
             check_categories_mock.assert_called_with(payload['categories'], self.g_assignment, self.template)
         assert resp['categories'][0]['id'] == cat.pk
+        assert all(link.author == self.student for link in cat.entrycategorylink_set.filter(entry__pk=resp['id']))
 
         # TODO: Test for entry bound to entrydeadline
         # TODO: Test with file upload
@@ -1003,3 +1004,15 @@ class EntryAPITest(TestCase):
         assert template.fixed_categories
         with self.assertRaises(ValidationError):
             check_categories(serialized_categories, assignment, template)
+
+    def test_entry_add_category(self):
+        category = factory.Category(assignment=self.g_assignment)
+        entry = Entry.objects.filter(node__journal=self.group_journal).first()
+        student = entry.author
+        teacher = self.g_assignment.author
+
+        entry.add_category(category, student)
+        link_student = category.entrycategorylink_set.get(entry=entry, author=student)
+        entry.add_category(category, teacher)
+        link_teacher = category.entrycategorylink_set.get(entry=entry, author=teacher)
+        assert link_student == link_teacher, 'Row can be reused, and author is updated.'
