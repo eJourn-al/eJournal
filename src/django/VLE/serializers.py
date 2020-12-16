@@ -141,6 +141,7 @@ class CategoryConcreteFieldsSerializer(serializers.ModelSerializer):
             'id',
             'name',
             'description',
+            'color',
         )
         read_only_fields = fields
 

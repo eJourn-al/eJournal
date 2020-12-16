@@ -39,11 +39,12 @@ class CategoryView(viewsets.ViewSet):
         return response.success({'categories': serializer.data})
 
     def create(self, request):
-        assignment_id, name, description, templates = utils.required_typed_params(
+        assignment_id, name, description, color, templates = utils.required_typed_params(
             request.data,
             (int, 'assignment_id'),
             (str, 'name'),
             (str, 'description'),
+            (str, 'color'),
             (int, 'templates'),
         )
 
@@ -57,6 +58,7 @@ class CategoryView(viewsets.ViewSet):
             description=description,
             assignment=assignment,
             author=request.user,
+            color=color,
             templates=templates,
         )
 
@@ -70,10 +72,11 @@ class CategoryView(viewsets.ViewSet):
         return response.created({'category': serializer.data})
 
     def partial_update(self, request, pk, *args, **kwargs):
-        name, description, templates = utils.required_typed_params(
+        name, description, color, templates = utils.required_typed_params(
             request.data,
             (str, 'name'),
             (str, 'description'),
+            (str, 'color'),
             (int, 'templates'),
         )
 
@@ -85,6 +88,7 @@ class CategoryView(viewsets.ViewSet):
         with transaction.atomic():
             category.name = name
             category.description = description
+            category.color = color
             category.templates.set(templates)
             category.save()
             file_handling.establish_rich_text(author=request.user, rich_text=description, category=category)

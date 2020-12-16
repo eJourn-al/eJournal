@@ -21,6 +21,7 @@ class CategoryAPITest(TestCase):
         self.valid_creation_data = {
             'name': 'Non empty',
             'description': '',
+            'color': '#FFFF',
             'assignment_id': self.assignment.pk,
             'templates': list(self.assignment.format.template_set.values_list('pk', flat=True))
         }
@@ -43,6 +44,9 @@ class CategoryAPITest(TestCase):
         with self.assertRaises(IntegrityError):
             Category.objects.create(name=self.category.name, assignment=self.assignment)
 
+        with self.assertRaises(IntegrityError):
+            Category.objects.create(color='#INVALID', name='new', assignment=self.assignment)
+
     def test_category_serializer(self):
         factory.Category(assignment=self.assignment)
 
@@ -59,6 +63,7 @@ class CategoryAPITest(TestCase):
         assert sample['id'] == self.category.pk
         assert sample['name'] == self.category.name
         assert sample['description'] == self.category.description
+        assert sample['color'] == self.category.color
         assert 'templates' in sample, 'Template serialization itself is tested elsewhere'
 
         # select all categories
@@ -72,6 +77,7 @@ class CategoryAPITest(TestCase):
         assert sample['id'] == self.category.pk
         assert sample['name'] == self.category.name
         assert sample['description'] == self.category.description
+        assert sample['color'] == self.category.color
         assert 'templates' not in sample, 'Only concrete fields should be serialized'
 
     def test_category_list(self):
@@ -95,6 +101,7 @@ class CategoryAPITest(TestCase):
 
         assert resp['name'] == creation_data['name']
         assert resp['description'] == creation_data['description']
+        assert resp['color'] == creation_data['color']
         assert len(resp['templates']) == len(creation_data['templates'])
         assert all(template['id'] in creation_data['templates'] for template in resp['templates']), \
             'All templates are correctly linked'
@@ -113,6 +120,7 @@ class CategoryAPITest(TestCase):
             'name': 'Non empty',
             'pk': category.pk,
             'description': 'description',
+            'color': '#FFFF',
             'templates': list(self.assignment.format.template_set.values_list('pk', flat=True))
         }
 
@@ -125,6 +133,7 @@ class CategoryAPITest(TestCase):
 
         assert resp['name'] == valid_patch_data['name']
         assert resp['description'] == valid_patch_data['description']
+        assert resp['color'] == valid_patch_data['color']
         assert len(resp['templates']) == len(valid_patch_data['templates'])
         assert all(template['id'] in valid_patch_data['templates'] for template in resp['templates']), \
             'All templates are correctly linked'

@@ -2810,14 +2810,21 @@ class Category(CreateUpdateModel):
         ordering = ['name']
         constraints = [
             CheckConstraint(check=~Q(name=''), name='non_empty_name'),
+            CheckConstraint(check=Q(color__regex=r'^#(?:[0-9a-fA-F]{1,2}){3}$'), name='non_valid_rgb_color_code'),
         ]
-        unique_together = ('name', 'assignment')
+        unique_together = (
+            ('name', 'assignment'),
+            ('color', 'assignment'),
+        )
 
     objects = models.Manager.from_queryset(CategoryQuerySet)()
 
     name = models.TextField()
     description = models.TextField(
         null=True,
+    )
+    color = models.CharField(
+        max_length=9
     )
     author = models.ForeignKey(
         'User',
