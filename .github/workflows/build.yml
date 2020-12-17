@@ -25,7 +25,31 @@ env:
   CI_CD: true
 
 jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-18.04
+      - name: Checkout
+        uses: actions/checkout@v2
+        with:
+          token: ${{ secrets.ACTIONS_TOKEN }}
+          submodules: recursive
+
+      - name: Set up Python 3.6.9
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.6.9
+
+      - name: Cache python environment
+        uses: actions/cache@v2
+        with:
+          path: ${{ env.pythonLocation }}
+          key: python-${{ hashFiles('requirements/base.txt') }}-${{ hashFiles('requirements/ci.txt') }}
+
+      - name: Install dependencies
+        run: pip3 install -r requirements/ci.txt
+
   backend-tests:
+    needs: build
     name: Run Django Tests
     runs-on: ubuntu-18.04
     strategy:
@@ -49,30 +73,18 @@ jobs:
         ports:
           - 5432:5432
     steps:
-      - name: Checkout
-        uses: actions/checkout@v2
+      - name: Run tests
+        run: pytest src/django/test -x -n auto --splits 5 --group ${{ matrix.group }}
+      - uses: codecov/codecov-action@v1
+
+  linters:
+    needs: build
+    name: Run Linters
+    runs-on: ubuntu-18.04
+    steps:
+      - uses: bahmutov/npm-install@v1.4.5
         with:
-          token: ${{ secrets.ACTIONS_TOKEN }}
-          submodules: recursive
-
-      - name: Set up Python 3.6.9
-        uses: actions/setup-python@v2
-        with:
-          python-version: 3.6.9
-
-      - name: Cache python environment
-        uses: actions/cache@v2
-        with:
-          path: ${{ env.pythonLocation }}
-          key: python-${{ hashFiles('requirements/base.txt') }}-${{ hashFiles('requirements/ci.txt') }}
-
-      - name: Install dependencies
-        run: pip3 install -r requirements/ci.txt
-
+          working-directory: src/vue
       - name: Run linters
         run: flake8 ./src/django && ./src/django/manage.py check --fail-level=WARNING && npm run lint --prefix ./src/vue
 
-      - name: Run tests
-        run: pytest src/django/test -x -n auto --splits 5 --group ${{ matrix.group }}
-
-      - uses: codecov/codecov-action@v1
