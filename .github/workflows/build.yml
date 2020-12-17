@@ -78,10 +78,9 @@ jobs:
           name: coverage${{ matrix.group }}
           path: .coverage
 
-
-
   coverage:
     needs: backend-tests
+    name: Coverage
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
