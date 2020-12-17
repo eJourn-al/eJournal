@@ -103,47 +103,8 @@ jobs:
       - name: Install dependencies
         run: pip3 install -r requirements/ci.txt
 
-      # v2 will support downloading multiple with single step: https://github.com/actions/download-artifact/issues/23#issue-580701561
-      - name: Download coverage1
-        uses: actions/download-artifact@v1
-        with:
-          name: coverage1
-      - name: Download coverage2
-        uses: actions/download-artifact@v1
-        with:
-          name: coverage2
-      - name: Download coverage3
-        uses: actions/download-artifact@v1
-        with:
-          name: coverage3
-      - name: Download coverage4
-        uses: actions/download-artifact@v1
-        with:
-          name: coverage4
-      - name: Download coverage5
-        uses: actions/download-artifact@v1
-        with:
-          name: coverage5
-      - name: Download coverage6
-        uses: actions/download-artifact@v1
-        with:
-          name: coverage6
-      - name: Download coverage7
-        uses: actions/download-artifact@v1
-        with:
-          name: coverage7
-      - name: Download coverage8
-        uses: actions/download-artifact@v1
-        with:
-          name: coverage8
-      - name: Download coverage9
-        uses: actions/download-artifact@v1
-        with:
-          name: coverage9
-      - name: Download coverage10
-        uses: actions/download-artifact@v1
-        with:
-          name: coverage10
+      - name: Download coverage artifacts
+        uses: actions/download-artifact@v2
       - name: Run coverage
         run: |
           coverage combine coverage*/.coverage*
