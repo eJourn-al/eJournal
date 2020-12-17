@@ -147,13 +147,20 @@
                 v-if="showTemplatePreview"
                 class="no-hover"
             >
-                <entry-fields
-                    v-if="currentPreset.template"
-                    :template="currentPreset.template"
-                    :content="() => Object()"
-                    :edit="true"
-                    :readOnly="true"
-                />
+                <template v-if="currentPreset.template">
+                    <entry-fields
+                        :template="currentPreset.template"
+                        :content="() => Object()"
+                        :edit="true"
+                        :readOnly="true"
+                    />
+
+                    <category-display
+                        :id="`preset-template-${currentPreset.template.id}-preview`"
+                        :template="currentPreset.template"
+                        :categories="currentPreset.template.categories"
+                    />
+                </template>
                 <span v-else>
                     Select a template to preview
                 </span>
@@ -212,6 +219,7 @@
 </template>
 
 <script>
+import CategoryDisplay from '@/components/category/CategoryDisplay.vue'
 import EntryFields from '@/components/entry/EntryFields.vue'
 import Tooltip from '@/components/assets/Tooltip.vue'
 import filesList from '@/components/assets/file_handling/FilesList.vue'
@@ -222,6 +230,7 @@ export default {
         EntryFields,
         Tooltip,
         filesList,
+        CategoryDisplay,
     },
     props: ['newPreset', 'currentPreset', 'templates', 'assignmentDetails'],
     data () {
