@@ -81,7 +81,7 @@ jobs:
 
 
   coverage:
-    needs: test
+    needs: backend-tests
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
