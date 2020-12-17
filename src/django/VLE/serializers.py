@@ -1090,10 +1090,18 @@ class GradeHistorySerializer(serializers.ModelSerializer, EagerLoadingMixin):
 class TeacherEntrySerializer(EntrySerializer):
     class Meta:
         model = VLE.models.TeacherEntry
-        fields = ('id', 'title', 'template', 'content', 'journals')
+        fields = (
+            'id',
+            'title',
+            'template',
+            'content',
+            'journals',
+            'categories',
+        )
         read_only_fields = fields
 
     journals = TeacherEntryGradeSerializer(many=True, read_only=True, source='entry_set')
+    categories = CategoryConcreteFieldsSerializer(many=True, read_only=True)
     # This is to overwrite the EntrySerializer serializedmethod title field, and use the db variable instead
     title = None
 

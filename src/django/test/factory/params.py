@@ -106,14 +106,17 @@ class TeacherEntryCreationParamsFactory(factory.Factory):
         template: VLE.models.Template instance, fallsback to a random template available to the provided assignment.
         author: VLE.models.User instance, fallsback the assignment author.
         content: Valid content for the selected template.
-        journals: list, contains elements structured as follows:
+        journals: list, can contain elements structured as follows:
             {
                 'journal_id': <int>,
                 'grade': <float>,
                 'published': <bool>,
             },
+            OR a list of VLE.models.Journal instances.
             Defaults to all assignment's journal ids, with a published grade of one.
             Grade and published can be uniformly changed by providing a grade and published kwarg
+        categories: list of VLE.models.Category instances
+        category_ids: list if VLE.models.Category ids, has prio over categories.
     """
     class Meta:
         model = dict
@@ -132,13 +135,24 @@ class TeacherEntryCreationParamsFactory(factory.Factory):
         author = kwargs.pop('author', assignment.author)
         kwargs['content'] = test.factory.EntryContentCreationParams(template=template, author=author)['content']
 
-        kwargs['journals'] = kwargs.pop('journals', [
-            {
-                'journal_id': j.pk,
+        categories = kwargs.pop('categories', [])
+        if categories:
+            kwargs['category_ids'] = [category.pk for category in categories]
+        kwargs['category_ids'] = kwargs.pop('category_ids', categories)
+
+        def journal_to_dict(journal):
+            return {
+                'journal_id': journal.pk,
                 'grade': kwargs['grade'] if 'grade' in kwargs else 1,
                 'published': kwargs['published'] if 'published' in kwargs else True,
             }
-            for j in VLE.models.Journal.objects.filter(assignment=assignment)
-        ])
+
+        journals = kwargs.pop('journals', None)
+        if journals and isinstance(journals, list) and isinstance(journals[0], VLE.models.Journal):
+            kwargs['journals'] = [journal_to_dict(j) for j in journals]
+        elif journals:
+            kwargs['journals'] = journals
+        else:
+            kwargs['journals'] = [journal_to_dict(j) for j in VLE.models.Journal.objects.filter(assignment=assignment)]
 
         return kwargs

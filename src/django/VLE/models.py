@@ -2312,6 +2312,31 @@ class Entry(CreateUpdateModel):
         through_fields=('entry', 'category'),
     )
 
+    @staticmethod
+    def validate_categories(category_ids, assignment, template=None):
+        """
+        Checks whether the provided categories belong to the assignment.
+
+        If a template is provided and has locked categories, checks if the provided categories exactly match the
+        template's assigned categories.
+        """
+
+        if not category_ids:
+            return {}
+
+        category_ids = set(category_ids)
+        assignment_category_ids = set(assignment.categories.values_list('pk', flat=True))
+
+        if not category_ids.issubset(assignment_category_ids):
+            raise ValidationError('Entry can only be linked to categories which are part of the assignment.')
+
+        if template and template.fixed_categories:
+            template_category_ids = set(template.categories.values_list('pk', flat=True))
+            if category_ids != template_category_ids:
+                raise ValidationError('An entry of this type has fixed categories.')
+
+        return category_ids
+
     def is_locked(self):
         return (self.node.preset and self.node.preset.is_locked()) or self.node.journal.assignment.is_locked()
 
@@ -2330,6 +2355,17 @@ class Entry(CreateUpdateModel):
             link.save()
         else:
             EntryCategoryLink.objects.create(entry=self, category=category, author=author)
+
+    def set_categories(self, new_category_ids, author):
+        """Should be used over entry.categories.set() so the author is set for all links"""
+        existing_category_ids = set(self.categories.values_list('pk', flat=True))
+        new_category_ids = set(new_category_ids)
+        category_ids_to_delete = existing_category_ids - new_category_ids
+        category_ids_to_create = new_category_ids - existing_category_ids
+
+        EntryCategoryLink.objects.filter(entry=self, category__pk__in=category_ids_to_delete).delete()
+        links = [EntryCategoryLink(entry=self, category_id=id, author=author) for id in category_ids_to_create]
+        EntryCategoryLink.objects.bulk_create(links)
 
     def save(self, *args, **kwargs):
         is_new = not self.pk

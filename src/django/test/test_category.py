@@ -159,6 +159,7 @@ class CategoryAPITest(TestCase):
         def test_as_student():
             assert template.fixed_categories
             for add in [True, False]:
+                # TODO Introduce mock if return value is normal
                 # with mock.patch('VLE.models.User.has_permission') as has_permission_mock:
                 api.patch(self, 'categories/edit_entry', params={**params, 'add': add}, user=student, status=403)
                 # has_permission_mock.assert_called_with('can_grade', self.assignment)

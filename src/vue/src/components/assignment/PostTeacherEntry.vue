@@ -26,7 +26,10 @@
                 :searchable="true"
                 placeholder="Select A Template"
                 class="mt-2"
-                @select="teacherEntryContent = Object()"
+                @select="
+                    teacherEntryContent = Object()
+                    teacherEntryCategories = { categories: (selectedTemplate) ? selectedTemplate.categories : [] }
+                "
             />
         </template>
         <span
@@ -42,6 +45,14 @@
                 :edit="true"
                 class="mt-3"
             />
+
+            <entry-categories
+                :id="`teacher-entry-create-template-${selectedTemplate.id}`"
+                :create="true"
+                :entry="teacherEntryCategories"
+                :template="selectedTemplate"
+            />
+
             <hr/>
             <h2 class="theme-h2 field-heading">
                 Journals to add
@@ -173,6 +184,7 @@
 </template>
 
 <script>
+import EntryCategories from '@/components/category/EntryCategories.vue'
 import EntryFields from '@/components/entry/EntryFields.vue'
 import Tooltip from '@/components/assets/Tooltip.vue'
 
@@ -183,6 +195,7 @@ export default {
     components: {
         EntryFields,
         Tooltip,
+        EntryCategories,
     },
     props: {
         aID: {
@@ -204,6 +217,7 @@ export default {
             grade: null,
             publishSameGrade: true,
             teacherEntryContent: Object(),
+            teacherEntryCategories: {},
             requestInFlight: false,
             title: null,
             showTitleInTimeline: true,
@@ -271,6 +285,7 @@ export default {
                     assignment_id: this.$route.params.aID,
                     template_id: this.selectedTemplate.id,
                     content: this.teacherEntryContent,
+                    category_ids: this.teacherEntryCategories.categories.map(category => category.id),
                     journals: this.selectedJournals,
                 }, {
                     customSuccessToast: 'Teacher entry successfully posted.',

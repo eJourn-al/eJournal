@@ -90,6 +90,10 @@ export default {
             type: String,
             required: true,
         },
+        autosave: {
+            type: Boolean,
+            default: true,
+        },
     },
     data () {
         return {
@@ -104,8 +108,6 @@ export default {
     created () {
         if (this.create || !('categories' in this.entry)) {
             this.$set(this.entry, 'categories', JSON.parse(JSON.stringify(this.template.categories)))
-        } else {
-            console.log(this.entry.categories)
         }
 
         this.$store.dispatch('assignment/retrieve', { id: this.$route.params.aID })
@@ -115,18 +117,17 @@ export default {
     },
     methods: {
         removeCategory (category) {
-            if (this.create) {
+            if (this.create || !this.autosave) {
                 this.entry.categories = this.entry.categories.filter(elem => elem.id !== category.id)
-                return
+            } else {
+                categoryAPI.editEntry(category.id, { entry_id: this.entry.id, add: false })
+                    .then(() => {
+                        this.entry.categories = this.entry.categories.filter(elem => elem.id !== category.id)
+                    })
             }
-
-            categoryAPI.editEntry(category.id, { entry_id: this.entry.id, add: false })
-                .then(() => {
-                    this.entry.categories = this.entry.categories.filter(elem => elem.id !== category.id)
-                })
         },
         addCategory (category) {
-            if (!this.create) {
+            if (!this.create && this.autosave) {
                 categoryAPI.editEntry(category.id, { entry_id: this.entry.id, add: true })
             }
         },

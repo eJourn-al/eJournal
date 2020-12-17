@@ -221,8 +221,7 @@ export default {
             if (this.checkRequiredFields()) {
                 this.requestInFlight = true
 
-                /* Move categories on object level higher */
-                const categories = JSON.parse(JSON.stringify(this.newEntryContent.categories))
+                const categoryIds = this.newEntryContent.categories.map(category => category.id)
                 delete this.newEntryContent.categories
 
                 entryAPI.create({
@@ -230,7 +229,7 @@ export default {
                     template_id: this.template.id,
                     content: this.newEntryContent,
                     node_id: this.node && this.node.nID > 0 ? this.node.nID : null,
-                    categories,
+                    category_ids: categoryIds,
                 }, { customSuccessToast: 'Entry successfully posted.' })
                     .then((data) => {
                         this.requestInFlight = false
