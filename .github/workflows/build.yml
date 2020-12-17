@@ -30,7 +30,7 @@ jobs:
     runs-on: ubuntu-18.04
     strategy:
       matrix:
-        group: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18]
+        group: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
     services:
       postgres:
         image: postgres:12.3-alpine
@@ -70,7 +70,7 @@ jobs:
         run: pip3 install -r requirements/ci.txt
 
       - name: Run tests
-        run: pytest src/django/test -x -n auto --splits 18 --group ${{ matrix.group }}
+        run: pytest src/django/test -x -n auto --splits 10 --group ${{ matrix.group }}
 
       - uses: codecov/codecov-action@v1
 
