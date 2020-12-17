@@ -4,6 +4,7 @@ from test.factory.file_context import _fc_to_rt_img_element
 from test.utils import api
 from unittest import mock
 
+from django.core.exceptions import ValidationError
 from django.db.utils import IntegrityError
 from django.test import TestCase
 from django.utils import timezone
@@ -200,3 +201,23 @@ class CategoryAPITest(TestCase):
         test_as_teacher()
         test_as_admin()
         test_category_linked_to_entry_assignment()
+
+    def test_category_validate_category_data(self):
+        # Name and color should be unique
+        self.assertRaises(ValidationError, Category.validate_category_data, name=self.category.name, color='#NEW',
+                          assignment=self.assignment)
+        self.assertRaises(ValidationError, Category.validate_category_data, name='NEW', color=self.category.color,
+                          assignment=self.assignment)
+
+        # Unless we update ourselves
+        Category.validate_category_data(name='NEW', color=self.category.color, category=self.category,
+                                        assignment=self.assignment)
+        Category.validate_category_data(name=self.category.name, color='#NEW', category=self.category,
+                                        assignment=self.assignment)
+
+        # Except if another category holds those values
+        cat2 = factory.Category(assignment=self.assignment)
+        self.assertRaises(ValidationError, Category.validate_category_data, name=cat2.name,
+                          color=self.category.color, category=self.category, assignment=self.assignment)
+        self.assertRaises(ValidationError, Category.validate_category_data, name=self.category.name,
+                          color=cat2.color, category=self.category, assignment=self.assignment)

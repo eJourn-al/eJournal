@@ -2854,6 +2854,20 @@ class Category(CreateUpdateModel):
         through_fields=('category', 'template'),
     )
 
+    @staticmethod
+    def validate_category_data(name, color, assignment, category=None):
+        equal_name = Category.objects.filter(name=name, assignment=assignment)
+        equal_color = Category.objects.filter(color=color, assignment=assignment)
+
+        if category:
+            equal_name = equal_name.exclude(pk=category.pk)
+            equal_color = equal_color.exclude(pk=category.pk)
+
+        if equal_name.exists():
+            raise ValidationError('Please provide a unqiue category name.')
+        if equal_color.exists():
+            raise ValidationError('Please provide a unqiue category color.')
+
 
 class TemplateCategoryLink(CreateUpdateModel):
     """
