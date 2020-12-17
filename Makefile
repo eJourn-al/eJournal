@@ -36,8 +36,11 @@ test-back:
 	${venv_activate} \
 	&& flake8 ./src/django \
 	&& ./src/django/manage.py check --fail-level=WARNING \
-	&& pytest ${TOTEST} src/django/test/ --store-durations
+	&& pytest ${TOTEST} src/django/test/
 	make isort
+
+generate-test-durations:
+	${venv_activate} && pytest ${TOTEST} src/django/test/ --store-durations
 
 test-front:
 	${venv_activate} && npm run lint --prefix ./src/vue
