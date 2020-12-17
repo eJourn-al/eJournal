@@ -54,17 +54,25 @@
                 Add field
             </b-button>
         </div>
-        <entry-fields
-            v-if="mode !== 'edit'"
-            :template="template"
-            :content="() => Object()"
-            :edit="true"
-            :readOnly="true"
-        />
+
+        <template v-if="mode !== 'edit'">
+            <entry-fields
+                :template="template"
+                :content="() => Object()"
+                :edit="true"
+                :readOnly="true"
+            />
+            <category-display
+                :id="`template-${template.id}-preview`"
+                :template="template"
+                :categories="template.categories"
+            />
+        </template>
     </b-card>
 </template>
 
 <script>
+import CategoryDisplay from '@/components/category/CategoryDisplay.vue'
 import EntryFields from '@/components/entry/EntryFields.vue'
 import TemplateField from '@/components/template/TemplateField.vue'
 import TemplateOptions from '@/components/template/TemplateOptions.vue'
@@ -76,6 +84,7 @@ export default {
         EntryFields,
         TemplateField,
         TemplateOptions,
+        CategoryDisplay,
     },
     props: {
         template: {
