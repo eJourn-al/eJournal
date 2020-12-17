@@ -105,14 +105,6 @@
                         :templates="templates"
                         :data="newCategory"
                     />
-
-                    <b-button
-                        class="green-button mt-2 float-right"
-                        @click="createCategory"
-                    >
-                        <icon name="save"/>
-                        Save Category
-                    </b-button>
                 </template>
             </b-card>
         </b-modal>
@@ -157,12 +149,19 @@ export default {
                 },
             ],
             categories: null,
+            createCall: null,
         }
     },
+    watch: {
+        newCategory: {
+            deep: true,
+            handler (category) {
+                if (category && category.name) { this.createCategory() }
+            },
+        },
+    },
     created () {
-        categoryAPI.list(this.$route.params.aID).then((categories) => {
-            this.categories = categories
-        })
+        categoryAPI.list(this.$route.params.aID).then((categories) => { this.categories = categories })
     },
     methods: {
         deleteCategory (category) {
@@ -170,6 +169,8 @@ export default {
                 .then(() => { this.categories = this.categories.filter(elem => elem.id !== category.id) })
         },
         addCategory () {
+            this.categories.forEach((element) => { element._showDetails = false })
+
             this.newCategory = {
                 id: -1,
                 name: null,
@@ -179,15 +180,22 @@ export default {
             }
         },
         createCategory () {
-            const payload = JSON.parse(JSON.stringify(this.newCategory))
-            payload.templates = this.newCategory.templates.map(elem => elem.id)
-            payload.assignment_id = this.$route.params.aID
+            window.clearTimeout(this.createCall)
 
-            categoryAPI.create(payload)
-                .then((category) => {
-                    this.categories.push(category)
-                    this.addCategory()
-                })
+            this.createCall = window.setTimeout(() => {
+                const payload = JSON.parse(JSON.stringify(this.newCategory))
+                payload.templates = this.newCategory.templates.map(elem => elem.id)
+                payload.assignment_id = this.$route.params.aID
+
+                categoryAPI.create(payload)
+                    .then((category) => {
+                        const latestCopy = JSON.parse(JSON.stringify(this.newCategory))
+                        latestCopy._showDetails = true
+                        latestCopy.id = category.id
+                        this.categories.push(latestCopy)
+                        this.newCategory = null
+                    })
+            }, 3000)
         },
     },
 }
