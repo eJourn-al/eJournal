@@ -79,6 +79,12 @@
                         :edit="true"
                         :readOnly="true"
                     />
+
+                    <category-display
+                        :id="`import-template-${selectedTemplate.id}-preview`"
+                        :categories="selectedTemplate.categories"
+                        :template="selectedTemplate"
+                    />
                 </b-card>
 
                 <b-button
@@ -119,6 +125,7 @@
 </template>
 
 <script>
+import CategoryDisplay from '@/components/category/CategoryDisplay.vue'
 import EntryFields from '@/components/entry/EntryFields.vue'
 
 import assignmentAPI from '@/api/assignment.js'
@@ -127,6 +134,7 @@ import utils from '@/utils/generic_utils.js'
 export default {
     components: {
         EntryFields,
+        CategoryDisplay,
     },
     props: {
         modalID: {
