@@ -165,8 +165,13 @@ export default {
     },
     methods: {
         deleteCategory (category) {
-            categoryAPI.delete(category.id)
-                .then(() => { this.categories = this.categories.filter(elem => elem.id !== category.id) })
+            if (window.confirm(`Are you sure you want to delete ${category.name}?
+
+This action will also immediately remove the category from any associated entries. \
+This action cannot be undone.`)) {
+                categoryAPI.delete(category.id)
+                    .then(() => { this.categories = this.categories.filter(elem => elem.id !== category.id) })
+            }
         },
         addCategory () {
             this.categories.forEach((element) => { element._showDetails = false })
