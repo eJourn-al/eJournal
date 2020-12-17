@@ -36,7 +36,7 @@ test-back:
 	${venv_activate} \
 	&& flake8 ./src/django \
 	&& ./src/django/manage.py check --fail-level=WARNING \
-	&& pytest ${TOTEST} src/django/test/
+	&& pytest ${TOTEST} src/django/test/ --store-durations
 	make isort
 
 test-front:
