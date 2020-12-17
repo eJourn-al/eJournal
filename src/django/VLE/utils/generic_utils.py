@@ -157,6 +157,10 @@ def update_templates(format, templates):
 
                 if len(presets) == 0 and not VLE.models.Entry.objects.filter(template=old_template).exists():
                     old_template.delete()
+            # Toggling fixed categories does not require the archiving of a template
+            elif old_template.fixed_categories != template['fixed_categories']:
+                old_template.fixed_categories = template['fixed_categories']
+                old_template.save()
 
         else:  # Unknown (newly created) template.
             new_template = parse_template(template, format)
@@ -170,8 +174,9 @@ def parse_template(template_dict, format):
     name = template_dict['name']
     preset_only = template_dict['preset_only']
     fields = template_dict['field_set']
+    fixed_categories = template_dict['fixed_categories']
 
-    template = VLE.factory.make_entry_template(name, format, preset_only)
+    template = VLE.factory.make_entry_template(name, format, preset_only, fixed_categories)
 
     for field in fields:
         type = field['type']

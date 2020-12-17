@@ -224,11 +224,14 @@ def make_entry(template, author, node, category_ids=None):
     return entry
 
 
-def make_entry_template(name, format, preset_only=False):
+def make_entry_template(name, format, preset_only=False, fixed_categories=True):
     """Make an entry template."""
-    entry_template = VLE.models.Template(name=name, format=format, preset_only=preset_only)
-    entry_template.save()
-    return entry_template
+    return VLE.models.Template.objects.create(
+        name=name,
+        format=format,
+        preset_only=preset_only,
+        fixed_categories=fixed_categories
+    )
 
 
 def make_field(template, title, loc, type=VLE.models.Field.TEXT, required=True, description=None, options=None):

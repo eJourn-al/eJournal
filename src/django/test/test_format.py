@@ -1,4 +1,5 @@
 import test.factory as factory
+from copy import deepcopy
 from test.utils import api
 from test.utils.performance import QueryContext
 
@@ -205,6 +206,25 @@ class FormatAPITest(TestCase):
         resp = api.update(self, 'formats', params={'pk': self.assignment.pk, **self.update_dict},
                           user=self.teacher)
         assert resp['assignment_details']['description'] == 'Rest'
+
+    def test_update_format_templates_category(self):
+        update_dict = deepcopy(self.update_dict)
+        template = update_dict['templates'][0]['id']
+        template = Template.objects.get(pk=template)
+        template.fixed_categories = False
+        template.save()
+
+        update_dict['templates'][0]['fixed_categories'] = True
+        api.update(self, 'formats', params={'pk': self.assignment.pk, **update_dict}, user=self.teacher)
+        template.refresh_from_db()
+        assert template.fixed_categories, 'Fixed categories is succesfully updated'
+        assert not template.archived, 'Changing the fixed categories flag does not archive the template'
+
+        update_dict['templates'][0]['fixed_categories'] = False
+        api.update(self, 'formats', params={'pk': self.assignment.pk, **update_dict}, user=self.teacher)
+        template.refresh_from_db()
+        assert not template.fixed_categories, 'Fixed categories is succesfully updated'
+        assert not template.archived, 'Changing the fixed categories flag does not archive the template'
 
     def test_update_presets(self):
         should_be_updated = {

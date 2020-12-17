@@ -149,7 +149,7 @@
 
                 <b-modal
                     ref="templateModal"
-                    size="lg"
+                    size="xl"
                     title="Edit template"
                     hideFooter
                     noEnforceFocus
@@ -526,6 +526,7 @@ export default {
                 name: 'Entry',
                 id: this.newTemplateId--,
                 preset_only: false,
+                fixed_categories: true,
             }
             this.templates.push(template)
             this.showTemplateModal(this.templates.length - 1)

@@ -323,6 +323,7 @@ class FileHandlingTest(TestCase):
                     'id': template.pk,
                     'format': self.assignment.format.pk,
                     'preset_only': False,
+                    'fixed_categories': True,
                     'archived': False
                 }],
                 'presets': [{

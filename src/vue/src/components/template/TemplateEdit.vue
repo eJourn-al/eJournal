@@ -27,42 +27,9 @@
                 placeholder="Template name"
                 required
             />
-            <div
-                v-if="template.preset_only"
-                class="template-availability"
-            >
-                <b-button
-                    class="red-button"
-                    @click.stop
-                    @click="togglePresetOnly"
-                >
-                    <icon name="lock"/>
-                    Preset-only
-                </b-button>
-                <icon
-                    name="info-circle"
-                    class="shift-up-3"
-                />
-                This template can only be used for preset entries you add to the timeline
-            </div>
-            <div
-                v-if="!template.preset_only"
-                class="template-availability"
-            >
-                <b-button
-                    class="green-button"
-                    @click.stop
-                    @click="togglePresetOnly"
-                >
-                    <icon name="unlock"/>
-                    Unlimited
-                </b-button>
-                <icon
-                    name="info-circle"
-                    class="shift-up-3"
-                />
-                This template can be freely used by students as often as they want<br/>
-            </div>
+
+            <template-options :template="template"/>
+
             <draggable
                 v-model="template.field_set"
                 handle=".handle"
@@ -99,8 +66,8 @@
 
 <script>
 import EntryFields from '@/components/entry/EntryFields.vue'
-// Try changing below import (and filename in tree) to TemplateField.vue: why is it specifically unresolved?
-import TemplateField from '@/components/template/Field.vue'
+import TemplateField from '@/components/template/TemplateField.vue'
+import TemplateOptions from '@/components/template/TemplateOptions.vue'
 import draggable from 'vuedraggable'
 
 export default {
@@ -108,6 +75,7 @@ export default {
         draggable,
         EntryFields,
         TemplateField,
+        TemplateOptions,
     },
     props: {
         template: {
@@ -160,9 +128,6 @@ export default {
         },
         onUpdate () {
             this.updateLocations()
-        },
-        togglePresetOnly () {
-            this.template.preset_only = !this.template.preset_only
         },
     },
 }
@@ -221,9 +186,4 @@ export default {
         font-weight: bold
         color: grey
         margin-bottom: 10px
-        .btn
-            margin-right: 20px
-            @include md-max
-                width: 100%
-                margin-bottom: 10px
 </style>

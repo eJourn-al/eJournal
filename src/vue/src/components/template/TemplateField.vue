@@ -137,6 +137,7 @@
 
 <script>
 export default {
+    name: 'TemplateField',
     components: {
         TextEditor: () => import(/* webpackChunkName: 'text-editor' */ '@/components/assets/TextEditor.vue'),
     },

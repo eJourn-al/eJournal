@@ -14,7 +14,7 @@
 
         <b-modal
             id="categories-modal"
-            size="lg"
+            size="xl"
             title="Manage Categories"
             hideFooter
             noEnforceFocus
