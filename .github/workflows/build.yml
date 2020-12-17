@@ -70,9 +70,87 @@ jobs:
         run: pip3 install -r requirements/ci.txt
 
       - name: Run tests
-        run: pytest src/django/test -x -n auto --splits 10 --group ${{ matrix.group }}
+        run: pytest src/django/test --cov=VLE -x -n auto --splits 10 --group ${{ matrix.group }}
 
-      - uses: codecov/codecov-action@v1
+      - name: Upload coverage
+        uses: actions/upload-artifact@v1
+        with:
+          name: coverage${{ matrix.group }}
+          path: .coverage
+
+
+
+  coverage:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+        with:
+          token: ${{ secrets.ACTIONS_TOKEN }}
+          submodules: recursive
+
+      - name: Set up Python 3.6.9
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.6.9
+
+      - name: Cache python environment
+        uses: actions/cache@v2
+        with:
+          path: ${{ env.pythonLocation }}
+          key: python-${{ hashFiles('requirements/base.txt') }}-${{ hashFiles('requirements/ci.txt') }}
+
+      - name: Install dependencies
+        run: pip3 install -r requirements/ci.txt
+
+      # v2 will support downloading multiple with single step: https://github.com/actions/download-artifact/issues/23#issue-580701561
+      - name: Download coverage1
+        uses: actions/download-artifact@v1
+        with:
+          name: coverage1
+      - name: Download coverage2
+        uses: actions/download-artifact@v1
+        with:
+          name: coverage2
+      - name: Download coverage3
+        uses: actions/download-artifact@v1
+        with:
+          name: coverage3
+      - name: Download coverage4
+        uses: actions/download-artifact@v1
+        with:
+          name: coverage4
+      - name: Download coverage5
+        uses: actions/download-artifact@v1
+        with:
+          name: coverage5
+      - name: Download coverage6
+        uses: actions/download-artifact@v1
+        with:
+          name: coverage6
+      - name: Download coverage7
+        uses: actions/download-artifact@v1
+        with:
+          name: coverage7
+      - name: Download coverage8
+        uses: actions/download-artifact@v1
+        with:
+          name: coverage8
+      - name: Download coverage9
+        uses: actions/download-artifact@v1
+        with:
+          name: coverage9
+      - name: Download coverage10
+        uses: actions/download-artifact@v1
+        with:
+          name: coverage10
+      - name: Run coverage
+        run: |
+          coverage combine coverage*/.coverage*
+          coverage report --fail-under=100
+          coverage xml
+      - uses: codecov/codecov-action@v1.0.6
 
   linters:
     name: Run Linters
