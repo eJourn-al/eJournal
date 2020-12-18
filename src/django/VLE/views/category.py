@@ -123,7 +123,7 @@ class CategoryView(viewsets.ViewSet):
         assignment = entry.node.journal.assignment
 
         if request.user.has_permission('can_grade', assignment):
-            pass
+            pass  # A category can always be changed by someone with the permission to grade.
         elif request.user.has_permission('can_have_journal', assignment):
             if template.fixed_categories:
                 return response.forbidden('This entry\'s template\'s categories are fixed.')

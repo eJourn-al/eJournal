@@ -2,7 +2,7 @@
 module.exports = {
   settings: {
     "vetur.useWorkspaceDependencies": true,
-    "vetur.experimental.templateInterpolationService": false // Not very usable withouto typescript
+    "vetur.experimental.templateInterpolationService": false // Not very usable without typescript
   },
   projects: [
     {
