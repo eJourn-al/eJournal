@@ -14,6 +14,34 @@ from VLE.utils import entry_utils, grading
 from VLE.utils.error_handling import VLEBadRequest
 
 
+def _update_categories_of_existing_entries(entries, author, new_category_ids, existing_category_ids):
+    """
+    Keeps the categories of all existing entries synced with those set on the teacher entry.
+
+    Does not modifying the entry category links of entries which already belong to the desired categories.
+    """
+    EntryCategoryLink.objects.filter(entry__in=entries).exclude(category_id__in=new_category_ids).delete()
+    new_entry_category_links = []
+    for new_category_id in new_category_ids:
+        new_entry_category_links += [
+            EntryCategoryLink(entry=entry, category_id=new_category_id, author=author)
+            for entry in entries.exclude(categories__pk=new_category_id)
+        ]
+    EntryCategoryLink.objects.bulk_create(new_entry_category_links)
+
+    # TODO Remove if syncing categories is accepted
+    # # Only update categories of entries if they are changed on the teacher entry it self.
+    # new_category_ids = set(new_category_ids)
+    # existing_category_ids = set(existing_category_ids)
+    # EntryCategoryLink.objects.filter(entry__in=entries).exclude(category_id__in=new_category_ids).delete()
+    # entry_category_links = [
+    #     EntryCategoryLink(entry=entry, category_id=category_id, author=author)
+    #     for category_id in new_category_ids - existing_category_ids
+    #     for entry in entries
+    # ]
+    # EntryCategoryLink.objects.bulk_create(entry_category_links)
+
+
 class TeacherEntryView(viewsets.ViewSet):
     """Entry view.
 
@@ -238,8 +266,8 @@ class TeacherEntryView(viewsets.ViewSet):
         journal_pks = list(journals_data_dict.keys())
         entries = Entry.objects.filter(teacher_entry=teacher_entry, node__journal__in=journal_pks) \
             .select_related('grade', 'node__journal')
-        grades = []
 
+        grades = []
         for entry in entries:
             if (
                 not entry.grade or
@@ -253,18 +281,9 @@ class TeacherEntryView(viewsets.ViewSet):
                     entry=entry,
                 )
                 grades.append(grade)
-
-        new_category_ids = set(new_category_ids)
-        existing_category_ids = set(existing_category_ids)
-        EntryCategoryLink.objects.filter(entry__in=entries).exclude(category_id__in=new_category_ids).delete()
-        entry_category_links = [
-            EntryCategoryLink(entry=entry, category_id=category_id, author=author)
-            for category_id in new_category_ids - existing_category_ids
-            for entry in entries
-        ]
-        EntryCategoryLink.objects.bulk_create(entry_category_links)
-
         Grade.objects.bulk_create(grades)
+
+        _update_categories_of_existing_entries(entries, author, new_category_ids, existing_category_ids)
 
         # Set the grade field of the updated entries to the newly created grades.
         entries = list(
