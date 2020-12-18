@@ -8,6 +8,7 @@ from rest_framework import viewsets
 
 import VLE.utils.generic_utils as utils
 import VLE.utils.responses as response
+import VLE.utils.template as template_utils
 from VLE.models import Assignment, Course, Field, Format, Group, PresetNode
 from VLE.serializers import AssignmentFormatSerializer, FormatSerializer
 from VLE.utils import file_handling
@@ -128,11 +129,11 @@ class FormatView(viewsets.ViewSet):
             return response.bad_request('Invalid assignment data.')
         serializer.save()
 
-        new_ids = utils.update_templates(assignment.format, templates)
+        new_ids = template_utils.update_templates(assignment.format, templates)
         utils.update_presets(request.user, assignment, presets, new_ids)
 
         utils.delete_presets(removed_presets)
-        utils.archive_templates(removed_templates)
+        template_utils.archive_templates(removed_templates)
 
         file_handling.establish_rich_text(author=request.user, rich_text=assignment.description, assignment=assignment)
         for field in Field.objects.filter(template__format=assignment.format):

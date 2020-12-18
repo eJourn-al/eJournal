@@ -1,15 +1,13 @@
 import test.factory as factory
 from copy import deepcopy
 from test.utils import api
-from test.utils.performance import QueryContext
 
 from dateutil.relativedelta import relativedelta
 from django.core.files.uploadedfile import SimpleUploadedFile
-from django.db.utils import IntegrityError
 from django.test import TestCase
 from django.utils import timezone
 
-from VLE.models import Assignment, Course, Entry, Field, FileContext, Format, Group, Journal, Node, PresetNode, Template
+from VLE.models import Entry, Field, FileContext, Format, Group, Journal, Node, PresetNode, Template
 from VLE.serializers import FileSerializer, FormatSerializer, PresetNodeSerializer, TemplateSerializer
 from VLE.utils import generic_utils as utils
 from VLE.utils.error_handling import VLEProgrammingError
@@ -55,40 +53,6 @@ class FormatAPITest(TestCase):
         # For the template two fields are generated
         field = Field.objects.get(template=assignment.format.template_set.first(), location=0)
         field = Field.objects.get(template=assignment.format.template_set.first(), location=1)
-
-    def test_template_without_format(self):
-        self.assertRaises(IntegrityError, factory.Template)
-
-    def test_template_factory(self):
-        assignment = factory.Assignment()
-
-        t_c = Template.objects.count()
-        a_c = Assignment.objects.count()
-        j_c = Journal.objects.count()
-        c_c = Course.objects.count()
-        f_c = Format.objects.count()
-
-        template = factory.Template(format=assignment.format)
-        assert not template.field_set.exists(), 'By default a template should be iniated without fields'
-
-        assert f_c == Format.objects.count(), 'No additional format is generated'
-        assert a_c == Assignment.objects.count(), 'No additional assignment should be generated'
-        assert c_c == Course.objects.count(), 'No additional course should be generated'
-        assert j_c == Journal.objects.count(), 'No journals should be generated'
-        assert t_c + 1 == Template.objects.count(), 'One template should be generated'
-
-    def test_template_delete_with_content(self):
-        format = factory.Assignment(format__templates=[]).format
-        template = factory.MentorgesprekTemplate(format=format)
-
-        # It should be no issue to delete a template without content
-        template.delete()
-
-        template = factory.MentorgesprekTemplate(format=format)
-        factory.Journal(assignment=format.assignment, entries__n=1)
-
-        # If any content relies on a template, it should not be possible to delete the template
-        self.assertRaises(VLEProgrammingError, template.delete)
 
     def test_update_assign_to(self):
         def check_groups(groups, status=200):
@@ -208,23 +172,23 @@ class FormatAPITest(TestCase):
         assert resp['assignment_details']['description'] == 'Rest'
 
     def test_update_format_templates_category(self):
+        # Ensure we are working with a single template so its obvious what is the new non-archived template
+        self.assignment.format.template_set.all().delete()
+        template = factory.Template(
+            format=self.assignment.format, add_fields=[{'type': Field.TEXT}], fixed_categories=False)
         update_dict = deepcopy(self.update_dict)
-        template = update_dict['templates'][0]['id']
-        template = Template.objects.get(pk=template)
-        template.fixed_categories = False
-        template.save()
+        update_dict['templates'] = TemplateSerializer(Template.objects.filter(pk=template.pk), many=True).data
+        # Ensure the template cannot be deleted by linking it to an entry
+        factory.UnlimitedEntry(node__journal__assignment=self.assignment, template=template)
 
         update_dict['templates'][0]['fixed_categories'] = True
-        api.update(self, 'formats', params={'pk': self.assignment.pk, **update_dict}, user=self.teacher)
+        resp = api.update(self, 'formats', params={'pk': self.assignment.pk, **update_dict}, user=self.teacher)
         template.refresh_from_db()
-        assert template.fixed_categories, 'Fixed categories is succesfully updated'
-        assert not template.archived, 'Changing the fixed categories flag does not archive the template'
-
-        update_dict['templates'][0]['fixed_categories'] = False
-        api.update(self, 'formats', params={'pk': self.assignment.pk, **update_dict}, user=self.teacher)
-        template.refresh_from_db()
-        assert not template.fixed_categories, 'Fixed categories is succesfully updated'
-        assert not template.archived, 'Changing the fixed categories flag does not archive the template'
+        assert template.archived, 'Changing the fixed categories flag archives the template.'
+        assert not template.fixed_categories, 'Fixed categories is unchanged on the archived template.'
+        new_template = Template.objects.get(pk=resp['format']['templates'][0]['id'])
+        assert not new_template.archived
+        assert new_template.fixed_categories, 'The newly generated template does have fixed_categories'
 
     def test_update_presets(self):
         should_be_updated = {
@@ -295,69 +259,6 @@ class FormatAPITest(TestCase):
         assert PresetNode.objects.order_by('creation_date').last().attached_files.filter(pk=file.pk).exists()
         file.refresh_from_db()
         assert not file.is_temp
-
-    def test_template_serializer(self):
-        assignment = factory.Assignment(format__templates=False)
-        format = assignment.format
-
-        def add_state():
-            factory.Template(
-                format=format,
-                add_fields=[{'type': Field.TEXT, 'location': 1}, {'type': Field.URL, 'location': 0}],
-                categories=1,
-            )
-
-        def check_field_set_serialization_order(serialized_template):
-            for i, field in enumerate(serialized_template['field_set']):
-                assert field['location'] == i, 'Fields are ordered by location'
-
-        def test_template_list_serializer():
-            factory.Template(
-                format=format,
-                add_fields=[{'type': Field.TEXT, 'location': 1}, {'type': Field.URL, 'location': 0}],
-                categories=1,
-            )
-            factory.Template(format=format, add_fields=[{'type': Field.URL}, {'type': Field.TEXT}])
-
-            with QueryContext() as context_pre:
-                data = TemplateSerializer(
-                    TemplateSerializer.setup_eager_loading(format.template_set.all()),
-                    many=True
-                ).data
-            add_state()
-            with QueryContext() as context_post:
-                data = TemplateSerializer(
-                    TemplateSerializer.setup_eager_loading(format.template_set.all()),
-                    many=True
-                ).data
-
-            expected_number_of_queries = len(TemplateSerializer.prefetch_related) + 1
-            assert len(context_pre) == len(context_post) and len(context_pre) <= expected_number_of_queries
-
-            # Fields are ordered by location
-            for template in data:
-                check_field_set_serialization_order(template)
-
-        def test_template_instance_serializer():
-            template = factory.Template(format=format, add_fields=[
-                {'type': Field.TEXT, 'location': 1},
-                {'type': Field.URL, 'location': 0}
-            ])
-            # Template is already in memory, we still need one query to fetch the template set and categories
-            with self.assertNumQueries(len(TemplateSerializer.prefetch_related)):
-                data = TemplateSerializer(template).data
-
-            assert data['id'] == template.pk
-            assert data['name'] == template.name
-            assert data['format'] == template.format.pk
-            assert data['preset_only'] == template.preset_only
-            assert data['archived'] == template.archived
-            assert data['fixed_categories'] == template.fixed_categories
-
-            check_field_set_serialization_order(data)
-
-        test_template_list_serializer()
-        test_template_instance_serializer()
 
     def test_format_serializer(self):
         # Fetch the format itself (1) + prefetches:

@@ -113,85 +113,6 @@ def get_sorted_nodes(journal):
     ).order_by('sort_due_date')
 
 
-def update_templates(format, templates):
-    """Update or create templates for a format.
-
-    - format: the format that is being edited
-    - templates: the list of temlates that should be updated or created
-
-    Since existing entries that use a template should remain untouched a copy
-    of the current template is saved in an archived state before processing any
-    changes. The distinction between existing and new templates occurs based on
-    the id: newly created templates are assigned a negative id in the format
-    editor.
-    """
-    new_ids = {}
-    for template in templates:
-        if template['id'] > 0:  # Template already exists.
-            old_template = VLE.models.Template.objects.get(pk=template['id'])
-
-            # Archive the previous version of the template if changes were made.
-            if (old_template.name != template['name'] or old_template.field_set.count() !=
-                    len(template['field_set']) or old_template.preset_only != template['preset_only']):
-                old_template.archived = True
-            else:
-                for old_field, new_field in zip(sorted(old_template.field_set.all(), key=lambda f: f.location),
-                                                sorted(template['field_set'], key=lambda f: f['location'])):
-                    if (old_field.type != new_field['type'] or old_field.title != new_field['title'] or
-                            old_field.location != new_field['location'] or old_field.required !=
-                            new_field['required'] or old_field.description != new_field['description'] or
-                            old_field.options != new_field['options']):
-                        old_template.archived = True
-                        break
-
-            if old_template.archived:
-                old_template.save()
-                new_template = parse_template(template, format)
-                new_ids[template['id']] = new_template.pk
-
-                # Update preset nodes to use the new template.
-                presets = VLE.models.PresetNode.objects.filter(forced_template=old_template).all()
-                for preset in presets:
-                    preset.forced_template = new_template
-                    preset.save()
-
-                if len(presets) == 0 and not VLE.models.Entry.objects.filter(template=old_template).exists():
-                    old_template.delete()
-            # Toggling fixed categories does not require the archiving of a template
-            elif old_template.fixed_categories != template['fixed_categories']:
-                old_template.fixed_categories = template['fixed_categories']
-                old_template.save()
-
-        else:  # Unknown (newly created) template.
-            new_template = parse_template(template, format)
-            new_ids[template['id']] = new_template.pk
-
-    return new_ids
-
-
-def parse_template(template_dict, format):
-    """Parse a new template according to the passed JSON-serialized template."""
-    name = template_dict['name']
-    preset_only = template_dict['preset_only']
-    fields = template_dict['field_set']
-    fixed_categories = template_dict['fixed_categories']
-
-    template = VLE.factory.make_entry_template(name, format, preset_only, fixed_categories)
-
-    for field in fields:
-        type = field['type']
-        title = field['title']
-        location = field['location']
-        required = field['required']
-        description = field['description']
-        options = field['options']
-
-        VLE.factory.make_field(template, title, location, type, required, description, options)
-
-    template.save()
-    return template
-
-
 def update_journals(journals, preset):
     """Create the preset node in all relevant journals.
 
@@ -269,23 +190,11 @@ def update_presets(user, assignment, presets, new_ids):
 
 def delete_presets(presets):
     """Deletes all presets in remove_presets from presets. """
-    ids = []
-    for preset in presets:
-        ids.append(preset['id'])
+    ids = [preset['id'] for preset in presets]
 
     for id in ids:
         VLE.models.Node.objects.filter(preset=id, entry__isnull=True).delete()
     VLE.models.PresetNode.objects.filter(pk__in=ids).delete()
-
-
-def archive_templates(templates):
-    """Puts all templates in an archived stated. This means that they cannot be
-    used for new entries anymore."""
-    ids = []
-    for template in templates:
-        ids.append(template['id'])
-
-    VLE.models.Template.objects.filter(pk__in=ids).update(archived=True)
 
 
 def base64ToContentFile(string, filename):

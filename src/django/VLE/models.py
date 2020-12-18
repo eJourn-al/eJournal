@@ -2502,11 +2502,53 @@ class Counter(CreateUpdateModel):
         return self.name + " is on " + self.count
 
 
+class TemplateChain(CreateUpdateModel):
+    """Identifies multiple templates which were updated as belonging to the same template"""
+    format = models.ForeignKey(
+        'Format',
+        on_delete=models.CASCADE
+    )
+
+
+class TemplateQuerySet(models.QuerySet):
+    def create(self, format, *args, **kwargs):
+        """Creates a template and starts a new chain in the same transaction."""
+        with transaction.atomic():
+            template_chain = TemplateChain.objects.create(format=format)
+            return super().create(*args, **kwargs, format=format, chain=template_chain)
+
+    def create_template_and_fields_from_data(self, data, format):
+        with transaction.atomic():
+            template = Template.objects.create(
+                name=data['name'],
+                format=format,
+                preset_only=data['preset_only'],
+                fixed_categories=data['fixed_categories'],
+            )
+
+            fields = [
+                Field(
+                    template=template,
+                    type=field['type'],
+                    title=field['title'],
+                    location=field['location'],
+                    required=field['required'],
+                    description=field['description'],
+                    options=field['options'],
+                )
+                for field in data['field_set']
+            ]
+            Field.objects.bulk_create(fields)
+
+        return template
+
+
 class Template(CreateUpdateModel):
     """Template.
 
     A template for an Entry.
     """
+    objects = models.Manager.from_queryset(TemplateQuerySet)()
 
     name = models.TextField()
 
@@ -2526,6 +2568,20 @@ class Template(CreateUpdateModel):
     fixed_categories = models.BooleanField(
         default=True,
     )
+
+    chain = models.ForeignKey(
+        'TemplateChain',
+        on_delete=models.CASCADE,
+        # TODO: Remove after manually fixing all archived templates
+        blank=True,
+        null=True,
+    )
+
+    def can_be_deleted(self):
+        return not (
+            PresetNode.objects.filter(forced_template=self).exists()
+            or Entry.objects.filter(template=self).exists()
+        )
 
     def to_string(self, user=None):
         return "Template"

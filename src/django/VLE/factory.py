@@ -175,10 +175,21 @@ def make_lti_groups(course):
 
 
 def make_default_format(due_date=None, points_possible=10):
-    format = VLE.models.Format()
-    format.save()
-    template = make_entry_template('Entry', format)
-    make_field(template, 'Content', 0, VLE.models.Field.RICH_TEXT, True)
+    format = VLE.models.Format.objects.create()
+
+    template = VLE.models.Template.objects.create(
+        name='Entry',
+        format=format,
+    )
+
+    VLE.models.Field.objects.create(
+        template=template,
+        title='Content',
+        location=0,
+        type=VLE.models.Field.RICH_TEXT,
+        required=True,
+    )
+
     if due_date and points_possible and int(points_possible) > 0:
         make_progress_node(format, due_date, points_possible)
     return format
@@ -222,31 +233,6 @@ def make_entry(template, author, node, category_ids=None):
         entry.node.save()
 
     return entry
-
-
-def make_entry_template(name, format, preset_only=False, fixed_categories=True):
-    """Make an entry template."""
-    return VLE.models.Template.objects.create(
-        name=name,
-        format=format,
-        preset_only=preset_only,
-        fixed_categories=fixed_categories
-    )
-
-
-def make_field(template, title, loc, type=VLE.models.Field.TEXT, required=True, description=None, options=None):
-    """Make a field."""
-    field = VLE.models.Field(
-        type=type,
-        title=title,
-        location=loc,
-        template=template,
-        required=required,
-        description=description,
-        options=options
-    )
-    field.save()
-    return field
 
 
 def make_content(entry, data, field=None):
