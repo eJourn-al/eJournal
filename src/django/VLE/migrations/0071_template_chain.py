@@ -4,7 +4,7 @@ import django.db.models.deletion
 from django.db import migrations, models
 
 
-def createTemplateChainsForNonArchivedTemplates(apps, schema_editor):
+def create_template_chains_for_non_archived_templates(apps, schema_editor):
     Template = apps.get_model('VLE', 'Template')
     TemplateChain = apps.get_model('VLE', 'TemplateChain')
 
@@ -13,6 +13,14 @@ def createTemplateChainsForNonArchivedTemplates(apps, schema_editor):
         template.chain = chain
         template.save()
 
+def delete_unused_archived_templates(apps, schema_editor):
+    Template = apps.get_model('VLE', 'Template')
+
+    Template.objects.filter(
+        archived=True,
+        presetnode__isnull=True,
+        entry__isnull=True,
+    ).delete()
 
 class Migration(migrations.Migration):
 
@@ -38,5 +46,6 @@ class Migration(migrations.Migration):
             name='chain',
             field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, to='VLE.TemplateChain'),
         ),
-        migrations.RunPython(createTemplateChainsForNonArchivedTemplates, reverse_code=lambda apps, schema_editor: None),
+        migrations.RunPython(create_template_chains_for_non_archived_templates, reverse_code=lambda apps, schema_editor: None),
+        migrations.RunPython(delete_unused_archived_templates, reverse_code=lambda apps, schema_editor: None),
     ]

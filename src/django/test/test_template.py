@@ -4,6 +4,7 @@ from test.utils.performance import QueryContext
 from django.db.utils import IntegrityError
 from django.test import TestCase
 
+import VLE.utils.template as template_utils
 from VLE.models import Assignment, Course, Field, Format, Journal, Template, TemplateChain
 from VLE.serializers import TemplateSerializer
 from VLE.utils.error_handling import VLEProgrammingError
@@ -42,6 +43,12 @@ class TemplateTest(TestCase):
         assert TemplateChain.objects.filter(template=template).count() == 1, \
             'A template chain is created alongside the new template'
 
+    def test_delete_floating_empty_template_chain(self):
+        chain = self.template.chain
+        assert chain.template_set.count() == 1
+        self.template.delete()
+        assert not TemplateChain.objects.filter(pk=chain.pk).exists()
+
     def test_template_delete_with_content(self):
         format = factory.Assignment(format__templates=[]).format
         template = factory.MentorgesprekTemplate(format=format)
@@ -72,6 +79,49 @@ class TemplateTest(TestCase):
 
         preset.delete()
         assert self.template.can_be_deleted(), 'No entry or preset remaining, entry can be deleted'
+
+    def test_delete_or_archive_templates_and_test_template_unused(self):
+        template = self.template
+        data = [{'id': template.pk}]
+
+        assert Template.objects.unused().filter(pk=template.pk).exists()
+        template_utils.delete_or_archive_templates(data)
+        assert not Template.objects.filter(pk=template.pk).exists(), \
+            'Without preset nodes or entries associated with the template, it can safely be deleted'
+
+        template = factory.Template(format=self.format, name='', add_fields=[{'type': Field.TEXT}])
+        data = [{'id': template.pk}]
+        preset = factory.DeadlinePresetNode(forced_template=template, format=self.format)
+        entry = factory.UnlimitedEntry(template=preset, node__journal=self.journal)
+        template_utils.delete_or_archive_templates(data)
+        template.refresh_from_db()
+        assert not Template.objects.unused().filter(pk=template.pk).exists()
+        assert template.archived, 'Cannot delete due to dependant preset and entry'
+        template.archived = False
+        template.save()
+
+        preset.delete()
+        template_utils.delete_or_archive_templates(data)
+        template.refresh_from_db()
+        assert not Template.objects.unused().filter(pk=template.pk).exists()
+        assert template.archived, 'Cannot delete due to dependant entry'
+        template.archived = False
+        template.save()
+
+        preset = factory.DeadlinePresetNode(forced_template=template, format=self.format)
+        entry.delete()
+        template_utils.delete_or_archive_templates(data)
+        template.refresh_from_db()
+        assert not Template.objects.unused().filter(pk=template.pk).exists()
+        assert template.archived, 'Cannot delete due to dependant preset'
+        template.archived = False
+        template.save()
+
+        preset.delete()
+        assert Template.objects.unused().filter(pk=template.pk).exists()
+        template_utils.delete_or_archive_templates(data)
+        assert not Template.objects.filter(pk=template.pk).exists(), \
+            'Without preset nodes or entries associated with the template, it can safely be deleted'
 
     def test_template_serializer(self):
         assignment = factory.Assignment(format__templates=False)

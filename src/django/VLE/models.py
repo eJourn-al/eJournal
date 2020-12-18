@@ -2512,18 +2512,20 @@ class TemplateChain(CreateUpdateModel):
 
 class TemplateQuerySet(models.QuerySet):
     def create(self, format, *args, **kwargs):
-        """Creates a template and starts a new chain in the same transaction."""
+        """Creates a template and starts a new chain if not provided in the same transaction."""
         with transaction.atomic():
-            template_chain = TemplateChain.objects.create(format=format)
-            return super().create(*args, **kwargs, format=format, chain=template_chain)
+            if not kwargs.get('chain', False):
+                kwargs['chain'] = TemplateChain.objects.create(format=format)
+            return super().create(*args, **kwargs, format=format)
 
-    def create_template_and_fields_from_data(self, data, format):
+    def create_template_and_fields_from_data(self, data, format, archived_template=None):
         with transaction.atomic():
             template = Template.objects.create(
                 name=data['name'],
                 format=format,
                 preset_only=data['preset_only'],
                 fixed_categories=data['fixed_categories'],
+                chain=archived_template.chain if archived_template else False,
             )
 
             fields = [
@@ -2540,7 +2542,16 @@ class TemplateQuerySet(models.QuerySet):
             ]
             Field.objects.bulk_create(fields)
 
+            if archived_template:
+                template.categories.set(archived_template.categories.all())
+
         return template
+
+    def unused(self):
+        return self.filter(
+            presetnode__isnull=True,
+            entry__isnull=True,
+        ).distinct()
 
 
 class Template(CreateUpdateModel):
@@ -2579,8 +2590,8 @@ class Template(CreateUpdateModel):
 
     def can_be_deleted(self):
         return not (
-            PresetNode.objects.filter(forced_template=self).exists()
-            or Entry.objects.filter(template=self).exists()
+            self.presetnode_set.exists()
+            or self.entry_set.exists()
         )
 
     def to_string(self, user=None):
@@ -2591,6 +2602,13 @@ class Template(CreateUpdateModel):
 def delete_pending_jirs_on_source_deletion(sender, instance, **kwargs):
     if Content.objects.filter(field__template=instance).exists():
         raise VLEProgrammingError('Content still exists which depends on a template being deleted.')
+
+
+@receiver(models.signals.post_delete, sender=Template)
+def delete_floating_empty_template_chain(sender, instance, **kwargs):
+    """Deletes the template's chain if no templates are left."""
+    if not instance.chain.template_set.exists():
+        instance.chain.delete()
 
 
 class Field(CreateUpdateModel):

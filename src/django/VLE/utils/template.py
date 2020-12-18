@@ -34,11 +34,6 @@ def _field_set_updated(template, data):
     )
 
 
-def _categories_changed(template, data):
-    # TODO Implement and test
-    return False
-
-
 def _should_be_archived(template, data):
     assert data['id'], 'Template can only be updated if it was already created'
 
@@ -46,7 +41,6 @@ def _should_be_archived(template, data):
         # QUESTION: What is the advantage of archiving the template if only the concrete fields change?
         _template_concrete_fields_updated(template, data)
         or _field_set_updated(template, data)
-        or _categories_changed(template, data)
     )
 
 
@@ -57,7 +51,7 @@ def handle_template_update(data, format, new_ids):
         current_template.archived = True
         current_template.save()
 
-        new_template = Template.objects.create_template_and_fields_from_data(data, format)
+        new_template = Template.objects.create_template_and_fields_from_data(data, format, current_template)
         new_ids[data['id']] = new_template.pk
 
         PresetNode.objects.filter(forced_template=current_template).update(forced_template=new_template)
@@ -90,5 +84,8 @@ def update_templates(format, templates_data):
     return new_ids
 
 
-def archive_templates(templates_data):
-    Template.objects.filter(pk__in=[template['id'] for template in templates_data]).update(archived=True)
+def delete_or_archive_templates(templates_data):
+    template_ids = [template['id'] for template in templates_data]
+
+    Template.objects.unused().filter(pk__in=template_ids).delete()
+    Template.objects.filter(pk__in=template_ids).update(archived=True)

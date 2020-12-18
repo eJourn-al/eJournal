@@ -133,7 +133,7 @@ class FormatView(viewsets.ViewSet):
         utils.update_presets(request.user, assignment, presets, new_ids)
 
         utils.delete_presets(removed_presets)
-        template_utils.archive_templates(removed_templates)
+        template_utils.delete_or_archive_templates(removed_templates)
 
         file_handling.establish_rich_text(author=request.user, rich_text=assignment.description, assignment=assignment)
         for field in Field.objects.filter(template__format=assignment.format):
