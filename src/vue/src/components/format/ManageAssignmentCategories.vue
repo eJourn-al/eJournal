@@ -4,13 +4,16 @@
         v-intro-step="4"
         class="d-block"
     >
-        <b-button
-            v-b-modal="'categories-modal'"
-            class="orange-button mt-2 full-width"
-        >
-            <icon name="layer-group"/>
-            Manage Categories
-        </b-button>
+        <div v-b-tooltip:hover="(disabled) ? 'First save the changes made to the assignment' : ''">
+            <b-button
+                v-b-modal="'categories-modal'"
+                class="orange-button mt-2 full-width"
+                :class="{'input-disabled': disabled}"
+            >
+                <icon name="layer-group"/>
+                Manage Categories
+            </b-button>
+        </div>
 
         <b-modal
             id="categories-modal"
@@ -129,6 +132,10 @@ export default {
         templates: {
             required: true,
             type: Array,
+        },
+        disabled: {
+            default: false,
+            type: Boolean,
         },
     },
     data () {

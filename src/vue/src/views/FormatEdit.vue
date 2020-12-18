@@ -228,6 +228,7 @@
                 Actions
             </h3>
             <manage-assignment-categories
+                :disabled="isChanged"
                 :templates="templates"
             />
         </b-col>
