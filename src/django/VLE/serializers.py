@@ -156,7 +156,7 @@ class CategorySerializer(serializers.ModelSerializer, EagerLoadingMixin):
         read_only_fields = ()
 
     prefetch_related = [
-        'templates',
+        Prefetch('templates', queryset=VLE.models.Template.objects.filter(archived=False)),
     ]
 
     templates = TemplateConcreteFieldsSerializer(many=True, read_only=True)
