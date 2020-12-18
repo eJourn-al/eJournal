@@ -227,7 +227,9 @@
             <h3 class="theme-h3">
                 Actions
             </h3>
+
             <manage-assignment-categories
+                ref="manageAssignmentCategories"
                 :disabled="isChanged"
                 :templates="templates"
             />
@@ -489,6 +491,8 @@ export default {
                     this.newTemplateId = -1
                     this.newPresetId = -1
                     this.currentNode = -1
+
+                    this.$refs.manageAssignmentCategories.fetchCategories()
                 })
                 .catch(() => { this.saveRequestInFlight = false })
         },

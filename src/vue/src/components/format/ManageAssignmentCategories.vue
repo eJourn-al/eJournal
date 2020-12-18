@@ -168,9 +168,13 @@ export default {
         },
     },
     created () {
-        categoryAPI.list(this.$route.params.aID).then((categories) => { this.categories = categories })
+        this.fetchCategories()
     },
     methods: {
+        /* Also called from FormatEdit */
+        fetchCategories () {
+            categoryAPI.list(this.$route.params.aID).then((categories) => { this.categories = categories })
+        },
         deleteCategory (category) {
             if (window.confirm(`Are you sure you want to delete ${category.name}?
 
