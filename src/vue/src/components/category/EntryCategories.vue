@@ -60,14 +60,12 @@
 
 <script>
 import CategoryDisplay from '@/components/category/CategoryDisplay'
-import ThemeSelect from '@/components/assets/ThemeSelect.vue'
 import categoryAPI from '@/api/category.js'
 
 export default {
     name: 'CategoryEdit',
     components: {
         CategoryDisplay,
-        ThemeSelect,
     },
     props: {
         entry: {

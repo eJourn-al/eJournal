@@ -11,6 +11,20 @@
                 ref="scd"
                 class="timeline-inner"
             >
+                <theme-select
+                    v-if="assignmentCategories"
+                    v-model="filteredCategories"
+                    class="mt-2"
+                    label="name"
+                    trackBy="id"
+                    :options="assignmentCategories"
+                    :multiple="true"
+                    :searchable="true"
+                    :multiSelectText="`${filteredCategories.length > 1 ? 'categories' : 'category'}`"
+                    placeholder="Filter By Category"
+                    @input="filterByCategory"
+                />
+
                 <div
                     v-if="$root.lgMax"
                     v-b-toggle.timeline-outer
@@ -28,7 +42,7 @@
                         @select-node="$emit('select-node', $event)"
                     />
                     <timeline-node
-                        v-for="(node, index) in nodes"
+                        v-for="(node, index) in filteredNodes"
                         :key="node.id"
                         :index="index"
                         :node="node"
@@ -69,7 +83,7 @@
                         @select-node="$emit('select-node', $event)"
                     />
                     <timeline-node
-                        v-for="(node, index) in nodes"
+                        v-for="(node, index) in filteredNodes"
                         :key="node.id"
                         :index="index"
                         :node="node"
@@ -135,9 +149,44 @@ export default {
         timelineNode,
     },
     props: ['selected', 'nodes', 'edit', 'assignment'],
+    data () {
+        return {
+            filteredCategories: [],
+            assignmentCategories: [],
+            filteredNodes: [],
+        }
+    },
+    created () {
+        this.filteredNodes = this.nodes
+
+        this.$store.dispatch('assignment/retrieve', { id: this.$route.params.aID })
+            .then((assignment) => { this.assignmentCategories = assignment.categories })
+    },
     methods: {
         isSelected (id) {
             return id === this.selected
+        },
+        hasCategory (categories, filters) {
+            return categories.some(category => filters.find(filteredCategory => category.id === filteredCategory.id))
+        },
+        filterByCategory (filters) {
+            if (filters.length === 0) {
+                this.filteredNodes = this.nodes
+                return
+            }
+
+            this.filteredNodes = this.filteredNodes.filter((node) => {
+                if (node.type === 'e') {
+                    return this.hasCategory(node.entry.categories, filters)
+                } else if (node.type === 'd') {
+                    if ('entry' in node && node.entry) {
+                        return this.hasCategory(node.entry.categories, filters)
+                    } else if (node.template.categories) {
+                        return this.hasCategory(node.template.categories, filters)
+                    }
+                }
+                return false
+            })
         },
     },
 }
