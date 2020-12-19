@@ -9,22 +9,26 @@ from django.db.utils import IntegrityError
 from django.test import TestCase
 from django.utils import timezone
 
-from VLE.models import Assignment, Category, EntryCategoryLink
+from VLE.models import Assignment, Category, EntryCategoryLink, Field
 from VLE.serializers import CategoryConcreteFieldsSerializer, CategorySerializer
 
 
 class CategoryAPITest(TestCase):
-    def setUp(self):
-        self.assignment = factory.Assignment()
-        self.assignment2 = factory.Assignment()
-        self.category = factory.Category(assignment=self.assignment, name='aaa', n_rt_files=1)
+    @classmethod
+    def setUpTestData(cls):
+        cls.assignment = factory.Assignment(format__templates=False)
+        cls.format = cls.assignment.format
+        cls.template = factory.Template(format=cls.format, add_fields=[{'type': Field.TEXT}])
+        cls.assignment2 = factory.Assignment(format__templates=False)
 
-        self.valid_creation_data = {
+        cls.category = factory.Category(assignment=cls.assignment, name='aaa', n_rt_files=1)
+
+        cls.valid_creation_data = {
             'name': 'Non empty',
             'description': '',
             'color': '#FFFF',
-            'assignment_id': self.assignment.pk,
-            'templates': list(self.assignment.format.template_set.values_list('pk', flat=True))
+            'assignment_id': cls.assignment.pk,
+            'templates': list(cls.assignment.format.template_set.values_list('pk', flat=True))
         }
 
     def test_category_factory(self):
@@ -91,6 +95,8 @@ class CategoryAPITest(TestCase):
             can_view_mock.assert_called_with(self.assignment)
 
     def test_category_create(self):
+        template2_of_chain = factory.Template(chain=self.template.chain, archived=True, format=self.format)
+
         creation_data = deepcopy(self.valid_creation_data)
         fc = factory.TempRichTextFileContext(author=self.assignment.author)
         creation_data['description'] = f"<p>TEXT</p><p>{_fc_to_rt_img_element(fc)}</p>"
@@ -106,6 +112,8 @@ class CategoryAPITest(TestCase):
         assert len(resp['templates']) == len(creation_data['templates'])
         assert all(template['id'] in creation_data['templates'] for template in resp['templates']), \
             'All templates are correctly linked'
+        assert template2_of_chain.categories.filter(pk=resp['id']).exists(), \
+            'The category is set for all templates part of the chain by default'
 
         fc.refresh_from_db()
         assert not fc.is_temp
@@ -117,13 +125,14 @@ class CategoryAPITest(TestCase):
 
     def test_category_patch(self):
         category = factory.Category(assignment=self.assignment)
+        template2_of_chain = factory.Template(chain=self.template.chain, archived=True, format=self.format)
 
         valid_patch_data = {
             'name': 'Non empty',
             'pk': category.pk,
             'description': 'description',
             'color': '#FFFF',
-            'templates': list(self.assignment.format.template_set.values_list('pk', flat=True))
+            'templates': list(self.assignment.format.template_set.filter(archived=False).values_list('pk', flat=True))
         }
 
         with mock.patch('VLE.models.User.check_permission') as check_permission_mock, mock.patch(
@@ -139,6 +148,8 @@ class CategoryAPITest(TestCase):
         assert len(resp['templates']) == len(valid_patch_data['templates'])
         assert all(template['id'] in valid_patch_data['templates'] for template in resp['templates']), \
             'All templates are correctly linked'
+        assert template2_of_chain.categories.filter(pk=resp['id']).exists(), \
+            'The category update affects all templates part of the chain by default'
 
     def test_category_delete(self):
         category = factory.Category(assignment=self.assignment)

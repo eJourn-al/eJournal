@@ -5,7 +5,7 @@ from rest_framework.decorators import action
 
 import VLE.utils.generic_utils as utils
 import VLE.utils.responses as response
-from VLE.models import Assignment, Category, Entry
+from VLE.models import Assignment, Category, Entry, Template
 from VLE.serializers import CategoryConcreteFieldsSerializer, CategorySerializer
 from VLE.utils import file_handling
 
@@ -91,7 +91,7 @@ class CategoryView(viewsets.ViewSet):
             category.name = name
             category.description = description
             category.color = color
-            category.templates.set(templates)
+            category.templates.set(Template.objects.full_chain(templates))
             category.save()
             file_handling.establish_rich_text(author=request.user, rich_text=description, category=category)
 

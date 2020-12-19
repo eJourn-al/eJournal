@@ -17,6 +17,7 @@ from django.db.models import (Case, CharField, CheckConstraint, Count, F, FloatF
                               Prefetch, Q, Subquery, Sum, TextField, Value, When)
 from django.db.models.deletion import CASCADE, SET_NULL
 from django.db.models.functions import Cast, Coalesce
+from django.db.models.query import QuerySet
 from django.dispatch import receiver
 from django.utils import timezone
 from django.utils.timezone import now
@@ -2553,6 +2554,11 @@ class TemplateQuerySet(models.QuerySet):
             entry__isnull=True,
         ).distinct()
 
+    def full_chain(self, templates):
+        if isinstance(templates, list) or isinstance(templates, QuerySet) or isinstance(templates, set):
+            return self.filter(chain__template__in=templates)
+        return self.filter(chain__template=templates)
+
 
 class Template(CreateUpdateModel):
     """Template.
@@ -2583,7 +2589,7 @@ class Template(CreateUpdateModel):
     chain = models.ForeignKey(
         'TemplateChain',
         on_delete=models.CASCADE,
-        # TODO: Remove after manually fixing all archived templates
+        # TODO: Remove blank and null after manually fixing all archived templates (after deploy?)
         blank=True,
         null=True,
     )
@@ -2909,13 +2915,20 @@ def validate_jir_before_save(sender, instance, **kwargs):
 
 
 class CategoryQuerySet(models.QuerySet):
-    def create(self, templates=None, *args, **kwargs):
-        """Creates a category, setting templates in the same transaction"""
+    def create(self, templates=None, update_template_chain=True, *args, **kwargs):
+        """
+        Creates a category, setting templates in the same transaction
+
+        If `update_template_chain`, the category will be linked to all templates part of the chain
+        """
         with transaction.atomic():
             category = super().create(*args, **kwargs)
 
             if templates is not None:
-                category.templates.set(templates)
+                if update_template_chain:
+                    category.templates.set(Template.objects.full_chain(templates))
+                else:
+                    category.templates.set(templates)
 
             file_handling.establish_rich_text(author=category.author, rich_text=category.description, category=category)
 

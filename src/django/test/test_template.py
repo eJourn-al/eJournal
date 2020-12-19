@@ -11,25 +11,24 @@ from VLE.utils.error_handling import VLEProgrammingError
 
 
 class TemplateTest(TestCase):
-    def setUp(self):
-        self.assignment = factory.Assignment(format__templates=False)
-        self.format = self.assignment.format
-        self.template = factory.Template(format=self.format, name='Text', add_fields=[{'type': Field.TEXT}])
-        self.journal = factory.Journal(assignment=self.assignment, entries__n=0)
+    @classmethod
+    def setUpTestData(cls):
+        cls.assignment = factory.Assignment(format__templates=False)
+        cls.format = cls.assignment.format
+        cls.template = factory.Template(format=cls.format, name='Text', add_fields=[{'type': Field.TEXT}])
+        cls.journal = factory.Journal(assignment=cls.assignment, entries__n=0)
 
     def test_template_without_format(self):
         self.assertRaises(IntegrityError, factory.Template)
 
     def test_template_factory(self):
-        assignment = factory.Assignment()
-
         t_c = Template.objects.count()
         a_c = Assignment.objects.count()
         j_c = Journal.objects.count()
         c_c = Course.objects.count()
         f_c = Format.objects.count()
 
-        template = factory.Template(format=assignment.format)
+        template = factory.Template(format=self.assignment.format)
         assert not template.field_set.exists(), 'By default a template should be iniated without fields'
 
         assert f_c == Format.objects.count(), 'No additional format is generated'
@@ -38,26 +37,42 @@ class TemplateTest(TestCase):
         assert j_c == Journal.objects.count(), 'No journals should be generated'
         assert t_c + 1 == Template.objects.count(), 'One template should be generated'
 
+    def test_full_chain(self):
+        template1_of_chain1 = Template.objects.create(format=self.format)
+        template1_of_chain2 = Template.objects.create(format=self.format)
+
+        assert Template.objects.full_chain(template1_of_chain1).get() == template1_of_chain1, \
+            'The full chain of a single template is the template itself'
+
+        template2_of_chain1 = Template.objects.create(format=self.format, chain=template1_of_chain1.chain)
+        assert template2_of_chain1.chain == template1_of_chain1.chain
+        assert set(Template.objects.full_chain(template1_of_chain1)) == set([template1_of_chain1, template2_of_chain1])
+        assert set(Template.objects.full_chain(template2_of_chain1)) == set([template1_of_chain1, template2_of_chain1])
+
+        template2_of_chain2 = Template.objects.create(format=self.format, chain=template1_of_chain2.chain)
+        assert set(Template.objects.full_chain([template1_of_chain1, template1_of_chain2])) \
+            == set([template1_of_chain1, template2_of_chain1, template1_of_chain2, template2_of_chain2])
+
     def test_template_create(self):
         template = Template.objects.create(format=self.format)
         assert TemplateChain.objects.filter(template=template).count() == 1, \
             'A template chain is created alongside the new template'
 
     def test_delete_floating_empty_template_chain(self):
-        chain = self.template.chain
+        template = factory.Template(format=self.format, add_fields=[{'type': Field.TEXT}])
+        chain = template.chain
         assert chain.template_set.count() == 1
-        self.template.delete()
+        template.delete()
         assert not TemplateChain.objects.filter(pk=chain.pk).exists()
 
     def test_template_delete_with_content(self):
-        format = factory.Assignment(format__templates=[]).format
-        template = factory.MentorgesprekTemplate(format=format)
+        template = factory.MentorgesprekTemplate(format=self.format)
 
         # It should be no issue to delete a template without content
         template.delete()
 
-        template = factory.MentorgesprekTemplate(format=format)
-        factory.Journal(assignment=format.assignment, entries__n=1)
+        template = factory.MentorgesprekTemplate(format=self.format)
+        factory.UnlimitedEntry(node__journal=self.journal, template=template)
 
         # If any content relies on a template, it should not be possible to delete the template
         self.assertRaises(VLEProgrammingError, template.delete)
@@ -89,10 +104,10 @@ class TemplateTest(TestCase):
         assert not Template.objects.filter(pk=template.pk).exists(), \
             'Without preset nodes or entries associated with the template, it can safely be deleted'
 
-        template = factory.Template(format=self.format, name='', add_fields=[{'type': Field.TEXT}])
+        template = factory.Template(format=self.format, add_fields=[{'type': Field.TEXT}])
         data = [{'id': template.pk}]
         preset = factory.DeadlinePresetNode(forced_template=template, format=self.format)
-        entry = factory.UnlimitedEntry(template=preset, node__journal=self.journal)
+        entry = factory.UnlimitedEntry(template=template, node__journal=self.journal)
         template_utils.delete_or_archive_templates(data)
         template.refresh_from_db()
         assert not Template.objects.unused().filter(pk=template.pk).exists()
@@ -124,8 +139,7 @@ class TemplateTest(TestCase):
             'Without preset nodes or entries associated with the template, it can safely be deleted'
 
     def test_template_serializer(self):
-        assignment = factory.Assignment(format__templates=False)
-        format = assignment.format
+        format = self.format
 
         def add_state():
             factory.Template(
@@ -166,7 +180,7 @@ class TemplateTest(TestCase):
                 check_field_set_serialization_order(template)
 
         def test_template_instance_serializer():
-            template = factory.Template(format=format, add_fields=[
+            template = factory.Template(format=self.format, add_fields=[
                 {'type': Field.TEXT, 'location': 1},
                 {'type': Field.URL, 'location': 0}
             ])
