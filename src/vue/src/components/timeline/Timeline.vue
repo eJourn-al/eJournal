@@ -12,12 +12,12 @@
                 class="timeline-inner"
             >
                 <theme-select
-                    v-if="assignmentCategories"
+                    v-if="$store.getters['category/assignmentCategories']"
                     v-model="filteredCategories"
                     class="mt-2"
                     label="name"
                     trackBy="id"
-                    :options="assignmentCategories"
+                    :options="$store.getters['category/assignmentCategories']"
                     :multiple="true"
                     :searchable="true"
                     :multiSelectText="`${filteredCategories.length > 1 ? 'categories' : 'category'}`"
@@ -152,15 +152,11 @@ export default {
     data () {
         return {
             filteredCategories: [],
-            assignmentCategories: [],
             filteredNodes: [],
         }
     },
     created () {
         this.filteredNodes = this.nodes
-
-        this.$store.dispatch('assignment/retrieve', { id: this.$route.params.aID })
-            .then((assignment) => { this.assignmentCategories = assignment.categories })
     },
     methods: {
         isSelected (id) {

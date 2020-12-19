@@ -117,7 +117,6 @@
 <script>
 import CategoryDisplay from '@/components/category/CategoryDisplay.vue'
 import CategoryEdit from '@/components/category/CategoryEdit.vue'
-import categoryAPI from '@/api/category.js'
 import colorUtils from '@/utils/colors.js'
 import loadSpinner from '@/components/loading/LoadSpinner.vue'
 
@@ -155,9 +154,16 @@ export default {
                     label: '',
                 },
             ],
-            categories: null,
             createCall: null,
         }
+    },
+    computed: {
+        categories: {
+            set () {
+                /* Could be a strict mutation, but we allow _showDetails to be set in this component for ease of use */
+            },
+            get () { return this.$store.getters['category/assignmentCategories'] },
+        },
     },
     watch: {
         newCategory: {
@@ -167,21 +173,13 @@ export default {
             },
         },
     },
-    created () {
-        this.fetchCategories()
-    },
     methods: {
-        /* Also called from FormatEdit */
-        fetchCategories () {
-            categoryAPI.list(this.$route.params.aID).then((categories) => { this.categories = categories })
-        },
         deleteCategory (category) {
             if (window.confirm(`Are you sure you want to delete ${category.name}?
 
 This action will also immediately remove the category from any associated entries. \
 This action cannot be undone.`)) {
-                categoryAPI.delete(category.id)
-                    .then(() => { this.categories = this.categories.filter(elem => elem.id !== category.id) })
+                this.$store.dispatch('category/delete', { id: category.id })
             }
         },
         addCategory () {
@@ -203,12 +201,9 @@ This action cannot be undone.`)) {
                 payload.templates = this.newCategory.templates.map(elem => elem.id)
                 payload.assignment_id = this.$route.params.aID
 
-                categoryAPI.create(payload)
+                this.$store.dispatch('category/create', { data: payload })
                     .then((category) => {
-                        const latestCopy = JSON.parse(JSON.stringify(this.newCategory))
-                        latestCopy._showDetails = true
-                        latestCopy.id = category.id
-                        this.categories.push(latestCopy)
+                        this.$set(category, '_showDetails', true)
                         this.newCategory = null
                     })
             }, 3000)

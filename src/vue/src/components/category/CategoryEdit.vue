@@ -37,9 +37,7 @@
 </template>
 
 <script>
-import ColorPicker from 'vue-color-picker-wheel';
-import categoryAPI from '@/api/category.js'
-
+import ColorPicker from 'vue-color-picker-wheel'
 
 export default {
     name: 'CategoryEdit',
@@ -80,7 +78,9 @@ export default {
             const payload = JSON.parse(JSON.stringify(data))
             payload.templates = data.templates.map(elem => elem.id)
 
-            this.updateCall = window.setTimeout(() => { categoryAPI.update(payload.id, payload) }, 3000)
+            this.updateCall = window.setTimeout(() => {
+                this.$store.dispatch('category/update', { id: payload.id, data: payload })
+            }, 3000)
         },
     },
 }

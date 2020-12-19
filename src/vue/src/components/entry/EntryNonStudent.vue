@@ -66,7 +66,7 @@
             />
 
             <entry-categories
-                :id="`entry-${entryNode.entry.id}-category-edit`"
+                :id="`entry-${entryNode.entry.id}-entry-categories`"
                 :entry="entryNode.entry"
                 :create="false"
                 :template="entryNode.entry.template"

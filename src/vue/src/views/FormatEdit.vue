@@ -492,7 +492,7 @@ export default {
                     this.newPresetId = -1
                     this.currentNode = -1
 
-                    this.$refs.manageAssignmentCategories.fetchCategories()
+                    this.$store.dispatch('category/list', { aID: this.$route.params.aID, force: true })
                 })
                 .catch(() => { this.saveRequestInFlight = false })
         },

@@ -210,7 +210,9 @@ router.beforeEach((to, from, next) => {
 })
 
 router.afterEach((to) => {
-    if ('aID' in to.params) { store.dispatch('assignment/retrieve', { id: to.params.aID }) }
+    if ('aID' in to.params) {
+        store.dispatch('category/list', { aID: to.params.aID })
+    }
 })
 
 

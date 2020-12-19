@@ -16,7 +16,7 @@
         >
             <b-badge
                 v-if="editable"
-                v-b-modal="'category-edit'"
+                v-b-modal="'edit-entry-categories'"
                 pill
             >
                 Add
@@ -28,9 +28,9 @@
         </category-display>
 
         <b-modal
-            id="category-edit"
+            id="edit-entry-categories"
             size="lg"
-            title="Edit categories"
+            title="Edit entry categories"
             hideFooter
             noEnforceFocus
         >
@@ -45,7 +45,7 @@
                     v-model="entry.categories"
                     label="name"
                     trackBy="id"
-                    :options="assignmentCategories"
+                    :options="$store.getters['category/assignmentCategories']"
                     :multiple="true"
                     :searchable="true"
                     :multiSelectText="`${entry.categories && entry.categories.length > 1 ? 'categories' : 'category'}`"
@@ -60,7 +60,6 @@
 
 <script>
 import CategoryDisplay from '@/components/category/CategoryDisplay'
-import categoryAPI from '@/api/category.js'
 
 export default {
     name: 'CategoryEdit',
@@ -93,11 +92,6 @@ export default {
             default: true,
         },
     },
-    data () {
-        return {
-            assignmentCategories: [],
-        }
-    },
     computed: {
         editable () {
             return this.$hasPermission('can_grade') || ((this.edit || this.create) && !this.template.fixed_categories)
@@ -107,18 +101,16 @@ export default {
         if (this.create || !('categories' in this.entry)) {
             this.$set(this.entry, 'categories', JSON.parse(JSON.stringify(this.template.categories)))
         }
-
-        this.$store.dispatch('assignment/retrieve', { id: this.$route.params.aID })
-            .then((assignment) => {
-                this.assignmentCategories = assignment.categories
-            })
     },
     methods: {
         removeCategory (category) {
             if (this.create || !this.autosave) {
                 this.entry.categories = this.entry.categories.filter(elem => elem.id !== category.id)
             } else {
-                categoryAPI.editEntry(category.id, { entry_id: this.entry.id, add: false })
+                this.$store.dispatch(
+                    'category/editEntry',
+                    { id: category.id, data: { entry_id: this.entry.id, add: false } },
+                )
                     .then(() => {
                         this.entry.categories = this.entry.categories.filter(elem => elem.id !== category.id)
                     })
@@ -126,7 +118,10 @@ export default {
         },
         addCategory (category) {
             if (!this.create && this.autosave) {
-                categoryAPI.editEntry(category.id, { entry_id: this.entry.id, add: true })
+                this.$store.dispatch(
+                    'category/editEntry',
+                    { id: category.id, data: { entry_id: this.entry.id, add: true } },
+                )
             }
         },
     },
