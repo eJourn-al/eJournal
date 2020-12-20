@@ -2358,8 +2358,6 @@ class Entry(CreateUpdateModel):
                 'author': author,
             },
         )
-        if not EntryCategoryLink.objects.filter(entry=self, category=category).exists():
-            EntryCategoryLink.objects.create(entry=self, category=category, author=author)
 
     def set_categories(self, new_category_ids, author):
         """Should be used over entry.categories.set() so the author is set for all links"""
