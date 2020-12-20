@@ -2349,6 +2349,15 @@ class Entry(CreateUpdateModel):
 
     def add_category(self, category, author):
         """Should be used over entry.categories.add() so the author is set and the link can be reused."""
+        EntryCategoryLink.objects.get_or_create(
+            entry=self,
+            category=category,
+            defaults={
+                'entry': self,
+                'category': category,
+                'author': author,
+            },
+        )
         if not EntryCategoryLink.objects.filter(entry=self, category=category).exists():
             EntryCategoryLink.objects.create(entry=self, category=category, author=author)
 
