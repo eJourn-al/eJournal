@@ -201,7 +201,6 @@ class CategoryAPITest(TestCase):
 
         def test_as_admin():
             admin = factory.Admin()
-            # QUESTION: Should superusers be blocked from grading (and thus fail user.has_permission('can_grade'))?
             api.patch(self, 'categories/edit_entry', params={**params}, user=admin, status=200)
 
         def test_category_linked_to_entry_assignment():
