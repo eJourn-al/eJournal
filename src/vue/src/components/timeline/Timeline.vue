@@ -151,9 +151,16 @@ export default {
     props: ['selected', 'nodes', 'edit', 'assignment'],
     data () {
         return {
-            filteredCategories: [],
             filteredNodes: [],
         }
+    },
+    computed: {
+        filteredCategories: {
+            set (value) {
+                this.$store.commit('category/setFilteredCategories', value)
+            },
+            get () { return this.$store.getters['category/filteredCategories'] },
+        },
     },
     created () {
         this.filteredNodes = this.nodes

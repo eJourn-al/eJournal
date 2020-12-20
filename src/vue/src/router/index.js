@@ -209,9 +209,13 @@ router.beforeEach((to, from, next) => {
     } else { next() }
 })
 
-router.afterEach((to) => {
+router.afterEach((to, from) => {
     if ('aID' in to.params) {
         store.dispatch('category/list', { aID: to.params.aID })
+
+        if ('aID' in from.params && parseInt(to.params.aID, 10) !== parseInt(from.params.aID, 10)) {
+            store.commit('category/clearFilteredCategories')
+        }
     }
 })
 

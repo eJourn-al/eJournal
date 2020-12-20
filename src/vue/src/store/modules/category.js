@@ -18,6 +18,7 @@ const getters = {
         return []
     },
     assignmentsCategories: state => state.assignmentCategories,
+    filteredCategories: state => state.filteredCategories,
 }
 
 const mutations = {
@@ -29,6 +30,12 @@ const mutations = {
     },
     addAssignmentCategory (state, { aID, category }) {
         state.assignmentsCategories[aID].push(category)
+    },
+    setFilteredCategories (state, filteredCategories) {
+        state.filteredCategories = filteredCategories
+    },
+    clearFilteredCategories (state) {
+        state.filteredCategories = []
     },
 }
 
@@ -95,6 +102,9 @@ const actions = {
             return auth.delete(`categories/${id}`, null, connArgs)
                 .then((response) => {
                     const newAssignmentCategories = context.getters.assignmentCategories.filter(elem => elem.id !== id)
+                    const updatedFilteredCategories = context.getters.filteredCategories.filter(elem => elem.id !== id)
+
+                    context.commit('setFilteredCategories', updatedFilteredCategories)
                     context.commit(
                         'updateAssignmentCategories',
                         { aID: router.currentRoute.params.aID, categories: newAssignmentCategories },
@@ -122,6 +132,7 @@ export default {
         assignmentsCategories: {},
         listCache: {},
         deleteCache: {},
+        filteredCategories: [],
     },
     getters,
     mutations,
