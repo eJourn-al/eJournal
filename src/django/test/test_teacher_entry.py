@@ -305,9 +305,7 @@ class TeacherEntryAPITest(TestCase):
         assert EntryCategoryLink.objects.filter(category=self.category, entry=entry, author=self.teacher).exists()
         assert EntryCategoryLink.objects.filter(category=self.category2, entry=entry, author=self.teacher).exists()
 
-        # QUESTION: Do you agree with the behaviour outlined in the blocks below (teacher entry category updates
-        # are kept in sync with all associated entries)?
-
+        # Updating the categories of a TE should sync the categories of all associated entries.
         two_categories = deepcopy(valid_update_params)
         two_categories['category_ids'] = [self.category.pk, self.category2.pk]
 
