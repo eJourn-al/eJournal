@@ -126,7 +126,7 @@ class CategoryView(viewsets.ViewSet):
             pass  # A category can always be changed by someone with the permission to grade.
         elif request.user.has_permission('can_have_journal', assignment):
             if template.fixed_categories:
-                return response.forbidden('This entry\'s template\'s categories are fixed.')
+                return response.forbidden('This entry\'s categories are locked.')
             if not request.user.can_edit(entry):
                 return response.forbidden('You can no longer edit the entry\'s categories.')
         else:

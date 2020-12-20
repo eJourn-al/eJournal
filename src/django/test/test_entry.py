@@ -1012,5 +1012,7 @@ class EntryAPITest(TestCase):
         entry.add_category(category, student)
         link_student = category.entrycategorylink_set.get(entry=entry, author=student)
         entry.add_category(category, teacher)
-        link_teacher = category.entrycategorylink_set.get(entry=entry, author=teacher)
-        assert link_student == link_teacher, 'Row can be reused, and author is updated.'
+        link_teacher = category.entrycategorylink_set.get(entry=entry)
+        assert link_student == link_teacher, 'Row can be reused.'
+        assert link_student.author == student == link_teacher.author, \
+            'Author should not be changed if the category was already part of the entry'

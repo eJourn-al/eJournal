@@ -395,7 +395,7 @@ class User(AbstractUser):
         return VLE.permissions.can_edit(self, obj)
 
     def check_can_edit(self, obj):
-        if not VLE.permissions.can_edit(self, obj):
+        if not self.can_edit(obj):
             raise VLEPermissionError(message='You are not allowed to edit {}'.format(str(obj)))
 
     def to_string(self, user=None):
@@ -2349,12 +2349,7 @@ class Entry(CreateUpdateModel):
 
     def add_category(self, category, author):
         """Should be used over entry.categories.add() so the author is set and the link can be reused."""
-        link = EntryCategoryLink.objects.filter(entry=self, category=category).first()
-
-        if link:
-            link.author = author
-            link.save()
-        else:
+        if not EntryCategoryLink.objects.filter(entry=self, category=category).exists():
             EntryCategoryLink.objects.create(entry=self, category=category, author=author)
 
     def set_categories(self, new_category_ids, author):
