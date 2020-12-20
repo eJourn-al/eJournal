@@ -35,6 +35,13 @@ def _field_set_updated(template, data):
 
 
 def _should_be_archived(template, data):
+    """
+    A template should also be archived when any of its concrete fields change.
+
+    This is done for consistency, e.g. when template name is updated it could
+    no longer matched the entry created using an older version.
+    """
+
     assert data['id'], 'Template can only be updated if it was already created'
 
     return (
