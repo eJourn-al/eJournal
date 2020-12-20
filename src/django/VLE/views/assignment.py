@@ -447,7 +447,8 @@ class AssignmentView(viewsets.ViewSet):
         """
         course_id, months_offset = utils.required_typed_params(request.data, (int, 'course_id'), (int, 'months_offset'))
         course = Course.objects.get(pk=course_id)
-        assignment_source = Assignment.objects.get(pk=pk)
+        assignment_source_id = pk
+        assignment_source = Assignment.objects.get(pk=assignment_source_id)
 
         request.user.check_permission('can_add_assignment', course)
         request.user.check_permission('can_edit_assignment', assignment_source)
@@ -469,6 +470,8 @@ class AssignmentView(viewsets.ViewSet):
         assignment.format = format
         assignment.save()
 
+        assignment_source = Assignment.objects.get(pk=assignment_source_id)
+
         # Many to many field requires manual update, only set the course we are importing into
         assignment.courses.set([])
         assignment.add_course(course)
@@ -480,6 +483,20 @@ class AssignmentView(viewsets.ViewSet):
             source_template_id = template.pk
             import_utils.import_template(template, assignment)
             template_dict[source_template_id] = template.pk
+
+        source_target_categories_zip = import_utils.bulk_import_assignment_categories(
+            source_assignment=assignment_source,
+            target_assignment=assignment,
+            author=request.user,
+        )
+
+        # Link the new categories to the newly created templates, similar to the source assignment
+        for source_category, target_category in source_target_categories_zip:
+            source_templates = [
+                template_dict[source_category_id]
+                for source_category_id in source_category.templates.values_list('pk', flat=True)
+            ]
+            target_category.templates.set(source_templates)
 
         journals = assignment.journal_set.all()
         for preset in PresetNode.objects.filter(format=source_format_id):

@@ -4,7 +4,7 @@ Model import helper functionality
 
 from django.core.files.base import ContentFile
 
-from VLE.models import Comment, Entry, Field, FileContext, Grade, JournalImportRequest, Node
+from VLE.models import Category, Comment, Entry, Field, FileContext, Grade, JournalImportRequest, Node
 from VLE.utils.error_handling import VLEProgrammingError
 
 
@@ -219,6 +219,35 @@ def import_template(template, assignment, archived=None):
         field.save()
 
     return template
+
+
+def bulk_import_assignment_categories(source_assignment, target_assignment, author):
+    """
+    Bulk creates categories for the target assignment with the same concrete fields as those found in the source
+    assignment.
+
+    Does not link the newly created categories to matching templates
+
+    Returns a zip of ordered: (source, target) categories.
+    """
+    source_categories = source_assignment.categories.all()
+
+    new_categories = []
+    for category in source_categories:
+        category.pk = None
+        category.assignment = target_assignment
+        category.author = author
+        new_categories.append(category)
+    Category.objects.bulk_create(new_categories)
+
+    # QUESTION: Copy any associated files? Might not be needed -> Edit in source means target still refs the source fc
+    # Provided access to the fc is only by access id, this should be fine?
+
+    # Use the fact that names are unique at the DB level to map between old and new categories
+    source_categories = source_assignment.categories.order_by('name')
+    target_categories = target_assignment.categories.order_by('name')
+
+    return zip(source_categories, target_categories)
 
 
 def copy_entry(old_entry, node=None, grade=None, vle_coupling=None, teacher_entry=None, jir=None):

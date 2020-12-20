@@ -16,7 +16,7 @@ from django.test.utils import override_settings
 from django.utils import timezone
 
 import VLE.utils.statistics as stats_utils
-from VLE.models import (Assignment, AssignmentParticipation, Course, Entry, Field, Format, Journal,
+from VLE.models import (Assignment, AssignmentParticipation, Category, Course, Entry, Field, Format, Journal,
                         JournalImportRequest, Node, Participation, PresetNode, Role, Template)
 from VLE.serializers import AssignmentSerializer, SmallAssignmentSerializer
 from VLE.utils.error_handling import VLEParticipationError, VLEProgrammingError
@@ -24,17 +24,18 @@ from VLE.views.assignment import day_neutral_datetime_increment, set_assignment_
 
 
 class AssignmentAPITest(TestCase):
-    def setUp(self):
-        self.teacher = factory.Teacher()
-        self.admin = factory.Admin()
-        self.course = factory.Course(author=self.teacher)
-        self.student = factory.Student()
-        self.participating = factory.Participation(user=self.student, course=self.course)
-        self.create_params = {
+    @classmethod
+    def setUpTestData(cls):
+        cls.admin = factory.Admin()
+        cls.teacher = factory.Teacher()
+        cls.course = factory.Course(author=cls.teacher)
+        cls.student = factory.Participation(course=cls.course).user
+
+        cls.create_params = {
             'name': 'test',
             'description': 'test_description',
             'points_possible': 10,
-            'course_id': self.course.pk
+            'course_id': cls.course.pk
         }
 
     def test_rest(self):
@@ -44,7 +45,7 @@ class AssignmentAPITest(TestCase):
                       get_params={'course_id': self.course.pk},
                       update_params={'description': 'test_description2'},
                       delete_params={'course_id': self.course.pk},
-                      user=factory.Admin())
+                      user=self.admin)
 
         # Test the basic rest functionality as a teacher
         api.test_rest(self, 'assignments',
@@ -98,7 +99,7 @@ class AssignmentAPITest(TestCase):
         assert Participation.objects.filter(role=teacher_role, user=assignment.author, course=course).exists(), \
             'Assignment author is an actual teacher in the associated course'
 
-        teacher = factory.Teacher()
+        teacher = self.teacher
         course2 = factory.Course()
         assignment2 = factory.Assignment(courses=[course, course2], author=teacher)
         assert assignment2.author.pk == teacher.pk, 'Assignment author can be specified manually as well'
@@ -348,7 +349,7 @@ class AssignmentAPITest(TestCase):
         api.update(self, 'assignments', params={'pk': assignment['id'], 'is_published': True},
                    user=self.teacher)
         api.update(self, 'assignments', params={'pk': assignment['id'], 'is_published': True},
-                   user=factory.Admin())
+                   user=self.admin)
 
         # Test script sanitation
         params = {
@@ -394,7 +395,7 @@ class AssignmentAPITest(TestCase):
         assert assignment.active_lti_id in course.assignment_lti_id_set, \
             'assignment lti_id should be in assignment_lti_id_set of course before anything is deleted'
         # Test if deletion is possible to delete assignment if it has only one lti id
-        api.delete(self, 'assignments', params={'pk': assignment.pk, 'course_id': course.pk}, user=factory.Admin())
+        api.delete(self, 'assignments', params={'pk': assignment.pk, 'course_id': course.pk}, user=self.admin)
         assert assignment.active_lti_id not in Course.objects.get(pk=course.pk).assignment_lti_id_set, \
             'assignment lti_id should get removed from the assignment_lti_id_set from the course'
         assignment = factory.LtiAssignment()
@@ -405,13 +406,13 @@ class AssignmentAPITest(TestCase):
         assignment.save()
         # Test is deletion is not possible from connected LTI course
         api.delete(
-            self, 'assignments', params={'pk': assignment.pk, 'course_id': course.pk}, user=factory.Admin(), status=400)
+            self, 'assignments', params={'pk': assignment.pk, 'course_id': course.pk}, user=self.admin, status=400)
         # Test is deletion is possible from other course
         api.delete(
-            self, 'assignments', params={'pk': assignment.pk, 'course_id': course2.pk}, user=factory.Admin())
+            self, 'assignments', params={'pk': assignment.pk, 'course_id': course2.pk}, user=self.admin)
 
     def test_importable(self):
-        teacher = factory.Teacher()
+        teacher = self.teacher
         course = factory.Course(author=teacher)
         assignment = factory.Assignment(courses=[course])
 
@@ -437,7 +438,7 @@ class AssignmentAPITest(TestCase):
         end2018_2019 = start2019_2020 - relativedelta(days=1)
         end2019_2020 = datetime.datetime(year=2020, month=9, day=1) - relativedelta(days=1)
 
-        teacher = factory.Teacher()
+        teacher = self.teacher
         course = factory.Course(
             author=teacher,
             startdate=start2018_2019,
@@ -642,6 +643,57 @@ class AssignmentAPITest(TestCase):
         assert relativedelta(created_progress_node.lock_date, source_progress_node.lock_date).years == 1 and \
             created_progress_node.lock_date.month == source_progress_node.lock_date.month, \
             'Deadline should shift 1 year but otherwise be similar'
+
+    def test_assignment_copy_templates_and_categories(self):
+        target_course = factory.Course(author=self.teacher)
+
+        source_course = self.course
+        source_assignment = factory.Assignment(courses=[source_course], format__templates=False)
+        source_format = source_assignment.format
+        source_template = factory.Template(format=source_format, name='Template1', add_fields=[{'type': Field.TEXT}])
+        source_template2 = factory.Template(format=source_format, name='Template2', add_fields=[{'type': Field.TEXT}])
+        source_category = factory.Category(assignment=source_assignment)
+        source_category2 = factory.Category(assignment=source_assignment)
+        source_template.categories.add(source_category)
+        source_template.categories.add(source_category2)
+        source_template2.categories.add(source_category)
+
+        resp = api.post(self, 'assignments/{}/copy'.format(source_assignment.pk), params={
+            'course_id': target_course.pk,
+            'months_offset': 0,
+        }, user=self.teacher)
+
+        assignment_copy = Assignment.objects.get(pk=resp['assignment_id'])
+        assert assignment_copy.categories.count() == source_assignment.categories.count()
+        assert assignment_copy.format.template_set.count() == source_assignment.format.template_set.count()
+
+        for source_category in source_assignment.categories.all():
+            target_category = Category.objects.get(name=source_category.name, assignment=assignment_copy)
+            assert equal_models(
+                source_category,
+                target_category,
+                ignore_keys=['id', 'creation_date', 'update_date', 'assignment', 'templates']
+            ), 'Category is succesfully copied'
+            assert source_category.templates.count() == target_category.templates.count()
+
+            for source_category_template in source_category.templates.all():
+                # The copied category is linked to a new template which is equal to the old
+                # We use unique templates names to simplify the test
+                target_category_template = target_category.templates.get(
+                    name=source_category_template.name,
+                    preset_only=source_category_template.preset_only,
+                    archived=source_category_template.archived,
+                    fixed_categories=source_category_template.fixed_categories,
+                )
+                for source_field, target_field in zip(
+                    source_category_template.field_set.order_by('location'),
+                    target_category_template.field_set.order_by('location')
+                ):
+                    assert equal_models(
+                        source_field,
+                        target_field,
+                        ignore_keys=['id', 'template', 'creation_date', 'update_date']
+                    ), 'Of the linked templates the fields are equal'
 
     def test_upcoming_basic(self):
         course = factory.Course()
@@ -896,7 +948,7 @@ class AssignmentAPITest(TestCase):
         c1p1 = factory.Participation(course=c1).user.pk
         c1p2 = factory.Participation(course=c1).user.pk
         c2p1 = factory.Participation(course=c2).user.pk
-        both = factory.Teacher()
+        both = self.teacher
         a = factory.Assignment(courses=[c1, c2], author=both)
         c1set = [c1p1, c1p2, c1.author.pk, both.pk]
         c2set = [c2p1, c2.author.pk, both.pk]
@@ -1194,7 +1246,7 @@ class AssignmentAPITest(TestCase):
         j1 = factory.GroupJournal(assignment=assignment)
         j1.add_author(ap3_in_journal)
         t1 = factory.Participation(
-            user=factory.Teacher(), course=assignment.courses.first(),
+            user=self.teacher, course=assignment.courses.first(),
             role=Role.objects.get(course=assignment.courses.first(), name='Teacher'))
         t2 = assignment.author
 
@@ -1213,7 +1265,7 @@ class AssignmentAPITest(TestCase):
         assert t2.pk not in ids, 'check if author of assignment is not in response'
 
     def test_get_templates(self):
-        teacher = factory.Teacher()
+        teacher = self.teacher
         course = factory.Course(author=teacher)
         assignment = factory.Assignment(courses=[course])
 
@@ -1301,7 +1353,7 @@ class AssignmentAPITest(TestCase):
             'Incorrect formatted lines should return error'
 
         # Non related teachers should not be able to update the bonus points
-        test_bonus_helper('{},2'.format(lti_bonus_student.username), user=factory.Teacher(), status=403)
+        test_bonus_helper('{},2'.format(lti_bonus_student.username), user=self.teacher, status=403)
         # Nor should students
         test_bonus_helper('{},2'.format(lti_bonus_student.username), user=lti_bonus_student, status=403)
 
