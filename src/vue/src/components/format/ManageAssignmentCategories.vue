@@ -1,6 +1,6 @@
 <template>
     <div
-        v-intro="'TODO'"
+        v-intro="'Categories can be linked to student entries and be used to filter the timeline.'"
         v-intro-step="4"
         class="d-block"
     >
@@ -30,7 +30,7 @@
                 </h2>
 
                 <p>
-                    Categories can be attached to entries and be used to filter the timeline.
+                    Categories can be linked to entries and be used to filter the timeline.
                     <br/><br/>
                     You can choose to link specific templates to categories. When a student makes use of these templates
                     to create an entry, the category will be linked to the entry by default.

@@ -2,7 +2,6 @@ import Vue from 'vue'
 import auth from '@/api/auth.js'
 import router from '@/router/index.js'
 
-/* TODO: move to store mxin https://stackoverflow.com/a/51837460 */
 function fromCache ({ state, commit }, cache, cacheKey, fn, force = false) {
     if (!(cacheKey in state[cache]) || force) {
         commit('updateCache', { cache, cacheKey, data: fn() })

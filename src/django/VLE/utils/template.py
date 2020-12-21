@@ -44,7 +44,6 @@ def _should_be_archived(template, data):
     assert data['id'], 'Template can only be updated if it was already created'
 
     return (
-        # QUESTION: What is the advantage of archiving the template if only the concrete fields change?
         _template_concrete_fields_updated(template, data)
         or _field_set_updated(template, data)
     )

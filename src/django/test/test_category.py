@@ -170,20 +170,21 @@ class CategoryAPITest(TestCase):
         def test_as_student():
             assert template.fixed_categories
             for add in [True, False]:
-                # TODO Introduce mock if return value is normal
-                # with mock.patch('VLE.models.User.has_permission') as has_permission_mock:
                 api.patch(self, 'categories/edit_entry', params={**params, 'add': add}, user=student, status=403)
-                # has_permission_mock.assert_called_with('can_grade', self.assignment)
-                # has_permission_mock.assert_called_with('can_have_journal', self.assignment)
+                with mock.patch('VLE.models.User.has_permission') as has_permission_mock:
+                    api.patch(self, 'categories/edit_entry', params={**params, 'add': add}, user=student, status=200)
+                    has_permission_mock.assert_any_call('can_have_journal', self.assignment)
+                    has_permission_mock.assert_any_call('can_grade', self.assignment)
 
             template.fixed_categories = False
             template.save()
-            # with mock.patch('VLE.models.User.can_edit') as can_edit_mock:
             api.patch(self, 'categories/edit_entry', params={**params}, user=student)
+            with mock.patch('VLE.models.User.can_edit') as can_edit_mock:
+                api.patch(self, 'categories/edit_entry', params={**params}, user=student)
+                can_edit_mock.assert_called_with(entry)
             assert EntryCategoryLink.objects.filter(entry=entry, category=self.category, author=student).exists(), \
                 'The author is correctly set on the through M2M table.'
 
-            # can_edit_mock.assert_called_with(entry)
             assert entry.categories.filter(pk=self.category.pk).exists(), 'Category has been succesfully added'
 
             api.patch(self, 'categories/edit_entry', params={**params, 'add': False}, user=student)

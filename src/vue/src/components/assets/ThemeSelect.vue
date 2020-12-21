@@ -1,6 +1,5 @@
 <!-- TODO: update and replace all (single) selection fields. -->
 <template>
-    <!-- eslint-disable vue/attribute-hyphenation -->
     <multiselect
         :value="value"
         :label="label"
@@ -45,7 +44,6 @@
             class="caret multiselect__caret"
         />
     </multiselect>
-    <!-- eslint-enable vue/attribute-hyphenation -->
 </template>
 
 <script>

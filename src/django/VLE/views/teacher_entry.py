@@ -29,18 +29,6 @@ def _update_categories_of_existing_entries(entries, author, new_category_ids, ex
         ]
     EntryCategoryLink.objects.bulk_create(new_entry_category_links)
 
-    # TODO Remove if syncing categories is accepted
-    # # Only update categories of entries if they are changed on the teacher entry it self.
-    # new_category_ids = set(new_category_ids)
-    # existing_category_ids = set(existing_category_ids)
-    # EntryCategoryLink.objects.filter(entry__in=entries).exclude(category_id__in=new_category_ids).delete()
-    # entry_category_links = [
-    #     EntryCategoryLink(entry=entry, category_id=category_id, author=author)
-    #     for category_id in new_category_ids - existing_category_ids
-    #     for entry in entries
-    # ]
-    # EntryCategoryLink.objects.bulk_create(entry_category_links)
-
 
 class TeacherEntryView(viewsets.ViewSet):
     """Entry view.
