@@ -41,7 +41,6 @@ def _should_be_archived(template, data):
     This is done for consistency, e.g. when template name is updated it could
     no longer matched the entry created using an older version.
     """
-
     assert data['id'], 'Template can only be updated if it was already created'
 
     return (

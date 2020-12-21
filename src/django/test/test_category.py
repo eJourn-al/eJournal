@@ -214,6 +214,10 @@ class CategoryAPITest(TestCase):
         test_category_linked_to_entry_assignment()
 
     def test_category_validate_category_data(self):
+        # Name should be non empty
+        self.assertRaises(ValidationError, Category.validate_category_data, name='', color='#NEW',
+                          assignment=self.assignment)
+
         # Name and color should be unique
         self.assertRaises(ValidationError, Category.validate_category_data, name=self.category.name, color='#NEW',
                           assignment=self.assignment)

@@ -2988,6 +2988,8 @@ class Category(CreateUpdateModel):
             equal_name = equal_name.exclude(pk=category.pk)
             equal_color = equal_color.exclude(pk=category.pk)
 
+        if name == '':
+            raise ValidationError('Please provide a non empty name.')
         if equal_name.exists():
             raise ValidationError('Please provide a unqiue category name.')
         if equal_color.exists():

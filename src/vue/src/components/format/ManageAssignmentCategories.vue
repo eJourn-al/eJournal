@@ -26,13 +26,17 @@
                 class="no-hover no-left-border"
             >
                 <h2 class="theme-h2 multi-form">
-                    Create, remove or edit categories
+                    Create and remove or edit categories
                 </h2>
 
                 <p>
-                    TODO Categories description
+                    Categories can be attached to entries and be used to filter the timeline.
+                    <br/><br/>
+                    You can choose to link specific templates to categories. When a student makes use of these templates
+                    to create an entry, the category will be linked to the entry by default.
+                    Whether the student can edit which categories belonging to an entry can be configured via the
+                    respective template setting "<i>Fixed Categories / Custom Categories</i>".
                 </p>
-                <!-- eslint-disable vue/attribute-hyphenation -->
                 <b-table
                     id="user-table"
                     ref="table"
@@ -46,7 +50,6 @@
                     show-empty
                     empty-text="Create a category by clicking the button below"
                 >
-                    <!-- eslint-enable vue/attribute-hyphenation -->
                     <template #table-busy>
                         <load-spinner class="mt-2"/>
                     </template>
@@ -86,6 +89,7 @@
 
                     <template #row-details="data">
                         <category-edit
+                            :ref="`category${data.item.id}Edit`"
                             :templates="templates"
                             :data="data.item"
                         />
@@ -105,6 +109,7 @@
                     <hr/>
 
                     <category-edit
+                        ref="categoryEditCreate"
                         :templates="templates"
                         :data="newCategory"
                     />
@@ -205,6 +210,13 @@ This action cannot be undone.`)) {
                     .then((category) => {
                         this.$set(category, '_showDetails', true)
                         this.newCategory = null
+                        if (this.$refs.categoryEditCreate.descriptionFocused) {
+                            /* Setting _showDetails to true will render an edit category component, we need to
+                             * wait for the dom to be ready before we can toggle the focus. */
+                            this.$nextTick(() => {
+                                this.$refs[`category${category.id}Edit`].$refs.descriptionTextEditor.setFocus()
+                            })
+                        }
                     })
             }, 3000)
         },

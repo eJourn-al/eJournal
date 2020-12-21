@@ -1,19 +1,27 @@
 <template>
     <div>
-        <b-input
-            v-model="data.name"
-            palceholder="Name"
-            class="theme-input multi-form"
-            type="text"
-        />
+        <b-form-group :invalid-feedback="nameInvalidFeedback">
+            <b-form-input
+                v-model="data.name"
+                :state="nameInputState"
+                autofocus
+                placeholder="Name"
+                class="theme-input"
+                type="text"
+            />
+        </b-form-group>
 
         <text-editor
-            :id="`text-editor-category-${data.id}-description`"
-            :key="`text-editor-category-${data.id}-description`"
+            :id="descriptionTextEditorID"
+            :key="descriptionTextEditorID"
+            ref="descriptionTextEditor"
             v-model="data.description"
             :footer="false"
             class="multi-form"
+            :basic="true"
             placeholder="Description"
+            @editor-focus="descriptionFocused = true"
+            @editor-blur="descriptionFocused = false"
         />
 
         <theme-select
@@ -22,27 +30,29 @@
             trackBy="id"
             :options="templates"
             :multiple="true"
+            :focus="descriptionFocused"
             :searchable="true"
             :multiSelectText="`template${data.templates.length > 1 ? 's' : ''}`"
             placeholder="Search and add or remove templates"
             class="multi-form"
         />
 
-        <color-picker
-            v-model="data.color"
-            :height="100"
-            :width="100"
-        />
+        <b-form-group :invalid-feedback="colorInvalidFeedback">
+            <b-input
+                v-model="data.color"
+                :state="colorInputState"
+                type="color"
+            />
+        </b-form-group>
     </div>
 </template>
 
 <script>
-import ColorPicker from 'vue-color-picker-wheel'
+import { mapGetters } from 'vuex'
 
 export default {
     name: 'CategoryEdit',
     components: {
-        ColorPicker,
         textEditor: () => import(/* webpackChunkName: 'text-editor' */ '@/components/assets/TextEditor.vue'),
     },
     props: {
@@ -59,7 +69,44 @@ export default {
         return {
             updateCall: null,
             color: '#ffffff',
+            descriptionFocused: false,
+            nameInvalidFeedback: null,
+            colorInvalidFeedback: null,
         }
+    },
+    computed: {
+        ...mapGetters({
+            categories: 'category/assignmentCategories',
+        }),
+        descriptionTextEditorID () { return `text-editor-category-${this.data.id}-description` },
+        validCategory () {
+            return (
+                this.nameInputState !== false
+                && this.colorInputState !== false
+            )
+        },
+        nameInputState () {
+            if (this.data.name === '') {
+                this.nameInvalidFeedback = 'Name cannot be empty' // eslint-disable-line
+                return false
+            }
+            if (this.categories.some(cat => cat.id !== this.data.id && cat.name === this.data.name)) {
+                this.nameInvalidFeedback = 'Name is not unique' // eslint-disable-line
+                return false
+            }
+
+            this.nameInvalidFeedback = null // eslint-disable-line
+            return null
+        },
+        colorInputState () {
+            if (this.categories.some(cat => cat.id !== this.data.id && cat.color === this.data.color)) {
+                this.colorInvalidFeedback = 'Color is not unique' // eslint-disable-line
+                return false
+            }
+
+            this.colorInvalidFeedback = null // eslint-disable-line
+            return null
+        },
     },
     watch: {
         data: {
@@ -74,6 +121,8 @@ export default {
     methods: {
         patchCategory (data) {
             window.clearTimeout(this.updateCall)
+
+            if (!this.validCategory) { return }
 
             const payload = JSON.parse(JSON.stringify(data))
             payload.templates = data.templates.map(elem => elem.id)

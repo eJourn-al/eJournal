@@ -48,7 +48,7 @@ module.exports = {
         'vue/html-indent': ['error', 4],
         'vue/require-prop-types': 'off', // Do not demand component property types
         'vue/script-indent': 'off', // clash with base eslint for some edge cases
-        'vue/attribute-hyphenation': ['error', 'never'], // allow component properties as camelCase
+        'vue/attribute-hyphenation': 'off',
         'import/extensions': ['error', 'ignorePackages'],
         'space-before-function-paren': ['error', 'always'],
         'max-len': ['error', { 'code': 120 }],

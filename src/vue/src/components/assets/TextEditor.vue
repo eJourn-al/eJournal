@@ -86,6 +86,9 @@ export default {
         footer: {
             default: true,
         },
+        autofocus: {
+            default: false,
+        },
     },
     data () {
         return {
@@ -201,6 +204,8 @@ export default {
         this.enableMarkdownPatterns()
 
         tinymce.init(this.config)
+
+        if (this.autofocus) { this.setFocus() }
     },
     beforeDestroy () {
         try {
@@ -226,6 +231,7 @@ export default {
             const vm = this
             this.editor = editor
 
+            this.setupEventHandlers(editor)
             if (this.displayInline) { this.setupInlineDisplay(editor) }
 
             editor.on('Change', () => { vm.content = this.editor.getContent() })
@@ -236,6 +242,10 @@ export default {
             })
 
             vm.initValue(vm.value)
+        },
+        setupEventHandlers (editor) {
+            editor.on('focus', () => { this.$emit('editor-focus') })
+            editor.on('blur', () => { this.$emit('editor-blur') })
         },
         setupInlineDisplay (editor) {
             const container = this.$refs[`ref-${this.id}`]
@@ -370,6 +380,17 @@ export default {
         clearContent () {
             this.editor.setContent('')
             this.content = ''
+        },
+        /* NOTE: Also called from parent. */
+        setFocus () {
+            /* Focuses the editor once available, and sets the cursor at the end of the text */
+            if (this.editor) {
+                this.editor.fire('focus')
+                this.editor.selection.select(this.editor.getBody(), true)
+                this.editor.selection.collapse(false)
+            } else {
+                window.setTimeout(this.setFocus, 20)
+            }
         },
     },
 }
