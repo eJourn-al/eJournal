@@ -1,47 +1,69 @@
 export default {
-    /* eslint-disable */
     /**
+     * Code based on https://github.com/o-klp/hsl_rgb_converter
      * Converts an HSL color value to RGB. Conversion formula
-     * adapted from http://en.wikipedia.org/wiki/HSL_color_space.
-     * Assumes h, s, and l are contained in the set [0, 1] and
-     * returns r, g, and b in the set [0, 255].
+     * adapted from http://en.wikipedia.org/wiki/HSL_and_HSV#Converting_to_RGB.
+     * Assumes h is contained in the set [0, 360) and s, and l are contained in the set [0, 1].
+     * Returns r, g, and b in the set [0, 255].
      *
-     * Taken from: https://stackoverflow.com/a/9493060
-     *
-     * @param   {number}  h       The hue
-     * @param   {number}  s       The saturation
-     * @param   {number}  l       The lightness
-     * @return  {Array}           The RGB representation
+     * @param   {number}  hue            The hue
+     * @param   {number}  saturation     The saturation
+     * @param   {number}  lightness      The lightness
+     * @return  {Array}                  The RGB representation
      */
-    hslToRgb (h, s, l) {
-        let r, g, b
+    hslToRgb (hue, saturation, lightness) {
+        if (hue >= 360) { hue = 360 - 0.0001 } // eslint-disable-line
 
-        if (s == 0) {
-            r = g = b = l; // achromatic
-        } else {
-            var hue2rgb = function hue2rgb(p, q, t) {
-                if(t < 0) t += 1;
-                if(t > 1) t -= 1;
-                if(t < 1/6) return p + (q - p) * 6 * t;
-                if(t < 1/2) return q;
-                if(t < 2/3) return p + (q - p) * (2/3 - t) * 6;
-                return p;
-            }
-
-            const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
-            const p = 2 * l - q;
-            r = hue2rgb(p, q, h + 1/3);
-            g = hue2rgb(p, q, h);
-            b = hue2rgb(p, q, h - 1/3);
+        if (hue === undefined) {
+            return [0, 0, 0]
         }
 
-        r = Math.min(Math.floor(r * 256), 255)
-        g = Math.min(Math.floor(g * 256), 255)
-        b = Math.min(Math.floor(b * 256), 255)
+        const chroma = (1 - Math.abs((2 * lightness) - 1)) * saturation
+        let huePrime = hue / 60
+        const secondComponent = chroma * (1 - Math.abs((huePrime % 2) - 1))
 
-        return {red: r, green: g, blue: b}
+        huePrime = Math.floor(huePrime)
+        let red
+        let green
+        let blue
+
+        if (huePrime === 0) {
+            red = chroma
+            green = secondComponent
+            blue = 0
+        } else if (huePrime === 1) {
+            red = secondComponent
+            green = chroma
+            blue = 0
+        } else if (huePrime === 2) {
+            red = 0
+            green = chroma
+            blue = secondComponent
+        } else if (huePrime === 3) {
+            red = 0
+            green = secondComponent
+            blue = chroma
+        } else if (huePrime === 4) {
+            red = secondComponent
+            green = 0
+            blue = chroma
+        } else if (huePrime === 5) {
+            red = chroma
+            green = 0
+            blue = secondComponent
+        }
+
+        const lightnessAdjustment = lightness - (chroma / 2)
+        red += lightnessAdjustment
+        green += lightnessAdjustment
+        blue += lightnessAdjustment
+
+        red = Math.min(Math.floor(red * 256), 255)
+        green = Math.min(Math.floor(green * 256), 255)
+        blue = Math.min(Math.floor(blue * 256), 255)
+
+        return { red, green, blue }
     },
-    /* eslint-enable */
 
     randomBrightHSLColor () {
         const hue = Math.random()
@@ -66,7 +88,7 @@ export default {
 
     randomBrightRGBcolor () {
         const hsl = this.randomBrightHSLColor()
-        const rgb = this.hslToRgb(hsl.hue, hsl.saturation, hsl.lightness)
+        const rgb = this.hslToRgb(hsl.hue * 360, hsl.saturation, hsl.lightness)
         return this.rgbToHex(rgb.red, rgb.green, rgb.blue)
     },
 }

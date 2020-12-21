@@ -7,9 +7,25 @@ import factory
 import VLE.models
 
 
+def random_bright_HSL_color():
+    """
+    Hue: [0, 1] (In JS this is commonly mapped to [0, 360])
+    Saturation: [0, 1]
+    Lightness: [0, 1]
+    """
+    hue = random.random()
+
+    saturation_floor = 0.5
+    saturation = random.random() * (1 - saturation_floor) + saturation_floor
+
+    lightness_floor = 0.4
+    lightness = random.random() * (1 - lightness_floor) + lightness_floor
+
+    return (hue, saturation, lightness)
+
+
 def random_bright_RGB_color_code():
-    """Yields random bright color: https://stackoverflow.com/a/43437435"""
-    h, s, l = random.random(), 0.5 + random.random() / 2.0, 0.4 + random.random() / 5.0 # noqa E741
+    h, s, l = random_bright_HSL_color() # noqa E741
     r, g, b = [int(256 * i) for i in colorsys.hls_to_rgb(h, l, s)]
     return '#%x%x%x' % (r, g, b)
 
