@@ -112,7 +112,7 @@ export default {
                 && this.newJournalMemberLimit !== this.journal.author_limit) {
                 if (this.newJournalMemberLimit > 0) {
                     if (this.newJournalMemberLimit < this.journal.author_count) {
-                        this.$toasted.error('It is not possible to set a member limit lower than the amount of '
+                        this.$toasted.error('It is not possible to set a member limit lower than the number of '
                         + 'journal members.')
                         return
                     }

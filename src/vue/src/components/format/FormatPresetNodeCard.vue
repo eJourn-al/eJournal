@@ -17,79 +17,13 @@
             <span v-if="currentPreset.type == 'p'">Progress goal</span>
         </h2>
 
-        <b-row v-if="currentPreset.type == 'd'">
-            <b-col xl="4">
-                <h2 class="theme-h2 field-heading">
-                    Unlock date
-                    <tooltip tip="Students will be able to work on the entry from this date onwards"/>
-                </h2>
-                <reset-wrapper v-model="currentPreset.unlock_date">
-                    <flat-pickr
-                        v-model="currentPreset.unlock_date"
-                        class="multi-form full-width"
-                        :config="unlockDateConfig"
-                    />
-                </reset-wrapper>
-            </b-col>
-            <b-col xl="4">
-                <h2 class="theme-h2 field-heading required">
-                    Due date
-                    <tooltip
-                        tip="Students are expected to have finished their entry by this date, but new entries can
-                        still be added until the lock date"
-                    />
-                </h2>
-                <reset-wrapper v-model="currentPreset.due_date">
-                    <flat-pickr
-                        v-model="currentPreset.due_date"
-                        class="multi-form full-width"
-                        :config="dueDateConfig"
-                        @on-change="$emit('change-due-date')"
-                    />
-                </reset-wrapper>
-            </b-col>
-            <b-col xl="4">
-                <h2 class="theme-h2 field-heading">
-                    Lock date
-                    <tooltip tip="Students will not be able to fill in the entry anymore after this date"/>
-                </h2>
-                <reset-wrapper v-model="currentPreset.lock_date">
-                    <flat-pickr
-                        v-model="currentPreset.lock_date"
-                        class="multi-form full-width"
-                        :config="lockDateConfig"
-                    />
-                </reset-wrapper>
-            </b-col>
-        </b-row>
-        <div v-else>
-            <h2 class="theme-h2 field-heading required">
-                Due date
-                <tooltip
-                    tip="Students are expected to have reached the amount of points below by this date,
-                    but new entries can still be added until the assignment lock date"
-                />
-            </h2>
-            <reset-wrapper v-model="currentPreset.due_date">
-                <flat-pickr
-                    v-model="currentPreset.due_date"
-                    class="multi-form full-width"
-                    :config="progressDateConfig"
-                    @on-change="$emit('change-due-date')"
-                />
-            </reset-wrapper>
-        </div>
-
-        <h2 class="theme-h2 field-heading">
-            Description
+        <h2 class="theme-h2 field-heading required">
+            Display name
         </h2>
-        <text-editor
-            :id="`preset-description-${newPreset ? currentPreset.type : currentPreset.id}`"
-            :key="`preset-description-${newPreset ? currentPreset.type : currentPreset.id}`"
-            v-model="currentPreset.description"
-            class="multi-form"
-            placeholder="Description"
-            footer="false"
+        <b-input
+            v-model="currentPreset.display_name"
+            class="multi-form theme-input"
+            placeholder="Timeline display name"
         />
 
         <template v-if="currentPreset.type === 'd'">
@@ -161,9 +95,9 @@
         </template>
         <template v-else-if="currentPreset.type === 'p'">
             <h2 class="theme-h2 field-heading required">
-                Amount of points
+                Number of points
                 <tooltip
-                    tip="The amount of points students should have achieved by the deadline of this node to be on
+                    tip="The number of points students should have achieved by the deadline of this node to be on
                     schedule, new entries can still be added until the assignment's lock date"
                 />
             </h2>
@@ -171,11 +105,86 @@
                 v-model="currentPreset.target"
                 type="number"
                 class="theme-input mb-2"
-                placeholder="Amount of points"
+                placeholder="Number of points"
                 min="1"
                 :max="assignmentDetails.points_possible"
             />
         </template>
+
+        <h2 class="theme-h2 field-heading">
+            Description
+        </h2>
+        <text-editor
+            :id="`preset-description-${newPreset ? currentPreset.type : currentPreset.id}`"
+            :key="`preset-description-${newPreset ? currentPreset.type : currentPreset.id}`"
+            v-model="currentPreset.description"
+            class="multi-form"
+            placeholder="Description"
+            footer="false"
+        />
+
+        <b-row v-if="currentPreset.type == 'd'">
+            <b-col xl="4">
+                <h2 class="theme-h2 field-heading">
+                    Unlock date
+                    <tooltip tip="Students will be able to work on the entry from this date onwards"/>
+                </h2>
+                <reset-wrapper v-model="currentPreset.unlock_date">
+                    <flat-pickr
+                        v-model="currentPreset.unlock_date"
+                        class="multi-form full-width"
+                        :config="unlockDateConfig"
+                    />
+                </reset-wrapper>
+            </b-col>
+            <b-col xl="4">
+                <h2 class="theme-h2 field-heading required">
+                    Due date
+                    <tooltip
+                        tip="Students are expected to have finished their entry by this date, but new entries can
+                        still be added until the lock date"
+                    />
+                </h2>
+                <reset-wrapper v-model="currentPreset.due_date">
+                    <flat-pickr
+                        v-model="currentPreset.due_date"
+                        class="multi-form full-width"
+                        :config="dueDateConfig"
+                        @on-change="$emit('change-due-date')"
+                    />
+                </reset-wrapper>
+            </b-col>
+            <b-col xl="4">
+                <h2 class="theme-h2 field-heading">
+                    Lock date
+                    <tooltip tip="Students will not be able to fill in the entry anymore after this date"/>
+                </h2>
+                <reset-wrapper v-model="currentPreset.lock_date">
+                    <flat-pickr
+                        v-model="currentPreset.lock_date"
+                        class="multi-form full-width"
+                        :config="lockDateConfig"
+                    />
+                </reset-wrapper>
+            </b-col>
+        </b-row>
+        <div v-else>
+            <h2 class="theme-h2 field-heading required">
+                Due date
+                <tooltip
+                    tip="Students are expected to have reached the number of points below by this date,
+                    but new entries can still be added until the assignment lock date"
+                />
+            </h2>
+            <reset-wrapper v-model="currentPreset.due_date">
+                <flat-pickr
+                    v-model="currentPreset.due_date"
+                    class="multi-form full-width"
+                    :config="progressDateConfig"
+                    @on-change="$emit('change-due-date')"
+                />
+            </reset-wrapper>
+        </div>
 
         <h2
             v-if="currentPreset.attached_files.length > 0"

@@ -69,6 +69,7 @@ export default {
             currentPreset: {
                 type: null,
                 template: '',
+                display_name: '',
                 description: '',
                 attached_files: [],
             },
@@ -96,7 +97,7 @@ export default {
             const validTarget = this.currentPreset.target > 0 || this.currentPreset.type === 'd'
             const validTemplate = this.currentPreset.template || this.currentPreset.type === 'p'
 
-            return validTarget && validTemplate && this.currentPreset.due_date
+            return validTarget && validTemplate && this.currentPreset.due_date && this.currentPreset.display_name
         },
     },
 }

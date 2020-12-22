@@ -1,4 +1,5 @@
 import test.factory as factory
+import test.utils.generic_utils
 from test.utils import api
 
 from dateutil.relativedelta import relativedelta
@@ -8,7 +9,8 @@ from django.test import TestCase
 from django.utils import timezone
 
 from VLE.models import Assignment, Course, Entry, Field, FileContext, Format, Group, Journal, Node, PresetNode, Template
-from VLE.serializers import FileSerializer, FormatSerializer, PresetNodeSerializer, TemplateSerializer
+from VLE.serializers import (AssignmentFormatSerializer, FileSerializer, FormatSerializer, PresetNodeSerializer,
+                             TemplateSerializer)
 from VLE.utils import generic_utils as utils
 from VLE.utils.error_handling import VLEProgrammingError
 
@@ -53,6 +55,25 @@ class FormatAPITest(TestCase):
         # For the template two fields are generated
         field = Field.objects.get(template=assignment.format.template_set.first(), location=0)
         field = Field.objects.get(template=assignment.format.template_set.first(), location=1)
+
+    def test_assignment_format_update_params_factory(self):
+        assignment = factory.Assignment()
+
+        pre_update_format = AssignmentFormatSerializer(
+            AssignmentFormatSerializer.setup_eager_loading(Assignment.objects.filter(pk=assignment.pk)).get(),
+            context={'user': assignment.author},
+        ).data
+
+        format_update_dict = factory.AssignmentFormatUpdateParams(assignment=assignment)
+        api.update(self, 'formats', params=format_update_dict, user=assignment.author)
+
+        post_update_format = AssignmentFormatSerializer(
+            AssignmentFormatSerializer.setup_eager_loading(Assignment.objects.filter(pk=assignment.pk)).get(),
+            context={'user': assignment.author},
+        ).data
+
+        assert test.utils.generic_utils.equal_models(pre_update_format, post_update_format), \
+            'Unmodified update paramaters should be able to succesfully update the format without making any changes'
 
     def test_template_without_format(self):
         self.assertRaises(IntegrityError, factory.Template)
@@ -216,7 +237,8 @@ class FormatAPITest(TestCase):
             forced_template=assignment.format.template_set.first(),
             format=assignment.format,
             type=Node.ENTRYDEADLINE,
-            due_date=timezone.now()
+            due_date=timezone.now(),
+            display_name=assignment.format.template_set.first().name,
         )
         # This should not use the factory, as that kills the testing of updating presets
         progress = PresetNode.objects.create(
@@ -224,6 +246,7 @@ class FormatAPITest(TestCase):
             type=Node.PROGRESS,
             due_date=timezone.now(),
             target=5,
+            display_name='Progress goal',
         )
         presets = PresetNodeSerializer([entrydeadline, progress], many=True).data
         # Update the entry data

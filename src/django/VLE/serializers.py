@@ -758,13 +758,14 @@ class PresetNodeSerializer(serializers.ModelSerializer, EagerLoadingMixin):
         fields = (
             'id',
             'description',
+            'display_name',
             'type',
             'unlock_date',
             'due_date',
             'lock_date',
             'target',
             'template',
-            'attached_files'
+            'attached_files',
         )
         read_only_fields = ('type',)
 

@@ -13,8 +13,8 @@ from django.contrib.postgres.aggregates import ArrayAgg, StringAgg
 from django.contrib.postgres.fields import ArrayField, CIEmailField, CITextField
 from django.core.exceptions import ValidationError
 from django.db import models, transaction
-from django.db.models import (Case, CharField, Count, F, FloatField, IntegerField, Min, OuterRef, Prefetch, Q, Subquery,
-                              Sum, TextField, Value, When)
+from django.db.models import (Case, CharField, CheckConstraint, Count, F, FloatField, IntegerField, Min, OuterRef,
+                              Prefetch, Q, Subquery, Sum, TextField, Value, When)
 from django.db.models.deletion import CASCADE, SET_NULL
 from django.db.models.functions import Cast, Coalesce
 from django.dispatch import receiver
@@ -2126,10 +2126,17 @@ class PresetNode(CreateUpdateModel):
     - format: a foreign key linked to a format.
     """
 
+    class Meta:
+        constraints = [
+            CheckConstraint(check=~Q(display_name=''), name='non_empty_display_name'),
+        ]
+
     TYPES = (
         (Node.PROGRESS, 'progress'),
         (Node.ENTRYDEADLINE, 'entrydeadline'),
     )
+
+    display_name = models.TextField()
 
     description = models.TextField(
         null=True,

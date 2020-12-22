@@ -31,6 +31,7 @@ class ProgressPresetNodeFactory(PresetNodeFactory):
         model = 'VLE.PresetNode'
 
     type = VLE.models.Node.PROGRESS
+    display_name = 'Progress goal'
     description = 'Progress node description'
 
     due_date = timezone.now() + datetime.timedelta(weeks=1)
@@ -51,3 +52,4 @@ class DeadlinePresetNodeFactory(PresetNodeFactory):
 
     forced_template = factory.SubFactory('test.factory.template.TemplateFactory',
                                          format=factory.SelfAttribute('..format'))
+    display_name = factory.SelfAttribute('forced_template.name')
