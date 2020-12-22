@@ -28,9 +28,9 @@ REQUEST = {
     'lti_message_type': 'basic-lti-launch-request',
     'lti_version': 'LTI-1p0',
     # Assignment data
-    'custom_assignment_due': '2018-11-10 23:59:00 +0100',
+    'custom_assignment_due': '2022-11-10 23:59:00 +0100',
     'custom_assignment_id': 'assignment_lti_id',
-    'custom_assignment_lock': '2018-12-15 23:59:59 +0100',
+    'custom_assignment_lock': '2022-12-15 23:59:59 +0100',
     'custom_assignment_title': 'Assignment Title',
     'custom_assignment_unlock': '2018-08-16 00:00:00 +0200',
     'custom_assignment_points': '10',
@@ -40,11 +40,6 @@ REQUEST = {
     'custom_course_name': 'Course Title',
     'custom_course_start': '2018-06-15 14:41:00 +0200',
     'context_label': 'aaaa',
-    # User data
-    'custom_username': 'custom_username',
-    'custom_user_image': 'https://uvadlo-tes.instructure.com/images/thumbnails/11601/\
-    6ivT7povCYWoXPCVOSnfPqWADsLktcGXTXkAUYDv',
-    'user_id': 'invalid_student_lti_id',
     # Participation data
     'roles': '',
     'lis_outcome_service_url': 'a grade url',
@@ -52,8 +47,9 @@ REQUEST = {
 }
 
 
-def create_request_body(user=None, course=None, assignment=None):
+def create_request_body(user=None, course=None, assignment=None, is_teacher=False):
     request = REQUEST.copy()
+
     if user:
         request['custom_username'] = user.username
         request['custom_user_full_name'] = user.full_name
@@ -61,14 +57,14 @@ def create_request_body(user=None, course=None, assignment=None):
         request['user_id'] = user.lti_id or access_gen()
     else:
         n = User.objects.count()
-        if 'custom_username' not in request:
-            request['custom_username'] = f'user_{n}'
-        if 'custom_user_full_name' not in request:
-            request['custom_user_full_name'] = f'Fullname User{n}'
-        if 'custom_user_image' not in request:
-            request['custom_user_image'] = 'https://canvas.instructure.com/images/messages/avatar-50.png'
-        if 'user_id' not in request:
-            request['user_id'] = access_gen()
+        request['custom_username'] = f'user_{n}_{access_gen(size=10)}'
+        request['custom_user_full_name'] = f'Fullname User{n}'
+        request['custom_user_image'] = 'https://canvas.instructure.com/images/messages/avatar-50.png'
+        request['user_id'] = access_gen()
+        request['custom_user_email'] = f'email{access_gen(size=10)}@ejournal.app'
+
+    if is_teacher:
+        request['roles'] = 'Instructor'
 
     if course:
         assert course.active_lti_id, 'course needs to be an LTI course'
@@ -76,6 +72,11 @@ def create_request_body(user=None, course=None, assignment=None):
         request['custom_course_name'] = course.name
         request['custom_course_start'] = course.startdate
         request['context_label'] = course.abbreviation
+    else:
+        request['custom_course_id'] = access_gen()
+        request['custom_course_name'] = 'LTI course ' + access_gen(size=10)
+        request['context_label'] = access_gen(size=3)
+        request['custom_course_start'] = '2018-06-15 14:41:00 +0200'
 
     if assignment:
         assert assignment.active_lti_id, 'assignment needs to be an LTI assignment'
@@ -86,17 +87,23 @@ def create_request_body(user=None, course=None, assignment=None):
         request['custom_assignment_lock'] = assignment.lock_date
         request['custom_assignment_points'] = assignment.points_possible
         request['custom_assignment_publish'] = ('false', 'true')[assignment.is_published]
+    else:
+        request['custom_assignment_id'] = access_gen()
+        request['custom_assignment_title'] = 'LTI assignment ' + access_gen(size=10)
+        request['custom_assignment_points'] = 10
+        request['custom_assignment_publish'] = 'true'
 
     return request
 
 
-def create_request(request_body={}, timestamp=None, nonce=None,
-                   delete_field=False, user=None, course=None, assignment=None, to_lti_launch=True):
+def create_request(
+        request_body={}, timestamp=None, nonce=None, delete_field=False, to_lti_launch=True,
+        user=None, course=None, assignment=None, is_teacher=False):
     if nonce is None:
         nonce = str(oauth2.generate_nonce())
     if timestamp is None:
         timestamp = str(int(time.time()))
-    request = create_request_body(user=user, course=course, assignment=assignment)
+    request = create_request_body(user=user, course=course, assignment=assignment, is_teacher=is_teacher)
     request['oauth_timestamp'] = timestamp
     request['oauth_nonce'] = nonce
 
@@ -118,15 +125,14 @@ def create_request(request_body={}, timestamp=None, nonce=None,
     return RequestFactory().post('http://127.0.0.1:8000/lti/launch', request)
 
 
-def lti_launch(request_body={}, response_value=lti_view.LTI_STATES.NO_USER.value, timestamp=None,
-               nonce=None, status=302, assert_msg='',
-               delete_field=False, user=None, course=None, assignment=None):
+def lti_launch(
+        request_body={}, response_value=lti_view.LTI_STATES.NO_USER.value, timestamp=None,
+        nonce=None, status=302, assert_msg='', delete_field=False):
     if nonce is None:
         nonce = str(oauth2.generate_nonce())
     if timestamp is None:
         timestamp = str(int(time.time()))
-    request = create_request(
-        request_body, timestamp, nonce, delete_field, user=user, course=course, assignment=assignment)
+    request = create_request(request_body, timestamp, nonce, delete_field)
     response = lti_view.lti_launch(request)
     assert response.status_code == status
     assert 'state={0}'.format(response_value) in response.url, assert_msg
@@ -650,16 +656,26 @@ class LtiLaunchTest(TestCase):
             assert_msg='When a student tries to create a new course, with also a new Instructor role, \
                         it should grand its permissions')
 
+    def test_get_lti_params_from_jwt_administrator_role(self):
+        get_jwt(
+            self, user=self.student, status=200,
+            request_body={
+                'user_id': self.student.lti_id,
+                'roles': 'Learner,Administrator'},
+            response_value=lti_view.LTI_STATES.NEW_COURSE.value,
+            assert_msg='When a student tries to create a new course, with also a new Administrator role, \
+                        it should grand its permissions')
+
     def test_get_lti_params_from_jwt_unknown_role(self):
         get_jwt(
             self, user=self.teacher, status=200,
             request_body={
                 'user_id': self.teacher.lti_id,
-                'roles': 'urn:lti:instrole:ims/lis/Administrator'},
+                'roles': 'urn:lti:instrole:ims/lis/nothing'},
             response_value=lti_view.LTI_STATES.LACKING_PERMISSION_TO_SETUP_COURSE.value,
             assert_msg='When a teacher goes to the platform without a teacher role, it should lose its teacher powers')
 
-    def test_get_lti_params_from_jwt_key_Error(self):
+    def test_get_lti_params_from_jwt_key_error(self):
         get_jwt(
             self, user=self.teacher, status=400,
             request_body={
@@ -697,7 +713,7 @@ class LtiLaunchTest(TestCase):
         course = factory.LtiCourse(author=self.teacher, name=REQUEST['custom_course_name'])
         selected_course = lti.update_lti_course_if_exists(
             {'custom_course_id': course.active_lti_id},
-            user=self.teacher, role=settings.ROLES['Teacher'])
+            user=self.teacher, role=settings.ROLES['Teacher'][0])
         assert selected_course == course
 
     def test_select_course_with_participation_and_groups(self):
@@ -708,7 +724,7 @@ class LtiLaunchTest(TestCase):
         selected_course = lti.update_lti_course_if_exists({
                 'custom_course_id': course.active_lti_id,
                 'custom_section_id': ','.join(['1000', '1001', '1002', '1003']),
-            }, user=self.teacher, role=settings.ROLES['Teacher'])
+            }, user=self.teacher, role=settings.ROLES['Teacher'][0])
         assert selected_course == course
         assert Group.objects.filter(course=course, name='Group 3').exists(), \
             'Groups with an LTI id that are do not exist need to get renamed'
@@ -720,7 +736,7 @@ class LtiLaunchTest(TestCase):
         lti.update_lti_course_if_exists({
                 'custom_course_id': course.active_lti_id,
                 'custom_section_id': ','.join(['1000', '1001', '1002', '1003']),
-            }, user=self.teacher, role=settings.ROLES['Teacher'])
+            }, user=self.teacher, role=settings.ROLES['Teacher'][0])
 
         assert Group.objects.filter(course=course).count() == 4, \
             'No new groups should be created'
@@ -733,9 +749,9 @@ class LtiLaunchTest(TestCase):
         lti.update_lti_course_if_exists({
                 'custom_course_id': course.active_lti_id,
                 'custom_section_id': ','.join(groups),
-            }, user=student, role=settings.ROLES['Teacher'])
+            }, user=student, role=settings.ROLES['Teacher'][0])
 
-        journal.refresh_from_db()
+        journal = Journal.objects.get(pk=journal.pk)
         assert set(journal.groups) == set(Group.objects.filter(lti_id__in=groups).values_list('pk', flat=True)), \
             'Journal groups should also be updated'
 
@@ -743,7 +759,7 @@ class LtiLaunchTest(TestCase):
         """Hopefully select a journal."""
         selected_journal = lti.select_create_journal(
             {
-                'roles': settings.ROLES['Student'],
+                'roles': settings.ROLES['Student'][0],
                 'custom_assignment_id': self.assignment.active_lti_id,
                 'lis_result_sourcedid': "267-686-2694-585-0afc8c37342732c97b011855389af1f2c2f6d552",
                 'lis_outcome_service_url': "https://uvadlo-tes.instructure.com/api/lti/v1/tools/267/grade_passback"
@@ -761,7 +777,7 @@ class LtiLaunchTest(TestCase):
         new_id = "267-686-2694-585-0afc8c37342732c97b011855gfdshsdbfaf1f2c2f6d552"
         selected_journal = lti.select_create_journal(
             {
-                'roles': settings.ROLES['Student'],
+                'roles': settings.ROLES['Student'][0],
                 'custom_assignment_id': new_assignment.active_lti_id,
                 'lis_result_sourcedid': new_id,
                 'lis_outcome_service_url': new_url,
@@ -778,7 +794,7 @@ class LtiLaunchTest(TestCase):
         """Hopefully select None."""
         selected_journal = lti.select_create_journal(
             {
-                'roles': settings.ROLES['Student'],
+                'roles': settings.ROLES['Student'][0],
                 'custom_assignment_id': self.assignment.active_lti_id,
                 'lis_result_sourcedid': "267-686-2694-585-0afc8c37342732c97b011855389af1f2c2f6d552",
                 'lis_outcome_service_url': "https://uvadlo-tes.instructure.com/api/lti/v1/tools/267/grade_passback"

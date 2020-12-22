@@ -1,5 +1,4 @@
-import 'sass/vendor/bootstrap.sass' /* cherry picked bootstrap css bundled with app css by default */
-
+/* eslint-disable */
 // See https://github.com/bootstrap-vue/bootstrap-vue/blob/dev/src/components/index.js for all available options
 import {
     BVConfigPlugin,
@@ -48,7 +47,7 @@ import {
     // SidebarPlugin,
     // SpinnerPlugin,
     TablePlugin, // Table plugin includes TableLitePlugin and TableSimplePlugin
-    // TabsPlugin,
+    TabsPlugin,
     // TimePlugin,
     // ToastPlugin,
     TooltipPlugin,
@@ -101,7 +100,7 @@ export default function initBootstrap (Vue) {
     // Vue.use(SidebarPlugin)
     // Vue.use(SpinnerPlugin)
     Vue.use(TablePlugin)
-    // Vue.use(TabsPlugin)
+    Vue.use(TabsPlugin)
     // Vue.use(TimePlugin)
     // Vue.use(ToastPlugin)
     Vue.use(TooltipPlugin)

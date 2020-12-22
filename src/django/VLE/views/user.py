@@ -9,6 +9,7 @@ from rest_framework import viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny
 from rest_framework_simplejwt.views import TokenObtainPairView
+from sentry_sdk import capture_exception
 
 import VLE.factory as factory
 import VLE.lti_launch as lti_launch
@@ -18,7 +19,7 @@ import VLE.utils.responses as response
 import VLE.validators as validators
 from VLE.models import Entry, FileContext, Instance, Journal, Node, User
 from VLE.serializers import EntrySerializer, OwnUserSerializer, UserSerializer
-from VLE.tasks import send_email_verification_link
+from VLE.tasks import send_email_verification_link, send_invite_emails
 from VLE.utils import file_handling
 from VLE.utils.authentication import set_sentry_user_scope
 from VLE.views import lti
@@ -34,7 +35,7 @@ def get_lti_params(request, *keys):
        Instance.objects.get_or_create(pk=1)[0].default_lms_profile_picture in lti_params['custom_user_image']:
         lti_params['custom_user_image'] = settings.DEFAULT_PROFILE_PICTURE
     values = utils.optional_params(lti_params, *keys)
-    values.append(settings.ROLES['Teacher'] in lti_launch.roles_to_list(lti_params))
+    values.append(any(role in lti_launch.roles_to_list(lti_params) for role in settings.ROLES['Teacher']))
     return values
 
 
@@ -66,8 +67,9 @@ class UserView(viewsets.ViewSet):
         if not request.user.is_superuser:
             return response.forbidden('Only administrators are allowed to request all user data.')
 
-        serializer = UserSerializer(User.objects.all(), context={'user': request.user}, many=True)
-        return response.success({'users': serializer.data})
+        users = list(User.objects.values('username', 'full_name', 'email', 'is_teacher', 'is_active', 'id')
+                     .order_by('full_name'))
+        return response.success({'users': users})
 
     def retrieve(self, request, pk):
         """Get the user data of the requested user.
@@ -89,13 +91,13 @@ class UserView(viewsets.ViewSet):
         user = User.objects.get(pk=pk)
 
         if request.user == user or request.user.is_superuser:
-            serializer = OwnUserSerializer(user, context={'user': request.user}, many=False)
+            data = OwnUserSerializer(user, context={'user': request.user}, many=False).data
         elif permissions.is_user_supervisor_of(request.user, user):
-            serializer = UserSerializer(user, context={'user': request.user}, many=False)
+            data = {field: getattr(user, field) for field in UserSerializer.Meta.user_fields}
         else:
             return response.forbidden('You are not allowed to view this users information.')
 
-        return response.success({'user': serializer.data})
+        return response.success({'user': data})
 
     def create(self, request):
         """Create a new user.
@@ -192,6 +194,10 @@ class UserView(viewsets.ViewSet):
         lti_id, user_email, user_full_name, user_image, is_teacher = get_lti_params(
             request, 'user_id', 'custom_user_email', 'custom_user_full_name', 'custom_user_image')
 
+        # Superuser can update another user's teacher status.
+        if request.user.is_superuser:
+            is_teacher, = utils.optional_params(request.data, 'is_teacher')
+
         if user_image is not None:
             user.profile_picture = user_image
         if user_email:
@@ -203,7 +209,7 @@ class UserView(viewsets.ViewSet):
             user.verified_email = True
         if user_full_name is not None:
             user.full_name = user_full_name
-        if is_teacher:
+        if is_teacher is not None:
             user.is_teacher = is_teacher
 
         if lti_id is not None:
@@ -220,7 +226,7 @@ class UserView(viewsets.ViewSet):
             data = {'profile_picture': pp if pp else user.profile_picture}
         else:
             data = request.data
-        serializer = OwnUserSerializer(user, data=data, partial=True)
+        serializer = OwnUserSerializer(user, data=data, context={'user': request.user}, partial=True)
         if not serializer.is_valid():
             return response.bad_request()
         serializer.save()
@@ -240,11 +246,9 @@ class UserView(viewsets.ViewSet):
         On success:
             success -- deleted message
         """
-        if int(pk) == 0:
-            pk = request.user.id
         user = User.objects.get(pk=pk)
 
-        if not (request.user.is_superuser or request.user == user):
+        if not request.user.is_superuser:
             return response.forbidden('You are not allowed to delete a user.')
 
         # Deleting the last superuser should not be possible
@@ -312,11 +316,17 @@ class UserView(viewsets.ViewSet):
         for journal in journals:
             # Select the nodes of this journal but only the ones with entries.
             entry_ids = Node.objects.filter(journal=journal).exclude(entry__isnull=True).values_list('entry', flat=True)
-            entries = Entry.objects.filter(id__in=entry_ids)
             # Serialize all entries and put them into the entries dictionary with the assignment name key.
             journal_dict.update({
                 journal.assignment.name: EntrySerializer(
-                    entries, context={'user': request.user, 'comments': True}, many=True).data
+                    EntrySerializer.setup_eager_loading(
+                        Entry.objects.filter(id__in=entry_ids)
+                    ).prefetch_related(
+                        'comment_set'  # Only GDPR serializes comments via this route.
+                    ),
+                    context={'user': request.user, 'comments': True},
+                    many=True
+                ).data
             })
 
         archive_path, archive_name = file_handling.compress_all_user_data(
@@ -361,3 +371,88 @@ class UserView(viewsets.ViewSet):
             return [AllowAny()]
         else:
             return [permission() for permission in self.permission_classes]
+
+    @action(methods=['post'], detail=False)
+    def invite_users(self, request):
+        """Invite new users to eJournal.
+
+        This will create accounts for the invited users, which they can activate through an invite link sent via email.
+
+        Arguments:
+        request -- request data
+            users -- all users to create
+                full_name -- full name of a user
+                username -- username of a user
+                email -- email address of a user
+                is_teacher -- whether the user is a teacher
+
+        Returns
+        On failure:
+            forbidden -- when the user is not a superuser (thus not allowed to invite new users)
+            bad_request -- when the provided user data is invalid, e.g.
+                Some users are missing a full name, email or username
+                Usernames or email addresses belong to existing users
+        On success:
+            success -- the users have been invited
+        """
+        if not request.user.is_superuser:
+            return response.forbidden('You are not allowed to invite new users.')
+
+        users, = utils.required_params(request.data, 'users')
+
+        # Ensure a full name, username and email are specified for all users to be invited.
+        if any('full_name' not in user or not user['full_name'] or not user['full_name'].strip() for user in users):
+            return response.bad_request('Please specify a full name for all users. No invites sent.')
+        if any('username' not in user or not user['username'] or not user['username'].strip() for user in users):
+            return response.bad_request('Please specify a username for all users. No invites sent.')
+        if any('email' not in user or not user['email'] or not user['email'].strip() for user in users):
+            return response.bad_request('Please specify an email for all users. No invites sent.')
+
+        # Remove excess whitespace. Whitespace differences should not satisfy username or email uniqueness constraints.
+        for user in users:
+            user['full_name'] = ' '.join(user['full_name'].split())
+            user['username'] = ' '.join(user['username'].split())
+            user['email'] = ' '.join(user['email'].split())
+
+        # Ensure the username and email for all users to be invited are unique.
+        usernames = set()
+        duplicate_usernames = [user['username'] for user in users if user['username'] in usernames or
+                               usernames.add(user['username'])]
+        if duplicate_usernames:
+            return response.bad_request({'duplicate_usernames': duplicate_usernames})
+        emails = set()
+        duplicate_emails = [user['email'] for user in users if user['email'] in emails or
+                            emails.add(user['email'])]
+        if duplicate_emails:
+            return response.bad_request({'duplicate_emails': duplicate_emails})
+
+        # Ensure the username and email for all users to be invited do not belong to existing users.
+        existing_usernames = list(User.objects.filter(username__in=[user['username'] for user in users])
+                                  .values_list('username', flat=True))
+        if existing_usernames:
+            return response.bad_request({'existing_usernames': existing_usernames})
+        existing_emails = list(User.objects.filter(email__in=[user['email'] for user in users])
+                               .values_list('email', flat=True))
+        if existing_emails:
+            return response.bad_request({'existing_emails': existing_emails})
+
+        created_user_ids = []
+        try:
+            users_to_create = [
+                factory.make_user(
+                    username=user['username'],
+                    email=user['email'],
+                    full_name=user['full_name'],
+                    is_teacher='is_teacher' in user and user['is_teacher'],
+                    is_active=False,
+                    save=False
+                )
+                for user in users
+            ]
+            created_user_ids = [user.id for user in User.objects.bulk_create(users_to_create)]
+            send_invite_emails.delay(created_user_ids)
+        except Exception as e:
+            capture_exception(e)
+            return response.bad_request('An error occured while creating new users.')
+
+        return response.success(description=f"Successfully invited {len(created_user_ids)} users.")

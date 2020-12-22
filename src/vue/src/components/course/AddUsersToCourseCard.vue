@@ -9,7 +9,7 @@
         </div>
         <b-button
             v-if="$hasPermission('can_add_course_users')"
-            class="add-button float-right"
+            class="green-button float-right"
             @click.prevent.stop="addUserToCourse()"
         >
             <icon name="user-plus"/>

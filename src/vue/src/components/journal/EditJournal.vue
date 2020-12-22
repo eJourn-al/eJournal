@@ -43,14 +43,14 @@
             :class="{
                 'input-disabled': journal.author_count > 0,
             }"
-            class="delete-button"
+            class="red-button"
             @click="deleteJournal"
         >
             <icon name="trash"/>
             Delete journal
         </b-button>
         <b-button
-            class="add-button float-right"
+            class="green-button float-right"
             @click="updateJournal"
         >
             <icon name="save"/>
@@ -112,7 +112,7 @@ export default {
                 && this.newJournalMemberLimit !== this.journal.author_limit) {
                 if (this.newJournalMemberLimit > 0) {
                     if (this.newJournalMemberLimit < this.journal.author_count) {
-                        this.$toasted.error('It is not possible to set a member limit lower than the amount of '
+                        this.$toasted.error('It is not possible to set a member limit lower than the number of '
                         + 'journal members.')
                         return
                     }

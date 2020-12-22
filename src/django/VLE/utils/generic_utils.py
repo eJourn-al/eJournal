@@ -13,7 +13,6 @@ from django.db.models import Case, When
 import VLE.factory
 import VLE.models
 import VLE.utils.error_handling
-from VLE.tasks.notifications import generate_new_node_notifications
 from VLE.utils import file_handling
 
 
@@ -61,7 +60,10 @@ def required_typed_params(post, *keys):
             if isinstance(post[key], list):
                 result.append([func(elem) for elem in post[key]])
             elif post[key] is not None:
-                result.append(func(post[key]))
+                if func == bool and post[key] == 'false':
+                    result.append(False)
+                else:
+                    result.append(func(post[key]))
             else:
                 result.append(None)
         except ValueError as err:
@@ -81,7 +83,10 @@ def optional_typed_params(post, *keys):
         if key and key in post and post[key] != '':
             try:
                 if post[key] is not None:
-                    result.append(func(post[key]))
+                    if func == bool and post[key] == 'false':
+                        result.append(False)
+                    else:
+                        result.append(func(post[key]))
                 else:
                     result.append(None)
             except ValueError as err:
@@ -99,8 +104,10 @@ def get_sorted_nodes(journal):
     Get all the nodes of a journal in sorted order.
     Order is default by due_date.
     """
-    return journal.node_set.annotate(
-        sort_due_date=Case(
+    return journal.node_set.select_related(
+        'entry',
+        'preset'
+    ).annotate(sort_due_date=Case(
             When(type=VLE.models.Node.ENTRY, then='entry__creation_date'),
             default='preset__due_date')
     ).order_by('sort_due_date')
@@ -187,14 +194,12 @@ def update_journals(journals, preset):
     journals -- the journals to update.
     preset -- the preset node to add to the journals.
     """
-    nodes = [VLE.models.Node(
+    VLE.models.Node.objects.bulk_create([VLE.models.Node(
         type=preset.type,
         entry=None,
         preset=preset,
         journal=journal
-    ) for journal in journals]
-    nodes = VLE.models.Node.objects.bulk_create(nodes)
-    generate_new_node_notifications.delay([n.pk for n in nodes])
+    ) for journal in journals])
 
 
 def update_presets(user, assignment, presets, new_ids):
@@ -209,7 +214,8 @@ def update_presets(user, assignment, presets, new_ids):
     """
     format = assignment.format
     for preset in presets:
-        id, template = required_typed_params(preset, (int, 'id'), (dict, 'template'))
+        id, template, display_name = required_typed_params(
+            preset, (int, 'id'), (dict, 'template'), (str, 'display_name'))
         target, unlock_date, lock_date = optional_typed_params(
             preset, (float, 'target'), (str, 'unlock_date'), (str, 'lock_date'))
         type, description, due_date, attached_files = required_params(
@@ -220,19 +226,20 @@ def update_presets(user, assignment, presets, new_ids):
         else:
             preset_node = VLE.models.PresetNode(format=format, type=type)
 
+        preset_node.display_name = display_name
         preset_node.description = description
         preset_node.unlock_date = unlock_date if unlock_date else None
         preset_node.due_date = due_date
         preset_node.lock_date = lock_date if lock_date else None
 
-        if preset_node.type == VLE.models.Node.PROGRESS:
+        if preset_node.is_progress:
             if target > 0 and target <= assignment.points_possible:
                 preset_node.target = target
             else:
                 raise VLE.utils.error_handling.VLEBadRequest(
                     'Progress goal needs to be between 0 and the maximum amount for the assignment: {}'
                     .format(assignment.points_possible))
-        elif preset_node.type == VLE.models.Node.ENTRYDEADLINE:
+        elif preset_node.is_deadline:
             if template['id'] in new_ids:
                 preset_node.forced_template = VLE.models.Template.objects.get(pk=new_ids[template['id']])
             else:

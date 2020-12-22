@@ -122,6 +122,7 @@
                             Published
                             <tooltip tip="Make the grade visible to students"/>
                         </b-th>
+                        <b-th/>
                     </b-tr>
                 </b-thead>
                 <b-tbody>
@@ -129,13 +130,13 @@
                         v-for="(journal, i) in selectedJournals"
                         :key="journal.journal_id"
                     >
-                        <b-td>
+                        <b-td class="align-middle">
                             {{ journal.name }}
                         </b-td>
-                        <b-td>
+                        <b-td class="align-middle">
                             {{ journal.usernames }}
                         </b-td>
-                        <b-td>
+                        <b-td class="align-middle">
                             <b-form-input
                                 v-model="journal.grade"
                                 type="number"
@@ -145,10 +146,10 @@
                                 size="3"
                             />
                         </b-td>
-                        <b-td>
+                        <b-td class="align-middle">
                             <b-form-checkbox v-model="journal.published"/>
                         </b-td>
-                        <b-td>
+                        <b-td class="align-middle">
                             <icon
                                 name="trash"
                                 class="trash-icon"
@@ -160,7 +161,7 @@
             </b-table-simple>
 
             <b-button
-                class="add-button float-right ml-2 mt-2"
+                class="green-button float-right ml-2 mt-2"
                 :class="{ 'input-disabled': requestInFlight }"
                 @click="createTeacherEntry"
             >

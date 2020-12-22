@@ -83,7 +83,7 @@
 
                 <b-button
                     v-if="!previewTemplate"
-                    class="add-button"
+                    class="green-button"
                     :class="{ 'input-disabled': !selectedTemplate }"
                     @click="previewTemplate = true"
                 >
@@ -92,7 +92,7 @@
                 </b-button>
                 <b-button
                     v-else
-                    class="delete-button"
+                    class="red-button"
                     @click="previewTemplate = false"
                 >
                     <icon name="eye-slash"/>
@@ -100,7 +100,7 @@
                 </b-button>
 
                 <b-button
-                    class="change-button float-right"
+                    class="orange-button float-right"
                     :class="{ 'input-disabled': !selectedTemplate }"
                     @click="importTemplate(selectedTemplate)"
                 >
@@ -110,9 +110,7 @@
             </div>
 
             <div v-else>
-                <h4 class="theme-h4">
-                    No existing templates available
-                </h4>
+                <b>No existing templates available</b>
                 <hr class="m-0 mb-1"/>
                 Only templates in assignments where you have permission to edit are available to import.
             </div>

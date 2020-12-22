@@ -28,24 +28,42 @@ postgres_test_db = test_$(postgres_db)
 postgres_dev_user = ejournal
 postgres_dev_user_pass = password
 
+ifndef CI_CD
 venv_activate = source ./venv/bin/activate
+else
+venv_activate = echo "No venv needed fro CI_CD"
+endif
 
 ##### TEST COMMANDS #####
 
-test-back:
+test: test-front test-back
+
+test-back: isort check-linters-back
+	${venv_activate} \
+	&& pytest ${TOTEST} src/django/test/
+
+test-front: check-linters-front
+
+check-linters: check-linters-back check-linters-front
+
+check-linters-back:
 	${venv_activate} \
 	&& flake8 ./src/django \
 	&& ./src/django/manage.py check --fail-level=WARNING \
-	&& pytest ${TOTEST} src/django/test/
-	make isort
+	&& isort src/django -c \
 
-test-front:
-	${venv_activate} && npm run lint --prefix ./src/vue
+check-linters-front:
+	${venv_activate} \
+	&& npm run lint --prefix ./src/vue
 
-display-coverage:
+generate-test-durations:
+	${venv_activate} && pytest ${TOTEST} src/django/test/ --store-durations
+
+display-coverage-plain:
 	${venv_activate} && coverage report -m
 
-test: test-front test-back
+display-coverage-html:
+	${venv_activate} && coverage html
 
 run-test:
 	${venv_activate} && cd ./src/django && python manage.py test test.test_$(arg)"
@@ -66,10 +84,11 @@ setup:
 	@read -r a
 	make setup-no-input
 	make setup-sentry-cli
-	make update-submodules
 	make run-preset-db
 setup-no-input:
 	@make clean
+
+	make setup-git
 
 	# Install apt dependencies and ppa's.
 	(sudo apt-cache show python3.6 | grep "Package: python3.6") || \
@@ -81,7 +100,7 @@ setup-no-input:
 
 	make setup-venv requirements_file=local.txt
 
-	# Reinstall nodejs dependencies.
+	# Istall nodejs dependencies.
 	npm install --prefix ./src/vue
 
 	make postgres-init
@@ -90,16 +109,15 @@ setup-no-input:
 
 	@echo "DONE!"
 
-setup-travis:
-	(sudo apt-cache show python3.6 | grep "Package: python3.6") || (sudo add-apt-repository ppa:deadsnakes/ppa -y; sudo apt update) || echo "0"
-	sudo apt install npm -y
-	sudo apt install nodejs python3 python3-pip python3-setuptools -y
-
+setup-ci:
+	git submodule update --remote --merge
 	sudo pip3 install virtualenv
 	virtualenv -p python3 venv
-	${venv_activate} && pip install -r requirements/ci.txt --use-feature=2020-resolver
 
-	# Reinstall nodejs dependencies.
+	# Istall python dependencies.
+	${venv_activate} && pip install -r requirements/ci.txt
+
+	# Istall nodejs dependencies.
 	npm install --prefix ./src/vue
 
 	@echo "DONE!"
@@ -117,7 +135,14 @@ setup-sentry-cli:
 		${venv_activate} && curl -sL https://sentry.io/get-cli/ | bash; \
 	fi
 
-update-submodules:
+setup-git:
+	make git-update-submodules
+	make git-set-custom-hooks-path
+
+git-set-custom-hooks-path:
+	git config core.hooksPath .githooks
+
+git-update-submodules:
 	git submodule update --remote --merge
 
 output-webpack-config:

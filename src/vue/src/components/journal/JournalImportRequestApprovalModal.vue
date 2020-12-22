@@ -51,22 +51,22 @@
                             AIG: {
                                 text: 'Approve including grades',
                                 icon: 'check',
-                                class: 'add-button',
+                                class: 'green-button',
                             },
                             AEG: {
                                 text: 'Approve excluding grades',
                                 icon: 'check',
-                                class: 'add-button',
+                                class: 'green-button',
                             },
                             AWGZ: {
                                 text: 'Approve with grades zeroed',
                                 icon: 'check',
-                                class: 'change-button',
+                                class: 'orange-button',
                             },
                             DEC: {
                                 text: 'Decline',
                                 icon: 'times',
-                                class: 'delete-button',
+                                class: 'red-button',
                             },
                         }"
                         class="float-right"
@@ -77,9 +77,7 @@
                 </div>
 
                 <div v-else>
-                    <h4 class="theme-h4">
-                        No outstanding journal import requests.
-                    </h4>
+                    <b>No outstanding journal import requests.</b>
                 </div>
             </load-wrapper>
         </b-card>
@@ -87,12 +85,12 @@
 </template>
 
 <script>
+import dropdownButton from '@/components/assets/DropdownButton.vue'
+import journalCard from '@/components/assignment/JournalCard.vue'
 import loadWrapper from '@/components/loading/LoadWrapper.vue'
 import utils from '@/utils/generic_utils.js'
-import journalCard from '@/components/assignment/JournalCard.vue'
-import dropdownButton from '@/components/assets/DropdownButton.vue'
 
-import journalImportRequestAPI from '@/api/journal_import_request.js'
+import jirAPI from '@/api/journal_import_request.js'
 
 export default {
     components: {
@@ -133,7 +131,7 @@ export default {
         },
     },
     created () {
-        journalImportRequestAPI.list(this.$route.params.jID).then((jirs) => {
+        jirAPI.list(this.$route.params.jID).then((jirs) => {
             this.jirs = jirs
             if (jirs.length === 1) {
                 this.selectedAssignment = {
@@ -158,7 +156,7 @@ export default {
         },
         handleJIR (jir) {
             this.jirPatchInFlight = true
-            journalImportRequestAPI.update(
+            jirAPI.update(
                 jir.id,
                 this.$store.getters['preferences/journalImportRequestButtonSetting'],
                 { responseSuccessToast: true },

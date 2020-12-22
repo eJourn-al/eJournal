@@ -1,6 +1,6 @@
 <template>
     <div>
-        <h2 class="theme-h2  field-heading required">
+        <h2 class="theme-h2 field-heading required">
             Name
         </h2>
         <div class="d-flex">
@@ -13,7 +13,7 @@
             <b-button
                 v-if="assignmentDetails.is_published"
                 v-b-tooltip:hover="'This assignment is visible to students'"
-                class="add-button multi-form ml-2"
+                class="green-button multi-form ml-2"
                 @click="assignmentDetails.is_published = false"
             >
                 <icon name="check"/>
@@ -23,7 +23,7 @@
                 v-if="!assignmentDetails.is_published"
                 v-b-tooltip:hover="'This assignment is not visible to students'"
 
-                class="delete-button multi-form ml-2"
+                class="red-button multi-form ml-2"
                 @click="assignmentDetails.is_published = true"
             >
                 <icon name="times"/>
@@ -45,7 +45,7 @@
         <h2 class="theme-h2 field-heading required">
             Points possible
             <tooltip
-                tip="The amount of points that represents a perfect score for this assignment, excluding
+                tip="The number of points that represents a perfect score for this assignment, excluding
                 bonus points"
             />
         </h2>
@@ -79,7 +79,7 @@
                 class="multi-form mr-2"
             />
         </template>
-        <b-row class="multi-form">
+        <b-row>
             <b-col xl="4">
                 <h2 class="theme-h2 field-heading">
                     Unlock date
@@ -134,12 +134,12 @@
                     {
                         value: true,
                         icon: 'check',
-                        class: 'add-button',
+                        class: 'green-button',
                     },
                     {
                         value: false,
                         icon: 'times',
-                        class: 'delete-button',
+                        class: 'red-button',
                     },
                 ]"
                 class="float-right mb-2 ml-2"
@@ -157,12 +157,12 @@
                         {
                             value: true,
                             icon: 'check',
-                            class: 'add-button',
+                            class: 'green-button',
                         },
                         {
                             value: false,
                             icon: 'times',
-                            class: 'delete-button',
+                            class: 'red-button',
                         },
                     ]"
                     class="float-right mb-2 ml-2"
@@ -179,12 +179,12 @@
                         {
                             value: true,
                             icon: 'check',
-                            class: 'add-button',
+                            class: 'green-button',
                         },
                         {
                             value: false,
                             icon: 'times',
-                            class: 'delete-button',
+                            class: 'red-button',
                         },
                     ]"
                     class="float-right mb-2 ml-2"
@@ -200,12 +200,12 @@
                         {
                             value: true,
                             icon: 'check',
-                            class: 'add-button',
+                            class: 'green-button',
                         },
                         {
                             value: false,
                             icon: 'times',
-                            class: 'delete-button',
+                            class: 'red-button',
                         },
                     ]"
                     class="float-right mb-2 ml-2"
@@ -221,12 +221,12 @@
                         {
                             value: true,
                             icon: 'check',
-                            class: 'add-button',
+                            class: 'green-button',
                         },
                         {
                             value: false,
                             icon: 'times',
-                            class: 'delete-button',
+                            class: 'red-button',
                         },
                     ]"
                     class="float-right mb-2 ml-2"
@@ -241,8 +241,8 @@
 </template>
 
 <script>
-import tooltip from '@/components/assets/Tooltip.vue'
 import RadioButton from '@/components/assets/RadioButton.vue'
+import tooltip from '@/components/assets/Tooltip.vue'
 
 export default {
     name: 'AssignmentDetails',

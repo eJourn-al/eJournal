@@ -115,13 +115,20 @@
                 v-else-if="field.type == 'f'"
                 :file="content[field.id]"
             />
-            <b-embed
-                v-else-if="field.type == 'v'"
-                :src="youtubeEmbedFromURL(content[field.id])"
-                type="iframe"
-                aspect="16by9"
-                allowfullscreen
-            />
+            <template v-else-if="field.type == 'v'">
+                <b-embed
+                    v-if="youtubeEmbedFromURL(content[field.id], field.id)"
+                    :src="youtubeEmbedFromURL(content[field.id], field.id)"
+                    type="iframe"
+                    aspect="16by9"
+                    allowfullscreen
+                />
+                <span
+                    v-else
+                >
+                    {{ content[field.id] }}
+                </span>
+            </template>
             <sandboxed-iframe
                 v-else-if="field.type == 'rt'"
                 :content="content[field.id]"
@@ -144,10 +151,10 @@
 </template>
 
 <script>
-import fileUploadInput from '@/components/assets/file_handling/FileUploadInput.vue'
-import urlInput from '@/components/assets/UrlInput.vue'
 import fileDisplay from '@/components/assets/file_handling/FileDisplay.vue'
+import fileUploadInput from '@/components/assets/file_handling/FileUploadInput.vue'
 import sandboxedIframe from '@/components/assets/SandboxedIframe.vue'
+import urlInput from '@/components/assets/UrlInput.vue'
 
 export default {
     components: {
@@ -189,13 +196,20 @@ export default {
     },
     methods: {
         // from https://stackoverflow.com/a/9102270
-        youtubeEmbedFromURL (url) {
+        youtubeEmbedFromURL (url, fieldID) {
             const regExp = /^.*(youtu\.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/
             const match = url.match(regExp)
             if (match && match[2].length === 11) {
                 return `https://www.youtube.com/embed/${match[2]}?rel=0&amp;showinfo=0`
             } else {
-                this.$toasted.error('A YouTube video field contained an invalid URL.')
+                this.$store.commit('sentry/CAPTURE_SCOPED_MESSAGE', {
+                    level: 'warning',
+                    msg: 'A YouTube video field contained an invalid URL.',
+                    extra: {
+                        url,
+                        fieldID,
+                    },
+                })
                 return null
             }
         },

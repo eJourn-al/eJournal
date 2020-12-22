@@ -1,15 +1,13 @@
 @import '~sass/partials/shadows.sass'
 
-.btn, .btn-secondary
+.btn:not(.btn-link), .btn-secondary:not(.btn-link)
     @extend .theme-shadow
     border: 1px solid $theme-dark-grey !important
     position: relative
-    font-family: 'Roboto Condensed', sans-serif
     background-color: white
     justify-content: center
     display: inline-flex
     align-items: center
-    font-size: 1.1em
     border: none
     border-radius: 5px
     text-transform: capitalize
@@ -19,7 +17,7 @@
     svg
         margin: 5px
     &:hover:not(.no-hover), &.active, &:focus
-        background-color: $theme-blue !important
+        background-color: $theme-blue
         border-color: $theme-blue !important
         &, svg
             color: white !important
@@ -41,44 +39,41 @@
     &.fill-width-sm-max
         @include sm-max
             width: 100%
-
-.add-button
-    svg
-        color: $theme-green !important
-    &:hover:not(.no-hover), &.active, &.fab, &:focus
-        background-color: $theme-green !important
-        border-color: $theme-green !important
-
-.delete-button
-    svg
-        color: $theme-red !important
-    &:hover:not(.no-hover), &.active, &.fab, &:focus
-        background-color: $theme-red !important
-        border-color: $theme-red !important
-
-.change-button
-    svg
-        color: $theme-orange !important
-    &:hover:not(.no-hover), &.active, &.fab, &:focus
-        background-color: $theme-orange !important
-        border-color: $theme-orange !important
-
-.dark-blue-button
-    &:hover:not(.no-hover), &.active, &.fab, &:focus
-        background-color: $theme-dark-blue !important
-        border-color: $theme-dark-blue !important
-
-.preset-type-button
-    width: 75px
-    height: 75px
-    border-radius: 50% !important
-    &.selected
+    &.green-button
         svg
-            color: white !important
-        background-color: $theme-dark-blue !important
-        border-color: $theme-dark-blue !important
-
-.big-button-text
-    font-weight: bold
-    font-size: 20px
-    text-align: center
+            color: $theme-green
+        &:hover:not(.no-hover), &.active, &.fab, &:focus
+            background-color: $theme-green
+            border-color: $theme-green !important
+    &.red-button
+        svg
+            color: $theme-red
+        &:hover:not(.no-hover), &.active, &.fab, &:focus
+            background-color: $theme-red
+            border-color: $theme-red !important
+    &.orange-button
+        svg
+            color: $theme-orange
+        &:hover:not(.no-hover), &.active, &.fab, &:focus
+            background-color: $theme-orange
+            border-color: $theme-orange !important
+    &.dark-blue-button
+        &:hover:not(.no-hover), &.active, &.fab, &:focus
+            background-color: $theme-dark-blue
+            border-color: $theme-dark-blue !important
+    &.blue-filled-button
+        border-color: $theme-blue !important
+        &, svg
+            color: white
+        background-color: $theme-blue
+        &:hover:not(.no-hover), &.active, &.fab, &:focus
+            background-color: darken($theme-blue, 5%)
+    &.preset-type-button
+        width: 75px
+        height: 75px
+        border-radius: 50%
+        &.selected
+            svg
+                color: white
+            background-color: $theme-dark-blue
+            border-color: $theme-dark-blue !important

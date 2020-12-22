@@ -1,9 +1,11 @@
 import test.factory as factory
 from test.utils import api
+from test.utils.performance import QueryContext
 
 from django.test import TestCase
 
 from VLE.models import Journal, Role, User
+from VLE.serializers import AssignmentParticipationSerializer, ParticipationSerializer
 
 
 class ParticipationAPITest(TestCase):
@@ -133,3 +135,59 @@ class ParticipationAPITest(TestCase):
 
         assert group.pk in Journal.objects.get(authors__user=participation.user).groups, \
             'Journal group names should be updated'
+
+    def test_participation_serializer(self):
+        assignment = factory.Assignment()
+        course = assignment.courses.first()
+        teacher = assignment.author
+        queries_per_additional_user = 4  # User serializer
+
+        def create_participation_and_group():
+            participation = factory.Participation(course=course, role=course.role_set.get(name='Student'))
+            group = factory.Group(course=course)
+            participation.groups.add(group)
+
+        create_participation_and_group()
+
+        # Serializing a participation takes the minimal amount of queries (prefetch + select participation and related)
+        with QueryContext() as context_pre:
+            ParticipationSerializer(
+                ParticipationSerializer.setup_eager_loading(course.participation_set.all())[0],
+                context={'user': teacher},
+            ).data
+
+        create_participation_and_group()
+
+        # Participation serializer query count is invariant to db size
+        with QueryContext() as context_post:
+            ParticipationSerializer(
+                ParticipationSerializer.setup_eager_loading(course.participation_set.all()),
+                context={'user': teacher},
+                many=True,
+            ).data
+
+        assert len(context_post) - len(context_pre) <= queries_per_additional_user
+
+    def test_assignment_participation_serializer(self):
+        journal = factory.GroupJournal()
+        teacher = journal.assignment.author
+        queries_per_additional_user = 4  # User serializer
+
+        with QueryContext() as context_pre:
+            AssignmentParticipationSerializer(
+                AssignmentParticipationSerializer.setup_eager_loading(journal.authors),
+                context={'user': teacher},
+                many=True,
+            ).data
+
+        journal = factory.GroupJournal(
+            assignment=journal.assignment, add_users=[factory.Student(), factory.Student()])
+
+        with QueryContext() as context_post:
+            AssignmentParticipationSerializer(
+                AssignmentParticipationSerializer.setup_eager_loading(journal.authors),
+                context={'user': teacher},
+                many=True,
+            ).data
+
+        assert len(context_post) - len(context_pre) <= queries_per_additional_user

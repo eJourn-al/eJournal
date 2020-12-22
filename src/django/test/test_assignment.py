@@ -2,6 +2,7 @@ import datetime
 import test.factory as factory
 from test.utils import api
 from test.utils.generic_utils import equal_models
+from test.utils.performance import QueryContext
 
 import pytest
 from dateutil import parser
@@ -17,7 +18,7 @@ from django.utils import timezone
 import VLE.utils.statistics as stats_utils
 from VLE.models import (Assignment, AssignmentParticipation, Course, Entry, Field, Format, Journal,
                         JournalImportRequest, Node, Participation, PresetNode, Role, Template)
-from VLE.serializers import AssignmentSerializer
+from VLE.serializers import AssignmentSerializer, SmallAssignmentSerializer
 from VLE.utils.error_handling import VLEParticipationError, VLEProgrammingError
 from VLE.views.assignment import day_neutral_datetime_increment, set_assignment_dates
 
@@ -289,22 +290,23 @@ class AssignmentAPITest(TestCase):
         course2 = factory.Course()
         assignment.courses.add(course2)
         factory.Journal(assignment=assignment)
+        assignment = AssignmentSerializer.setup_eager_loading(Assignment.objects.filter(pk=assignment.pk)).get()
         result = AssignmentSerializer(assignment, context={
-            'user': course2.author, 'course': course2, 'journals': True}).data
+            'user': course2.author, 'course': course2, 'serialize_journals': True}).data
         assert len(result['journals']) == 1, 'Course2 is supplied, only journals from that course should appear (1)'
 
         result = AssignmentSerializer(assignment, context={
-            'user': course2.author, 'journals': True}).data
+            'user': course2.author, 'serialize_journals': True}).data
         assert not result['journals'], 'No course supplied should also return no journals'
 
         result = AssignmentSerializer(assignment, context={
-            'user': course1.author, 'course': course1, 'journals': True}).data
+            'user': course1.author, 'course': course1, 'serialize_journals': True}).data
         assert len(result['journals']) == 2, 'Course1 is supplied, only journals from that course should appear (2)'
 
         # Should not work when user is not in supplied course
         with pytest.raises(VLEParticipationError):
             result = AssignmentSerializer(assignment, context={
-                'user': course2.author, 'course': course1, 'journals': True}).data
+                'user': course2.author, 'course': course1, 'serialize_journals': True}).data
 
     def test_assigned_assignment(self):
         assignment = factory.Assignment()
@@ -799,7 +801,7 @@ class AssignmentAPITest(TestCase):
                                   'TA is only part of a group in pav2, so own should only yield those users')
 
         def test_returned_stats(self):
-            # Setup todos for PAV1
+            # Setup stuff to do for PAV1
             ungrouped_pav1_needs_marking = 7
             ungrouped_pav1_outstanding_jirs = 5
             for _ in range(ungrouped_pav1_needs_marking):
@@ -818,7 +820,7 @@ class AssignmentAPITest(TestCase):
             pav1_needs_marking = ungrouped_pav1_needs_marking + gr_pav1_needs_marking
             pav1_oustanding_jirs = ungrouped_pav1_outstanding_jirs + gr_pav1_outstanding_jirs
 
-            # Setup todos for PAV2
+            # Setup stuff to do for PAV2
             ungrouped_pav2_needs_marking = 13
             ungrouped_pav2_outstanding_jirs = 3
             for _ in range(ungrouped_pav2_needs_marking):
@@ -971,6 +973,14 @@ class AssignmentAPITest(TestCase):
         resp = api.get(self, 'assignments/upcoming', user=journal.authors.first().user)['upcoming']
         assert resp[0]['deadline']['name'] == '0/7 points', \
             'When not having completed an progress node, that should be shown'
+
+        journal.bonus_points = 7
+        journal.save()
+        resp = api.get(self, 'assignments/upcoming', user=journal.authors.first().user)['upcoming']
+        assert resp[0]['deadline']['name'] == 'End of assignment', \
+            'Journal bonus points should count to grade total, including fulfilling progress goals'
+        journal.bonus_points = 0
+        journal.save()
 
         entrydeadline = factory.DeadlinePresetNode(
             format=assignment.format,
@@ -1231,6 +1241,7 @@ class AssignmentAPITest(TestCase):
         lti_course = factory.LtiCourse(author=lti_teacher)
         lti_assignment = factory.LtiAssignment(courses=[lti_course])
         lti_journal = factory.LtiJournal(assignment=lti_assignment)
+        lti_journal = Journal.objects.get(pk=lti_journal.pk)
         lti_bonus_student = lti_journal.authors.first().user
 
         def test_bonus_helper(content, status=200, user=lti_teacher, delimiter=','):
@@ -1376,6 +1387,7 @@ class AssignmentAPITest(TestCase):
 
     def test_assignment_handle_active_lti_id_modified(self):
         lti_group_journal = factory.LtiGroupJournal(entries__n=0, add_users=[factory.Student()])
+        lti_group_journal = Journal.objects.get(pk=lti_group_journal.pk)
         assignment = lti_group_journal.assignment
 
         assert not lti_group_journal.needs_lti_link, 'Assignment, AP and Journal are initialized correctly '
@@ -1385,4 +1397,75 @@ class AssignmentAPITest(TestCase):
         assignment.handle_active_lti_id_modified()
 
         for ap in lti_group_journal.authors.select_related('user', 'journal'):
-            assert ap.user.full_name in ap.journal.needs_lti_link, 'All users require a new LTI link'
+            journal = Journal.objects.get(pk=ap.journal.pk)
+            assert ap.user.full_name in journal.needs_lti_link, 'All users require a new LTI link'
+
+    def test_assignment_serializer(self):
+        assignment = factory.Assignment(format__templates=False)
+        course = assignment.courses.first()
+        factory.TextTemplate(format=assignment.format)
+
+        # Some base state
+        journal = factory.Journal(assignment=assignment)
+        factory.UnlimitedEntry(node__journal=journal, grade__grade=1)
+        factory.UnlimitedEntry(node__journal=journal, grade__grade=1, grade__published=False)
+        student = journal.author
+        factory.Journal(assignment=assignment)
+        factory.DeadlinePresetNode(format=assignment.format)
+        factory.ProgressPresetNode(format=assignment.format)
+
+        def add_state():
+            factory.TextTemplate(**{'format': assignment.format})
+            factory.Journal(**{'assignment': assignment})
+            factory.UnlimitedEntry(**{'node__journal': journal, 'grade__grade': 1})
+            factory.UnlimitedEntry(**{'node__journal': journal, 'grade__grade': 1, 'grade__published': False})
+
+        # Student perspective
+        with QueryContext() as context_pre:
+            AssignmentSerializer(
+                AssignmentSerializer.setup_eager_loading(Assignment.objects.filter(pk=assignment.pk)).get(),
+                context={'user': student, 'course': course, 'serialize_journals': True}
+            ).data
+        add_state()
+        with QueryContext() as context_post:
+            AssignmentSerializer(
+                AssignmentSerializer.setup_eager_loading(Assignment.objects.filter(pk=assignment.pk)).get(),
+                context={'user': student, 'course': course, 'serialize_journals': True}
+            ).data
+        assert len(context_pre) == len(context_post) and len(context_pre) <= 31
+
+        # Teacher perspective
+        with QueryContext() as context_pre:
+            AssignmentSerializer(
+                AssignmentSerializer.setup_eager_loading(Assignment.objects.filter(pk=assignment.pk)).get(),
+                context={'user': assignment.author, 'course': course, 'serialize_journals': True}
+            ).data
+        add_state()
+        with QueryContext() as context_post:
+            AssignmentSerializer(
+                AssignmentSerializer.setup_eager_loading(Assignment.objects.filter(pk=assignment.pk)).get(),
+                context={'user': assignment.author, 'course': course, 'serialize_journals': True}
+            ).data
+        assert len(context_pre) == len(context_post) and len(context_pre) <= 22
+
+    def test_small_assignment_serializer(self):
+        assignment = factory.Assignment(format__templates=False)
+
+        # User is required context for any serializer which inherits AssignmentSerializer
+        with self.assertRaises(VLEProgrammingError):
+            SmallAssignmentSerializer(assignment).data
+
+    def test_bulk_create_aps(self):
+        assignment = factory.Assignment()
+        factory.ProgressPresetNode(format=assignment.format)
+        aps = [
+            AssignmentParticipation(
+                assignment=assignment,
+                user=factory.Participation().user,
+            )
+            for _ in range(10)
+        ]
+        aps = AssignmentParticipation.objects.bulk_create(aps)
+        for ap in aps:
+            assert ap.journal, 'journals should be created'
+            assert Node.objects.filter(journal=ap.journal).exists(), 'nodes should be created inside journal'

@@ -26,6 +26,10 @@ module.exports = {
                 return options
             })
         }
+
+        if (config.plugins.has('optimize-css')) {
+            config.plugins.delete('optimize-css')
+        }
     },
     configureWebpack: {
         /* Splits all vendors into dedicated chunks */
@@ -87,7 +91,8 @@ module.exports = {
                 prependData: `
                     @import "~sass/modules/colors.sass"
                     @import "~sass/modules/breakpoints.sass"
-                `
+                    @import "~sass/modules/dimensions.sass"
+                `,
             }
         }
     },

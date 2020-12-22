@@ -24,7 +24,7 @@
             </span>
         </div>
 
-        <bread-crumb :currentPage="'Assignments'"/>
+        <bread-crumb/>
 
         <input
             v-model="searchValue"
@@ -90,22 +90,23 @@
             </div>
             <main-card
                 v-if="computedAssignments.length === 0"
-                line1="No assignments found"
-                line2="You currently do not participate in any assignments."
-                class="no-hover border-dark-grey"
-            />
+                text="No assignments found"
+                class="no-hover"
+            >
+                You currently do not participate in any assignments.
+            </main-card>
         </load-wrapper>
     </content-single-column>
 </template>
 
 <script>
-import contentSingleColumn from '@/components/columns/ContentSingleColumn.vue'
-import breadCrumb from '@/components/assets/BreadCrumb.vue'
-import loadWrapper from '@/components/loading/LoadWrapper.vue'
-import todoCard from '@/components/assets/TodoCard.vue'
-import mainCard from '@/components/assets/MainCard.vue'
 import assignmentAPI from '@/api/assignment.js'
+import breadCrumb from '@/components/assets/BreadCrumb.vue'
 import comparison from '@/utils/comparison.js'
+import contentSingleColumn from '@/components/columns/ContentSingleColumn.vue'
+import loadWrapper from '@/components/loading/LoadWrapper.vue'
+import mainCard from '@/components/assets/MainCard.vue'
+import todoCard from '@/components/assets/TodoCard.vue'
 
 import { mapGetters, mapMutations } from 'vuex'
 

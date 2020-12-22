@@ -5,6 +5,7 @@ import random
 from test.factory.file_context import FileContentFileContextFactory, RichTextContentFileContextFactory
 
 import factory
+from django.conf import settings
 from django.core.exceptions import ValidationError
 
 from VLE.models import Field
@@ -42,9 +43,9 @@ def gen_valid_non_file_data(field):
     if field.type == Field.URL:
         return factory.Faker('url').generate()
     if field.type == Field.DATE:
-        return factory.Faker('time', pattern=Field.ALLOWED_DATE_FORMAT).generate()
+        return factory.Faker('time', pattern=settings.ALLOWED_DATE_FORMAT).generate()
     if field.type == Field.DATETIME:
-        return factory.Faker('time', pattern=Field.ALLOWED_DATETIME_FORMAT).generate()
+        return factory.Faker('time', pattern=settings.ALLOWED_DATETIME_FORMAT).generate()
     if field.type == Field.SELECTION:
         return random.choice(json.loads(field.options))
     if field.type == Field.NO_SUBMISSION:

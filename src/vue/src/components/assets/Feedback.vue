@@ -24,7 +24,7 @@
             class="full-width d-flex justify-content-center mt-2"
         >
             <b-button
-                class="delete-button mr-2 flex-grow-1"
+                class="red-button mr-2 flex-grow-1"
                 :class="{'active': type === 'bug'}"
                 @click="() => {
                     type = 'bug'
@@ -110,8 +110,8 @@
 </template>
 
 <script>
-import connection from '@/api/connection.js'
 import { mapGetters } from 'vuex'
+import connection from '@/api/connection.js'
 import feedbackAPI from '@/api/feedback.js'
 
 export default {

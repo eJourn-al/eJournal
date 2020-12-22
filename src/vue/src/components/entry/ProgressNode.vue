@@ -18,7 +18,7 @@
         <hr class="full-width"/>
         <span
             v-if="!accomplished && new Date() < new Date(currentNode.due_date)"
-            class="text-grey text-condensed"
+            class="text-grey"
         >
             <b>{{ score }}</b> out of <b>{{ currentNode.target }}</b> points<br/>
 
@@ -27,13 +27,13 @@
         </span>
         <span
             v-else-if="!accomplished"
-            class="text-grey text-condensed"
+            class="text-grey"
         >
             Not achieved
         </span>
         <span
             v-else
-            class="text-grey text-condensed"
+            class="text-grey"
         >
             Successfully achieved
         </span>
@@ -41,8 +41,8 @@
 </template>
 
 <script>
-import sandboxedIframe from '@/components/assets/SandboxedIframe.vue'
 import filesList from '@/components/assets/file_handling/FilesList.vue'
+import sandboxedIframe from '@/components/assets/SandboxedIframe.vue'
 
 export default {
     components: {

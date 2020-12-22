@@ -9,7 +9,7 @@ from rest_framework import viewsets
 import VLE.factory as factory
 import VLE.utils.generic_utils as utils
 import VLE.utils.responses as response
-from VLE.models import Comment, Entry, FileContext
+from VLE.models import Comment, Entry, FileContext, Journal
 from VLE.serializers import CommentSerializer
 from VLE.utils import file_handling
 
@@ -56,7 +56,7 @@ class CommentView(viewsets.ViewSet):
         entry_id, = utils.required_params(request.query_params, "entry_id")
 
         entry = Entry.objects.get(pk=entry_id)
-        journal = entry.node.journal
+        journal = Journal.objects.get(node__entry=entry)
         assignment = journal.assignment
 
         request.user.check_can_view(journal)
@@ -66,8 +66,13 @@ class CommentView(viewsets.ViewSet):
         else:
             comments = Comment.objects.filter(entry=entry, published=True)
 
-        serializer = CommentSerializer(comments.order_by('creation_date'), context={'user': request.user}, many=True)
-        return response.success({'comments': serializer.data})
+        return response.success({
+            'comments': CommentSerializer(
+                CommentSerializer.setup_eager_loading(comments.order_by('creation_date')),
+                context={'user': request.user},
+                many=True
+            ).data
+        })
 
     def create(self, request):
         """Create a new comment.
@@ -94,7 +99,7 @@ class CommentView(viewsets.ViewSet):
         published, = utils.optional_typed_params(request.data, (bool, 'published'))
 
         entry = Entry.objects.get(pk=entry_id)
-        journal = entry.node.journal
+        journal = Journal.objects.get(node__entry=entry)
         assignment = journal.assignment
 
         request.user.check_permission('can_comment', assignment)
@@ -106,7 +111,12 @@ class CommentView(viewsets.ViewSet):
 
         handle_comment_files(request.user, files, comment)
 
-        return response.created({'comment': CommentSerializer(comment, context={'user': request.user}).data})
+        return response.created({
+            'comment': CommentSerializer(
+                CommentSerializer.setup_eager_loading(Comment.objects.filter(pk=comment.pk)).get(),
+                context={'user': request.user},
+            ).data
+        })
 
     def retrieve(self, request, pk=None):
         """Retrieve a comment.
@@ -125,11 +135,12 @@ class CommentView(viewsets.ViewSet):
             success -- with the comment data
 
         """
-        comment = Comment.objects.get(pk=pk)
+        comment = CommentSerializer.setup_eager_loading(Comment.objects.filter(pk=pk)).get()
         request.user.check_can_view(comment)
 
-        serializer = CommentSerializer(comment, context={'user': request.user})
-        return response.success({'comment': serializer.data})
+        return response.success({
+            'comment': CommentSerializer(comment, context={'user': request.user}).data
+        })
 
     def partial_update(self, request, *args, **kwargs):
         """Update an existing comment.
@@ -155,7 +166,12 @@ class CommentView(viewsets.ViewSet):
         text, files = utils.required_typed_params(request.data, (str, 'text'), (int, 'files'))
         published, = utils.optional_typed_params(request.data, (bool, 'published'))
 
-        comment = Comment.objects.get(pk=comment_id)
+        comment = CommentSerializer.setup_eager_loading(
+            Comment.objects.filter(pk=comment_id)
+        ).select_related(
+            'entry__node__journal',
+            'entry__node__journal__assignment',
+        ).get()
         journal = comment.entry.node.journal
         assignment = journal.assignment
 

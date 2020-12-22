@@ -5,8 +5,18 @@ export default {
         return auth.downloadFile(`users/${id}/GDPR/`, null, connArgs)
     },
 
+    getAllUsers (connArgs = auth.DEFAULT_CONN_ARGS) {
+        return auth.get('users', null, connArgs)
+            .then(response => response.data.users)
+    },
+
     update (id, data, connArgs = auth.DEFAULT_CONN_ARGS) {
         return auth.update(`users/${id}`, data, connArgs)
+            .then(response => response.data.user)
+    },
+
+    delete (id, connArgs = auth.DEFAULT_CONN_ARGS) {
+        return auth.delete(`users/${id}`, connArgs)
             .then(response => response.data.user)
     },
 
@@ -23,5 +33,10 @@ export default {
     /* Request an email verification token for the given users email adress. */
     requestEmailVerification (email, connArgs = auth.DEFAULT_CONN_ARGS) {
         return auth.post('/request_email_verification/', { email }, connArgs)
+    },
+
+    inviteUsers (data, connArgs = auth.DEFAULT_CONN_ARGS) {
+        return auth.post('users/invite_users', data, connArgs)
+            .then(response => response.data)
     },
 }

@@ -8,9 +8,9 @@
 </template>
 
 <script>
-import headerBar from '@/Header.vue'
-import feedbackSection from '@/FeedbackSection.vue'
 import codeVersionAlert from '@/components/assets/CodeVersionAlert.vue'
+import feedbackSection from '@/FeedbackSection.vue'
+import headerBar from '@/Header.vue'
 
 export default {
     components: {
@@ -34,6 +34,6 @@ export default {
 
 #app
     overflow-x: hidden
-    padding-top: 70px
+    padding-top: $header-height
     min-height: 100%
 </style>

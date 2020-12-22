@@ -16,7 +16,7 @@ import VLE.validators as validators
 
 def make_user(username, password=None, email=None, lti_id=None, profile_picture=settings.DEFAULT_PROFILE_PICTURE,
               is_superuser=False, is_teacher=False, full_name=None, verified_email=False, is_staff=False,
-              is_test_student=False):
+              is_test_student=False, is_active=True, save=True):
     """Create a user.
 
     Arguments:
@@ -30,16 +30,18 @@ def make_user(username, password=None, email=None, lti_id=None, profile_picture=
     user = VLE.models.User(
         username=username, email=email, lti_id=lti_id, is_superuser=is_superuser, is_teacher=is_teacher,
         verified_email=verified_email, is_staff=is_staff, full_name=full_name, profile_picture=profile_picture,
-        is_test_student=is_test_student)
+        is_test_student=is_test_student, is_active=is_active)
 
-    if is_test_student:
+    if is_test_student or not is_active:
         user.set_unusable_password()
     else:
         validators.validate_password(password)
         user.set_password(password)
 
     user.full_clean()
-    user.save()
+
+    if save:
+        user.save()
     return user
 
 
@@ -188,7 +190,8 @@ def make_progress_node(format, due_date, target):
     format -- format the node belongs to.
     due_date -- due_date of the node.
     """
-    node = VLE.models.PresetNode(type=VLE.models.Node.PROGRESS, due_date=due_date, target=target, format=format)
+    node = VLE.models.PresetNode(
+        type=VLE.models.Node.PROGRESS, due_date=due_date, target=target, format=format, display_name='Progress goal')
     node.save()
     return node
 

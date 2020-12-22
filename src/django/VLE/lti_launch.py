@@ -1,6 +1,7 @@
 from urllib.parse import urljoin
 
 import oauth2
+import sentry_sdk
 from django.conf import settings
 
 import VLE.factory as factory
@@ -77,7 +78,8 @@ def get_user_lti(request):
             user.profile_picture = request['custom_user_image']
             user.save()
 
-        if 'roles' in request and settings.ROLES['Teacher'] in roles_to_list(request):
+        # NOTE: Canvas can also provide Institution wide roles, we should use this in stead of just any teacher role
+        if 'roles' in request and any(lti_role in roles_to_list(request) for lti_role in settings.ROLES['Teacher']):
             user.is_teacher = True
             user.save()
         return user
@@ -133,6 +135,9 @@ def _make_lti_participation(user, course, lti_role):
         if role in lti_role:
             return factory.make_participation(
                 user, course, Role.objects.get(name=role, course=course), notify_user=False)
+
+    sentry_sdk.capture_message(f'Unrecognized LTI role encountered. User {user.pk}, roles {lti_role}', level='warning')
+
     return factory.make_participation(
         user, course, Role.objects.get(name='Student', course=course), notify_user=False)
 
@@ -219,6 +224,6 @@ def select_create_journal(request, user, assignment):
 
     if journal:
         grading.task_author_status_to_LMS.delay(journal.pk, author.pk)
-        journal.refresh_from_db()
+        journal = Journal.objects.get(pk=journal.pk)
 
     return journal

@@ -2,10 +2,10 @@
     <b-alert
         id="code-version-alert"
         :show="show"
-        class="cursor-pointer unselectable"
+        class="theme-shadow cursor-pointer unselectable"
         @click.native="beginRefreshForNewVersion"
     >
-        eJournal received an update 🎉, click to refresh.
+        eJournal received an update 🎉, click <b>here</b> to reload
     </b-alert>
 </template>
 
@@ -35,12 +35,8 @@ export default {
 
 <style lang="sass">
 #code-version-alert
-    position: absolute
+    position: fixed
     margin: 2px
-    bottom: 0
-
-    &:hover
-        background-color: $theme-green !important
-        border-color: $theme-green !important
-        color: white !important
+    bottom: 10px
+    left: 10px
 </style>

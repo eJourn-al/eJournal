@@ -46,14 +46,15 @@
                 <b-badge
                     v-if="author.needs_lti_link"
                     v-b-tooltip:hover="'This user has not yet visited the assignment in the LMS (Canvas) yet'"
+                    pill
                     class="background-red"
                 >
-                    LTI
                     <icon
                         name="link"
                         class="fill-white shift-up-2"
                         scale="0.65"
                     />
+                    LTI
                 </b-badge>
                 {{ author.user.full_name }}
             </b>
@@ -88,7 +89,7 @@
                 class="no-right-radius"
             />
             <b-button
-                class="add-button no-left-radius"
+                class="green-button no-left-radius"
                 @click="addMembers"
             >
                 <icon name="user-plus"/>
@@ -99,8 +100,8 @@
 </template>
 
 <script>
-import journalAPI from '@/api/journal.js'
 import assignmentAPI from '@/api/assignment.js'
+import journalAPI from '@/api/journal.js'
 
 import { mapGetters } from 'vuex'
 

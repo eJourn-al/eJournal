@@ -1,7 +1,7 @@
+import * as preferenceOptions from '../constants/preference-types.js'
+import * as types from '../constants/mutation-types.js'
 import preferencesAPI from '@/api/preferences.js'
 import store from '@/store/index.js'
-import * as types from '../constants/mutation-types.js'
-import * as preferenceOptions from '../constants/preference-types.js'
 
 const getters = {
     // Stored user preferences.

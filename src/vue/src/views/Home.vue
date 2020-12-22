@@ -1,10 +1,6 @@
 <template>
     <content-columns>
-        <bread-crumb
-            slot="main-content-column"
-            :currentPage="'Courses'"
-            @edit-click="handleEdit()"
-        />
+        <bread-crumb slot="main-content-column"/>
 
         <load-wrapper
             slot="main-content-column"
@@ -17,23 +13,30 @@
                 >
                     <b-link :to="{ name: 'Course', params: { cID: c.id, courseName: c.name } }">
                         <main-card
-                            :line1="c.name"
-                            :line2="c.startdate ? (c.startdate.substring(0, 4) +
-                                (c.enddate ? ` - ${c.enddate.substring(0, 4)}` : '')) : ''"
-                            :color="$root.getBorderClass(c.id)"
-                        />
+                            :text="c.name"
+                            :class="$root.getBorderClass(c.id)"
+                        >
+                            <b-badge
+                                v-if="c.startdate || c.enddate"
+                                pill
+                                class="background-blue"
+                            >
+                                {{ courseDateDisplay(c) }}
+                            </b-badge>
+                        </main-card>
                     </b-link>
                 </div>
             </div>
             <main-card
                 v-else
-                line1="No courses found"
-                line2="You currently do not participate in any courses."
-                class="no-hover border-dark-grey"
-            />
+                text="No courses found"
+                class="no-hover"
+            >
+                You currently do not participate in any courses.
+            </main-card>
             <b-button
                 v-if="$hasPermission('can_add_course')"
-                class="add-button"
+                class="green-button"
                 @click="showModal('createCourseRef')"
             >
                 <icon name="plus"/>
@@ -68,13 +71,12 @@
 </template>
 
 <script>
-import contentColumns from '@/components/columns/ContentColumns.vue'
 import breadCrumb from '@/components/assets/BreadCrumb.vue'
+import contentColumns from '@/components/columns/ContentColumns.vue'
+import createCourse from '@/components/course/CreateCourse.vue'
+import deadlineDeck from '@/components/assets/DeadlineDeck.vue'
 import loadWrapper from '@/components/loading/LoadWrapper.vue'
 import mainCard from '@/components/assets/MainCard.vue'
-import createCourse from '@/components/course/CreateCourse.vue'
-import editHome from '@/components/home/EditHome.vue'
-import deadlineDeck from '@/components/assets/DeadlineDeck.vue'
 
 import courseAPI from '@/api/course.js'
 
@@ -86,7 +88,6 @@ export default {
         loadWrapper,
         mainCard,
         createCourse,
-        editHome,
         deadlineDeck,
     },
     data () {
@@ -100,7 +101,7 @@ export default {
     },
     methods: {
         loadCourses () {
-            courseAPI.getUserEnrolled()
+            courseAPI.list()
                 .then((courses) => {
                     this.courses = courses
                     this.loadingCourses = false
@@ -116,11 +117,17 @@ export default {
 
             this.hideModal(ref)
         },
-        handleEdit () {
-            // TODO: Open EditHome
-        },
         hideModal (ref) {
             this.$refs[ref].hide()
+        },
+        courseDateDisplay (course) {
+            let display = ''
+
+            if (course.startdate) { display += course.startdate.substring(0, 4) }
+            if (course.startdate && course.enddate) { display += ' - ' }
+            if (course.enddate) { display += course.enddate.substring(0, 4) }
+
+            return display
         },
     },
 }

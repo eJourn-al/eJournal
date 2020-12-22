@@ -169,7 +169,14 @@ def import_content(content, entry):
     content.entry = entry
     content.save()
 
-    files = FileContext.objects.filter(content=source_content_pk, is_temp=False)
+    files = FileContext.objects.filter(
+        content=source_content_pk,
+        is_temp=False,
+    ).unused_file_field_files('exclude').unused_rich_text_field_files('exclude').select_related(
+        'content__entry__node__journal',
+        'content__entry__node__journal__assignment',
+    )
+
     for old_fc in files:
         new_fc = FileContext.objects.create(
             file=ContentFile(old_fc.file.file.read(), name=old_fc.file_name),
@@ -178,6 +185,7 @@ def import_content(content, entry):
             is_temp=False,
             content=content,
             journal=content.entry.node.journal,
+            assignment=content.entry.node.journal.assignment,
             in_rich_text=old_fc.in_rich_text
         )
 

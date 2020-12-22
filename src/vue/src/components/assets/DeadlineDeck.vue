@@ -62,15 +62,15 @@
             </div>
             <b-card
                 v-else
-                class="border-dark-grey no-hover"
+                class="no-hover"
             >
                 <div class="text-center multi-form">
                     <icon
                         name="check"
                         scale="4"
-                        class="fill-green mb-2 text-shadow"
+                        class="fill-green mb-2"
                     /><br/>
-                    <b class="field-heading">
+                    <b>
                         All done!
                     </b>
                 </div>
@@ -87,9 +87,9 @@
 import assignmentAPI from '@/api/assignment.js'
 import comparison from '@/utils/comparison.js'
 
-import todoCard from '@/components/assets/TodoCard.vue'
-import loadWrapper from '@/components/loading/LoadWrapper.vue'
 import { mapGetters, mapMutations } from 'vuex'
+import loadWrapper from '@/components/loading/LoadWrapper.vue'
+import todoCard from '@/components/assets/TodoCard.vue'
 
 export default {
     components: {

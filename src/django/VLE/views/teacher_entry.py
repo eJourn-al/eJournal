@@ -6,10 +6,10 @@ In this file are all the entry api requests.
 from django.db.models import Max
 from rest_framework import viewsets
 
-import VLE.serializers as serialize
 import VLE.utils.generic_utils as utils
 import VLE.utils.responses as response
 from VLE.models import Assignment, Entry, Grade, Journal, Node, TeacherEntry, Template
+from VLE.serializers import TeacherEntrySerializer
 from VLE.utils import entry_utils, grading
 from VLE.utils.error_handling import VLEBadRequest
 
@@ -72,7 +72,12 @@ class TeacherEntryView(viewsets.ViewSet):
         self._create_new_entries(teacher_entry, journals, request.user)
 
         return response.created({
-            'teacher_entry': serialize.TeacherEntrySerializer(teacher_entry).data
+            'teacher_entry': TeacherEntrySerializer(
+                TeacherEntrySerializer.setup_eager_loading(
+                    TeacherEntry.objects.filter(pk=teacher_entry.pk)
+                ).get(),
+                context={'user': request.user},
+            ).data
         })
 
     def partial_update(self, request, pk, *args, **kwargs):
@@ -89,12 +94,16 @@ class TeacherEntryView(viewsets.ViewSet):
         that journal).
         """
         journals, = utils.required_params(request.data, 'journals')
+        title, = utils.required_typed_params(request.data, (str, 'title'))
 
         teacher_entry = TeacherEntry.objects.get(pk=pk)
 
         request.user.check_permission('can_post_teacher_entries', teacher_entry.assignment)
         request.user.check_permission('can_grade', teacher_entry.assignment)
         request.user.check_permission('can_publish_grades', teacher_entry.assignment)
+
+        if title is None or len(title) == 0:
+            return response.bad_request('Title cannot be empty.')
 
         journals = self._check_teacher_entry_content(journals, teacher_entry.assignment, teacher_entry=teacher_entry)
 
@@ -118,8 +127,16 @@ class TeacherEntryView(viewsets.ViewSet):
         self._create_new_entries(teacher_entry, new_journals, request.user)
         self._update_existing_entries(teacher_entry, existing_journals, request.user)
 
+        if teacher_entry.title != title:
+            teacher_entry.title = title
+            teacher_entry.save()
+
         return response.success({
-            'teacher_entry': serialize.TeacherEntrySerializer(teacher_entry).data
+            'teacher_entry': TeacherEntrySerializer(
+                TeacherEntrySerializer.setup_eager_loading(
+                    TeacherEntry.objects.filter(pk=teacher_entry.pk)
+                ).get()
+            ).data
         })
 
     def destroy(self, request, *args, **kwargs):
@@ -175,17 +192,8 @@ class TeacherEntryView(viewsets.ViewSet):
                 )
                 grades.append(grade)
 
-                if journal_data['published']:
-                    journal.grade += journal_data['grade']  # Set the journal grade for bulk update later
-                else:
-                    journal.unpublished += 1  # Set the journal unpublished count for bulk update later
-            else:
-                journal.needs_marking += 1  # Set the journal needs_marking count for bulk update later
-
-        Node.objects.bulk_create(nodes)
+        Node.objects.bulk_create(nodes, new_node_notifications=False)
         grades = Grade.objects.bulk_create(grades)
-        # Update the journals @computed fields
-        Journal.objects.bulk_update(journals, ['grade', 'unpublished', 'needs_marking'])
 
         # Set the grade field of the newly created entries to the newly created grades.
         # Last edited is set on creation, even when specified during initialization.
@@ -207,7 +215,6 @@ class TeacherEntryView(viewsets.ViewSet):
         journal_pks = list(journals_data_dict.keys())
         entries = Entry.objects.filter(teacher_entry=teacher_entry, node__journal__in=journal_pks) \
             .select_related('grade', 'node__journal')
-        journal_objs = [entry.node.journal for entry in entries]
         grades = []
 
         for entry in entries:
@@ -216,8 +223,6 @@ class TeacherEntryView(viewsets.ViewSet):
                 entry.grade.grade != journals_data_dict[entry.node.journal.pk]['grade'] or
                 entry.grade.published != journals_data_dict[entry.node.journal.pk]['published']
             ):
-                journal = entry.node.journal
-
                 grade = Grade(
                     author=author,
                     grade=journals_data_dict[entry.node.journal.pk]['grade'],
@@ -226,28 +231,7 @@ class TeacherEntryView(viewsets.ViewSet):
                 )
                 grades.append(grade)
 
-                # Set the journal's @computed fields 'grade' ,'unpublished', and 'needs_marking' for bulk update later.
-                if entry.grade:
-                    if entry.grade.published:
-                        if journals_data_dict[entry.node.journal.pk]['published']:
-                            journal.grade = journal.grade - entry.grade.grade + journals_data_dict[journal.pk]['grade']
-                        else:
-                            journal.grade -= entry.grade.grade
-                            journal.unpublished += 1
-                    else:
-                        if journals_data_dict[entry.node.journal.pk]['published']:
-                            journal.unpublished -= 1
-                            journal.grade += journals_data_dict[journal.pk]["grade"]
-                else:
-                    journal.needs_marking -= 1
-                    if journals_data_dict[entry.node.journal.pk]['published']:
-                        journal.grade += journals_data_dict[entry.node.journal.pk]['grade']
-                    else:
-                        journal.unpublished += 1
-
         Grade.objects.bulk_create(grades)
-        # Update the earlier in memory set journal computed fields
-        Journal.objects.bulk_update(journal_objs, ['grade', 'unpublished', 'needs_marking'])
 
         # Set the grade field of the updated entries to the newly created grades.
         entries = list(

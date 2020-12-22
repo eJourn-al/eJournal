@@ -1,4 +1,5 @@
 import test.factory as factory
+import test.utils.generic_utils
 from test.utils import api
 
 from dateutil.relativedelta import relativedelta
@@ -8,7 +9,8 @@ from django.test import TestCase
 from django.utils import timezone
 
 from VLE.models import Assignment, Course, Entry, Field, FileContext, Format, Group, Journal, Node, PresetNode, Template
-from VLE.serializers import FileSerializer, PresetNodeSerializer, TemplateSerializer
+from VLE.serializers import (AssignmentFormatSerializer, FileSerializer, FormatSerializer, PresetNodeSerializer,
+                             TemplateSerializer)
 from VLE.utils import generic_utils as utils
 from VLE.utils.error_handling import VLEProgrammingError
 
@@ -46,6 +48,32 @@ class FormatAPITest(TestCase):
         assert assignment.format.template_set.count() == 1, 'One template is created'
         field = Field.objects.get(template=assignment.format.template_set.first())
         assert field.type == Field.URL, 'And the template consists only out of the specified field'
+
+        assignment = factory.Assignment(
+            format__templates=[{'type': Field.URL, 'location': 1}, {'type': Field.TEXT, 'location': 0}])
+        assert assignment.format.template_set.count() == 1, 'One template is created'
+        # For the template two fields are generated
+        field = Field.objects.get(template=assignment.format.template_set.first(), location=0)
+        field = Field.objects.get(template=assignment.format.template_set.first(), location=1)
+
+    def test_assignment_format_update_params_factory(self):
+        assignment = factory.Assignment()
+
+        pre_update_format = AssignmentFormatSerializer(
+            AssignmentFormatSerializer.setup_eager_loading(Assignment.objects.filter(pk=assignment.pk)).get(),
+            context={'user': assignment.author},
+        ).data
+
+        format_update_dict = factory.AssignmentFormatUpdateParams(assignment=assignment)
+        api.update(self, 'formats', params=format_update_dict, user=assignment.author)
+
+        post_update_format = AssignmentFormatSerializer(
+            AssignmentFormatSerializer.setup_eager_loading(Assignment.objects.filter(pk=assignment.pk)).get(),
+            context={'user': assignment.author},
+        ).data
+
+        assert test.utils.generic_utils.equal_models(pre_update_format, post_update_format), \
+            'Unmodified update paramaters should be able to succesfully update the format without making any changes'
 
     def test_template_without_format(self):
         self.assertRaises(IntegrityError, factory.Template)
@@ -209,7 +237,8 @@ class FormatAPITest(TestCase):
             forced_template=assignment.format.template_set.first(),
             format=assignment.format,
             type=Node.ENTRYDEADLINE,
-            due_date=timezone.now()
+            due_date=timezone.now(),
+            display_name=assignment.format.template_set.first().name,
         )
         # This should not use the factory, as that kills the testing of updating presets
         progress = PresetNode.objects.create(
@@ -217,6 +246,7 @@ class FormatAPITest(TestCase):
             type=Node.PROGRESS,
             due_date=timezone.now(),
             target=5,
+            display_name='Progress goal',
         )
         presets = PresetNodeSerializer([entrydeadline, progress], many=True).data
         # Update the entry data
@@ -259,10 +289,73 @@ class FormatAPITest(TestCase):
         presets[1]['attached_files'].append(FileSerializer(file).data)
         presets[1]['id'] = '-1'
         utils.update_presets(assignment.author, assignment, presets, {})
-        journal.refresh_from_db()
+        journal = Journal.objects.get(pk=journal.pk)
         assert old_preset_count + 1 == assignment.format.presetnode_set.count(), 'Format should have a new node'
         assert old_node_count + 1 == journal.node_set.count(), 'New node should also be added to all connected journals'
+
         progress.refresh_from_db()
         assert PresetNode.objects.order_by('creation_date').last().attached_files.filter(pk=file.pk).exists()
         file.refresh_from_db()
         assert not file.is_temp
+
+    def test_template_serializer(self):
+        assignment = factory.Assignment(format__templates=False)
+        format = assignment.format
+
+        def check_field_set_serialization_order(serialized_template):
+            for i, field in enumerate(serialized_template['field_set']):
+                assert field['location'] == i, 'Fields are ordered by location'
+
+        def test_template_list_serializer():
+            factory.Template(format=format, add_fields=[
+                {'type': Field.TEXT, 'location': 1}, {'type': Field.URL, 'location': 0}])
+            factory.Template(format=format, add_fields=[
+                {'type': Field.URL}, {'type': Field.TEXT}])
+
+            # Minimum number of queries is performed (select templates, prefetch all fields)
+            with self.assertNumQueries(2):
+                data = TemplateSerializer(
+                    TemplateSerializer.setup_eager_loading(format.template_set.all()),
+                    many=True
+                ).data
+
+            # Fields are ordered by location
+            for template in data:
+                check_field_set_serialization_order(template)
+
+        def test_template_instance_serializer():
+            template = factory.Template(format=format, add_fields=[
+                {'type': Field.TEXT, 'location': 1},
+                {'type': Field.URL, 'location': 0}
+            ])
+            # Template is already in memory, we still need one query to fetch the template set
+            with self.assertNumQueries(1):
+                data = TemplateSerializer(template).data
+
+            check_field_set_serialization_order(data)
+
+        test_template_list_serializer()
+        test_template_instance_serializer()
+
+    def test_format_serializer(self):
+        # Fetch the format itself (1), prefetches (presetnodes, templates, fields, field_set of forced templates 4
+        # and attached_files for preset node
+        expected_number_of_queries = 6
+        assignment = factory.Assignment(format__templates=False)
+        factory.TextTemplate(format=assignment.format)
+        factory.DeadlinePresetNode(format=assignment.format)
+        factory.ProgressPresetNode(format=assignment.format)
+
+        with self.assertNumQueries(expected_number_of_queries):
+            FormatSerializer(
+                FormatSerializer.setup_eager_loading(Format.objects.filter(pk=assignment.format.pk)).get()
+            ).data
+
+        # Additional fields and templates have no impact on the serialization of a format
+        factory.TextTemplate(format=assignment.format)
+        factory.DeadlinePresetNode(format=assignment.format)
+        factory.ProgressPresetNode(format=assignment.format)
+        with self.assertNumQueries(expected_number_of_queries):
+            FormatSerializer(
+                FormatSerializer.setup_eager_loading(Format.objects.filter(pk=assignment.format.pk)).get()
+            ).data

@@ -17,6 +17,112 @@
             <span v-if="currentPreset.type == 'p'">Progress goal</span>
         </h2>
 
+        <h2 class="theme-h2 field-heading required">
+            Display name
+        </h2>
+        <b-input
+            v-model="currentPreset.display_name"
+            class="multi-form theme-input"
+            placeholder="Timeline display name"
+        />
+
+        <template v-if="currentPreset.type === 'd'">
+            <h2 class="theme-h2 field-heading required">
+                Template
+                <tooltip tip="The template students can use for this entry"/>
+            </h2>
+            <div class="d-flex">
+                <b-form-select
+                    v-model="currentPreset.template"
+                    class="theme-select multi-form mr-2"
+                    :class="{ 'input-disabled' : templates.length === 0 }"
+                >
+                    <option
+                        disabled
+                        value=""
+                    >
+                        Please select a template
+                    </option>
+                    <option
+                        v-for="template in templates"
+                        :key="template.id"
+                        :value="template"
+                    >
+                        {{ template.name }}
+                    </option>
+                </b-form-select>
+                <b-button
+                    v-if="showTemplatePreview"
+                    class="multi-form red-button flex-shrink-0"
+                    @click="showTemplatePreview = false"
+                >
+                    <icon name="eye-slash"/>
+                    Hide Preview
+                </b-button>
+                <b-button
+                    v-if="!showTemplatePreview"
+                    class="multi-form green-button flex-shrink-0"
+                    @click="showTemplatePreview = true"
+                >
+                    <icon name="eye"/>
+                    Show Preview
+                </b-button>
+            </div>
+            <p>
+                Or
+                <span
+                    class="text-blue cursor-pointer"
+                    @click="$emit('new-template', currentPreset)"
+                >
+                    create a new template</span>.
+                <br/>
+            </p>
+            <b-card
+                v-if="showTemplatePreview"
+                class="no-hover"
+            >
+                <entry-fields
+                    v-if="currentPreset.template"
+                    :template="currentPreset.template"
+                    :content="() => Object()"
+                    :edit="true"
+                    :readOnly="true"
+                />
+                <span v-else>
+                    Select a template to preview
+                </span>
+            </b-card>
+        </template>
+        <template v-else-if="currentPreset.type === 'p'">
+            <h2 class="theme-h2 field-heading required">
+                Number of points
+                <tooltip
+                    tip="The number of points students should have achieved by the deadline of this node to be on
+                    schedule, new entries can still be added until the assignment's lock date"
+                />
+            </h2>
+            <b-input
+                v-model="currentPreset.target"
+                type="number"
+                class="theme-input mb-2"
+                placeholder="Number of points"
+                min="1"
+                :max="assignmentDetails.points_possible"
+            />
+        </template>
+
+        <h2 class="theme-h2 field-heading">
+            Description
+        </h2>
+        <text-editor
+            :id="`preset-description-${newPreset ? currentPreset.type : currentPreset.id}`"
+            :key="`preset-description-${newPreset ? currentPreset.type : currentPreset.id}`"
+            v-model="currentPreset.description"
+            class="multi-form"
+            placeholder="Description"
+            footer="false"
+        />
+
         <b-row v-if="currentPreset.type == 'd'">
             <b-col xl="4">
                 <h2 class="theme-h2 field-heading">
@@ -66,7 +172,7 @@
             <h2 class="theme-h2 field-heading required">
                 Due date
                 <tooltip
-                    tip="Students are expected to have reached the amount of points below by this date,
+                    tip="Students are expected to have reached the number of points below by this date,
                     but new entries can still be added until the assignment lock date"
                 />
             </h2>
@@ -79,94 +185,6 @@
                 />
             </reset-wrapper>
         </div>
-
-        <h2 class="theme-h2 field-heading">
-            Description
-        </h2>
-        <text-editor
-            :id="`preset-description-${currentPreset.id}`"
-            :key="`preset-description-${currentPreset.id}`"
-            v-model="currentPreset.description"
-            class="multi-form"
-            placeholder="Description"
-            footer="false"
-        />
-
-        <template v-if="currentPreset.type === 'd'">
-            <h2 class="theme-h2 field-heading required">
-                Preset Template
-                <tooltip tip="The template students can use for this entry"/>
-            </h2>
-            <div class="d-flex">
-                <b-form-select
-                    v-model="currentPreset.template"
-                    class="theme-select multi-form mr-2"
-                    :class="{ 'input-disabled' : templates.length === 0 }"
-                >
-                    <option
-                        disabled
-                        value=""
-                    >
-                        Please select a template
-                    </option>
-                    <option
-                        v-for="template in templates"
-                        :key="template.id"
-                        :value="template"
-                    >
-                        {{ template.name }}
-                    </option>
-                </b-form-select>
-                <b-button
-                    v-if="showTemplatePreview"
-                    class="multi-form delete-button flex-shrink-0"
-                    @click="showTemplatePreview = false"
-                >
-                    <icon name="eye-slash"/>
-                    Hide Preview
-                </b-button>
-                <b-button
-                    v-if="!showTemplatePreview"
-                    class="multi-form add-button flex-shrink-0"
-                    @click="showTemplatePreview = true"
-                >
-                    <icon name="eye"/>
-                    Show Preview
-                </b-button>
-            </div>
-            <b-card
-                v-if="showTemplatePreview"
-                class="no-hover multi-form"
-            >
-                <entry-fields
-                    v-if="currentPreset.template"
-                    :template="currentPreset.template"
-                    :content="() => Object()"
-                    :edit="true"
-                    :readOnly="true"
-                />
-                <span v-else>
-                    Select a template to preview
-                </span>
-            </b-card>
-        </template>
-        <template v-else-if="currentPreset.type === 'p'">
-            <h2 class="theme-h2 field-heading required">
-                Amount of points
-                <tooltip
-                    tip="The amount of points students should have achieved by the deadline of this node to be on
-                    schedule, new entries can still be added until the assignment's lock date"
-                />
-            </h2>
-            <b-input
-                v-model="currentPreset.target"
-                type="number"
-                class="theme-input multi-form"
-                placeholder="Amount of points"
-                min="1"
-                :max="assignmentDetails.points_possible"
-            />
-        </template>
 
         <h2
             v-if="currentPreset.attached_files.length > 0"
@@ -184,8 +202,16 @@
         />
 
         <b-button
-            v-if="!newPreset"
-            class="delete-button float-right"
+            v-if="newPreset"
+            class="green-button float-right"
+            @click.prevent="$emit('add-preset')"
+        >
+            <icon name="plus"/>
+            Add preset
+        </b-button>
+        <b-button
+            v-else
+            class="red-button float-right"
             @click.prevent="emitDeletePreset"
         >
             <icon name="trash"/>

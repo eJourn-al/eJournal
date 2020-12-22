@@ -59,7 +59,7 @@
 
             <b-button
                 v-if="!storeLtiID"
-                class="add-button float-right"
+                class="green-button float-right"
                 @click="saveUserdata"
             >
                 <icon name="save"/>
@@ -74,10 +74,10 @@
 </template>
 
 <script>
+import { mapGetters } from 'vuex'
+import cropper from '@/components/assets/ImageCropper.vue'
 import email from '@/components/profile/Email.vue'
 import userAPI from '@/api/user.js'
-import cropper from '@/components/assets/ImageCropper.vue'
-import { mapGetters } from 'vuex'
 
 export default {
     components: {

@@ -114,14 +114,14 @@ def get_finish_state(user, assignment, lti_params):
 
 
 def handle_test_student(user, params):
-    """Creates a test user if no user is proved and the params contain a blank email adress."""
+    """Creates a test user if no user is provided and the params contain a blank email adress."""
     if not user \
        and 'custom_user_email' in params and params['custom_user_email'] == '' \
        and 'custom_user_full_name' in params and params['custom_user_full_name'] == settings.LTI_TEST_STUDENT_FULL_NAME:
         lti_id, username, full_name, email, course_id = utils.required_params(
             params, 'user_id', 'custom_username', 'custom_user_full_name', 'custom_user_email', 'custom_course_id')
         profile_picture = params.get('custom_user_image', settings.DEFAULT_PROFILE_PICTURE)
-        is_teacher = settings.ROLES['Teacher'] in lti.roles_to_list(params)
+        is_teacher = any(role in lti.roles_to_list(params) for role in settings.ROLES['Teacher'])
 
         return factory.make_user(username, email=email, lti_id=lti_id, profile_picture=profile_picture,
                                  is_teacher=is_teacher, full_name=full_name, is_test_student=True)

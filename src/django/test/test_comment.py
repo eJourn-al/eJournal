@@ -9,6 +9,7 @@ from django.test import TestCase
 
 import VLE.factory as nfac
 from VLE.models import Comment, FileContext, Notification, Participation, User
+from VLE.serializers import CommentSerializer
 
 
 def set_entry_comment_counts(obj):
@@ -361,3 +362,21 @@ class CommentAPITest(TestCase):
         assert comment.files.count() == 2, 'Two attached files are generated'
         assert FileContext.objects.filter(comment=comment, journal=comment.entry.node.journal).count() == 2, \
             'The generated files are correctly attached to the generated comment'
+
+    def test_comment_serializer(self):
+        comment = factory.StudentComment(n_att_files=2, n_rt_files=2)
+
+        with self.assertNumQueries(len(CommentSerializer.prefetch_related) + 1):
+            CommentSerializer(
+                CommentSerializer.setup_eager_loading(Comment.objects.filter(pk=comment.pk)).get(),
+                context={'user': comment.author},
+            ).data
+
+        comment = factory.StudentComment(n_att_files=2, n_rt_files=2, entry=comment.entry)
+
+        with self.assertNumQueries(len(CommentSerializer.prefetch_related) + 1):
+            CommentSerializer(
+                CommentSerializer.setup_eager_loading(comment.entry.comment_set),
+                context={'user': comment.author},
+                many=True,
+            ).data
