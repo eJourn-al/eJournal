@@ -13,7 +13,7 @@ import os
 
 from VLE.settings.base import *
 
-ENVIRONMENT = 'TRAVIS'
+ENVIRONMENT = 'CI_CD'
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 MEDIA_ROOT = os.path.join(BASE_DIR, MEDIA_URL)
@@ -28,42 +28,36 @@ if not os.path.exists(LOG_DIR):
 CORS_ORIGIN_ALLOW_ALL = True
 CSP_DEFAULT_SRC = ("'self'", "'unsafe-inline'")
 
+# Purely for speed
+PASSWORD_HASHERS = ['django.contrib.auth.hashers.MD5PasswordHasher']
+
 MIDDLEWARE = [
-    'corsheaders.middleware.CorsMiddleware'
-] + MIDDLEWARE
+    'django.contrib.sessions.middleware.SessionMiddleware',
+    'django.middleware.common.CommonMiddleware',
+    'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'django.contrib.messages.middleware.MessageMiddleware',
+    'VLE.utils.error_handling.ErrorMiddleware',
+]
 ALLOWED_HOSTS = ['*']
 
 # If this is True, all tasks will be executed locally by blocking until the task returns.
 # TODO implement a testing environment, which does use background workers moving closer to production.
-CELERY_TASK_ALWAYS_EAGER = True if 'TRAVIS' in os.environ else False
+CELERY_TASK_ALWAYS_EAGER = True
 
-if 'TRAVIS' in os.environ:
-    DATABASES = {
-        'default': {
-            'ENGINE':   'django.db.backends.postgresql_psycopg2',
-            'NAME':     'travisci',
-            'USER':     'postgres',
-            'PASSWORD': '',
-            'HOST':     'localhost',
-            'PORT':     '',
-            'TEST': {
-                'NAME': 'test_travisci'
-            }
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': os.environ['DATABASE_NAME'],
+        'USER': os.environ['DATABASE_USER'],
+        'PASSWORD': os.environ['DATABASE_PASSWORD'],
+        'HOST': os.environ['DATABASE_HOST'],
+        'PORT': os.environ['DATABASE_PORT'],
+        'TEST': {
+            'NAME': 'test_ejournal'
         }
     }
-else:
-    DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.postgresql_psycopg2',
-            'NAME': os.environ['DATABASE_NAME'],
-            'USER': os.environ['DATABASE_USER'],
-            'PASSWORD': os.environ['DATABASE_PASSWORD'],
-            'HOST': os.environ['DATABASE_HOST'],
-            'PORT': os.environ['DATABASE_PORT'],
-            'TEST': {
-                'NAME': 'test_ejournal'
-            }
-        }
-    }
+}
 
-DEBUG = True
+BROKER_BACKEND = 'memory'
+
+DEBUG = False

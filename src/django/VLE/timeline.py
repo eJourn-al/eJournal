@@ -90,6 +90,7 @@ def get_entry_node(journal, node, user):
 def get_deadline(journal, node, user):
     """Convert entrydeadline to a dictionary."""
     return {
+        'display_name': node.preset.display_name,
         'description': node.preset.description,
         'type': node.type,
         'nID': node.id,
@@ -114,6 +115,7 @@ def get_deadline(journal, node, user):
 def get_progress(journal, node):
     """Convert progress node to dictionary."""
     return {
+        'display_name': node.preset.display_name,
         'description': node.preset.description,
         'type': node.type,
         'nID': node.id,

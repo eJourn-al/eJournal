@@ -332,6 +332,7 @@ class FileHandlingTest(TestCase):
                     'id': presetnode.pk if presetnode else -1,
                     'target': self.assignment.points_possible,
                     'type': 'p',
+                    'display_name': 'Progress goal',
                     'template': None,
                     'lock_date': None,
                     'unlock_date': None,

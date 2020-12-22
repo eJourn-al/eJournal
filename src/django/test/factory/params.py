@@ -8,6 +8,7 @@ import factory
 from django.conf import settings
 
 import VLE.models
+import VLE.serializers
 
 
 class JWTParamsFactory(factory.Factory):
@@ -154,5 +155,49 @@ class TeacherEntryCreationParamsFactory(factory.Factory):
             kwargs['journals'] = journals
         else:
             kwargs['journals'] = [journal_to_dict(j) for j in VLE.models.Journal.objects.filter(assignment=assignment)]
+
+        return kwargs
+
+
+class AssignmentFormatUpdateParamsFactory(factory.Factory):
+    class Meta:
+        model = dict
+
+    @classmethod
+    def _adjust_kwargs(cls, **kwargs):
+        assignment = kwargs.pop('assignment')
+        if not assignment:
+            assignment = factory.Assignment()
+
+        kwargs['pk'] = assignment.pk
+
+        kwargs['course_id'] = assignment.courses.first().pk
+
+        kwargs['assignment_details'] = VLE.serializers.AssignmentFormatSerializer(
+            VLE.serializers.AssignmentFormatSerializer.setup_eager_loading(
+               VLE.models.Assignment.objects.filter(pk=assignment.pk)
+            ).get(),
+            context={'user': assignment.author},
+        ).data
+
+        kwargs['templates'] = VLE.serializers.TemplateSerializer(
+            VLE.serializers.TemplateSerializer.setup_eager_loading(
+                assignment.format.template_set.filter(archived=False)
+            ),
+            many=True,
+        ).data
+
+        kwargs['presets'] = kwargs.pop(
+            'presets',
+            VLE.serializers.PresetNodeSerializer(
+                VLE.serializers.PresetNodeSerializer.setup_eager_loading(
+                    VLE.models.PresetNode.objects.filter(format__assignment=assignment)
+                ),
+                many=True,
+            ).data,
+        )
+
+        kwargs['removed_templates'] = kwargs.pop('removed_templates', [])
+        kwargs['removed_presets'] = kwargs.pop('removed_presets', [])
 
         return kwargs

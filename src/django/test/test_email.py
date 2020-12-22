@@ -10,7 +10,7 @@ from django.test import TestCase
 from django.test.utils import override_settings
 from django.utils import timezone
 
-from VLE.models import Group, Journal, Node, Notification, Participation, Preferences, PresetNode, Template, User
+from VLE.models import Group, Journal, Notification, Participation, Preferences, Template, User
 from VLE.tasks.beats import notifications
 
 
@@ -328,11 +328,9 @@ class EmailAPITest(TestCase):
     def test_unpublished_assignment_generates_no_notifications(self):
         journal_unpublished_assignment = factory.Journal(assignment__is_published=False)
         # ENTRYDEADLINE inside weekly (default) notification window
-        PresetNode.objects.create(
-            description='Entrydeadline node description',
+        factory.DeadlinePresetNode(
             due_date=timezone.now().date() + datetime.timedelta(days=7, hours=2),
             lock_date=timezone.now().date() + datetime.timedelta(days=8),
-            type=Node.ENTRYDEADLINE,
             format=journal_unpublished_assignment.assignment.format,
         )
 
@@ -345,20 +343,16 @@ class EmailAPITest(TestCase):
     def test_deadline_email_groups(self):
         group_assignment = factory.Assignment(group_assignment=True)
         # ENTRYDEADLINE inside deadline
-        PresetNode.objects.create(
-            description='Entrydeadline node description',
+        factory.DeadlinePresetNode(
             due_date=timezone.now().date() + datetime.timedelta(days=7, hours=5),
             lock_date=timezone.now().date() + datetime.timedelta(days=8),
-            type=Node.ENTRYDEADLINE,
             forced_template=Template.objects.filter(format__assignment=group_assignment).first(),
             format=group_assignment.format,
         )
         # PROGRESS inside deadline
-        PresetNode.objects.create(
-            description='Progress node description',
+        factory.ProgressPresetNode(
             due_date=timezone.now().date() + datetime.timedelta(days=1, hours=5),
             lock_date=timezone.now().date() + datetime.timedelta(days=2),
-            type=Node.PROGRESS,
             target=5,
             format=group_assignment.format,
         )
@@ -383,20 +377,16 @@ class EmailAPITest(TestCase):
     def test_deadline_email_text(self):
         assignment = factory.Assignment()
         # ENTRYDEADLINE inside deadline
-        entry = PresetNode.objects.create(
-            description='Entrydeadline node description',
+        entry = factory.DeadlinePresetNode(
             due_date=timezone.now().date() + datetime.timedelta(days=7, hours=5),
             lock_date=timezone.now().date() + datetime.timedelta(days=8),
-            type=Node.ENTRYDEADLINE,
             forced_template=Template.objects.filter(format__assignment=assignment).first(),
             format=assignment.format,
         )
         # PROGRESS inside deadline
-        preset = PresetNode.objects.create(
-            description='Progress node description',
+        preset = factory.ProgressPresetNode(
             due_date=timezone.now().date() + datetime.timedelta(days=1, hours=5),
             lock_date=timezone.now().date() + datetime.timedelta(days=2),
-            type=Node.PROGRESS,
             target=5,
             format=assignment.format,
         )

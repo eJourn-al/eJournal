@@ -25,7 +25,7 @@ def delete_unused_archived_templates(apps, schema_editor):
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('VLE', '0070_category'),
+        ('VLE', '0071_category'),
     ]
 
     operations = [

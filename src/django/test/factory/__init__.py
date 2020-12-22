@@ -87,6 +87,7 @@ from test.factory.journal import JournalImportRequestFactory as JournalImportReq
 from test.factory.journal import LtiGroupJournalFactory as LtiGroupJournal  # noqa: F401
 from test.factory.journal import LtiJournalFactory as LtiJournal  # noqa: F401
 from test.factory.node import NodeFactory as Node  # noqa: F401
+from test.factory.params import AssignmentFormatUpdateParamsFactory as AssignmentFormatUpdateParams  # noqa: F401
 from test.factory.params import EntryContentCreationParamsFactory as EntryContentCreationParams  # noqa: F401
 from test.factory.params import JWTParamsFactory as JWTParams  # noqa: F401
 from test.factory.params import JWTTestUserParamsFactory as JWTTestUserParams  # noqa: F401

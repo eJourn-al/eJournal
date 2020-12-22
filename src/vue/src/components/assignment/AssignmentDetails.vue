@@ -45,7 +45,7 @@
         <h2 class="theme-h2 field-heading required">
             Points possible
             <tooltip
-                tip="The amount of points that represents a perfect score for this assignment, excluding
+                tip="The number of points that represents a perfect score for this assignment, excluding
                 bonus points"
             />
         </h2>

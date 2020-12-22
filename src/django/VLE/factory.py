@@ -202,7 +202,8 @@ def make_progress_node(format, due_date, target):
     format -- format the node belongs to.
     due_date -- due_date of the node.
     """
-    node = VLE.models.PresetNode(type=VLE.models.Node.PROGRESS, due_date=due_date, target=target, format=format)
+    node = VLE.models.PresetNode(
+        type=VLE.models.Node.PROGRESS, due_date=due_date, target=target, format=format, display_name='Progress goal')
     node.save()
     return node
 

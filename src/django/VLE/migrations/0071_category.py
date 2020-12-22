@@ -8,7 +8,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('VLE', '0069_remove_journal_computed_fields'),
+        ('VLE', '0070_presetnode_display_name'),
     ]
 
     operations = [

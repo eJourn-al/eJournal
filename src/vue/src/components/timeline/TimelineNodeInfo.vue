@@ -40,9 +40,8 @@ export default {
             case 'e':
                 return this.node.entry.title
             case 'd':
-                return this.node.template.name
             case 'p':
-                return 'Progress goal'
+                return this.node.display_name
             case 'n':
                 return 'End of assignment'
             case 's':

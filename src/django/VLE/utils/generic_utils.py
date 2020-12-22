@@ -140,7 +140,8 @@ def update_presets(user, assignment, presets, new_ids):
     """
     format = assignment.format
     for preset in presets:
-        id, template = required_typed_params(preset, (int, 'id'), (dict, 'template'))
+        id, template, display_name = required_typed_params(
+            preset, (int, 'id'), (dict, 'template'), (str, 'display_name'))
         target, unlock_date, lock_date = optional_typed_params(
             preset, (float, 'target'), (str, 'unlock_date'), (str, 'lock_date'))
         type, description, due_date, attached_files = required_params(
@@ -151,6 +152,7 @@ def update_presets(user, assignment, presets, new_ids):
         else:
             preset_node = VLE.models.PresetNode(format=format, type=type)
 
+        preset_node.display_name = display_name
         preset_node.description = description
         preset_node.unlock_date = unlock_date if unlock_date else None
         preset_node.due_date = due_date

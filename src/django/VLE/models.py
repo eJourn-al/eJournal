@@ -2141,10 +2141,17 @@ class PresetNode(CreateUpdateModel):
     - format: a foreign key linked to a format.
     """
 
+    class Meta:
+        constraints = [
+            CheckConstraint(check=~Q(display_name=''), name='non_empty_display_name'),
+        ]
+
     TYPES = (
         (Node.PROGRESS, 'progress'),
         (Node.ENTRYDEADLINE, 'entrydeadline'),
     )
+
+    display_name = models.TextField()
 
     description = models.TextField(
         null=True,
