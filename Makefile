@@ -28,30 +28,40 @@ postgres_test_db = test_$(postgres_db)
 postgres_dev_user = ejournal
 postgres_dev_user_pass = password
 
+ifndef CI_CD
 venv_activate = source ./venv/bin/activate
+endif
 
 ##### TEST COMMANDS #####
 
-test-back:
+test: test-front test-back
+
+test-back: isort check-linters-back
+	${venv_activate} \
+	&& pytest ${TOTEST} src/django/test/
+
+test-front: check-linters-front
+
+check-linters: check-linters-back check-linters-front
+
+check-linters-back:
 	${venv_activate} \
 	&& flake8 ./src/django \
 	&& ./src/django/manage.py check --fail-level=WARNING \
-	&& pytest ${TOTEST} src/django/test/
-	make isort
+	&& isort src/django -c \
+
+check-linters-front:
+	${venv_activate} \
+	&& npm run lint --prefix ./src/vue
 
 generate-test-durations:
 	${venv_activate} && pytest ${TOTEST} src/django/test/ --store-durations
-
-test-front:
-	${venv_activate} && npm run lint --prefix ./src/vue
 
 display-coverage-plain:
 	${venv_activate} && coverage report -m
 
 display-coverage-html:
 	${venv_activate} && coverage html
-
-test: test-front test-back
 
 run-test:
 	${venv_activate} && cd ./src/django && python manage.py test test.test_$(arg)"

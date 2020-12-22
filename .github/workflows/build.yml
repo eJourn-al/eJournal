@@ -142,5 +142,5 @@ jobs:
           useLockFile: false
 
       - name: Run linters
-        run: flake8 ./src/django && ./src/django/manage.py check --fail-level=WARNING && npm run lint --prefix ./src/vue
+        run: make check-linters
 
