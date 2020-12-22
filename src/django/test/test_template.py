@@ -29,7 +29,7 @@ class TemplateTest(TestCase):
         f_c = Format.objects.count()
 
         template = factory.Template(format=self.assignment.format)
-        assert not template.field_set.exists(), 'By default a template should be iniated without fields'
+        assert not template.field_set.exists(), 'By default a template should be initialized without fields'
 
         assert f_c == Format.objects.count(), 'No additional format is generated'
         assert a_c == Assignment.objects.count(), 'No additional assignment should be generated'
@@ -46,12 +46,17 @@ class TemplateTest(TestCase):
 
         template2_of_chain1 = Template.objects.create(format=self.format, chain=template1_of_chain1.chain)
         assert template2_of_chain1.chain == template1_of_chain1.chain
-        assert set(Template.objects.full_chain(template1_of_chain1)) == set([template1_of_chain1, template2_of_chain1])
-        assert set(Template.objects.full_chain(template2_of_chain1)) == set([template1_of_chain1, template2_of_chain1])
+        full_chain1 = set([template1_of_chain1, template2_of_chain1])
+        # Full chain yields all templates part of the chain regardless which template we start with.
+        assert set(Template.objects.full_chain(template1_of_chain1)) == full_chain1
+        assert set(Template.objects.full_chain(template2_of_chain1)) == full_chain1
 
+        # Full chain also works for templates part of different chains, all templates part their respective chains
+        # should be queried.
         template2_of_chain2 = Template.objects.create(format=self.format, chain=template1_of_chain2.chain)
+        full_chain2 = set([template1_of_chain2, template2_of_chain2])
         assert set(Template.objects.full_chain([template1_of_chain1, template1_of_chain2])) \
-            == set([template1_of_chain1, template2_of_chain1, template1_of_chain2, template2_of_chain2])
+            == full_chain1.union(full_chain2)
 
     def test_template_create(self):
         template = Template.objects.create(format=self.format)
