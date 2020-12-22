@@ -230,7 +230,7 @@
 
             <manage-assignment-categories
                 ref="manageAssignmentCategories"
-                :disabled="isChanged"
+                :disabled="templatesChanged"
                 :templates="templates"
             />
         </b-col>
@@ -301,6 +301,13 @@ export default {
     computed: {
         isChanged () {
             return !this.saveRequestInFlight && JSON.stringify(this.currentData, this.replacer) !== this.originalData
+        },
+        templatesChanged () {
+            const originalTemplateData = JSON.stringify(JSON.parse(this.originalData).format.templates, this.replacer)
+            return (
+                !this.saveRequestInFlight
+                && JSON.stringify(this.currentData.format.templates, this.replacer) !== originalTemplateData
+            )
         },
     },
     created () {
