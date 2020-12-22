@@ -40,7 +40,7 @@ import {
     NavPlugin,
     NavbarPlugin,
     // OverlayPlugin,
-    // PaginationPlugin,
+    PaginationPlugin,
     // PaginationNavPlugin,
     // PopoverPlugin,
     ProgressPlugin,
@@ -93,7 +93,7 @@ export default function initBootstrap (Vue) {
     Vue.use(NavPlugin)
     Vue.use(NavbarPlugin)
     // Vue.use(OverlayPlugin)
-    // Vue.use(PaginationPlugin)
+    Vue.use(PaginationPlugin)
     // Vue.use(PaginationNavPlugin)
     // Vue.use(PopoverPlugin)
     Vue.use(ProgressPlugin)
