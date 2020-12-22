@@ -718,7 +718,7 @@ class JournalSerializer(serializers.ModelSerializer):
             if isinstance(self.instance, VLE.models.Journal):
                 assignment = self.instance.assignment
             elif isinstance(self.instance, VLE.models.JournalQuerySet) and self.instance.exists():
-                if VLE.models.Assignment.objects.filter(journal__in=self.instance).count() > 1:
+                if VLE.models.Assignment.objects.filter(journal__in=self.instance).distinct().count() > 1:
                     capture_message('Serializing journals from multiple assignments', level='warning')
                 assignment = self.instance[0].assignment
 
