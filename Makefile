@@ -30,6 +30,8 @@ postgres_dev_user_pass = password
 
 ifndef CI_CD
 venv_activate = source ./venv/bin/activate
+else
+venv_activate = echo "No venv needed fro CI_CD"
 endif
 
 ##### TEST COMMANDS #####
