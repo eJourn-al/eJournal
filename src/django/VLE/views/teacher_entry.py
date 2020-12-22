@@ -19,6 +19,12 @@ def _update_categories_of_existing_entries(entries, author, new_category_ids, ex
     Keeps the categories of all existing entries synced with those set on the teacher entry.
 
     Does not modifying the entry category links of entries which already belong to the desired categories.
+
+    Args:
+        entries (:model:`VLE.entry`): List of entries associated with a teacher entry which should be updated.
+        author (:model:`VLE.author`): Author of the teacher entry edit.
+        new_category_ids ([int]): List of category ids which should now belong to the entry.
+        existing_category_ids ([int]): List of category ids which currently belong to the entry.
     """
     EntryCategoryLink.objects.filter(entry__in=entries).exclude(category_id__in=new_category_ids).delete()
     new_entry_category_links = []
