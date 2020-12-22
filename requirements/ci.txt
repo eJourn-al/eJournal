@@ -16,6 +16,7 @@ py==1.8.0 # Pytest
 pytest==5.2.0 # Testing library
 pytest-cov==2.7.1 # Pytest
 pytest-django==3.5.1 # Pytest
+pytest-split==0.1.5 # Pytest with GitHub Actions speedup
 pytest-xdist==1.30.0 # Run Pytest in parallel
 deepdiff==5.0.2 # Testing deep difference of dictionary and list combinations
 django-test-migrations==0.3.0
