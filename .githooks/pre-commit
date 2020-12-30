@@ -1,3 +1,4 @@
 #!/bin/sh
 
 make isort
+make check-linters
