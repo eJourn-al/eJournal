@@ -160,6 +160,7 @@ export default {
                 },
             ],
             createCall: null,
+            aID: null,
         }
     },
     computed: {
@@ -177,6 +178,9 @@ export default {
                 if (category && category.name) { this.createCategory() }
             },
         },
+    },
+    created () {
+        this.aID = this.$route.params.aID
     },
     methods: {
         deleteCategory (category) {
@@ -204,7 +208,7 @@ This action cannot be undone.`)) {
             this.createCall = window.setTimeout(() => {
                 const payload = JSON.parse(JSON.stringify(this.newCategory))
                 payload.templates = this.newCategory.templates.map(elem => elem.id)
-                payload.assignment_id = this.$route.params.aID
+                payload.assignment_id = this.aID
 
                 this.$store.dispatch('category/create', { data: payload })
                     .then((category) => {
