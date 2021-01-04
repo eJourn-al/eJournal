@@ -2,6 +2,16 @@
     Timeline component. Handles the prop connection with parent, as well as any
     functionality involving the list (ie. showing the list,
     passing selected state)
+
+    Nodes are accessed via array index. Some 'virtual' nodes exists, these are not part of the nodes array.
+        - Start of assignment: -1
+        - Add node
+            - Virtual when adding a preset to the format: nodes.length
+              (not virtual when adding an entry to the timeline, but has NO nID)
+        - End of assignment: nodes.length + 1
+    Passed property nodes can consist of two types:
+        - Preset nodes (edit = true) (format edit view)
+        - nodes (journal view)
 -->
 
 <template>
@@ -26,91 +36,18 @@
                 />
 
                 <div
-                    v-if="$root.lgMax"
-                    v-b-toggle.timeline-outer
-                    target="timeline-outer"
+                    v-b-toggle="($root.lgMax) ? 'timeline-outer' : null"
+                    :target="($root.lgMax) ? 'timeline-outer': null"
                     aria-expanded="false"
                     aria-controls="timeline-outer"
                 >
-                    <timeline-node
-                        :index="-1"
-                        :node="{
-                            'type': 's'
-                        }"
-                        :selected="isSelected(-1)"
+                    <timeline-nodes
+                        :assignment="assignment"
                         :edit="edit"
-                        @select-node="$emit('select-node', $event)"
-                    />
-                    <timeline-node
-                        v-for="(node, index) in filteredNodes"
-                        :key="node.id"
-                        :index="index"
-                        :node="node"
-                        :selected="isSelected(index)"
-                        :edit="edit"
-                        @select-node="$emit('select-node', $event)"
-                    />
-                    <timeline-node
-                        v-if="edit"
-                        :index="nodes.length"
-                        :node="{
-                            'type': 'a'
-                        }"
-                        :selected="isSelected(nodes.length)"
-                        :edit="edit"
-                        @select-node="$emit('select-node', $event)"
-                    />
-                    <timeline-node
-                        :index="nodes.length + 1"
-                        :last="true"
-                        :node="{
-                            'type': 'n',
-                            'due_date': assignment.due_date
-                        }"
-                        :selected="isSelected(nodes.length + 1)"
-                        :edit="edit"
-                        @select-node="$emit('select-node', $event)"
-                    />
-                </div>
-                <div v-else>
-                    <timeline-node
-                        :index="-1"
-                        :node="{
-                            'type': 's'
-                        }"
-                        :selected="isSelected(-1)"
-                        :edit="edit"
-                        @select-node="$emit('select-node', $event)"
-                    />
-                    <timeline-node
-                        v-for="(node, index) in filteredNodes"
-                        :key="node.id"
-                        :index="index"
-                        :node="node"
-                        :selected="isSelected(index)"
-                        :edit="edit"
-                        @select-node="$emit('select-node', $event)"
-                    />
-                    <timeline-node
-                        v-if="edit"
-                        :index="nodes.length"
-                        :node="{
-                            'type': 'a'
-                        }"
-                        :selected="isSelected(nodes.length)"
-                        :edit="edit"
-                        @select-node="$emit('select-node', $event)"
-                    />
-                    <timeline-node
-                        :index="nodes.length + 1"
-                        :last="true"
-                        :node="{
-                            'type': 'n',
-                            'due_date': assignment.due_date
-                        }"
-                        :selected="isSelected(nodes.length + 1)"
-                        :edit="edit"
-                        @select-node="$emit('select-node', $event)"
+                        :nodes="filteredNodes"
+                        :allNodes="nodes"
+                        :selected="mappedSelected"
+                        @select-node="mapAndEmitSelectedNode"
                     />
                 </div>
             </div>
@@ -142,54 +79,141 @@
 </template>
 
 <script>
-import timelineNode from '@/components/timeline/TimelineNode.vue'
+import TimelineNodes from '@/components/timeline/TimelineNodes.vue'
 
 export default {
     components: {
-        timelineNode,
+        TimelineNodes,
     },
-    props: ['selected', 'nodes', 'edit', 'assignment'],
+    props: {
+        /* Boolean used to indicate the assignment format is being edited, new preset nodes can be inserted
+         * which will not yet be saved / have an id.
+         * Entries are created one at a time and are always inserted after save (with id) */
+        edit: {
+            default: false,
+            type: Boolean,
+        },
+        /* Array of node (edit = false) or preset node (edit = true) objects  */
+        nodes: {
+            required: true,
+            type: Array,
+        },
+        /* Index of the selected node as part of the full (non filtered) nodes array */
+        selected: {
+            required: true,
+            type: Number,
+        },
+        assignment: {
+            required: true,
+            type: Object,
+        },
+    },
     data () {
         return {
             filteredNodes: [],
+            startOfAssignmentNodeIndexSymbol: -1,
+            mappedSelected: this.startOfAssignmentNodeIndexSymbol,
         }
     },
     computed: {
         filteredCategories: {
-            set (value) {
-                this.$store.commit('category/setFilteredCategories', value)
-            },
+            set (value) { this.$store.commit('category/setFilteredCategories', value) },
             get () { return this.$store.getters['category/filteredCategories'] },
+        },
+        /* Selected node is actually part of the node array property, see virtual nodes in header */
+        selectedNodeIsActualObject () {
+            return this.selected >= 0 && this.selected < this.nodes.length
+        },
+    },
+    watch: {
+        /* Selected is the index of the selected node part of the full nodes array, which excludes the virtual nodes
+         * assignment info (-1) and end of assignment (nodes.length + 1)
+         * The selected node index needs to be mapped to the correct index of the filtered nodes array */
+        selected (val) {
+            if (val < 0) { // Virtual node: assignment details
+                this.mappedSelected = val
+            } else if (val === this.nodes.length) { // Virtual node: add node (only virtual in (format) edit mode...)
+                this.mappedSelected = val
+            } else if (val === this.nodes.length + 1) { // Virtual node: end of assignment
+                this.mappedSelected = val
+            /* Dealing with an actual node */
+            } else {
+                const selectedNode = this.nodes[val]
+                this.mappedSelected = this.findNodeIndex(this.filteredNodes, selectedNode)
+            }
+        },
+        /* Nodes can be added or removed from the parent (e.g. delete or add)
+         * Just filter the new nodes again to remain synced */
+        nodes () {
+            this.filterByCategory(this.filteredCategories)
         },
     },
     created () {
         this.filteredNodes = this.nodes
+        this.mappedSelected = this.selected
     },
     methods: {
-        isSelected (id) {
-            return id === this.selected
+        mapAndEmitSelectedNode (index) {
+            this.$emit('select-node', this.mappedNodesIndex(index))
+        },
+        /* Maps the index of the filtered nodes to its corresponding index in the list of all nodes.
+         * This allows the existing emit structure to continue without refactor. */
+        mappedNodesIndex (index) {
+            /* Working with virtual nodes (start, end of assignment)
+             * NOTE: The add node does exist, and is simply added in the backend
+             * (only for journal view not format edit). */
+            if (index < 0 || index >= this.filteredNodes.length) {
+                return index
+            } else {
+                return this.findNodeIndex(this.nodes, this.filteredNodes[index])
+            }
         },
         hasCategory (categories, filters) {
             return categories.some(category => filters.find(filteredCategory => category.id === filteredCategory.id))
         },
+        findNodeIndex (nodes, node) {
+            /* When editing the timeline (edit = true) we are working with preset nodes directly
+             * Otherwise we are working with a timeline consisting of normal nodes */
+            const idKey = (this.edit) ? 'id' : 'nID'
+
+            return nodes.findIndex(elem => elem[idKey] === node[idKey])
+        },
+        /* TODO: fix node selection, mappedSelect should be updated to reflect its new position.
+         * If the currently selected node no longer occurs, emit select to the assignment start node */
         filterByCategory (filters) {
-            if (filters.length === 0) {
-                this.filteredNodes = this.nodes
-                return
+            let selectedNode
+
+            if (this.selectedNodeIsActualObject) {
+                selectedNode = this.nodes[this.selected]
             }
 
-            this.filteredNodes = this.filteredNodes.filter((node) => {
-                if (node.type === 'e') {
-                    return this.hasCategory(node.entry.categories, filters)
-                } else if (node.type === 'd') {
-                    if ('entry' in node && node.entry) {
+            if (!filters.length) {
+                this.filteredNodes = this.nodes
+            } else {
+                this.filteredNodes = this.nodes.filter((node) => {
+                    if (node.type === 'e') {
                         return this.hasCategory(node.entry.categories, filters)
-                    } else if (node.template.categories) {
-                        return this.hasCategory(node.template.categories, filters)
+                    } else if (node.type === 'd') {
+                        if ('entry' in node && node.entry) {
+                            return this.hasCategory(node.entry.categories, filters)
+                        /* Deadline without entry, filter on template categories */
+                        } else if (node.template.categories) {
+                            return this.hasCategory(node.template.categories, filters)
+                        }
+                    } else if (node.type === 'a') {
+                        return true
                     }
+                    return false
+                })
+            }
+
+            if (this.selectedNodeIsActualObject) {
+                this.mappedSelected = this.findNodeIndex(this.filteredNodes, selectedNode)
+
+                if (this.filteredNodes.indexOf(selectedNode) === -1) {
+                    this.$emit('select-node', this.startOfAssignmentNodeIndexSymbol)
                 }
-                return false
-            })
+            }
         },
     },
 }
