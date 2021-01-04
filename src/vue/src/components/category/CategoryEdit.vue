@@ -8,6 +8,7 @@
                 placeholder="Name"
                 class="theme-input"
                 type="text"
+                trim
             />
         </b-form-group>
 
