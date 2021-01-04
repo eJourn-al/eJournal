@@ -3,7 +3,7 @@
         <b-badge
             v-for="category in categories"
             :key="`${id}-category-${category.id}`"
-            v-b-modal="'category-information'"
+            v-b-modal="`${id}-category-information`"
             class="mr-1"
             :style="`background-color: ${category.color}`"
             pill
@@ -22,7 +22,7 @@
 
         <b-modal
             v-if="selectedCategory"
-            id="category-information"
+            :id="`${id}-category-information`"
             size="lg"
             title="Category information"
             hideFooter
