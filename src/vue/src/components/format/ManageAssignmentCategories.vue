@@ -202,8 +202,16 @@ This action cannot be undone.`)) {
                 templates: [],
             }
         },
+        validateCategory (category) {
+            return !this.categories.some(elem => (
+                elem.name === category.name
+                || elem.color === category.color
+            ))
+        },
         createCategory () {
             window.clearTimeout(this.createCall)
+
+            if (!this.validateCategory(this.newCategory)) { return }
 
             this.createCall = window.setTimeout(() => {
                 const payload = JSON.parse(JSON.stringify(this.newCategory))
