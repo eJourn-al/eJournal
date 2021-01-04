@@ -44,7 +44,28 @@ export default {
         timelineNodeInfo,
         timelineNodeCircle,
     },
-    props: ['node', 'selected', 'index', 'last', 'edit'],
+    props: {
+        edit: {
+            required: true,
+            type: Boolean,
+        },
+        index: {
+            required: true,
+            type: Number,
+        },
+        last: {
+            default: false,
+            type: Boolean,
+        },
+        node: {
+            required: true,
+            type: Object,
+        },
+        selected: {
+            required: true,
+            type: Boolean,
+        },
+    },
     computed: {
         timeLineClass () {
             return {
