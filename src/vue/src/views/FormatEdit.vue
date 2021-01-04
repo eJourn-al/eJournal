@@ -303,7 +303,11 @@ export default {
             return !this.saveRequestInFlight && JSON.stringify(this.currentData, this.replacer) !== this.originalData
         },
         templatesChanged () {
-            const originalTemplateData = JSON.stringify(JSON.parse(this.originalData).format.templates, this.replacer)
+            const original = JSON.parse(this.originalData)
+
+            if (!('format' in original)) { return false }
+
+            const originalTemplateData = JSON.stringify(original.format.templates, this.replacer)
             return (
                 !this.saveRequestInFlight
                 && JSON.stringify(this.currentData.format.templates, this.replacer) !== originalTemplateData
