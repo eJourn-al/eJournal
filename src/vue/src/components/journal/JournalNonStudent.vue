@@ -329,9 +329,6 @@ export default {
                 })
             }
         },
-        adaptData (editedData) {
-            this.nodes[this.currentNode] = editedData
-        },
         selectNode (newNode) {
             /* Function that prevents you from instant leaving an EntryNode
              * or a DeadlineNode when clicking on a different node in the
