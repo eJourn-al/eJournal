@@ -178,8 +178,8 @@ export default {
 
             return nodes.findIndex(elem => elem[idKey] === node[idKey])
         },
-        /* TODO: fix node selection, mappedSelect should be updated to reflect its new position.
-         * If the currently selected node no longer occurs, emit select to the assignment start node */
+        /* Next to filtering the nodes based on the selected categories, also keeps the selected node index in sync.
+         * If a node was selected which is no longer part of the filtered nodes, selects the start of the assignment. */
         filterByCategory (filters) {
             let selectedNode
 
