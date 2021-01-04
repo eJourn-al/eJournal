@@ -103,6 +103,14 @@ def add_groups_if_not_exists(participation, group_ids):
 
     This will only be done if there are no other groups already bound to the participant.
     """
+    def get_name_from_lti_id(lti_id, group_names, i):
+        if lti_id in group_names:
+            return group_names[lti_id]
+        elif lti_id.isnumeric() and int(lti_id) in group_names:
+            return group_names[int(lti_id)]
+        else:
+            return 'Group {:d}'.format(n_groups + i + 1)
+
     # Get all existing groups passed by lti that are also in the course
     groups = Group.objects.filter(lti_id__in=group_ids, course=participation.course)
     # Get all to-be-created groups
@@ -111,13 +119,21 @@ def add_groups_if_not_exists(participation, group_ids):
     non_participating_groups = groups.exclude(pk__in=participation.groups.all())
 
     # Create new groups
-    n_groups = Group.objects.filter(course=participation.course).count()
-    new_groups = [
-        Group(name='Group {:d}'.format(n_groups + i + 1), course=participation.course, lti_id=group_id)
-        for i, group_id in enumerate(non_existing_group_ids)
-    ]
-    if new_groups:
+    if non_existing_group_ids:
+        group_names = factory.get_lti_groups_with_name(participation.course)
+        n_groups = Group.objects.filter(course=participation.course).count()
+
+        new_groups = [
+            Group(
+                name=get_name_from_lti_id(lti_id, group_names, i),
+                course=participation.course,
+                lti_id=lti_id
+            )
+            for i, lti_id in enumerate(non_existing_group_ids)
+        ]
         new_groups = Group.objects.bulk_create(new_groups)
+    else:
+        new_groups = []
 
     # Add missing newly-created and existing groups and update participation for computed fields
     if new_groups or non_participating_groups:
