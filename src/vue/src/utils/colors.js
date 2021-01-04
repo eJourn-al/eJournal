@@ -72,7 +72,8 @@ export default {
         const saturation = Math.random() * (1 - saturationFloor) + saturationFloor
 
         const lightnessFloor = 0.4
-        const lightness = Math.random() * (1 - lightnessFloor) + lightnessFloor
+        const lighnessCeil = 0.8
+        const lightness = (Math.random() * (1 - lightnessFloor) + lightnessFloor) - (1 - lighnessCeil)
 
         return { hue, saturation, lightness }
     },

@@ -15,11 +15,12 @@ def random_bright_HSL_color():
     """
     hue = random.random()
 
-    saturation_floor = 0.5
-    saturation = random.random() * (1 - saturation_floor) + saturation_floor
+    saturation_floor = 0.8
+    saturation = random.uniform(saturation_floor, 1)
 
     lightness_floor = 0.4
-    lightness = random.random() * (1 - lightness_floor) + lightness_floor
+    lightness_ceil = 0.8
+    lightness = random.uniform(lightness_floor, lightness_ceil)
 
     return (hue, saturation, lightness)
 
