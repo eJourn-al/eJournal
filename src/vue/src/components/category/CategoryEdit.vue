@@ -1,6 +1,9 @@
 <template>
     <div>
-        <b-form-group :invalid-feedback="nameInvalidFeedback">
+        <b-form-group
+            :invalid-feedback="nameInvalidFeedback"
+            label="Name"
+        >
             <b-form-input
                 v-model="data.name"
                 :state="nameInputState"
@@ -12,33 +15,38 @@
             />
         </b-form-group>
 
-        <text-editor
-            :id="descriptionTextEditorID"
-            :key="descriptionTextEditorID"
-            ref="descriptionTextEditor"
-            v-model="data.description"
-            :footer="false"
-            class="multi-form"
-            :basic="true"
-            placeholder="Description"
-            @editor-focus="descriptionFocused = true"
-            @editor-blur="descriptionFocused = false"
-        />
+        <b-form-group label="Description">
+            <text-editor
+                :id="descriptionTextEditorID"
+                :key="descriptionTextEditorID"
+                ref="descriptionTextEditor"
+                v-model="data.description"
+                :footer="false"
+                :basic="true"
+                placeholder="Description"
+                @editor-focus="descriptionFocused = true"
+                @editor-blur="descriptionFocused = false"
+            />
+        </b-form-group>
 
-        <theme-select
-            v-model="data.templates"
-            label="name"
-            trackBy="id"
-            :options="templates"
-            :multiple="true"
-            :focus="descriptionFocused"
-            :searchable="true"
-            :multiSelectText="`template${data.templates.length > 1 ? 's' : ''}`"
-            placeholder="Search and add or remove templates"
-            class="multi-form"
-        />
+        <b-form-group label="Templates">
+            <theme-select
+                v-model="data.templates"
+                label="name"
+                trackBy="id"
+                :options="templates"
+                :multiple="true"
+                :focus="descriptionFocused"
+                :searchable="true"
+                :multiSelectText="`template${data.templates.length > 1 ? 's' : ''}`"
+                placeholder="Search and add or remove templates"
+            />
+        </b-form-group>
 
-        <b-form-group :invalid-feedback="colorInvalidFeedback">
+        <b-form-group
+            :invalid-feedback="colorInvalidFeedback"
+            label="Color"
+        >
             <b-input
                 v-model="data.color"
                 :state="colorInputState"
