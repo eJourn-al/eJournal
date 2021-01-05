@@ -161,17 +161,26 @@ def make_assignment(name, description, author=None, format=None, active_lti_id=N
     return assign
 
 
-def make_lti_groups(course):
-    groups = requests.get(settings.GROUP_API.format(course.active_lti_id)).json()
-    if isinstance(groups, list):
-        for group in groups:
+def get_lti_groups_with_name(course):
+    """Get a mapping of group LTI id to group name using the DN API"""
+    dn_groups = requests.get(settings.GROUP_API.format(course.active_lti_id)).json()
+    lti_groups = {}
+    if isinstance(dn_groups, list):
+        for group in dn_groups:
             try:
-                name = group['Name']
-                lti_id = int(group['CanvasSectionID'])
-                if not VLE.models.Group.objects.filter(course=course, lti_id=lti_id).exists():
-                    make_course_group(name, course, lti_id)
+                lti_groups[int(group['CanvasSectionID'])] = group['Name']
             except (ValueError, KeyError):
                 continue
+    return lti_groups
+
+
+def make_lti_groups(course):
+    groups = get_lti_groups_with_name(course)
+    for lti_id, name in groups.items():
+        if not VLE.models.Group.objects.filter(course=course, lti_id=lti_id).exists():
+            make_course_group(name, course, lti_id)
+        else:
+            VLE.models.Group.objects.filter(course=course, lti_id=lti_id).update(name=name)
 
 
 def make_default_format(due_date=None, points_possible=10):
