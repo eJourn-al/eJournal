@@ -18,6 +18,7 @@ const getters = {
     },
     assignmentsCategories: state => state.assignmentCategories,
     filteredCategories: state => state.filteredCategories,
+    timelineInstance: state => state.timelineInstance,
 }
 
 const mutations = {
@@ -35,6 +36,9 @@ const mutations = {
     },
     clearFilteredCategories (state) {
         state.filteredCategories = []
+    },
+    setTimelineInstance (state, instance) {
+        state.timelineInstance = instance
     },
 }
 
@@ -66,6 +70,8 @@ const actions = {
                         { aID: router.currentRoute.params.aID, category: newCategory },
                     )
 
+                    context.state.timelineInstance.syncNodes()
+
                     return newCategory
                 })
         }
@@ -89,6 +95,8 @@ const actions = {
 
                         context.commit('updateAssignmentCategories', { aID, categories: updatedCategories })
                     }
+
+                    context.state.timelineInstance.syncNodes()
 
                     return updatedCategory
                 })
@@ -132,6 +140,7 @@ export default {
         listCache: {},
         deleteCache: {},
         filteredCategories: [],
+        timelineInstance: null,
     },
     getters,
     mutations,

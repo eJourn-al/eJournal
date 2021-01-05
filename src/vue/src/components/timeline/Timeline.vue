@@ -151,6 +151,7 @@ export default {
     created () {
         this.filteredNodes = this.nodes
         this.mappedSelected = this.selected
+        this.$store.commit('category/setTimelineInstance', this)
     },
     methods: {
         mapAndEmitSelectedNode (index) {
@@ -177,6 +178,44 @@ export default {
             const idKey = (this.edit) ? 'id' : 'nID'
 
             return nodes.findIndex(elem => elem[idKey] === node[idKey])
+        },
+        /* When a category is linked to or removed from a template, the current list of nodes can become stale.
+         * Each of these nodes has been serialized before the category update, and needs to be synced with possible
+         * changes. Because these changes can impact the filter, we filter once again afterwards.
+         * This only happens during format edit, so we can assume the nodes consist of preset nodes.
+         *
+         * NOTE: called from store
+         */
+        syncNodes () {
+            const templateToCategoriesMap = {}
+
+            /* We can assume the store categories contain the latest state */
+            this.$store.getters['category/assignmentCategories'].forEach((category) => {
+                category.templates.forEach((template) => {
+                    const categoryConcreteFields = {
+                        id: category.id,
+                        name: category.name,
+                        color: category.color,
+                        description: category.description,
+                    }
+
+                    if (template.id in templateToCategoriesMap) {
+                        templateToCategoriesMap[template.id].push(categoryConcreteFields)
+                    } else {
+                        templateToCategoriesMap[template.id] = [categoryConcreteFields]
+                    }
+                })
+            })
+
+            this.nodes.map((node) => {
+                if (node.type === 'd') {
+                    node.template.categories = templateToCategoriesMap[node.template.id]
+                    return node
+                }
+                return node
+            })
+
+            this.filterByCategory(this.filteredCategories)
         },
         /* Next to filtering the nodes based on the selected categories, also keeps the selected node index in sync.
          * If a node was selected which is no longer part of the filtered nodes, selects the start of the assignment. */

@@ -572,7 +572,7 @@ export default {
             this.$intro().start()
         },
         replacer (name, value) {
-            if (value === null) {
+            if (value === null || name === 'categories') {
                 return ''
             }
             return value
