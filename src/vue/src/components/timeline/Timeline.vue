@@ -200,7 +200,7 @@ export default {
                         } else if (node.template.categories) {
                             return this.hasCategory(node.template.categories, filters)
                         }
-                    } else if (node.type === 'a') {
+                    } else if (node.type === 'a' || node.type === 'p') {
                         return true
                     }
                     return false
