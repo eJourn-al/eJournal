@@ -21,17 +21,14 @@
                 ref="scd"
                 class="timeline-inner"
             >
-                <theme-select
+                <category-select
                     v-if="$store.getters['category/assignmentCategories'].length"
                     v-model="filteredCategories"
                     class="mt-2"
-                    label="name"
-                    trackBy="id"
                     :options="$store.getters['category/assignmentCategories']"
                     :multiple="true"
                     :searchable="true"
                     :multiSelectText="`${filteredCategories.length > 1 ? 'categories' : 'category'}`"
-                    placeholder="Filter By Category"
                     @input="filterByCategory"
                 />
 
@@ -79,10 +76,12 @@
 </template>
 
 <script>
+import CategorySelect from '@/components/category/CategorySelect.vue'
 import TimelineNodes from '@/components/timeline/TimelineNodes.vue'
 
 export default {
     components: {
+        CategorySelect,
         TimelineNodes,
     },
     props: {

@@ -41,15 +41,9 @@
                     Add or remove any categories from the entry
                 </h2>
 
-                <theme-select
+                <category-select
                     v-model="entry.categories"
-                    label="name"
-                    trackBy="id"
                     :options="$store.getters['category/assignmentCategories']"
-                    :multiple="true"
-                    :searchable="true"
-                    :multiSelectText="`${entry.categories && entry.categories.length > 1 ? 'categories' : 'category'}`"
-                    placeholder="Search and add or remove categories"
                     @remove="removeCategory"
                     @select="addCategory"
                 />
@@ -59,12 +53,14 @@
 </template>
 
 <script>
-import CategoryDisplay from '@/components/category/CategoryDisplay'
+import CategoryDisplay from '@/components/category/CategoryDisplay.vue'
+import CategorySelect from '@/components/category/CategorySelect.vue'
 
 export default {
     name: 'CategoryEdit',
     components: {
         CategoryDisplay,
+        CategorySelect,
     },
     props: {
         entry: {

@@ -1,22 +1,14 @@
 <template>
     <div>
-        <b-badge
+        <category-tag
             v-for="category in categories"
             :key="`${id}-category-${category.id}`"
             v-b-modal="`${id}-category-information`"
-            class="mr-1"
-            :style="`background-color: ${category.color}`"
-            pill
-            @click.stop="selectedCategory = category"
-        >
-            {{ category.name }}
-            <icon
-                v-if="editable"
-                class="fill-red ml-1"
-                name="times"
-                @click.stop.native="$emit('remove-category', category)"
-            />
-        </b-badge>
+            :category="category"
+            :removable="editable"
+            @select-category="selectedCategory = category"
+            @remove-category="$emit('remove-category', category)"
+        />
 
         <slot/>
 
@@ -44,11 +36,13 @@
 </template>
 
 <script>
+import CategoryTag from '@/components/category/CategoryTag.vue'
 import SandboxedIframe from '@/components/assets/SandboxedIframe.vue'
 
 export default {
     name: 'CategoryDisplay',
     components: {
+        CategoryTag,
         SandboxedIframe,
     },
     props: {
