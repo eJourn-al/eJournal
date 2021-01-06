@@ -12,38 +12,22 @@
 
         <slot/>
 
-        <b-modal
-            v-if="selectedCategory"
+        <category-information-modal
             :id="`${id}-category-information`"
-            size="lg"
-            title="Category information"
-            hideFooter
-            noEnforceFocus
-        >
-            <b-card
-                class="no-hover no-left-border"
-            >
-                <h2 class="theme-h2 multi-form">
-                    {{ selectedCategory.name }}
-                </h2>
-
-                <sandboxed-iframe
-                    :content="selectedCategory.description"
-                />
-            </b-card>
-        </b-modal>
+            :category="selectedCategory"
+        />
     </div>
 </template>
 
 <script>
+import CategoryInformationModal from '@/components/category/CategoryInformationModal.vue'
 import CategoryTag from '@/components/category/CategoryTag.vue'
-import SandboxedIframe from '@/components/assets/SandboxedIframe.vue'
 
 export default {
     name: 'CategoryDisplay',
     components: {
+        CategoryInformationModal,
         CategoryTag,
-        SandboxedIframe,
     },
     props: {
         categories: {
