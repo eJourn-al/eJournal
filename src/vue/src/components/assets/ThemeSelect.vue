@@ -1,49 +1,51 @@
 <!-- TODO: update and replace all (single) selection fields. -->
 <template>
-    <multiselect
-        :value="value"
-        :label="label"
-        :trackBy="trackBy ? trackBy : label"
-        :maxHeight="500"
-        :class="{
-            'multiple': multiple,
-            'force-show-placeholder': !isOpen && (!value || !value.length),
-            'show-search': isOpen && searchable,
-            'show-limit': value && value.length,
-        }"
-        :options="sortedOptions"
-        :multiple="multiple"
-        :limit="multiple ? -1 : 1"
-        :closeOnSelect="!multiple"
-        :clearOnSelect="false"
-        :preselectFirst="false"
-        :searchable="searchable"
-        :preserveSearch="false"
-        :showLabels="false"
-        :placeholder="(!multiple && value) ? value[label] : placeholder"
-        open-direction="bottom"
-        @input="newValue => $emit('input', newValue)"
-        @select="(selectedOption, id) => $emit('select', selectedOption, id)"
-        @remove="(removedOption, id) => $emit('remove', removedOption, id)"
-        @open="() => { isOpen = true }"
-        @close="() => { isOpen = false }"
-    >
-        <span slot="limit">
-            {{ (value && value.length) ? value.length : 'No' }} {{ multiSelectText }}
-        </span>
-        <template slot="placeholder">
-            {{ placeholder }}
-        </template>
-        <template slot="noResult">
-            Not found
-        </template>
-        <icon
-            slot="caret"
-            name="sort"
-            scale="0.8"
-            class="caret multiselect__caret"
-        />
-    </multiselect>
+    <div class="theme-select-container">
+        <multiselect
+            :value="value"
+            :label="label"
+            :trackBy="trackBy ? trackBy : label"
+            :maxHeight="500"
+            :class="{
+                'multiple': multiple,
+                'force-show-placeholder': !isOpen && (!value || !value.length),
+                'show-search': isOpen && searchable,
+                'show-limit': value && value.length,
+            }"
+            :options="sortedOptions"
+            :multiple="multiple"
+            :limit="multiple ? -1 : 1"
+            :closeOnSelect="!multiple"
+            :clearOnSelect="false"
+            :preselectFirst="false"
+            :searchable="searchable"
+            :preserveSearch="false"
+            :showLabels="false"
+            :placeholder="(!multiple && value) ? value[label] : placeholder"
+            open-direction="bottom"
+            @input="newValue => $emit('input', newValue)"
+            @select="(selectedOption, id) => $emit('select', selectedOption, id)"
+            @remove="(removedOption, id) => $emit('remove', removedOption, id)"
+            @open="() => { isOpen = true }"
+            @close="() => { isOpen = false }"
+        >
+            <span slot="limit">
+                {{ (value && value.length) ? value.length : 'No' }} {{ multiSelectText }}
+            </span>
+            <template slot="placeholder">
+                {{ placeholder }}
+            </template>
+            <template slot="noResult">
+                Not found
+            </template>
+            <icon
+                slot="caret"
+                name="sort"
+                scale="0.8"
+                class="caret multiselect__caret"
+            />
+        </multiselect>
+    </div>
 </template>
 
 <script>
@@ -105,7 +107,7 @@ export default {
 <style lang="sass">
 @import '~sass/partials/shadows.sass'
 
-.multiselect
+.theme-select-container .multiselect
     color: $theme-dark-blue
     .multiselect__tags
         @extend .theme-shadow
