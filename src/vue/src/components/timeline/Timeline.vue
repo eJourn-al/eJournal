@@ -22,7 +22,7 @@
                 class="timeline-inner"
             >
                 <theme-select
-                    v-if="$store.getters['category/assignmentCategories']"
+                    v-if="$store.getters['category/assignmentCategories'].length"
                     v-model="filteredCategories"
                     class="mt-2"
                     label="name"
