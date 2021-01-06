@@ -25,7 +25,7 @@
 import SandboxedIframe from '@/components/assets/SandboxedIframe.vue'
 
 export default {
-    name: 'CategoryDisplay',
+    name: 'CategoryInformationModal',
     components: {
         SandboxedIframe,
     },
