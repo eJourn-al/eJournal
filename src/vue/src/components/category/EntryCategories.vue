@@ -1,5 +1,5 @@
 <template>
-    <div>
+    <div v-if="$store.getters['category/assignmentCategories'].length">
         <h2
             v-if="create"
             class="theme-h2 field-heading"
