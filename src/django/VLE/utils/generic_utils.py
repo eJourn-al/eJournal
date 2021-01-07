@@ -108,8 +108,8 @@ def get_sorted_nodes(journal):
         'entry',
         'preset'
     ).annotate(sort_due_date=Case(
-            When(type=VLE.models.Node.ENTRY, then='entry__creation_date'),
-            default='preset__due_date')
+        When(preset__isnull=False, then='preset__due_date'),
+        default='entry__creation_date')
     ).order_by('sort_due_date')
 
 

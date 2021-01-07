@@ -76,37 +76,53 @@ def get_add_node(journal):
 
 
 def get_entry_node(journal, node, user):
+    entry_data = EntrySerializer(
+        EntrySerializer.setup_eager_loading(Entry.objects.filter(node=node))[0],
+        context={'user': user}
+    ).data if node.entry else None
+
     return {
         'type': node.type,
         'nID': node.id,
         'jID': journal.pk,
-        'entry': EntrySerializer(
-            EntrySerializer.setup_eager_loading(Entry.objects.filter(node=node))[0],
-            context={'user': user}
-        ).data if node.entry else None,
+        'entry': entry_data,
     } if node else None
 
 
 def get_deadline(journal, node, user):
     """Convert entrydeadline to a dictionary."""
-    return {
-        'display_name': node.preset.display_name,
-        'description': node.preset.description,
+    if not node:
+        return None
+
+    entry_data = EntrySerializer(
+        EntrySerializer.setup_eager_loading(Entry.objects.filter(node=node)).first(),
+        context={'user': user}
+    ).data if node.entry else None
+
+    node_data = {
         'type': node.type,
         'nID': node.id,
         'jID': journal.pk,
-        'unlock_date': node.preset.unlock_date,
-        'due_date': node.preset.due_date,
-        'lock_date': node.preset.lock_date,
+        'entry': entry_data,
+        'deleted_preset': node.preset is None
+    }
+
+    if not node.preset:
+        return node_data
+
+    node_data.update({
+        'display_name': node.preset.display_name,
         # NOTE: 'template' duplicate serialization, Entry also serializes its template.
         # Is it needed to serialize the template, if an Entry is present?
         'template': TemplateSerializer(node.preset.forced_template).data,
-        'entry': EntrySerializer(
-            EntrySerializer.setup_eager_loading(Entry.objects.filter(node=node)).first(),
-            context={'user': user}
-        ).data if node.entry else None,
         'attached_files': FileSerializer(node.preset.attached_files, many=True).data,
-    } if node else None
+        'description': node.preset.description,
+        'unlock_date': node.preset.unlock_date,
+        'due_date': node.preset.due_date,
+        'lock_date': node.preset.lock_date,
+    })
+
+    return node_data
 
 
 def get_progress(journal, node):

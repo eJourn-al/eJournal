@@ -36,6 +36,9 @@ export default {
     props: ['node', 'selected'],
     computed: {
         nodeTitle () {
+            if (this.node.deleted_preset) {
+                return this.node.entry.title
+            }
             switch (this.node.type) {
             case 'e':
                 return this.node.entry.title

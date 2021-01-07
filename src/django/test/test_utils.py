@@ -39,10 +39,18 @@ class UtilsTest(TestCase):
 
     def test_get_sorted_nodes(self):
         journal = factory.Journal(entries__n=0)
-        progress_preset = factory.ProgressPresetNode(
-            format=journal.assignment.format, due_date=timezone.now() + datetime.timedelta(weeks=1))
-        unlimited_entry = factory.UnlimitedEntry(node__journal=journal)
-        preset_entry = factory.PresetEntry(node__journal=journal)
+        progress_points_preset = factory.ProgressPresetNode(
+            format=journal.assignment.format,
+            due_date=timezone.now() + datetime.timedelta(weeks=1),
+        )
+        unlimited_entry = factory.UnlimitedEntry(
+            node__journal=journal,
+            creation_date=timezone.now() - datetime.timedelta(days=2),
+        )
+        preset_entry = factory.PresetEntry(
+            node__journal=journal,
+            creation_date=timezone.now() + datetime.timedelta(days=2),
+        )
         preset_entry.node.preset.due_date = timezone.now() - datetime.timedelta(days=1)
         preset_entry.node.preset.save()
 
@@ -50,9 +58,9 @@ class UtilsTest(TestCase):
             list(get_sorted_nodes(journal))
 
         nodes = get_sorted_nodes(journal)
-        assert nodes.get(preset=progress_preset).sort_due_date == progress_preset.due_date, \
+        assert nodes.get(preset=progress_points_preset).sort_due_date == progress_points_preset.due_date, \
             'Preset timeline nodes should be ordered by their due date'
-        assert nodes.get(preset=progress_preset) == nodes.last()
+        assert nodes.get(preset=progress_points_preset) == nodes.last()
 
         assert nodes.get(entry=unlimited_entry).sort_due_date == unlimited_entry.creation_date, \
             'Unlimited entry nodes should be ordered by their respective entry creation date'
@@ -60,6 +68,16 @@ class UtilsTest(TestCase):
         assert nodes.get(entry=preset_entry).sort_due_date == preset_entry.node.preset.due_date, \
             'Preset deadline nodes (even filled in) should be ordered by their preset due date'
         assert nodes.get(entry=preset_entry) == nodes.first()
+
+        progress_points_preset.delete()
+        nodes = get_sorted_nodes(journal)
+        preset_entry.node.preset = None
+        preset_entry.node.save()
+        assert nodes.get(entry=preset_entry).sort_due_date == preset_entry.creation_date, \
+            'Deadline entries of which the preset is deleted should be sorted based on their creation date.'
+        assert nodes.get(entry=unlimited_entry) == nodes.first(), \
+            'After deletion of the related preset, unlimited_entry should be first. ' + \
+            'The creation_date of preset_entry is AFTER the one from unlimited_entry'
 
     def test_assert_num_queries_less_than(self):
         entry = factory.UnlimitedEntry()

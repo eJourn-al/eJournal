@@ -5,7 +5,7 @@
             {{ assignment.name }}
         </h2>
         <b-badge
-            v-if="!assignment.lti_couples > 0"
+            v-if="assignment.lti_couples > 0"
             v-b-tooltip:hover="'Linked via LTI'"
             pill
             variant="primary"
