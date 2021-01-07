@@ -206,7 +206,7 @@ class ParticipationView(viewsets.ViewSet):
                 return response.success({'participants': []})
 
         found_users = users.filter(Q(username__contains=unenrolled_query) |
-                                   Q(full_name__contains=unenrolled_query))
+                                   Q(full_name__icontains=unenrolled_query))
 
         return response.success({
             'participants': UserSerializer(
