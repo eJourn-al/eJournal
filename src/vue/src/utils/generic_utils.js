@@ -34,4 +34,39 @@ export default {
 
         return display
     },
+
+    assignmentWithDatesDisplay (assignment) {
+        let display = assignment.name
+
+        if (!assignment.unlock_date && !assignment.due_date && !assignment.lock_date) {
+            return display
+        }
+
+        display += ' ('
+
+        if (assignment.unlock_date) {
+            display += `${assignment.unlock_date.substring(0, 4)}`
+        }
+
+        if (assignment.unlock_date && (assignment.due_date || assignment.lock_date)) {
+            display += ' - '
+        }
+
+        if (assignment.due_date) {
+            display += `${assignment.due_date.substring(0, 4)}`
+        } else if (assignment.lock_date) {
+            display += `${assignment.lock_date.substring(0, 4)}`
+        }
+
+        display += ')'
+
+        return display
+    },
+
+    parseYouTubeVideoID (url) {
+        const re = /^((?:https?:)?\/\/)?((?:www|m)\.)?(youtube|youtu|youtube-nocookie)\.(com|be)\/(watch\?v=|embed\/|v\/|.+\?v=)?(?<id>[A-Za-z0-9=_-]{11})/ // eslint-disable-line
+        const match = url.match(re)
+
+        return (match && match.groups.id) ? match.groups.id : false
+    },
 }

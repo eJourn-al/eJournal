@@ -50,7 +50,13 @@ def validate_password(password):
         raise ValidationError("Password needs to contain a special character.")
 
 
-def validate_entry_content(content, field):
+def validate_youtube_url_with_video_id(url):
+    r = r"^((?:https?:)?\/\/)?((?:www|m)\.)?(youtube|youtu|youtube-nocookie)\.(com|be)/(watch\?v=|embed/|v/|.+\?v=)?(?P<id>[A-Za-z0-9=_-]{11})" # NOQA E501
+    if not (isinstance(url, str) and re.match(r, url)):
+        raise ValidationError('Enter a valid YouTube video URL.')
+
+
+def validate_entry_content(content, field): # NOQA C901
     """Validates the given data based on its field type, any validation error will be thrown."""
     if field.required and not (content or content == ''):
         raise VLE.utils.error_handling.VLEMissingRequiredField(field)
@@ -66,10 +72,12 @@ def validate_entry_content(content, field):
             if not fc.file or not os.path.exists(fc.file.path):
                 raise ValidationError('Rich text linked to file context whose file does not exists.')
 
-    # TODO: improve VIDEO validator
-    if field.type == VLE.models.Field.URL or field.type == VLE.models.Field.VIDEO:
+    if field.type == VLE.models.Field.URL:
         url_validate = URLValidator(schemes=VLE.models.Field.ALLOWED_URL_SCHEMES)
         url_validate(content)
+
+    if field.type == VLE.models.Field.VIDEO:
+        validate_youtube_url_with_video_id(content)
 
     if field.type == VLE.models.Field.SELECTION:
         if content not in json.loads(field.options):

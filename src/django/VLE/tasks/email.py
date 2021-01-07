@@ -183,6 +183,7 @@ def send_email_feedback(user_pk, topic, ftype, feedback, user_agent, url, file_c
 
     r_email_data = {}
     r_email_data['feedback'] = feedback
+    r_email_data['ftype'] = ftype
     r_email_data['profile_url'] = '{}/Profile'.format(settings.BASELINK)
 
     r_html_content = render_to_string('feedback.html', {'email_data': r_email_data})
