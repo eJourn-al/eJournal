@@ -1,5 +1,7 @@
+
 import datetime
 import test.factory as factory
+from test.utils.performance import QueryContext
 from unittest import mock
 
 from django.core import mail
@@ -11,6 +13,7 @@ from VLE.models import JournalImportRequest, Notification, Preferences, Role, Us
 from VLE.permissions import get_supervisors_of
 from VLE.tasks.beats.notifications import send_digest_notifications
 from VLE.tasks.email import send_push_notification
+from VLE.tasks.notifications import generate_new_entry_notifications
 from VLE.utils.error_handling import VLEParticipationError, VLEProgrammingError
 
 
@@ -157,13 +160,29 @@ class NotificationTest(TestCase):
 
         journal = factory.Journal(entries__n=0)
         notifications_before = list(Notification.objects.all().values_list('pk', flat=True))
-        factory.UnlimitedEntry(node__journal=journal)
+        entry = factory.UnlimitedEntry(node__journal=journal)
         new_notifactions = Notification.objects.all().exclude(pk__in=notifications_before)
 
         assert new_notifactions.count() == 1, '1 new notification is created for entry'
         assert new_notifactions.filter(type=Notification.NEW_ENTRY).exists()
 
         self.check_send_push_notification(new_notifactions.get(type=Notification.NEW_ENTRY))
+
+        # Because of a limitation in the test factory, we also need to provide the node pk
+        node = entry.node
+        node.entry = None
+        node.save()
+        entry.refresh_from_db()
+        with QueryContext() as context:
+            generate_new_entry_notifications(entry.pk, node.pk)
+
+        # However, when entry already has a node, it should not be used to reduce the number of queries used
+        node.entry = entry
+        node.save()
+        entry.refresh_from_db()
+        nr_queries_cost_to_fetch_missing_node = 1
+        with self.assertNumQueries(len(context.captured_queries) - nr_queries_cost_to_fetch_missing_node):
+            generate_new_entry_notifications(entry.pk, node.pk)
 
     @override_settings(CELERY_TASK_ALWAYS_EAGER=True, CELERY_TASK_EAGER_PROPAGATES=True)
     def test_assignment_notification(self):
