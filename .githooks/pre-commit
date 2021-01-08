@@ -1,4 +1,10 @@
 #!/bin/sh
 
 make isort
-make check-linters
+if git diff-index --cached --name-only HEAD | grep "src/vue"; then
+    make check-linters-front || exit 1
+fi
+
+if git diff-index --cached --name-only HEAD | grep "src/django"; then
+    make check-linters-back || exit 1
+fi

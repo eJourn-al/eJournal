@@ -5,6 +5,7 @@ import test.utils.performance
 from test.utils import api
 
 from django.conf import settings
+from django.core.exceptions import ValidationError
 from django.db import connections
 from django.test import TestCase
 from django.test.utils import CaptureQueriesContext
@@ -15,6 +16,7 @@ import VLE.utils.responses
 from VLE.serializers import UserSerializer, prefetched_objects
 from VLE.utils.error_handling import VLEProgrammingError
 from VLE.utils.generic_utils import get_sorted_nodes
+from VLE.validators import validate_youtube_url_with_video_id
 
 
 class UtilsTest(TestCase):
@@ -37,10 +39,18 @@ class UtilsTest(TestCase):
 
     def test_get_sorted_nodes(self):
         journal = factory.Journal(entries__n=0)
-        progress_preset = factory.ProgressPresetNode(
-            format=journal.assignment.format, due_date=timezone.now() + datetime.timedelta(weeks=1))
-        unlimited_entry = factory.UnlimitedEntry(node__journal=journal)
-        preset_entry = factory.PresetEntry(node__journal=journal)
+        progress_points_preset = factory.ProgressPresetNode(
+            format=journal.assignment.format,
+            due_date=timezone.now() + datetime.timedelta(weeks=1),
+        )
+        unlimited_entry = factory.UnlimitedEntry(
+            node__journal=journal,
+            creation_date=timezone.now() - datetime.timedelta(days=2),
+        )
+        preset_entry = factory.PresetEntry(
+            node__journal=journal,
+            creation_date=timezone.now() + datetime.timedelta(days=2),
+        )
         preset_entry.node.preset.due_date = timezone.now() - datetime.timedelta(days=1)
         preset_entry.node.preset.save()
 
@@ -48,9 +58,9 @@ class UtilsTest(TestCase):
             list(get_sorted_nodes(journal))
 
         nodes = get_sorted_nodes(journal)
-        assert nodes.get(preset=progress_preset).sort_due_date == progress_preset.due_date, \
+        assert nodes.get(preset=progress_points_preset).sort_due_date == progress_points_preset.due_date, \
             'Preset timeline nodes should be ordered by their due date'
-        assert nodes.get(preset=progress_preset) == nodes.last()
+        assert nodes.get(preset=progress_points_preset) == nodes.last()
 
         assert nodes.get(entry=unlimited_entry).sort_due_date == unlimited_entry.creation_date, \
             'Unlimited entry nodes should be ordered by their respective entry creation date'
@@ -58,6 +68,16 @@ class UtilsTest(TestCase):
         assert nodes.get(entry=preset_entry).sort_due_date == preset_entry.node.preset.due_date, \
             'Preset deadline nodes (even filled in) should be ordered by their preset due date'
         assert nodes.get(entry=preset_entry) == nodes.first()
+
+        progress_points_preset.delete()
+        nodes = get_sorted_nodes(journal)
+        preset_entry.node.preset = None
+        preset_entry.node.save()
+        assert nodes.get(entry=preset_entry).sort_due_date == preset_entry.creation_date, \
+            'Deadline entries of which the preset is deleted should be sorted based on their creation date.'
+        assert nodes.get(entry=unlimited_entry) == nodes.first(), \
+            'After deletion of the related preset, unlimited_entry should be first. ' + \
+            'The creation_date of preset_entry is AFTER the one from unlimited_entry'
 
     def test_assert_num_queries_less_than(self):
         entry = factory.UnlimitedEntry()
@@ -147,3 +167,60 @@ class UtilsTest(TestCase):
         value, prefetched = prefetched_objects(instance, 'groups')
         assert prefetched
         assert value[0] == group
+
+    def test_validate_youtube_url_with_video_id(self):
+        valid_youtube_video_urls = [
+            'http://youtube.com/watch?v=iwGFalTRHDA',
+            'http://www.youtube.com/watch?v=iwGFalTRHDA&feature=related',
+            'https://youtube.com/iwGFalTRHDA',
+            'http://youtu.be/n17B_uFF4cA',
+            'youtube.com/iwGFalTRHDA',
+            'youtube.com/n17B_uFF4cA',
+            'http://www.youtube.com/watch?v=t-ZRX8984sc',
+            'http://youtu.be/t-ZRX8984sc',
+            'https://www.youtube.com/watch?v=DFYRQ_zQ-gk&feature=featured',
+            'https://www.youtube.com/watch?v=DFYRQ_zQ-gk',
+            'http://www.youtube.com/watch?v=DFYRQ_zQ-gk',
+            'www.youtube.com/watch?v=DFYRQ_zQ-gk',
+            'https://youtube.com/watch?v=DFYRQ_zQ-gk',
+            'http://youtube.com/watch?v=DFYRQ_zQ-gk',
+            'youtube.com/watch?v=DFYRQ_zQ-gk',
+            'https://m.youtube.com/watch?v=DFYRQ_zQ-gk',
+            'http://m.youtube.com/watch?v=DFYRQ_zQ-gk',
+            'm.youtube.com/watch?v=DFYRQ_zQ-gk',
+            'https://www.youtube.com/v/DFYRQ_zQ-gk?fs=1&hl=en_US',
+            'http://www.youtube.com/v/DFYRQ_zQ-gk?fs=1&hl=en_US',
+            'www.youtube.com/v/DFYRQ_zQ-gk?fs=1&hl=en_US',
+            'youtube.com/v/DFYRQ_zQ-gk?fs=1&hl=en_US',
+            'https://www.youtube.com/embed/DFYRQ_zQ-gk?autoplay=1',
+            'https://www.youtube.com/embed/DFYRQ_zQ-gk',
+            'http://www.youtube.com/embed/DFYRQ_zQ-gk',
+            'www.youtube.com/embed/DFYRQ_zQ-gk',
+            'https://youtube.com/embed/DFYRQ_zQ-gk',
+            'http://youtube.com/embed/DFYRQ_zQ-gk',
+            'youtube.com/embed/DFYRQ_zQ-gk',
+            'https://youtu.be/DFYRQ_zQ-gk?t=120',
+            'https://youtu.be/DFYRQ_zQ-gk',
+            'http://youtu.be/DFYRQ_zQ-gk',
+            'youtu.be/DFYRQ_zQ-gk',
+            'https://www.youtube.com/HamdiKickProduction?v=DFYRQ_zQ-gk',
+            '//www.youtube.com/watch?v=DFYRQ_zQ-gk',
+            '//youtube.com/embed/DFYRQ_zQ-gk',
+        ]
+
+        invalid_youtube_video_urls = [
+            'https://www.youtube.com/channel/UCDZkgJZDyUnqwB070OyP72g',
+            'http://www.youtube.com/embed/watch?feature=player_embedded&v=r5nB9u4jjy4',  # Valid but not working atm
+            'http://altotube.com/t-ZRX8984sc',
+            'https://bootstrap-vue.org/',
+            '',
+            1,
+            False,
+            True,
+        ]
+
+        for valid_url in valid_youtube_video_urls:
+            validate_youtube_url_with_video_id(valid_url)
+
+        for invalid_url in invalid_youtube_video_urls:
+            self.assertRaises(ValidationError, validate_youtube_url_with_video_id, invalid_url)

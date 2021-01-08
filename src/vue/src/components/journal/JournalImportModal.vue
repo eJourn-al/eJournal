@@ -110,7 +110,12 @@ export default {
             return courses
         },
         assignments () {
-            return this.fetchedAssignments.filter(a => a.course.id === this.selectedCourse.id)
+            return this.fetchedAssignments
+                .filter(a => a.course.id === this.selectedCourse.id)
+                .map((a) => {
+                    a.name = utils.assignmentWithDatesDisplay(a)
+                    return a
+                })
         },
     },
     created () {

@@ -360,8 +360,13 @@ export default {
                 return false
             }
 
-            if (Number.isNaN(parseInt(this.assignmentDetails.points_possible, 10))) {
+            if (!this.assignmentDetails.points_possible) {
                 this.$toasted.error('Points possible is missing.')
+                return false
+            }
+
+            if (Number.isNaN(parseInt(this.assignmentDetails.points_possible, 10))) {
+                this.$toasted.error('Points possible is not a valid number.')
                 return false
             }
 

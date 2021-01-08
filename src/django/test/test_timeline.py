@@ -155,6 +155,16 @@ class TimelineTests(TestCase):
         assert data['unlock_date'] == node.preset.unlock_date
         assert data['due_date'] == node.preset.due_date
         assert data['lock_date'] == node.preset.lock_date
+        assert not data['deleted_preset'], 'Preset is not deleted, so flag should also be false'
+
+        # Test if get_entry_node does not crash when preset is deleted
+        utils.delete_presets([{'id': node.preset.pk}])
+        node.refresh_from_db()
+        data = timeline.get_deadline(journal, node, author)
+        assert data['deleted_preset'], 'Preset is deleted, so flag should also be true'
+
+        resp = timeline.get_deadline(journal, None, author)
+        assert resp is None, 'Not providing a node should not crash get_deadline and simply return None back'
 
     def test_get_nodes(self):
         assignment = factory.Assignment(format__templates=[{'type': Field.TEXT}])

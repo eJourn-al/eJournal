@@ -117,7 +117,8 @@ export default {
         assignments () {
             const arr = []
             this.jirs.forEach(jir => arr.push({
-                name: `${jir.source.assignment.name}, ${utils.courseWithDatesDisplay(jir.source.assignment.course)}`,
+                name: `${utils.assignmentWithDatesDisplay(jir.source.assignment)}, ${utils.courseWithDatesDisplay(
+                    jir.source.assignment.course)}`,
                 id: jir.id,
                 jir,
             }))

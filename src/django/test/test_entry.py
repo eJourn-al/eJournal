@@ -305,12 +305,17 @@ class EntryAPITest(TestCase):
         validate_entry_content(None, optional_field)
         validate_entry_content(False, optional_field)
 
-        # Test Url and Video with allowed schemes
+        # Test Url with allowed schemes
         validate_entry_content(faker.url(schemes=Field.ALLOWED_URL_SCHEMES), factory.UrlField(template=template))
-        validate_entry_content(faker.url(schemes=Field.ALLOWED_URL_SCHEMES), factory.VideoField(template=template))
         # Unallowed scheme should raise validation error
         self.assertRaises(
             ValidationError, validate_entry_content, faker.url(schemes=('illega')), factory.UrlField(template=template))
+
+        # Test Video
+        valid_youtube_video_url = 'http://youtube.com/watch?v=iwGFalTRHDA'
+        with mock.patch('VLE.validators.validate_youtube_url_with_video_id') as validate_youtube_video_url_mock:
+            validate_entry_content('http://youtube.com/watch?v=iwGFalTRHDA', factory.VideoField(template=template))
+            validate_youtube_video_url_mock.assert_called_with(valid_youtube_video_url)
 
         selection_field = factory.SelectionField(template=template)
         validate_entry_content(json.loads(selection_field.options)[0], selection_field)

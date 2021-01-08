@@ -1,7 +1,7 @@
 <template>
     <content-single-column>
         <div
-            v-if="$root.canGradeForSomeCourse"
+            v-if="$root.canGradeForSomeCourse()"
             class="text-grey float-right unselectable cursor-pointer"
         >
             <span
@@ -46,7 +46,7 @@
                     Sort by name
                 </option>
                 <option
-                    v-if="$root.canGradeForSomeCourse"
+                    v-if="$root.canGradeForSomeCourse()"
                     value="markingNeeded"
                 >
                     Sort by marking needed
@@ -183,8 +183,7 @@ export default {
         assignmentAPI.list()
             .then((assignments) => {
                 this.assignments = assignments
-                this.loadingAssignments = false
-            })
+            }).finally(() => { this.loadingAssignments = false })
     },
     methods: {
         ...mapMutations({
