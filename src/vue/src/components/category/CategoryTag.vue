@@ -1,5 +1,6 @@
 <template>
     <b-badge
+        v-if="category.name"
         class="category-tag"
         :style="`background-color: ${category.color}`"
         pill

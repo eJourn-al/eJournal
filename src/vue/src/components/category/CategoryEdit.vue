@@ -1,8 +1,8 @@
 <template>
     <div>
         <b-form-group
-            :invalid-feedback="nameInvalidFeedback"
             label="Name"
+            :invalid-feedback="nameInvalidFeedback"
         >
             <b-form-input
                 v-model="data.name"
@@ -44,8 +44,8 @@
         </b-form-group>
 
         <b-form-group
-            :invalid-feedback="colorInvalidFeedback"
             label="Color"
+            :invalid-feedback="colorInvalidFeedback"
         >
             <b-input
                 v-model="data.color"
@@ -77,10 +77,11 @@ export default {
     data () {
         return {
             updateCall: null,
-            color: '#ffffff',
+            createCall: null,
             descriptionFocused: false,
             nameInvalidFeedback: null,
             colorInvalidFeedback: null,
+            aID: null,
         }
     },
     computed: {
@@ -120,12 +121,17 @@ export default {
     watch: {
         data: {
             deep: true,
-            handler (val) {
-                if (val.id !== -1) {
-                    this.patchCategory(val)
+            handler (category) {
+                if (category.id >= 0) {
+                    this.patchCategory(category)
+                } else {
+                    this.createCategory(category)
                 }
             },
         },
+    },
+    created () {
+        this.aID = this.$route.params.aID
     },
     methods: {
         patchCategory (data) {
@@ -138,6 +144,15 @@ export default {
 
             this.updateCall = window.setTimeout(() => {
                 this.$store.dispatch('category/update', { id: payload.id, data: payload })
+            }, 3000)
+        },
+        createCategory (localCategory) {
+            window.clearTimeout(this.createCall)
+
+            if (!this.validCategory) { return }
+
+            this.createCall = window.setTimeout(() => {
+                this.$store.dispatch('category/createAndOnlyUpdateId', { localCategory, aID: this.aID })
             }, 3000)
         },
     },

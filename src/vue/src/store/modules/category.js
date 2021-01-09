@@ -31,6 +31,15 @@ const mutations = {
     addAssignmentCategory (state, { aID, category }) {
         state.assignmentsCategories[aID].push(category)
     },
+    deleteAssignmentCategory (state, { aID, id }) {
+        Vue.delete(
+            state.assignmentsCategories[aID],
+            state.assignmentsCategories[aID].findIndex(elem => elem.id === id),
+        )
+    },
+    setIdOfCreatedCategory (state, { category, id }) {
+        category.id = id
+    },
     setFilteredCategories (state, filteredCategories) {
         state.filteredCategories = filteredCategories
     },
@@ -59,20 +68,40 @@ const actions = {
 
         return fromCache(context, 'listCache', aID, fn.bind(null), force)
     },
+    /* NOTE: Plain create is currently unused */
     create (context, { data, connArgs = auth.DEFAULT_CONN_ARGS }) {
         function fn () {
             return auth.create('categories', data, connArgs)
                 .then((response) => {
-                    const newCategory = response.data.category
+                    const createdCategory = response.data.category
 
                     context.commit(
                         'addAssignmentCategory',
-                        { aID: router.currentRoute.params.aID, category: newCategory },
+                        { aID: router.currentRoute.params.aID, category: createdCategory },
                     )
 
                     context.state.timelineInstance.syncNodes()
 
-                    return newCategory
+                    return createdCategory
+                })
+        }
+
+        return fn()
+    },
+    createAndOnlyUpdateId (context, { localCategory, aID, connArgs = auth.DEFAULT_CONN_ARGS }) {
+        function fn () {
+            const payload = JSON.parse(JSON.stringify(localCategory))
+
+            /* Create a payload so we do not modify the localCategories templates directly */
+            payload.templates = localCategory.templates.map(elem => elem.id)
+            payload.assignment_id = aID
+
+            return auth.create('categories', payload, connArgs)
+                .then((response) => {
+                    const createdCategory = response.data.category
+                    context.commit('setIdOfCreatedCategory', { category: localCategory, id: createdCategory.id })
+
+                    return createdCategory
                 })
         }
 
@@ -108,14 +137,10 @@ const actions = {
         function fn () {
             return auth.delete(`categories/${id}`, null, connArgs)
                 .then((response) => {
-                    const newAssignmentCategories = context.getters.assignmentCategories.filter(elem => elem.id !== id)
                     const updatedFilteredCategories = context.getters.filteredCategories.filter(elem => elem.id !== id)
 
                     context.commit('setFilteredCategories', updatedFilteredCategories)
-                    context.commit(
-                        'updateAssignmentCategories',
-                        { aID: router.currentRoute.params.aID, categories: newAssignmentCategories },
-                    )
+                    context.commit('deleteAssignmentCategory', { aID: router.currentRoute.params.aID, id })
 
                     return response.data
                 })

@@ -97,23 +97,12 @@
                 </b-table>
 
                 <b-button
-                    v-if="!newCategory"
                     class="green-button mt-2 float-right"
                     @click="addCategory"
                 >
                     <icon name="plus"/>
                     Add Category
                 </b-button>
-
-                <template v-if="newCategory">
-                    <hr/>
-
-                    <category-edit
-                        ref="categoryEditCreate"
-                        :templates="templates"
-                        :data="newCategory"
-                    />
-                </template>
             </b-card>
         </b-modal>
     </div>
@@ -144,7 +133,8 @@ export default {
     },
     data () {
         return {
-            newCategory: null,
+            /* Decremented by one for each new local category, should be unique as it used as keys for the table. */
+            newCategoryId: -1,
             fields: [
                 {
                     key: 'name',
@@ -159,8 +149,6 @@ export default {
                     label: '',
                 },
             ],
-            createCall: null,
-            aID: null,
         }
     },
     computed: {
@@ -171,66 +159,31 @@ export default {
             get () { return this.$store.getters['category/assignmentCategories'] },
         },
     },
-    watch: {
-        newCategory: {
-            deep: true,
-            handler (category) {
-                if (category && category.name) { this.createCategory() }
-            },
-        },
-    },
-    created () {
-        this.aID = this.$route.params.aID
-    },
     methods: {
         deleteCategory (category) {
-            if (window.confirm(`Are you sure you want to delete ${category.name}?
+            if (category.id >= 0 && window.confirm(`Are you sure you want to delete ${category.name}?
 
 This action will also immediately remove the category from any associated entries. \
 This action cannot be undone.`)) {
                 this.$store.dispatch('category/delete', { id: category.id })
+            } else {
+                this.$store.commit(
+                    'category/deleteAssignmentCategory',
+                    { id: category.id, aID: this.$route.params.aID },
+                )
             }
         },
         addCategory () {
             this.categories.forEach((element) => { element._showDetails = false })
 
-            this.newCategory = {
-                id: -1,
+            this.categories.unshift({
+                id: this.newCategoryId--,
                 name: null,
                 description: '',
                 color: colorUtils.randomBrightRGBcolor(),
                 templates: [],
-            }
-        },
-        validateCategory (category) {
-            return !this.categories.some(elem => (
-                elem.name === category.name
-                || elem.color === category.color
-            ))
-        },
-        createCategory () {
-            window.clearTimeout(this.createCall)
-
-            if (!this.validateCategory(this.newCategory)) { return }
-
-            this.createCall = window.setTimeout(() => {
-                const payload = JSON.parse(JSON.stringify(this.newCategory))
-                payload.templates = this.newCategory.templates.map(elem => elem.id)
-                payload.assignment_id = this.aID
-
-                this.$store.dispatch('category/create', { data: payload })
-                    .then((category) => {
-                        this.$set(category, '_showDetails', true)
-                        this.newCategory = null
-                        if (this.$refs.categoryEditCreate.descriptionFocused) {
-                            /* Setting _showDetails to true will render an edit category component, we need to
-                             * wait for the dom to be ready before we can toggle the focus. */
-                            this.$nextTick(() => {
-                                this.$refs[`category${category.id}Edit`].$refs.descriptionTextEditor.setFocus()
-                            })
-                        }
-                    })
-            }, 3000)
+                _showDetails: true,
+            })
         },
     },
 }
