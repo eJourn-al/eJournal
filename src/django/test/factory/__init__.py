@@ -88,6 +88,7 @@ from test.factory.params import AssignmentFormatUpdateParamsFactory as Assignmen
 from test.factory.params import EntryContentCreationParamsFactory as EntryContentCreationParams  # noqa: F401
 from test.factory.params import JWTParamsFactory as JWTParams  # noqa: F401
 from test.factory.params import JWTTestUserParamsFactory as JWTTestUserParams  # noqa: F401
+from test.factory.params import PresetEntryCreationParamsFactory as PresetEntryCreationParams  # noqa: F401
 from test.factory.params import TeacherEntryCreationParamsFactory as TeacherEntryCreationParams  # noqa: F401
 from test.factory.params import UnlimitedEntryCreationParamsFactory as UnlimitedEntryCreationParams  # noqa: F401
 from test.factory.params import UserParamsFactory as UserParams  # noqa: F401

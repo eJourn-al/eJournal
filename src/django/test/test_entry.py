@@ -456,10 +456,53 @@ class EntryAPITest(TestCase):
             'When the active LTI uplink is outdated no more entries can be created.'
         self.group_journal.assignment.active_lti_id = assignment_old_lti_id
         self.group_journal.assignment.save()
-
-        # TODO: Test for entry bound to entrydeadline
         # TODO: Test with file upload
         # TODO: Test added index
+
+    def test_create_invalid_preset_entry(self):
+        # Entries cannot be created after lockdate
+        create_params = factory.PresetEntryCreationParams(
+            journal=self.group_journal
+        )
+        node = Node.objects.get(pk=create_params['node_id'])
+        node.preset.due_date = timezone.now() - timedelta(weeks=1)
+        node.preset.lock_date = timezone.now() - timedelta(weeks=1)
+        node.preset.save()
+        resp = api.create(self, 'entries', params=create_params, user=self.student, status=400)['description']
+        assert 'lock date' in resp, 'Node should be locked, and not available for new entry'
+        node.preset.due_date = timezone.now() + timedelta(weeks=1)
+        node.preset.lock_date = timezone.now() + timedelta(weeks=1)
+        node.preset.save()
+
+        # It should not be possible to create a deadline entry using a template other than the preset's template
+        invalid_params = create_params.copy()
+        invalid_params['template_id'] = factory.Template(format=self.g_assignment.format).pk
+        resp = api.create(self, 'entries', params=invalid_params, user=self.student, status=400)['description']
+        assert 'Invalid template' in resp, \
+            'It should not be possible to create a deadline entry using a template other than the preset\'s template'
+
+        # Node must be progress node if 'node_id' is supplied
+        node.type = Node.PROGRESS
+        node.save()
+        resp = api.create(self, 'entries', params=create_params, user=self.student, status=400)['description']
+        assert 'EntryDeadline' in resp, 'You should not be able to create an entry in a PROGRESS node'
+        node.type = Node.ENTRYDEADLINE
+        node.save()
+
+        # Passed node already contains an entry, this should also be indicated correctly
+        api.create(self, 'entries', params=create_params, user=self.student)['description']
+        resp = api.create(self, 'entries', params=create_params, user=self.student, status=400)['description']
+        assert 'already contains an entry' in resp, \
+            'Passed node already contains an entry, this should also be indicated correctly'
+
+        # Passed fields should be from template
+        invalid_params = create_params.copy()
+        other_template = factory.Template(format=self.g_assignment.format)
+        other_field_pk = Field.objects.exclude(template=other_template).first().pk
+        invalid_params['content'][other_field_pk] = 'OTHER FIELD CONTENT'
+        resp = api.create(self, 'entries', params=create_params, user=self.student, status=400)['description']
+        assert 'Passed field is not from template.' in resp, \
+            'Passed fields should be from template, if not, it should respond with a bad request'
 
     def test_entry_in_teacher_journal(self):
         assignment = factory.Assignment()

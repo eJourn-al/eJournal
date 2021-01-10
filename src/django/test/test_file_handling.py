@@ -105,11 +105,12 @@ class FileHandlingTest(TestCase):
 
     def test_file_retrieve(self):
         file = FileContext.objects.create(file=self.video, author=self.student, file_name=self.video.name)
+        other_teacher = factory.Teacher()
 
         # Test get unestablished files
         api.get(self, 'files', params={'pk': file.pk}, user=self.student, status=200)
         api.get(self, 'files', params={'pk': file.pk}, user=self.teacher, status=403)
-        api.get(self, 'files', params={'pk': file.pk}, user=factory.Teacher(), status=403)
+        api.get(self, 'files', params={'pk': file.pk}, user=other_teacher, status=403)
 
         # Test teacher can see after establishing in journal
         file_handling.establish_file(author=self.student, file_context=file, journal=self.journal)
@@ -120,7 +121,7 @@ class FileHandlingTest(TestCase):
         hidden_comment = factory.TeacherComment(
             author=self.teacher, entry=factory.UnlimitedEntry(node__journal=self.journal), published=False)
         file_handling.establish_file(author=self.teacher, file_context=file, comment=hidden_comment)
-        api.get(self, 'files', params={'pk': file.pk}, user=factory.Teacher(), status=403)
+        api.get(self, 'files', params={'pk': file.pk}, user=other_teacher, status=403)
         api.get(self, 'files', params={'pk': file.pk}, user=self.student, status=403)
         api.get(self, 'files', params={'pk': file.pk}, user=self.teacher, status=200)
 
@@ -132,7 +133,18 @@ class FileHandlingTest(TestCase):
         file = FileContext.objects.create(file=self.video, author=self.teacher, file_name=self.video.name)
         file_handling.establish_file(author=self.teacher, file_context=file, assignment=self.assignment)
         api.get(self, 'files', params={'pk': file.pk}, user=self.student, status=200)
-        api.get(self, 'files', params={'pk': file.pk}, user=factory.Teacher(), status=403)
+        api.get(self, 'files', params={'pk': file.pk}, user=other_teacher, status=403)
+
+        # Test non related user on file without context (e.g. profile picture)
+        file = FileContext.objects.create(file=self.video, author=self.student, file_name=self.video.name)
+        # Student should be able to get its own file
+        api.get(self, 'files', params={'pk': file.pk}, user=self.student)
+        # Unrelated teacher should not be able to get students file
+        api.get(self, 'files', params={'pk': file.pk}, user=other_teacher, status=403)
+        # Unrelated teacher should be able to get students file with the use of access_id
+        api.get(self, 'files', params={'pk': file.pk, 'access_id': file.access_id}, user=other_teacher)
+        # Unrelated teacher should be able to get students file using the dedicated access endpoint
+        api.get(self, 'files/access_id', params={'pk': file.access_id}, user=other_teacher)
 
     def test_file_context_model(self):
         # Dedicated file due to possible race conditions across tests
