@@ -3,18 +3,22 @@
         <category-tag
             v-for="category in categories"
             :key="`${id}-category-${category.id}`"
-            v-b-modal="`${id}-category-information`"
             :category="category"
             :removable="editable"
-            @select-category="selectedCategory = category"
+            :showInfo="true"
+            @select-category="$emit('select-category', category)"
             @remove-category="$emit('remove-category', category)"
+            @show-info="
+                infoCategory = $event
+                $nextTick(() => { $bvModal.show(infoModalID) })
+            "
         />
 
         <slot/>
 
         <category-information-modal
-            :id="`${id}-category-information`"
-            :category="selectedCategory"
+            :id="infoModalID"
+            :category="infoCategory"
         />
     </div>
 </template>
@@ -44,8 +48,11 @@ export default {
     },
     data () {
         return {
-            selectedCategory: null,
+            infoCategory: null,
         }
+    },
+    computed: {
+        infoModalID () { return `${this.id}-category-information` },
     },
 }
 </script>

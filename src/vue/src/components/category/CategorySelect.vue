@@ -1,8 +1,10 @@
 <template>
     <div class="category-select">
         <multiselect
+            ref="categorySelect"
             label="name"
             trackBy="id"
+            open-direction="bottom"
 
             :placeholder="placeholder"
             :value="value"
@@ -27,9 +29,14 @@
             >
                 <category-tag
                     class="mb-1"
+                    :showInfo="true"
                     :category="option"
                     :removable="true"
                     @remove-category="remove(option)"
+                    @show-info="
+                        infoCategory = $event
+                        $nextTick(() => { $bvModal.show(infoModalID) })
+                    "
                 />
             </template>
 
@@ -37,24 +44,44 @@
                 slot="option"
                 slot-scope="{ option }"
             >
-                <category-tag
-                    :category="option"
-                    :removable="false"
-                />
+                <div :id="`category-${option.id}-option-wrapper`">
+                    <category-tag
+                        :category="option"
+                        :removable="false"
+                        :showInfo="true"
+                        @show-info="showCategoryDescriptionInSelectOptions"
+                    />
+                    <template v-if="descriptionCategory === option">
+                        <br/>
+                        <sandboxed-iframe
+                            class="mt-2"
+                            :content="option.description"
+                        />
+                    </template>
+                </div>
             </template>
         </multiselect>
+
+        <category-information-modal
+            :id="infoModalID"
+            :category="infoCategory"
+        />
     </div>
 </template>
 
 <script>
+import CategoryInformationModal from '@/components/category/CategoryInformationModal.vue'
 import CategoryTag from '@/components/category/CategoryTag.vue'
+import SandboxedIframe from '@/components/assets/SandboxedIframe.vue'
 
 import multiselect from 'vue-multiselect'
 
 export default {
     components: {
+        CategoryInformationModal,
         CategoryTag,
         multiselect,
+        SandboxedIframe,
     },
     props: {
         options: {
@@ -65,6 +92,32 @@ export default {
         },
         placeholder: {
             default: 'Filter By Category',
+        },
+    },
+    data () {
+        return {
+            descriptionCategory: null,
+            infoCategory: null,
+            optionsDropdownSize: null,
+        }
+    },
+    computed: {
+        /* Makes use of random to enable multiple selects as part of the same dom without forcing an id prop. */
+        infoModalID () { return `${Math.random()}-category-select-information-modal` },
+    },
+    methods: {
+        showCategoryDescriptionInSelectOptions (category) {
+            this.descriptionCategory = (this.descriptionCategory === category) ? null : category
+
+            /* Scroll the option including description into view, nextTick is required due to the delayed scaling of
+             * of the sandbox */
+            this.$nextTick(() => {
+                const el = this.$refs.categorySelect.$el.querySelector(`#category-${category.id}-option-wrapper`)
+
+                if (el) {
+                    el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+                }
+            })
         },
     },
 }

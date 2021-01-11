@@ -7,6 +7,14 @@
         @click="$emit('select-category', category)"
     >
         {{ category.name }}
+
+        <icon
+            v-if="showInfo && category.description"
+            class="ml-1 category-information-icon"
+            name="info-circle"
+            @click.native.stop="$emit('show-info', category)"
+        />
+
         <icon
             v-if="removable"
             class="fill-red category-tag__remove ml-1 "
@@ -27,6 +35,9 @@ export default {
         removable: {
             default: false,
         },
+        showInfo: {
+            default: false,
+        },
     },
 }
 </script>
@@ -39,4 +50,11 @@ export default {
 
     .category-tag__remove
         cursor: pointer
+
+    .category-information-icon
+        &:hover
+            cursor: pointer
+            fill: $theme-dark-grey !important
+        &.help-cursor:hover
+            cursor: help
 </style>

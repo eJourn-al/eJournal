@@ -1,54 +1,25 @@
 <template>
     <div v-if="$store.getters['category/assignmentCategories'].length">
-        <h2
-            v-if="create"
-            class="theme-h2 field-heading"
-        >
+        <h2 class="theme-h2 field-heading">
             Categories
         </h2>
 
+        <category-select
+            v-if="editable"
+            v-model="entry.categories"
+            class="multi-form"
+            :options="$store.getters['category/assignmentCategories']"
+            :placeholder="`${(edit && entry.categories.length) ? 'Edit' : 'Add'} categories`"
+            @remove="removeCategory"
+            @select="addCategory"
+        />
         <category-display
-            v-if="'categories' in entry"
+            v-if="!editable && 'categories' in entry"
             :id="`${id}-display`"
             :editable="editable"
             :categories="entry.categories"
             @remove-category="removeCategory($event)"
-        >
-            <b-badge
-                v-if="editable"
-                v-b-modal="'edit-entry-categories'"
-                pill
-            >
-                Add
-                <icon
-                    class="fill-green ml-1"
-                    name="plus"
-                />
-            </b-badge>
-        </category-display>
-
-        <b-modal
-            id="edit-entry-categories"
-            size="lg"
-            title="Edit entry categories"
-            hideFooter
-            noEnforceFocus
-        >
-            <b-card
-                class="no-hover no-left-border"
-            >
-                <h2 class="theme-h2 multi-form">
-                    Add or remove any categories from the entry
-                </h2>
-
-                <category-select
-                    v-model="entry.categories"
-                    :options="$store.getters['category/assignmentCategories']"
-                    @remove="removeCategory"
-                    @select="addCategory"
-                />
-            </b-card>
-        </b-modal>
+        />
     </div>
 </template>
 
