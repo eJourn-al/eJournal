@@ -7,7 +7,7 @@
         <category-select
             v-if="editable"
             v-model="entry.categories"
-            class="multi-form"
+            :class="{ 'multi-form': create || edit }"
             :options="$store.getters['category/assignmentCategories']"
             :placeholder="`${(edit && entry.categories.length) ? 'Edit' : 'Add'} categories`"
             @remove="removeCategory"
