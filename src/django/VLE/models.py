@@ -2529,6 +2529,8 @@ class TemplateQuerySet(models.QuerySet):
             return super().create(*args, **kwargs, format=format)
 
     def create_template_and_fields_from_data(self, data, format, archived_template=None):
+        category_ids = [category['id'] for category in data['categories']]
+
         with transaction.atomic():
             template = Template.objects.create(
                 name=data['name'],
@@ -2537,6 +2539,8 @@ class TemplateQuerySet(models.QuerySet):
                 fixed_categories=data['fixed_categories'],
                 chain=archived_template.chain if archived_template else False,
             )
+
+            template.categories.set(category_ids)
 
             fields = [
                 Field(
@@ -2551,9 +2555,6 @@ class TemplateQuerySet(models.QuerySet):
                 for field in data['field_set']
             ]
             Field.objects.bulk_create(fields)
-
-            if archived_template:
-                template.categories.set(archived_template.categories.all())
 
         return template
 
@@ -2574,6 +2575,15 @@ class Template(CreateUpdateModel):
 
     A template for an Entry.
     """
+    class Meta:
+        constraints = [
+            CheckConstraint(check=~Q(name=''), name='non_empty_name'),
+        ]
+        # NOTE: First requires solution for live data
+        # unique_together = (
+        #     ('name', 'format'),
+        # )
+
     objects = models.Manager.from_queryset(TemplateQuerySet)()
 
     name = models.TextField()
@@ -2602,6 +2612,49 @@ class Template(CreateUpdateModel):
         blank=True,
         null=True,
     )
+
+    @staticmethod
+    def validate(data, assignment, old=None):
+        def validate_concrete_fields():
+            if (
+                not old and Template.objects.filter(name=data['name']).exists()
+                or old and Template.objects.filter(name=data['name']).exclude(pk=data['id']).exists()
+            ):
+                # NOTE: Live currently has duplicate template names. I propose to validate this front end for now
+                # This should stimulate users to remove duplicate names themselves, reducing our workload.
+                pass
+
+            data['name'] = str(data['name']).strip()
+            if not data['name']:
+                raise ValidationError('Template name cannot be empty.')
+
+        def validate_categories():
+            category_ids = set([category['id'] for category in data['categories']])
+
+            if not category_ids:
+                return
+
+            if len(category_ids) != len(data['categories']):
+                raise ValidationError('Duplicate categories provided.')
+            if assignment.categories.filter(pk__in=category_ids).count() != len(category_ids):
+                raise ValidationError('One or more categories are not part of the assignment.')
+
+        # QUESTION: What else would we like to validate regarding the field set?
+        def validate_field_set():
+            locations = set()
+            for field in data['field_set']:
+                location = int(field['location'])
+
+                if location in locations:
+                    raise ValidationError('Duplicate template field location provided.')
+                if location < 0 or location >= len(data['field_set']):
+                    raise ValidationError('Template field location is out of bounds.')
+
+                locations.add(location)
+
+        validate_concrete_fields()
+        validate_categories()
+        validate_field_set()
 
     def can_be_deleted(self):
         return not (
@@ -2633,6 +2686,9 @@ class Field(CreateUpdateModel):
     """
     class Meta:
         ordering = ['location']
+        unique_together = (
+            ('location', 'template'),
+        )
 
     ALLOWED_URL_SCHEMES = ('http', 'https', 'ftp', 'ftps')
 
@@ -2671,7 +2727,7 @@ class Field(CreateUpdateModel):
     options = models.TextField(
         null=True
     )
-    location = models.IntegerField()
+    location = models.PositiveIntegerField()
     template = models.ForeignKey(
         'Template',
         on_delete=models.CASCADE

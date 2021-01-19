@@ -18,6 +18,7 @@ from VLE.views.participation import ParticipationView
 from VLE.views.preferences import PreferencesView
 from VLE.views.role import RoleView
 from VLE.views.teacher_entry import TeacherEntryView
+from VLE.views.template import TemplateView
 from VLE.views.user import UserView
 
 router = routers.DefaultRouter()
@@ -40,5 +41,6 @@ router.register(r'files', FileView, basename='file')
 router.register(r'teacher_entries', TeacherEntryView, basename='teacher_entry')
 router.register(r'journal_import_request', JournalImportRequestView, basename='journal_import_request')
 router.register(r'categories', CategoryView, basename='categories')
+router.register(r'templates', TemplateView, basename='template')
 
 urlpatterns = router.urls
