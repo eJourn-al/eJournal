@@ -49,6 +49,34 @@ const mutations = {
     setTimelineInstance (state, instance) {
         state.timelineInstance = instance
     },
+    propogateTemplateCategoryUpdate (state, { aID, updatedTemplate, oldTemplateId }) {
+        state.assignmentsCategories[aID].forEach((category) => {
+            const categoryTemplateIndex = category.templates.findIndex(
+                template => template.id === updatedTemplate.id || template.id === oldTemplateId)
+            const categoryLinkedToTemplate = categoryTemplateIndex !== -1
+
+            if (categoryLinkedToTemplate) {
+                Vue.set(category.templates, categoryTemplateIndex, updatedTemplate)
+            }
+
+            const updatedTemplateLinkedToCategory = updatedTemplate.categories.find(elem => elem.id === category.id)
+
+            if (!categoryLinkedToTemplate && updatedTemplateLinkedToCategory) {
+                category.templates.push(updatedTemplate)
+            } else if (categoryLinkedToTemplate && !updatedTemplateLinkedToCategory) {
+                Vue.delete(category.templates, categoryTemplateIndex)
+            }
+        })
+    },
+    propogateTemplateDelete (state, { aID, deletedTemplateId }) {
+        state.assignmentsCategories[aID].forEach((category) => {
+            const categoryTemplateIndex = category.templates.findIndex(template => template.id === deletedTemplateId)
+
+            if (categoryTemplateIndex !== -1) {
+                Vue.delete(category.templates, categoryTemplateIndex)
+            }
+        })
+    },
 }
 
 const actions = {
@@ -79,6 +107,11 @@ const actions = {
                         'addAssignmentCategory',
                         { aID: router.currentRoute.params.aID, category: createdCategory },
                     )
+                    context.commit(
+                        'template/propogateCategoryTemplateUpdate',
+                        { aID: router.currentRoute.params.aID, updatedCategory: createdCategory },
+                        { root: true },
+                    )
 
                     context.state.timelineInstance.syncNodes()
 
@@ -100,6 +133,11 @@ const actions = {
                 .then((response) => {
                     const createdCategory = response.data.category
                     context.commit('setIdOfCreatedCategory', { category: localCategory, id: createdCategory.id })
+                    context.commit(
+                        'template/propogateCategoryTemplateUpdate',
+                        { aID: router.currentRoute.params.aID, updatedCategory: createdCategory },
+                        { root: true },
+                    )
 
                     return createdCategory
                 })
@@ -107,6 +145,7 @@ const actions = {
 
         return fn()
     },
+    // TODO Category: evaluate update store param
     update (context, { id, data, updateStore = false, connArgs = auth.DEFAULT_CONN_ARGS }) { // eslint-disable-line
         function fn () {
             return auth.update(`categories/${id}`, data, connArgs)
@@ -125,6 +164,11 @@ const actions = {
                         context.commit('updateAssignmentCategories', { aID, categories: updatedCategories })
                     }
 
+                    context.commit(
+                        'template/propogateCategoryTemplateUpdate',
+                        { aID: router.currentRoute.params.aID, updatedCategory },
+                        { root: true },
+                    )
                     context.state.timelineInstance.syncNodes()
 
                     return updatedCategory
@@ -164,7 +208,7 @@ export default {
         assignmentsCategories: {},
         listCache: {},
         deleteCache: {},
-        filteredCategories: [],
+        filteredCategories: [], /* Filter used for the timeline */
         timelineInstance: null,
     },
     getters,

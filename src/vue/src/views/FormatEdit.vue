@@ -1,239 +1,52 @@
-<!--
-    Format Editor view.
-    Lists all templates used within the assignment.
-    Template availability for adding by the student can be toggled on a per-template basis.
-    Presets are given in a list format, same as the journal view.
--->
-
 <template>
-    <b-row
-        class="outer-container-timeline-page"
-        noGutters
-    >
-        <b-col
-            md="12"
-            lg="8"
-            xl="9"
-            class="inner-container-timeline-page"
-        >
-            <b-col
-                md="12"
-                lg="auto"
-                xl="4"
-                class="left-content-timeline-page"
-            >
-                <bread-crumb
-                    v-if="$root.lgMax"
-                    v-intro="'Welcome to the assignment editor!<br/>This is where you can configure the structure of \
-                    your assignment. Proceed with this tutorial to learn more.'"
-                    v-intro-step="1"
-                >
-                    <icon
-                        v-intro="'That\'s it! If you have any more questions, do not hesitate to contact us via the \
-                        support button at the bottom of any page. This tutorial can be consulted again by clicking \
-                        the info sign.'"
-                        v-intro-step="4"
-                        v-b-tooltip:hover="'Click to start a tutorial for this page'"
-                        name="info-circle"
-                        scale="1.5"
-                        class="info-icon shift-up-5 ml-1"
-                        @click.native="startTour"
-                    />
-                </bread-crumb>
-                <timeline
-                    v-intro="'The timeline forms the basis for an assignment. The name, due date and other details \
-                    of the assignment can also be changed here, by clicking the first node.<br/><br/>The timeline \
-                    contains a node for every entry. You can add two different types of nodes to it:<br/><br/><ul> \
-                    <li><b>Preset entries</b> are entries with a specific template which have to be completed before \
-                    a set deadline</li><li><b>Progress goals</b> are point targets that have to be met before a \
-                    set deadline</li></ul>New nodes can be added via the \'+\' node. Click any node to view its \
-                    contents.'"
-                    v-intro-step="3"
-                    :selected="currentNode"
-                    :nodes="presets"
-                    :assignment="assignmentDetails"
-                    :edit="true"
-                    @select-node="(node) => {
-                        currentNode = node
-                    }"
-                />
-            </b-col>
+    <timeline-layout>
+        <template v-slot:left>
+            <format-bread-crumb
+                v-if="$root.lgMax"
+                @start-tutorial="startTour()"
+            />
 
-            <b-col
-                md="12"
-                lg="auto"
-                xl="8"
-                class="main-content-timeline-page"
-            >
-                <bread-crumb
-                    v-if="$root.xl"
-                    v-intro="'Welcome to the assignment editor!<br/>This is where you can configure the structure of \
-                    your assignment. Proceed with this tutorial to learn more.'"
-                    v-intro-step="1"
-                >
-                    <icon
-                        v-intro="'That\'s it! If you have any more questions, do not hesitate to contact us via the \
-                        support button at the bottom of any page. This tutorial can be consulted again by clicking \
-                        the info sign.'"
-                        v-intro-step="4"
-                        v-b-tooltip:hover="'Click to start a tutorial for this page'"
-                        name="info-circle"
-                        scale="1.75"
-                        class="info-icon shift-up-5 ml-1"
-                        @click.native="startTour"
-                    />
-                </bread-crumb>
+            <timeline
+                v-intro="'The timeline forms the basis for an assignment. The name, due date and other details \
+                of the assignment can also be changed here, by clicking the first node.<br/><br/>The timeline \
+                contains a node for every entry. You can add two different types of nodes to it:<br/><br/><ul> \
+                <li><b>Preset entries</b> are entries with a specific template which have to be completed before \
+                a set deadline</li><li><b>Progress goals</b> are point targets that have to be met before a \
+                set deadline</li></ul>New nodes can be added via the \'+\' node. Click any node to view its \
+                contents.'"
+                v-intro-step="3"
+                :selected="currentNode"
+                :nodes="presets"
+                :assignment="assignmentDetails"
+                :edit="true"
+                @select-node="(node) => {
+                    currentNode = node
+                }"
+            />
+        </template>
 
-                <div v-if="currentNode === -1">
-                    <b-card
-                        :class="$root.getBorderClass($route.params.cID)"
-                        class="no-hover"
-                    >
-                        <assignment-details
-                            ref="assignmentDetails"
-                            :class="{ 'input-disabled' : saveRequestInFlight }"
-                            :assignmentDetails="assignmentDetails"
-                            :presetNodes="presets"
-                        />
-                    </b-card>
-                    <!-- TODO: Re-enable after UI changes. -->
-                    <!-- <b-card
-                        v-if="$hasPermission('can_delete_assignment')"
-                        class="no-hover border-red"
-                    >
-                        <b-button
-                            :class="{
-                                'input-disabled': assignmentDetails.lti_count > 1 && assignmentDetails.active_lti_course
-                                    && parseInt(assignmentDetails.active_lti_course.cID) ===
-                                        parseInt($route.params.cID)}"
-                            class="red-button full-width"
-                            @click="deleteAssignment"
-                        >
-                            <icon name="trash"/>
-                            {{ assignmentDetails.course_count > 1 ? 'Remove' : 'Delete' }} assignment
-                        </b-button>
-                    </b-card> -->
-                </div>
+        <template v-slot:center>
+            <format-bread-crumb
+                v-if="$root.xl"
+                @start-tutorial="startTour()"
+            />
 
-                <preset-node-card
-                    v-else-if="presets.length > 0 && currentNode !== -1 && currentNode < presets.length"
-                    :key="`preset-node-${currentNode}`"
-                    :class="{ 'input-disabled' : saveRequestInFlight }"
-                    :currentPreset="presets[currentNode]"
-                    :templates="templates"
-                    :assignmentDetails="assignmentDetails"
-                    @delete-preset="deletePreset"
-                    @change-due-date="sortPresets"
-                    @new-template="newTemplateInPreset"
-                />
+            <format-active-components/>
+        </template>
 
-                <add-preset-node
-                    v-else-if="currentNode === presets.length"
-                    :class="{ 'input-disabled' : saveRequestInFlight }"
-                    :templates="templates"
-                    :assignmentDetails="assignmentDetails"
-                    @add-preset="addPreset"
-                    @new-template="newTemplateInPreset"
-                />
+        <template v-slot:right>
+            <template-menu
+                @select-template="
+                    activeComponent = 'template'
+                    selectedTemplate = $event
+                "
+            />
 
-                <b-card
-                    v-else-if="currentNode === presets.length + 1"
-                    class="no-hover"
-                    :class="$root.getBorderClass($route.params.cID)"
-                >
-                    <h2 class="theme-h2">
-                        End of assignment
-                    </h2>
-                    <p>This is the end of the assignment.</p>
-                </b-card>
-
-                <b-modal
-                    ref="templateModal"
-                    size="xl"
-                    title="Edit template"
-                    hideFooter
-                    noEnforceFocus
-                >
-                    <template-editor
-                        v-if="currentTemplate !== -1"
-                        :template="templates[currentTemplate]"
-                    />
-                </b-modal>
-
-                <template-import-modal
-                    modalID="import-template-modal"
-                    :aID="aID"
-                    @imported-template="importTemplate"
-                />
-            </b-col>
-        </b-col>
-
-        <b-col
-            md="12"
-            lg="4"
-            xl="3"
-            class="right-content-timeline-page right-content"
-        >
-            <h3 class="theme-h3">
-                Entry Templates
-            </h3>
-            <div
-                v-intro="'Every assignment contains customizable <i>templates</i> which specify what the contents of \
-                each journal entry should be. There are two different types of templates:<br/><br/><ul><li><b>\
-                Unlimited templates</b> can be freely used by students as often as they want</li><li><b>Preset-only \
-                templates</b> can be used only for preset entries that you add to the timeline</li></ul>You can \
-                preview and edit a template by clicking on it.'"
-                v-intro-step="2"
-                :class="{ 'input-disabled' : saveRequestInFlight }"
-                class="d-block"
-            >
-                <b-card
-                    :class="$root.getBorderClass($route.params.cID)"
-                    class="no-hover"
-                >
-                    <div
-                        v-if="templates.length > 0"
-                        class="template-list-header"
-                    >
-                        <b class="float-right">
-                            Type
-                        </b>
-                        <b>Name</b>
-                    </div>
-                    <template-link
-                        v-for="(template, index) in templates"
-                        :key="template.id"
-                        :template="template"
-                        @edit-template="showTemplateModal(index)"
-                        @delete-template="deleteTemplate(index)"
-                    />
-                    <b-button
-                        class="green-button mt-2 full-width"
-                        @click="newTemplate()"
-                    >
-                        <icon name="plus"/>
-                        Create New Template
-                    </b-button>
-                    <b-button
-                        v-b-modal="'import-template-modal'"
-                        class="orange-button mt-2 full-width"
-                    >
-                        <icon name="file-import"/>
-                        Import Template
-                    </b-button>
-                </b-card>
-            </div>
-
-            <h3 class="theme-h3">
-                Actions
-            </h3>
-
-            <manage-assignment-categories
-                ref="manageAssignmentCategories"
-                :disabled="templatesChanged"
+            <format-actions
+                :templatesChanged="templatesChanged"
                 :templates="templates"
             />
-        </b-col>
+        </template>
 
         <b-button
             v-if="isChanged"
@@ -246,39 +59,37 @@
                 scale="1.5"
             />
         </b-button>
-    </b-row>
+    </timeline-layout>
 </template>
 
 <script>
-import ManageAssignmentCategories from '@/components/format/ManageAssignmentCategories.vue'
-import assignmentDetails from '@/components/assignment/AssignmentDetails.vue'
-import breadCrumb from '@/components/assets/BreadCrumb.vue'
-import formatAddPresetNode from '@/components/format/FormatAddPresetNode.vue'
-import formatPresetNodeCard from '@/components/format/FormatPresetNodeCard.vue'
-import formatTemplateLink from '@/components/format/FormatTemplateLink.vue'
-import templateEdit from '@/components/template/TemplateEdit.vue'
-import templateImportModal from '@/components/template/TemplateImportModal.vue'
+import FormatActions from '@/components/format/FormatActions.vue'
+import FormatActiveComponents from '@/components/format/FormatActiveComponents.vue'
+import FormatBreadCrumb from '@/components/format/FormatBreadCrumb.vue'
+import TemplateMenu from '@/components/template/TemplateMenu.vue'
+import TimelineLayout from '@/components/columns/TimelineLayout.vue'
 import timeline from '@/components/timeline/Timeline.vue'
 
 import assignmentAPI from '@/api/assignment.js'
 import formatAPI from '@/api/format.js'
 
+
 export default {
     name: 'FormatEdit',
     components: {
-        breadCrumb,
-        'assignment-details': assignmentDetails,
-        'template-link': formatTemplateLink,
-        'preset-node-card': formatPresetNodeCard,
-        'add-preset-node': formatAddPresetNode,
-        'template-editor': templateEdit,
-        templateImportModal,
         timeline,
-        ManageAssignmentCategories,
+        FormatActions,
+        FormatActiveComponents,
+        FormatBreadCrumb,
+        TemplateMenu,
+        TimelineLayout,
     },
     props: ['cID', 'aID'],
     data () {
         return {
+            /* The component which currently provides the central menu view. */
+            selectedTemplate: null,
+
             assignmentDetails: {},
 
             currentNode: -1,
@@ -614,8 +425,6 @@ export default {
 </script>
 
 <style lang="sass">
-@import '~sass/partials/timeline-page-layout.sass'
-
 .template-list-header
     border-bottom: 2px solid $theme-dark-grey
 </style>

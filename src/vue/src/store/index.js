@@ -3,12 +3,14 @@ import Vuex from 'vuex'
 import createPersistedState from 'vuex-persistedstate'
 
 import assignment from './modules/assignment.js'
+import assignmentEditor from './modules/assignmentEditor.js'
 import category from './modules/category.js'
 import connection from './modules/connection.js'
 import content from './modules/content.js'
 import permissions from './modules/permissions.js'
 import preferences from './modules/preferences.js'
 import sentry from './modules/sentry.js'
+import template from './modules/template.js'
 import user from './modules/user.js'
 
 Vue.use(Vuex)
@@ -20,12 +22,14 @@ plugins.push(createPersistedState({ paths: ['content', 'permissions', 'preferenc
 export default new Vuex.Store({
     modules: {
         assignment,
+        assignmentEditor,
         category,
         connection,
         content,
         permissions,
         preferences,
         sentry,
+        template,
         user,
     },
     strict: false,

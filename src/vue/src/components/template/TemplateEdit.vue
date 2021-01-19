@@ -1,61 +1,79 @@
 <template>
-    <b-card class="no-hover template-card">
+    <b-card
+        :class="$root.getBorderClass($route.params.cID)"
+        class="no-hover template-card"
+    >
+        <!-- <h2 class="theme-h2 multi-form">
+            {{ `${(edit) ? 'Edit' : 'Create'} Template` }}
+        </h2> -->
+
         <div class="d-flex">
             <b-button
-                :class="{'active': mode === 'edit'}"
-                class="multi-form orange-button flex-basis-100"
-                @click="mode = 'edit'"
+                :class="{'active': mode === activeComponentModeOptions.edit}"
+                class="orange-button flex-basis-100"
+                @click="setActiveComponentMode(activeComponentModeOptions.edit)"
             >
                 <icon name="edit"/>
                 Edit
             </b-button>
             <b-button
-                :class="{'active': mode === 'preview'}"
-                class="multi-form green-button flex-basis-100"
-                @click="mode='preview'"
+                :class="{'active': mode === activeComponentModeOptions.read}"
+                class="green-button flex-basis-100"
+                @click="setActiveComponentMode(activeComponentModeOptions.read)"
             >
                 <icon name="eye"/>
                 Preview
             </b-button>
         </div>
+
         <hr/>
-        <div v-show="mode === 'edit'">
-            <b-input
-                id="template-name"
-                v-model="template.name"
-                class="mr-sm-2 multi-form theme-input"
-                placeholder="Template name"
-                required
-            />
 
-            <template-options :template="template"/>
-
-            <draggable
-                v-model="template.field_set"
-                handle=".handle"
-                @start="startDrag"
-                @end="endDrag"
-                @update="onUpdate"
+        <div v-show="mode === activeComponentModeOptions.edit">
+            <b-form-group
+                label="Name"
+                :invalid-feedback="nameInvalidFeedback"
             >
-                <template-field
-                    v-for="field in template.field_set"
-                    :key="field.location"
-                    :field="field"
-                    :showEditors="showEditors"
-                    @removeField="removeField"
+                <b-input
+                    v-model="template.name"
+                    placeholder="Name"
+                    class="theme-input"
+                    type="text"
+                    trim
+                    required
+                    :state="nameInputState"
                 />
-                <div class="invisible"/>
-            </draggable>
+            </b-form-group>
+
+            <template-edit-settings :template="template"/>
+
+            <hr/>
+
+            <template-edit-fields :template="template"/>
+
+            <hr/>
+
+            <!-- TODO: Make it safe to use categories length to improve placeholder and hide categories when no exist-->
+            <b-form-group label="Categories">
+                <category-select
+                    v-model="template.categories"
+                    :options="$store.getters['category/assignmentCategories']"
+                    :openDirection="'top'"
+                    placeholder="Set categories"
+                />
+            </b-form-group>
+
             <b-button
-                class="green-button full-width"
-                @click="addField"
+                class="green-button float-right"
+                @click="finalizeTemplateChanges"
             >
-                <icon name="plus"/>
-                Add field
+                <icon :name="(edit) ? 'save' : 'plus'"/>
+                {{ `${(edit) ? 'Update' : 'Add'} Template` }}
             </b-button>
         </div>
 
-        <template v-if="mode !== 'edit'">
+        <template v-if="mode === activeComponentModeOptions.read">
+            <!-- TODO: Add entry title component after merge branch consistent-entry-title -->
+
             <entry-fields
                 :template="template"
                 :content="() => Object()"
@@ -73,126 +91,79 @@
 
 <script>
 import CategoryDisplay from '@/components/category/CategoryDisplay.vue'
+import CategorySelect from '@/components/category/CategorySelect.vue'
 import EntryFields from '@/components/entry/EntryFields.vue'
-import TemplateField from '@/components/template/TemplateField.vue'
-import TemplateOptions from '@/components/template/TemplateOptions.vue'
-import draggable from 'vuedraggable'
+import TemplateEditFields from '@/components/template/TemplateEditFields.vue'
+import TemplateEditSettings from '@/components/template/TemplateEditSettings.vue'
+
+import { mapActions, mapGetters, mapMutations } from 'vuex'
 
 export default {
     components: {
-        draggable,
-        EntryFields,
-        TemplateField,
-        TemplateOptions,
         CategoryDisplay,
+        CategorySelect,
+        EntryFields,
+        TemplateEditFields,
+        TemplateEditSettings,
     },
     props: {
         template: {
             required: true,
+            type: Object,
         },
     },
     data () {
         return {
-            mode: 'edit',
-            selectedLocation: null,
-            showEditors: true,
+            nameInvalidFeedback: null,
         }
     },
-    created () {
-        this.template.field_set.sort((a, b) => a.location - b.location)
+    computed: {
+        ...mapGetters({
+            templates: 'template/assignmentTemplates',
+            activeComponentModeOptions: 'assignmentEditor/activeComponentModeOptions',
+            mode: 'assignmentEditor/activeComponentMode',
+        }),
+        edit () { return this.template.id >= 0 },
+        nameInputState () {
+            if (this.template.name === '') {
+                this.nameInvalidFeedback = 'Name cannot be empty' // eslint-disable-line
+                return false
+            }
+            if (this.templates.some(elem => elem.id !== this.template.id && elem.name === this.template.name)) {
+                this.nameInvalidFeedback = 'Name is not unique' // eslint-disable-line
+                return false
+            }
+
+            this.nameInvalidFeedback = null // eslint-disable-line
+            return null
+        },
     },
     methods: {
-        updateLocations () {
-            for (let i = 0; i < this.template.field_set.length; i++) {
-                this.template.field_set[i].location = i
-            }
-        },
-        addField () {
-            const newField = {
-                type: 'rt',
-                title: '',
-                description: '',
-                options: null,
-                location: this.template.field_set.length,
-                required: true,
-            }
-
-            this.template.field_set.push(newField)
-        },
-        removeField (location) {
-            if (this.template.field_set[location].title
-                ? window.confirm(
-                    `Are you sure you want to remove "${this.template.field_set[location].title}" from this template?`)
-                : window.confirm('Are you sure you want to remove this field from this template?')) {
-                this.template.field_set.splice(location, 1)
+        ...mapMutations({
+            selectTemplate: 'assignmentEditor/selectTemplate',
+            setActiveComponent: 'assignmentEditor/setActiveComponent',
+            setActiveComponentMode: 'assignmentEditor/setActiveComponentMode',
+            setActiveComponentModeToRead: 'assignmentEditor/setActiveComponentModeToRead',
+            templateCreated: 'assignmentEditor/templateCreated',
+        }),
+        ...mapActions({
+            create: 'template/create',
+            update: 'template/update',
+        }),
+        finalizeTemplateChanges () {
+            if (this.nameInputState === false) {
+                this.$toasted.error(this.nameInvalidFeedback)
+                return
             }
 
-            this.updateLocations()
-        },
-        startDrag () {
-            this.showEditors = false
-        },
-        endDrag () {
-            this.showEditors = true
-        },
-        onUpdate () {
-            this.updateLocations()
+            if (this.edit) {
+                this.update({ id: this.template.id, data: this.template, aID: this.$route.params.aID })
+                    .then(() => { this.setActiveComponentModeToRead() })
+            } else {
+                this.create({ template: this.template, aID: this.$route.params.aID })
+                    .then(() => { this.templateCreated() })
+            }
         },
     },
 }
 </script>
-
-<style lang="sass">
-.template-card
-    .optional-field-template
-        background-color: white
-        color: $theme-dark-blue !important
-        svg
-            fill: $theme-medium-grey
-
-    .required-field-template
-        background-color: $theme-dark-blue !important
-        color: white !important
-        svg, &:hover:not(.no-hover) svg
-            fill: $theme-red !important
-
-    #template-name
-        font-weight: bold
-        font-size: 1.8em
-        color: $theme-dark-blue
-
-    .sortable-chosen .card
-        background-color: $theme-dark-grey
-
-    .sortable-ghost
-        visibility: hidden
-
-    .sortable-drag .card
-        visibility: visible
-
-    .icon-box
-        text-align: center
-
-    .handle
-        text-align: center
-        padding-bottom: 7px
-
-    .field-card:hover .move-icon, .field-card:hover .trash-icon
-        fill: $theme-dark-blue !important
-
-    .handle:hover .move-icon
-        cursor: grab
-        fill: $theme-blue !important
-
-    .field-card:hover .trash-icon:hover
-        fill: $theme-red !important
-
-    @include sm-max
-        .icon-box
-            margin-top: 10px
-
-    .template-availability
-        font-weight: bold
-        color: grey
-        margin-bottom: 10px
-</style>

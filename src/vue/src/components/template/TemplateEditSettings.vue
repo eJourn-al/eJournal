@@ -66,7 +66,7 @@
 
 <script>
 export default {
-    name: 'TemplateOptions',
+    name: 'TemplateEditSettings',
     props: {
         template: {
             required: true,
