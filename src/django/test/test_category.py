@@ -36,8 +36,7 @@ class CategoryAPITest(TestCase):
 
         assert self.category.name != ''
         assert fc.access_id in self.category.description
-        assert self.assignment.format.template_set.filter(pk=self.category.templates.first().pk).exists(), \
-            'By default a template is randomly selected from the corresponding category\'s assignment'
+        assert not self.category.templates.exists(), 'By default a category is initialized without templates'
         assert fc.category == self.category
         assert not fc.is_temp
         assert fc.in_rich_text

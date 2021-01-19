@@ -43,17 +43,13 @@ class CategoryFactory(factory.django.DjangoModelFactory):
 
     @factory.post_generation
     def templates(self, create, extracted, **kwargs):
-        if not create or extracted is False:
+        if not create:
             return
 
         if isinstance(extracted, VLE.models.Template):
             self.templates.set([extracted])
         elif isinstance(extracted, list):
             self.templates.set(extracted)
-        else:
-            template = VLE.models.Template.objects.filter(format__assignment=self.assignment).order_by('?').first()
-            if template:
-                self.templates.add(template)
 
     @factory.post_generation
     def n_rt_files(self, create, extracted):
