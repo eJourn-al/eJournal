@@ -86,3 +86,27 @@ class TemplateAllTypesFactory(TemplateFactory):
         [test.factory.Field(type=t, template=self, required=False) for t, _ in Field.TYPES]
         # Create an additional file field which only allows images
         test.factory.Field(type=Field.FILE, template=self, required=False, options='png, jpg, svg')
+
+
+class TemplateCreationParamsFactory(factory.Factory):
+    class Meta:
+        model = dict
+
+    name = factory.Sequence(lambda x: f"Template {x + 1}".format(x))
+    fixed_categories = True
+    preset_only = True
+
+    @classmethod
+    def _adjust_kwargs(cls, **kwargs):
+        assert kwargs['assignment_id']
+
+        kwargs['field_set'] = [{
+            'type': Field.TEXT,
+            'title': 'Title',
+            'description': '',
+            'options': '',
+            'location': 0,
+            'required': True,
+        }]
+
+        return kwargs

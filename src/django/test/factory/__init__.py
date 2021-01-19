@@ -104,6 +104,7 @@ from test.factory.template import ColloquiumTemplateFactory as ColloquiumTemplat
 from test.factory.template import FilesTemplateFactory as FilesTemplate  # noqa: F401
 from test.factory.template import MentorgesprekTemplateFactory as MentorgesprekTemplate  # noqa: F401
 from test.factory.template import TemplateAllTypesFactory as TemplateAllTypes  # noqa: F401
+from test.factory.template import TemplateCreationParamsFactory as TemplateCreationParams  # noqa: F401
 from test.factory.template import TemplateFactory as Template  # noqa: F401
 from test.factory.template import TextTemplateFactory as TextTemplate  # noqa: F401
 from test.factory.user import AdminFactory as Admin  # noqa: F401
