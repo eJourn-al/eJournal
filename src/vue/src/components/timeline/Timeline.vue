@@ -32,7 +32,7 @@
                     @input="filterByCategory"
                 />
 
-                <div
+                <template
                     v-b-toggle="($root.lgMax) ? 'timeline-outer' : null"
                     :target="($root.lgMax) ? 'timeline-outer': null"
                     aria-expanded="false"
@@ -46,7 +46,7 @@
                         :selected="mappedSelected"
                         @select-node="mapAndEmitSelectedNode"
                     />
-                </div>
+                </template>
             </div>
         </b-collapse>
 
