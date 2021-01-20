@@ -5,6 +5,7 @@ Test all about the timeline.
 """
 import datetime
 import test.factory as factory
+from test.utils.performance import assert_num_queries_less_than
 
 from django.test import TestCase
 from django.utils import timezone
@@ -44,7 +45,7 @@ class TimelineTests(TestCase):
 
         # See respective tests for info
         self.template_serializer_query_count = 2
-        self.entry_serializer_default_query_count = len(EntrySerializer.prefetch_related) + 1 + 1
+        self.entry_serializer_default_query_count = len(EntrySerializer.prefetch_related) + 1
 
     def test_due_date_format(self):
         """Test if the due date is correctly formatted."""
@@ -174,10 +175,10 @@ class TimelineTests(TestCase):
         # Can add checks 4
         # Prefetch preset node attached files 1
         # get_deadline_node 7
-        # get_entry_node 5
+        # get_entry_node 4
         # get_add_node 2
         # No additional queries are performed
-        with self.assertNumQueries(20):
+        with assert_num_queries_less_than(20):
             data = timeline.get_nodes(journal, author=student)
 
         assert data[-1]['type'] == Node.PROGRESS, 'Progress goal should be the last timeline node'

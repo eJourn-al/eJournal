@@ -55,9 +55,10 @@
                 <icon name="hourglass-half"/>
             </div>
 
-            <h2 class="theme-h2 mb-2">
-                {{ entryNode.entry.template.name }}
-            </h2>
+            <entry-title
+                :template="entryNode.entry.template"
+                :node="entryNode"
+            />
             <entry-fields
                 :nodeID="entryNode.nID"
                 :template="entryNode.entry.template"
@@ -157,9 +158,10 @@
         :class="$root.getBorderClass($route.params.cID)"
         class="no-hover"
     >
-        <h2 class="theme-h2 mb-2">
-            {{ entryNode.template.name }}
-        </h2>
+        <entry-title
+            :template="entryNode.template"
+            :node="entryNode"
+        />
         <span class="text-grey">
             No submission for this student
         </span>
@@ -167,6 +169,7 @@
 </template>
 
 <script>
+import EntryTitle from '@/components/entry/EntryTitle.vue'
 import comments from '@/components/entry/Comments.vue'
 import dropdownButton from '@/components/assets/DropdownButton.vue'
 import entryFields from '@/components/entry/EntryFields.vue'
@@ -177,6 +180,7 @@ export default {
         comments,
         dropdownButton,
         entryFields,
+        EntryTitle,
     },
     props: ['entryNode', 'journal', 'assignment'],
     data () {

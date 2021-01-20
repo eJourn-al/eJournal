@@ -35,9 +35,11 @@
                 </div>
             </template>
 
-            <h2 class="theme-h2 mb-2">
-                {{ template.name }}
-            </h2>
+            <entry-title
+                :template="template"
+                :node="node"
+            />
+
             <sandboxed-iframe
                 v-if="node && node.description && (edit || create)"
                 :content="node.description"
@@ -129,6 +131,7 @@
 <script>
 import Comments from '@/components/entry/Comments.vue'
 import EntryFields from '@/components/entry/EntryFields.vue'
+import EntryTitle from '@/components/entry/EntryTitle.vue'
 import SandboxedIframe from '@/components/assets/SandboxedIframe.vue'
 import filesList from '@/components/assets/file_handling/FilesList.vue'
 
@@ -137,6 +140,7 @@ import entryAPI from '@/api/entry.js'
 export default {
     components: {
         EntryFields,
+        EntryTitle,
         SandboxedIframe,
         Comments,
         filesList,
