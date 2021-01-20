@@ -7,7 +7,7 @@
         <div v-b-tooltip:hover="(disabled) ? 'First save the changes made to the assignment' : ''">
             <b-button
                 v-b-modal="'categories-modal'"
-                class="orange-button mt-2 full-width"
+                class="orange-button full-width"
                 :class="{'input-disabled': disabled}"
             >
                 <icon name="layer-group"/>

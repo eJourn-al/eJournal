@@ -189,7 +189,7 @@
             >
                 <b-card
                     :class="$root.getBorderClass($route.params.cID)"
-                    class="no-hover"
+                    class="no-hover mb-3"
                 >
                     <div
                         v-if="templates.length > 0"
