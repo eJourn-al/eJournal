@@ -15,56 +15,76 @@
 -->
 
 <template>
-    <div class="timeline-container">
-        <b-collapse id="timeline-outer">
-            <div
-                ref="scd"
-                class="timeline-inner"
+    <div>
+        <b-collapse id="timeline-container">
+            <h3 class="theme-h3 mb-1 mr-2">
+                Timeline
+            </h3>
+            <b-dropdown
+                class="timeline-filter"
+                noCaret
+                variant="link"
             >
+                <template #button-content>
+                    <b-button
+                        pill
+                        class="filter-button"
+                        :class="{
+                            'blue-filled-button': filteredCategories.length > 0,
+                            'grey-filled-button': filteredCategories.length == 0,
+                        }"
+                    >
+                        <icon name="eye"/>
+                        Filter
+                    </b-button>
+                </template>
                 <category-select
                     v-if="$store.getters['category/assignmentCategories'].length"
                     v-model="filteredCategories"
-                    class="mt-2"
                     :options="$store.getters['category/assignmentCategories']"
                     :multiple="true"
                     :searchable="true"
                     :multiSelectText="`${filteredCategories.length > 1 ? 'categories' : 'category'}`"
                     @input="filterByCategory"
                 />
+            </b-dropdown>
+            <category-display
+                :id="'timeline-filter-categories'"
+                :categories="filteredCategories"
+            />
 
-                <template
-                    v-b-toggle="($root.lgMax) ? 'timeline-outer' : null"
-                    :target="($root.lgMax) ? 'timeline-outer': null"
-                    aria-expanded="false"
-                    aria-controls="timeline-outer"
-                >
-                    <timeline-nodes
-                        :assignment="assignment"
-                        :edit="edit"
-                        :nodes="filteredNodes"
-                        :allNodes="nodes"
-                        :selected="mappedSelected"
-                        @select-node="mapAndEmitSelectedNode"
-                    />
-                </template>
-            </div>
+            <template
+                v-b-toggle="($root.lgMax) ? 'timeline-container' : null"
+                :target="($root.lgMax) ? 'timeline-container': null"
+                aria-expanded="false"
+                aria-controls="timeline-container"
+            >
+                <timeline-nodes
+                    :assignment="assignment"
+                    :edit="edit"
+                    :nodes="filteredNodes"
+                    :allNodes="nodes"
+                    :selected="mappedSelected"
+                    @select-node="mapAndEmitSelectedNode"
+                />
+            </template>
         </b-collapse>
 
         <div
             id="timeline-toggle"
-            v-b-toggle.timeline-outer
-            target="timeline-outer"
+            v-b-toggle.timeline-container
+            target="timeline-container"
             aria-expanded="false"
-            aria-controls="timeline-outer"
+            aria-controls="timeline-container"
         >
-            <span class="timeline-outer__icon timeline-outer__icon--open">
+            <span class="timeline-container__icon timeline-container__icon--open">
                 <icon
                     class="collapse-icon"
                     name="list-ul"
                     scale="1.75"
                 />
             </span>
-            <span class="timeline-outer__icon timeline-outer__icon--close">
+            <span class="timeline-container__icon timeline-container__icon--close">
                 <icon
                     class="collapse-icon"
                     name="caret-up"
@@ -76,11 +96,13 @@
 </template>
 
 <script>
+import CategoryDisplay from '../category/CategoryDisplay.vue'
 import CategorySelect from '@/components/category/CategorySelect.vue'
 import TimelineNodes from '@/components/timeline/TimelineNodes.vue'
 
 export default {
     components: {
+        CategoryDisplay,
         CategorySelect,
         TimelineNodes,
     },
@@ -258,51 +280,52 @@ export default {
 </script>
 
 <style lang="sass">
-.timeline-container
-    @include lg-max
-        text-align: center
-    @include xl
-        height: 100%
+@import '~sass/partials/shadows.sass'
 
-.timeline-inner::-webkit-scrollbar
-    display: none
-
-#timeline-outer
-    overflow: hidden
-    height: 100%
-
-@include xl
-    #timeline-outer[style]
+#timeline-container
+    position: relative
+    @include lg
         display: block !important
 
-.timeline-inner
-    height: 100%
-    overflow-y: scroll
-    overflow-x: hidden
-    padding-right: 40px
-    margin-right: -20px
-    padding-left: 5px
-    @include lg-max
-        height: 50vh
+.timeline-filter
+    position: static !important
+    vertical-align: top
+    display: inline
+    .dropdown-toggle
+        text-decoration: none
+        border-width: 0px
+        padding: 0px
+        .filter-button
+            padding: 0.15em 0.6em
+            &:hover, &:focus, &:active
+                border-color: inherit !important
+    .dropdown-menu
+        @extend .theme-shadow
+        width: 100%
+        margin-top: 5px
+        padding: 10px
+        .multiselect--active .multiselect__content-wrapper
+            box-shadow: none
+            position: relative
 
 #timeline-toggle
     display: none
 
 @include lg-max
     /* Handles changing of the button icon. */
-    [aria-expanded="false"] .timeline-outer__icon--open
+    [aria-expanded="false"] .timeline-container__icon--open
         display: block
         text-align: center
 
-    [aria-expanded="false"] .timeline-outer__icon--close
+    [aria-expanded="false"] .timeline-container__icon--close
         display: none
         text-align: center
 
-    [aria-expanded="true"] .timeline-outer__icon--open
+    [aria-expanded="true"] .timeline-container__icon--open
         display: none
         text-align: center
 
-    [aria-expanded="true"] .timeline-outer__icon--close
+    [aria-expanded="true"] .timeline-container__icon--close
         display: block
         text-align: center
 

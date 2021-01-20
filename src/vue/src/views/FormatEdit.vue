@@ -6,166 +6,165 @@
 -->
 
 <template>
-    <b-row
-        class="outer-container-timeline-page"
-        noGutters
-    >
+    <b-row noGutters>
         <b-col
             md="12"
             lg="8"
             xl="9"
-            class="inner-container-timeline-page"
         >
-            <b-col
-                md="12"
-                lg="auto"
-                xl="4"
-                class="left-content-timeline-page"
-            >
-                <bread-crumb
-                    v-if="$root.lgMax"
-                    v-intro="'Welcome to the assignment editor!<br/>This is where you can configure the structure of \
-                    your assignment. Proceed with this tutorial to learn more.'"
-                    v-intro-step="1"
+            <b-row noGutters>
+                <b-col
+                    md="12"
+                    lg="auto"
+                    xl="4"
+                    class="left-content-timeline-page"
                 >
-                    <icon
-                        v-intro="'That\'s it! If you have any more questions, do not hesitate to contact us via the \
-                        support button at the bottom of any page. This tutorial can be consulted again by clicking \
-                        the info sign.'"
-                        v-intro-step="4"
-                        v-b-tooltip:hover="'Click to start a tutorial for this page'"
-                        name="info-circle"
-                        scale="1.5"
-                        class="info-icon shift-up-5 ml-1"
-                        @click.native="startTour"
-                    />
-                </bread-crumb>
-                <timeline
-                    v-intro="'The timeline forms the basis for an assignment. The name, due date and other details \
-                    of the assignment can also be changed here, by clicking the first node.<br/><br/>The timeline \
-                    contains a node for every entry. You can add two different types of nodes to it:<br/><br/><ul> \
-                    <li><b>Preset entries</b> are entries with a specific template which have to be completed before \
-                    a set deadline</li><li><b>Progress goals</b> are point targets that have to be met before a \
-                    set deadline</li></ul>New nodes can be added via the \'+\' node. Click any node to view its \
-                    contents.'"
-                    v-intro-step="3"
-                    :selected="currentNode"
-                    :nodes="presets"
-                    :assignment="assignmentDetails"
-                    :edit="true"
-                    @select-node="(node) => {
-                        currentNode = node
-                    }"
-                />
-            </b-col>
-
-            <b-col
-                md="12"
-                lg="auto"
-                xl="8"
-                class="main-content-timeline-page"
-            >
-                <bread-crumb
-                    v-if="$root.xl"
-                    v-intro="'Welcome to the assignment editor!<br/>This is where you can configure the structure of \
-                    your assignment. Proceed with this tutorial to learn more.'"
-                    v-intro-step="1"
-                >
-                    <icon
-                        v-intro="'That\'s it! If you have any more questions, do not hesitate to contact us via the \
-                        support button at the bottom of any page. This tutorial can be consulted again by clicking \
-                        the info sign.'"
-                        v-intro-step="4"
-                        v-b-tooltip:hover="'Click to start a tutorial for this page'"
-                        name="info-circle"
-                        scale="1.75"
-                        class="info-icon shift-up-5 ml-1"
-                        @click.native="startTour"
-                    />
-                </bread-crumb>
-
-                <div v-if="currentNode === -1">
-                    <b-card
-                        :class="$root.getBorderClass($route.params.cID)"
-                        class="no-hover"
+                    <bread-crumb
+                        v-if="$root.lgMax"
+                        v-intro="'Welcome to the assignment editor!<br/>This is where you can configure the structure \
+                        of your assignment. Proceed with this tutorial to learn more.'"
+                        v-intro-step="1"
                     >
-                        <assignment-details
-                            ref="assignmentDetails"
-                            :class="{ 'input-disabled' : saveRequestInFlight }"
-                            :assignmentDetails="assignmentDetails"
-                            :presetNodes="presets"
+                        <icon
+                            v-intro="'That\'s it! If you have any more questions, do not hesitate to contact us via \
+                            the support button at the bottom of any page. This tutorial can be consulted again by \
+                            clicking the info sign.'"
+                            v-intro-step="4"
+                            v-b-tooltip:hover="'Click to start a tutorial for this page'"
+                            name="info-circle"
+                            scale="1.5"
+                            class="info-icon shift-up-5 ml-1"
+                            @click.native="startTour"
                         />
-                    </b-card>
-                    <!-- TODO: Re-enable after UI changes. -->
-                    <!-- <b-card
-                        v-if="$hasPermission('can_delete_assignment')"
-                        class="no-hover border-red"
-                    >
-                        <b-button
-                            :class="{
-                                'input-disabled': assignmentDetails.lti_count > 1 && assignmentDetails.active_lti_course
-                                    && parseInt(assignmentDetails.active_lti_course.cID) ===
-                                        parseInt($route.params.cID)}"
-                            class="red-button full-width"
-                            @click="deleteAssignment"
-                        >
-                            <icon name="trash"/>
-                            {{ assignmentDetails.course_count > 1 ? 'Remove' : 'Delete' }} assignment
-                        </b-button>
-                    </b-card> -->
-                </div>
-
-                <preset-node-card
-                    v-else-if="presets.length > 0 && currentNode !== -1 && currentNode < presets.length"
-                    :key="`preset-node-${currentNode}`"
-                    :class="{ 'input-disabled' : saveRequestInFlight }"
-                    :currentPreset="presets[currentNode]"
-                    :templates="templates"
-                    :assignmentDetails="assignmentDetails"
-                    @delete-preset="deletePreset"
-                    @change-due-date="sortPresets"
-                    @new-template="newTemplateInPreset"
-                />
-
-                <add-preset-node
-                    v-else-if="currentNode === presets.length"
-                    :class="{ 'input-disabled' : saveRequestInFlight }"
-                    :templates="templates"
-                    :assignmentDetails="assignmentDetails"
-                    @add-preset="addPreset"
-                    @new-template="newTemplateInPreset"
-                />
-
-                <b-card
-                    v-else-if="currentNode === presets.length + 1"
-                    class="no-hover"
-                    :class="$root.getBorderClass($route.params.cID)"
-                >
-                    <h2 class="theme-h2">
-                        End of assignment
-                    </h2>
-                    <p>This is the end of the assignment.</p>
-                </b-card>
-
-                <b-modal
-                    ref="templateModal"
-                    size="xl"
-                    title="Edit template"
-                    hideFooter
-                    noEnforceFocus
-                >
-                    <template-editor
-                        v-if="currentTemplate !== -1"
-                        :template="templates[currentTemplate]"
+                    </bread-crumb>
+                    <timeline
+                        v-intro="'The timeline forms the basis for an assignment. The name, due date and other details \
+                        of the assignment can also be changed here, by clicking the first node.<br/><br/>The timeline \
+                        contains a node for every entry. You can add two different types of nodes to it:<br/><br/><ul> \
+                        <li><b>Preset entries</b> are entries with a specific template which have to be completed \
+                        before a set deadline</li><li><b>Progress goals</b> are point targets that have to be met \
+                        before a set deadline</li></ul>New nodes can be added via the \'+\' node. Click any node to \
+                        view its contents.'"
+                        v-intro-step="3"
+                        :selected="currentNode"
+                        :nodes="presets"
+                        :assignment="assignmentDetails"
+                        :edit="true"
+                        @select-node="(node) => {
+                            currentNode = node
+                        }"
                     />
-                </b-modal>
+                </b-col>
 
-                <template-import-modal
-                    modalID="import-template-modal"
-                    :aID="aID"
-                    @imported-template="importTemplate"
-                />
-            </b-col>
+                <b-col
+                    md="12"
+                    lg="auto"
+                    xl="8"
+                    class="main-content-timeline-page"
+                >
+                    <bread-crumb
+                        v-if="$root.xl"
+                        v-intro="'Welcome to the assignment editor!<br/>This is where you can configure the structure \
+                        of your assignment. Proceed with this tutorial to learn more.'"
+                        v-intro-step="1"
+                    >
+                        <icon
+                            v-intro="'That\'s it! If you have any more questions, do not hesitate to contact us via \
+                            the support button at the bottom of any page. This tutorial can be consulted again by \
+                            clicking the info sign.'"
+                            v-intro-step="4"
+                            v-b-tooltip:hover="'Click to start a tutorial for this page'"
+                            name="info-circle"
+                            scale="1.75"
+                            class="info-icon shift-up-5 ml-1"
+                            @click.native="startTour"
+                        />
+                    </bread-crumb>
+
+                    <div v-if="currentNode === -1">
+                        <b-card
+                            :class="$root.getBorderClass($route.params.cID)"
+                            class="no-hover"
+                        >
+                            <assignment-details
+                                ref="assignmentDetails"
+                                :class="{ 'input-disabled' : saveRequestInFlight }"
+                                :assignmentDetails="assignmentDetails"
+                                :presetNodes="presets"
+                            />
+                        </b-card>
+                        <!-- TODO: Re-enable after UI changes. -->
+                        <!-- <b-card
+                            v-if="$hasPermission('can_delete_assignment')"
+                            class="no-hover border-red"
+                        >
+                            <b-button
+                                :class="{
+                                    'input-disabled': assignmentDetails.lti_count > 1
+                                        && assignmentDetails.active_lti_course
+                                        && parseInt(assignmentDetails.active_lti_course.cID) ===
+                                            parseInt($route.params.cID)}"
+                                class="red-button full-width"
+                                @click="deleteAssignment"
+                            >
+                                <icon name="trash"/>
+                                {{ assignmentDetails.course_count > 1 ? 'Remove' : 'Delete' }} assignment
+                            </b-button>
+                        </b-card> -->
+                    </div>
+
+                    <preset-node-card
+                        v-else-if="presets.length > 0 && currentNode !== -1 && currentNode < presets.length"
+                        :key="`preset-node-${currentNode}`"
+                        :class="{ 'input-disabled' : saveRequestInFlight }"
+                        :currentPreset="presets[currentNode]"
+                        :templates="templates"
+                        :assignmentDetails="assignmentDetails"
+                        @delete-preset="deletePreset"
+                        @change-due-date="sortPresets"
+                        @new-template="newTemplateInPreset"
+                    />
+
+                    <add-preset-node
+                        v-else-if="currentNode === presets.length"
+                        :class="{ 'input-disabled' : saveRequestInFlight }"
+                        :templates="templates"
+                        :assignmentDetails="assignmentDetails"
+                        @add-preset="addPreset"
+                        @new-template="newTemplateInPreset"
+                    />
+
+                    <b-card
+                        v-else-if="currentNode === presets.length + 1"
+                        class="no-hover"
+                        :class="$root.getBorderClass($route.params.cID)"
+                    >
+                        <h2 class="theme-h2">
+                            End of assignment
+                        </h2>
+                        <p>This is the end of the assignment.</p>
+                    </b-card>
+
+                    <b-modal
+                        ref="templateModal"
+                        size="xl"
+                        title="Edit template"
+                        hideFooter
+                        noEnforceFocus
+                    >
+                        <template-editor
+                            v-if="currentTemplate !== -1"
+                            :template="templates[currentTemplate]"
+                        />
+                    </b-modal>
+
+                    <template-import-modal
+                        modalID="import-template-modal"
+                        :aID="aID"
+                        @imported-template="importTemplate"
+                    />
+                </b-col>
+            </b-row>
         </b-col>
 
         <b-col
