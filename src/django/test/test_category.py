@@ -9,7 +9,7 @@ from django.db.utils import IntegrityError
 from django.test import TestCase
 from django.utils import timezone
 
-from VLE.models import Assignment, Category, EntryCategoryLink, Field
+from VLE.models import Assignment, Category, EntryCategoryLink, Field, TemplateCategoryLink
 from VLE.serializers import CategoryConcreteFieldsSerializer, CategorySerializer
 
 
@@ -50,6 +50,19 @@ class CategoryAPITest(TestCase):
 
         with self.assertRaises(IntegrityError):
             Category.objects.create(color='#INVALID', name='new', assignment=self.assignment)
+
+    def test_category_template_link_unique_contrain(self):
+        TemplateCategoryLink.objects.create(
+            category=self.category,
+            template=self.template,
+        )
+
+        # Duplicate category template links should raise an integrity error
+        with self.assertRaises(IntegrityError):
+            TemplateCategoryLink.objects.create(
+                category=self.category,
+                template=self.template,
+            )
 
     def test_category_serializer(self):
         factory.Category(assignment=self.assignment)

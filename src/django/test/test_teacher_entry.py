@@ -1,7 +1,7 @@
 
 import test.factory as factory
 from copy import deepcopy
-from datetime import date, timedelta
+from datetime import datetime, timedelta
 from test.utils import api
 from test.utils.performance import QueryContext
 from unittest import mock
@@ -332,13 +332,14 @@ class TeacherEntryAPITest(TestCase):
 
     def test_teacher_entry_outside_assignment_unlock_lock(self):
         # Check if teacher can already create teacher entry when assignment is not yet unlocked
-        self.assignment.unlock_date = date.today() + timedelta(1)
+        self.assignment.unlock_date = datetime.today() + timedelta(1)
         self.assignment.save()
         api.create(self, 'teacher_entries', params=self.valid_create_params, user=self.teacher)
 
         # Check if teacher can still create teacher entry when assignment is locked
         self.assignment.unlock_date = None
-        self.assignment.lock_date = date.today() - timedelta(1)
+        self.assignment.due_date = datetime.today() - timedelta(1)
+        self.assignment.lock_date = datetime.today() - timedelta(1)
         self.assignment.save()
         api.create(self, 'teacher_entries', params=self.valid_create_params, user=self.teacher)
 

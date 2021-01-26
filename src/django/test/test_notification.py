@@ -149,7 +149,10 @@ class NotificationTest(TestCase):
         journal = factory.Journal(entries__n=0)
         notifications_before = list(Notification.objects.all().values_list('pk', flat=True))
 
-        factory.PresetEntry(node__journal=journal, node__journal__entries_n=0)
+        template = journal.assignment.format.template_set.first()
+        deadline = factory.DeadlinePresetNode(forced_template=template, format=journal.assignment.format)
+        node = journal.node_set.get(preset=deadline)
+        factory.PresetEntry(node=node)
         new_notifactions = Notification.objects.all().exclude(pk__in=notifications_before)
         assert new_notifactions.count() == 2, '1 new notification is created for entry, and 1 for new deadline'
         assert new_notifactions.filter(type=Notification.NEW_ENTRY).exists()
@@ -244,7 +247,11 @@ class NotificationTest(TestCase):
 
         # "2" new grades for student, 1 new entry for teacher, 1 course & assignment membership for student
         entry = factory.Grade(entry__node__journal=journal).entry
-        factory.DeadlinePresetNode(format=journal.assignment.format)
+        factory.DeadlinePresetNode(
+            format=journal.assignment.format,
+            due_date=datetime.datetime.now() + datetime.timedelta(days=3),
+            lock_date=datetime.datetime.now() + datetime.timedelta(days=5),
+        )
 
         factory.StudentComment(entry=entry, author=student)
         factory.StudentComment(entry=entry, author=student)  # 2 new comments for teacher

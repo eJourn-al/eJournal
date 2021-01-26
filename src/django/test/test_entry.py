@@ -3,7 +3,7 @@ import json
 import os
 import test.factory as factory
 from copy import deepcopy
-from datetime import date, timedelta
+from datetime import datetime, timedelta
 from test.utils import api
 from test.utils.generic_utils import equal_models
 from test.utils.performance import QueryContext, assert_num_queries_less_than
@@ -19,7 +19,6 @@ from faker import Faker
 from VLE.models import (Assignment, Category, Comment, Content, Course, Entry, Field, FileContext, Format, Grade,
                         Journal, JournalImportRequest, Node, PresetNode, Template, User)
 from VLE.serializers import EntrySerializer, TemplateSerializer
-from VLE.utils import generic_utils as utils
 from VLE.utils.error_handling import VLEMissingRequiredField, VLEPermissionError
 from VLE.validators import validate_entry_content
 
@@ -240,7 +239,8 @@ class EntryAPITest(TestCase):
         template = assignment.format.template_set.first()
         journal = factory.Journal(assignment=assignment, entries__n=0)
         n_c = Node.objects.filter(journal=journal).count()
-        entry = factory.PresetEntry(node__journal=journal)
+        deadline = factory.DeadlinePresetNode(format=assignment.format, forced_template=template)
+        entry = factory.PresetEntry(node=journal.node_set.get(preset=deadline))
 
         assert course_c + 1 == Course.objects.count(), 'A single course is created'
         assert a_c + 1 == Assignment.objects.count(), 'A single course and assignment is created'
@@ -269,9 +269,9 @@ class EntryAPITest(TestCase):
         assignment = factory.Assignment(format__templates=[{'type': Field.TEXT}])
         template = assignment.format.template_set.first()
 
-        deadline_preset_node = factory.DeadlinePresetNode(forced_template=template, format=assignment.format)
         journal = factory.Journal(assignment=assignment, entries__n=0)
-        entry = factory.PresetEntry(node__journal=journal, node__preset=deadline_preset_node)
+        deadline_preset_node = factory.DeadlinePresetNode(forced_template=template, format=assignment.format)
+        entry = factory.PresetEntry(node=journal.node_set.get(preset=deadline_preset_node))
         journal = entry.node.journal
         assert journal.node_set.count() == 1, 'Only a single node should be added to the journal'
         assert Node.objects.get(
@@ -279,10 +279,10 @@ class EntryAPITest(TestCase):
             'Correct node type is created, attached to the journal, whose PresetNode links to the correct template'
 
         # Again creating a preset deadline in advance, but now we only specify the format
+        journal = factory.Journal(assignment=assignment, entries__n=0)
         deadline_preset_node = factory.DeadlinePresetNode(format=assignment.format)
         template = deadline_preset_node.forced_template
-        entry = factory.PresetEntry(
-            node__journal__assignment=assignment, node__journal__entries__n=0, node__preset=deadline_preset_node)
+        entry = factory.PresetEntry(node=journal.node_set.get(preset=deadline_preset_node))
 
         assert Node.objects.get(type=Node.ENTRYDEADLINE, journal=journal, preset__forced_template=template), \
             'Correct node type is created, attached to the journal, whose PresetNode links to the correct template'
@@ -436,7 +436,8 @@ class EntryAPITest(TestCase):
         api.create(self, 'entries', params=create_params, user=self.student, status=400)
 
         # Check for assignment locked
-        self.group_journal.assignment.lock_date = date.today() - timedelta(1)
+        self.group_journal.assignment.due_date = datetime.now()
+        self.group_journal.assignment.lock_date = datetime.now()
         self.group_journal.assignment.save()
         self.assertRaises(
             VLEPermissionError,
@@ -444,7 +445,7 @@ class EntryAPITest(TestCase):
             Entry.objects.filter(node__journal=self.group_journal).first(),
         )
         api.create(self, 'entries', params=create_params, user=self.student, status=403)
-        self.group_journal.assignment.lock_date = date.today() + timedelta(1)
+        self.group_journal.assignment.lock_date = datetime.today() + timedelta(1)
         self.group_journal.assignment.save()
 
         # Check if template for other assignment wont work
@@ -627,10 +628,14 @@ class EntryAPITest(TestCase):
         api.update(self, 'entries', params=params.copy(), user=self.teacher, status=403)
 
         # Check for assignment locked
-        self.group_journal.assignment.lock_date = date.today() - timedelta(1)
+        self.group_journal.assignment.unlock_date = datetime.today() - timedelta(3)
+        self.group_journal.assignment.due_date = datetime.today() - timedelta(2)
+        self.group_journal.assignment.lock_date = datetime.today() - timedelta(1)
         self.group_journal.assignment.save()
         api.update(self, 'entries', params=params.copy(), user=self.student, status=403)
-        self.group_journal.assignment.lock_date = date.today() + timedelta(1)
+        self.group_journal.assignment.unlock_date = datetime.now()
+        self.group_journal.assignment.due_date = datetime.now() + timedelta(weeks=1)
+        self.group_journal.assignment.lock_date = datetime.now() + timedelta(weeks=2)
         self.group_journal.assignment.save()
 
         # Entries can no longer be edited if the LTI link is outdated (new active uplink)
@@ -703,7 +708,9 @@ class EntryAPITest(TestCase):
 
         # Only superusers should be allowed to delete locked entries
         entry = api.create(self, 'entries', params=self.valid_create_params, user=self.student)['entry']
-        self.group_journal.assignment.lock_date = date.today() - timedelta(1)
+        self.group_journal.assignment.unlock_date = datetime.today() - timedelta(3)
+        self.group_journal.assignment.due_date = datetime.today() - timedelta(2)
+        self.group_journal.assignment.lock_date = datetime.today() - timedelta(1)
         self.group_journal.assignment.save()
         api.delete(self, 'entries', params={'pk': entry['id']}, user=self.student, status=403)
         api.delete(self, 'entries', params={'pk': entry['id']}, user=factory.Admin())
@@ -762,7 +769,7 @@ class EntryAPITest(TestCase):
         assert Node.objects.filter(pk=node_student2.pk).exists(), \
             'Node student 2 exist before deletion of preset'
 
-        utils.delete_presets([{'id': entrydeadline.pk}])
+        entrydeadline.delete()
 
         assert Entry.objects.filter(pk=entry['id']).exists(), \
             'Entry should also exist after deletion of preset'
@@ -800,7 +807,7 @@ class EntryAPITest(TestCase):
             'All fcs should cascade (comment rt, comment attached files, content rt, content files)'
 
         deadline = factory.DeadlinePresetNode(format=assignment.format)
-        deadline_entry = factory.PresetEntry(node__journal=journal, node__preset=deadline)
+        deadline_entry = factory.PresetEntry(node=journal.node_set.get(preset=deadline))
         deadline_node = journal.node_set.get(type=Node.ENTRYDEADLINE)
         factory.StudentComment(entry=deadline_entry, n_att_files=1, n_rt_files=1)
 
@@ -889,6 +896,7 @@ class EntryAPITest(TestCase):
             ).data
             assert data['editable']
 
+            assignment.due_date = timezone.now()
             assignment.lock_date = timezone.now()
             assignment.save()
 
@@ -898,6 +906,8 @@ class EntryAPITest(TestCase):
             ).data
             assert not data['editable']
 
+            assignment.unlock_date = timezone.now() - timedelta(2)
+            assignment.due_date = timezone.now() - timedelta(1)
             assignment.lock_date = timezone.now() - timedelta(1)
             assignment.save()
             graded_entry = factory.UnlimitedEntry(node__journal=journal, grade__grade=1)

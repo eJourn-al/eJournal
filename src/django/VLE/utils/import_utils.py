@@ -6,6 +6,7 @@ from django.core.files.base import ContentFile
 
 from VLE.models import Category, Comment, Entry, Field, FileContext, Grade, JournalImportRequest, Node
 from VLE.utils.error_handling import VLEProgrammingError
+from VLE.utils.file_handling import copy_and_replace_rt_files
 
 
 def _copy_grade_based_on_jir_action(entry, grade, author, action=JournalImportRequest.APPROVED_WITH_GRADES_ZEROED):
@@ -203,7 +204,7 @@ def import_content(content, entry):
     return content
 
 
-def import_template(template, assignment, archived=None):
+def import_template(template, assignment, user, archived=None):
     """
     Copies the given template and adds it to the given assignment's format
     """
@@ -216,6 +217,7 @@ def import_template(template, assignment, archived=None):
     for field in Field.objects.filter(template=source_template_id):
         field.pk = None
         field.template = template
+        field.description = copy_and_replace_rt_files(field.description, user, assignment=assignment)
         field.save()
 
     return template
@@ -240,8 +242,13 @@ def bulk_import_assignment_categories(source_assignment, target_assignment, auth
         new_categories.append(category)
     Category.objects.bulk_create(new_categories)
 
-    # QUESTION: Copy any associated files? Might not be needed -> Edit in source means target still refs the source fc
-    # Provided access to the fc is only by access id, this should be fine?
+    # RT Categories require their respective 'category' attribute to be set, which is why we first have to create
+    # the new cateogires before we can copy and replace the RT files.
+    categories_with_copied_rt_description = []
+    for category in target_assignment.categories.all():
+        category.description = copy_and_replace_rt_files(category.description, author, category=category)
+        categories_with_copied_rt_description.append(category)
+    Category.objects.bulk_update(categories_with_copied_rt_description, ['description'])
 
     # Use the fact that names are unique at the DB level to map between old and new categories
     source_categories = source_assignment.categories.order_by('name')
@@ -294,3 +301,28 @@ def copy_node(node, journal, entry=None):
         journal=journal,
         preset=node.preset
     )
+
+
+def copy_preset_node_attached_files(preset, attached_files, user, assignment):
+    """
+    Args:
+        preset (:model:`VLE.PresetNode`): Newly copied preset node, still requiring a copy of all attached files.
+        attached_files (QuerySet of :model:`VLE.FileContext`): Attached files which need to be attached to the preset
+        assignment (:model:`VLE.Assignment`): Assignment copy target
+    """
+    new_fcs = [
+        FileContext.objects.create(
+            file=ContentFile(old_fc.file.file.read(), name=old_fc.file_name),
+            file_name=old_fc.file_name,
+            author=user,
+            is_temp=False,
+            in_rich_text=False,
+            assignment=assignment,
+            category=None,
+            content=None,
+            comment=None,
+            journal=None,
+        )
+        for old_fc in attached_files
+    ]
+    preset.attached_files.set(new_fcs)

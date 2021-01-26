@@ -124,11 +124,10 @@ def make_assignment(name, description, author=None, format=None, active_lti_id=N
 
     On success, returns a new assignment.
     """
+    setup_default_layout = format is None
+
     if format is None:
-        if due_date:
-            format = make_default_format(due_date, points_possible)
-        else:
-            format = make_default_format(timezone.now() + timedelta(days=365), points_possible)
+        format = VLE.models.Format.objects.create()
 
     assign = VLE.models.Assignment(
         name=name, description=description, author=author, format=format,
@@ -154,6 +153,12 @@ def make_assignment(name, description, author=None, format=None, active_lti_id=N
             lock_date = lock_date[:-1-len(lock_date.split(' ')[2])]
         assign.lock_date = lock_date
     assign.save()
+
+    if setup_default_layout:
+        if due_date:
+            setup_default_assignment_layout(assign, due_date, points_possible)
+        else:
+            setup_default_assignment_layout(assign, timezone.now() + timedelta(days=365), points_possible)
 
     for course in courses:
         assign.add_course(course)
@@ -183,12 +188,10 @@ def make_lti_groups(course):
             VLE.models.Group.objects.filter(course=course, lti_id=lti_id).update(name=name)
 
 
-def make_default_format(due_date=None, points_possible=10):
-    format = VLE.models.Format.objects.create()
-
+def setup_default_assignment_layout(assignment, due_date=None, points_possible=10):
     template = VLE.models.Template.objects.create(
         name='Entry',
-        format=format,
+        format=assignment.format,
     )
 
     VLE.models.Field.objects.create(
@@ -200,21 +203,13 @@ def make_default_format(due_date=None, points_possible=10):
     )
 
     if due_date and points_possible and int(points_possible) > 0:
-        make_progress_node(format, due_date, points_possible)
-    return format
-
-
-def make_progress_node(format, due_date, target):
-    """Make a progress node.
-
-    Arguments:
-    format -- format the node belongs to.
-    due_date -- due_date of the node.
-    """
-    node = VLE.models.PresetNode(
-        type=VLE.models.Node.PROGRESS, due_date=due_date, target=target, format=format, display_name='Progress goal')
-    node.save()
-    return node
+        VLE.models.PresetNode.objects.create(
+            type=VLE.models.Node.PROGRESS,
+            due_date=due_date,
+            target=points_possible,
+            format=assignment.format,
+            display_name='Progress goal',
+        )
 
 
 def make_node(journal, entry=None, type=VLE.models.Node.ENTRY, preset=None):

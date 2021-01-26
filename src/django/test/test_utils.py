@@ -15,7 +15,6 @@ import VLE.models
 import VLE.utils.responses
 from VLE.serializers import UserSerializer, prefetched_objects
 from VLE.utils.error_handling import VLEProgrammingError
-from VLE.utils.generic_utils import get_sorted_nodes
 from VLE.validators import validate_youtube_url_with_video_id
 
 
@@ -47,17 +46,21 @@ class UtilsTest(TestCase):
             node__journal=journal,
             creation_date=timezone.now() - datetime.timedelta(days=2),
         )
+
+        template = journal.assignment.format.template_set.first()
+        deadline = factory.DeadlinePresetNode(format=journal.assignment.format, forced_template=template)
+        deadline_node = journal.node_set.get(preset=deadline)
         preset_entry = factory.PresetEntry(
-            node__journal=journal,
+            node=deadline_node,
             creation_date=timezone.now() + datetime.timedelta(days=2),
         )
         preset_entry.node.preset.due_date = timezone.now() - datetime.timedelta(days=1)
         preset_entry.node.preset.save()
 
         with self.assertNumQueries(1):
-            list(get_sorted_nodes(journal))
+            list(journal.get_sorted_nodes())
 
-        nodes = get_sorted_nodes(journal)
+        nodes = journal.get_sorted_nodes()
         assert nodes.get(preset=progress_points_preset).sort_due_date == progress_points_preset.due_date, \
             'Preset timeline nodes should be ordered by their due date'
         assert nodes.get(preset=progress_points_preset) == nodes.last()
@@ -70,7 +73,7 @@ class UtilsTest(TestCase):
         assert nodes.get(entry=preset_entry) == nodes.first()
 
         progress_points_preset.delete()
-        nodes = get_sorted_nodes(journal)
+        nodes = journal.get_sorted_nodes()
         preset_entry.node.preset = None
         preset_entry.node.save()
         assert nodes.get(entry=preset_entry).sort_due_date == preset_entry.creation_date, \

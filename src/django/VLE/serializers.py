@@ -58,6 +58,9 @@ class EagerLoadingMixin:
         if hasattr(cls, 'prefetch_related'):
             queryset = queryset.prefetch_related(*cls.prefetch_related)
 
+        if hasattr(cls, 'order_by'):
+            queryset = queryset.order_by(*cls.order_by)
+
         return queryset
 
 
@@ -414,6 +417,10 @@ class PresetNodeSerializer(serializers.ModelSerializer, EagerLoadingMixin):
         'attached_files',
     ]
 
+    order_by = [
+        'due_date',
+    ]
+
     unlock_date = serializers.SerializerMethodField()
     due_date = serializers.SerializerMethodField()
     lock_date = serializers.SerializerMethodField()
@@ -445,35 +452,7 @@ class PresetNodeSerializer(serializers.ModelSerializer, EagerLoadingMixin):
         return None
 
 
-class FormatSerializer(serializers.ModelSerializer, EagerLoadingMixin):
-    class Meta:
-        model = VLE.models.Format
-        fields = (
-            'id',
-            'templates',
-            'presets',
-        )
-        read_only_fields = ()
-
-    presets = PresetNodeSerializer(many=True, source='presetnode_set', read_only=True)
-    templates = TemplateSerializer(many=True, source='template_set', read_only=True)
-
-    prefetch_related = [
-        Prefetch(
-            'presetnode_set',
-            queryset=PresetNodeSerializer.setup_eager_loading(
-                VLE.models.PresetNode.objects.order_by('due_date')
-            )
-        ),
-        Prefetch(
-            'template_set',
-            queryset=TemplateSerializer.setup_eager_loading(
-                VLE.models.Template.objects.filter(archived=False).order_by('name')
-            )
-        ),
-    ]
-
-
+# TODO Category: Make lighter, are templates / presets needed?
 class AssignmentSerializer(ExtendedModelSerializer, EagerLoadingMixin):
     class Meta:
         model = VLE.models.Assignment
@@ -507,7 +486,10 @@ class AssignmentSerializer(ExtendedModelSerializer, EagerLoadingMixin):
             'categories',
             # Not used / missing: active_lti_id, lti_id_set, assigned_groups, format
         )
-        read_only_fields = ()
+        read_only_fields = (
+            'active_lti_course',
+            'lti_id',
+        )
 
     select_related = []
 
@@ -532,7 +514,6 @@ class AssignmentSerializer(ExtendedModelSerializer, EagerLoadingMixin):
         'user',
     ]
 
-    format = FormatSerializer(read_only=True)
     categories = CategorySerializer(read_only=True, many=True)
     deadline = serializers.SerializerMethodField()
     journal = serializers.SerializerMethodField()
@@ -717,6 +698,7 @@ class AssignmentSerializer(ExtendedModelSerializer, EagerLoadingMixin):
         return False
 
 
+# TODO Category: Absorb and scrap: -> Assignment should just serialize what is needed
 class AssignmentFormatSerializer(AssignmentSerializer):
     lti_count = serializers.SerializerMethodField()
     can_change_type = serializers.SerializerMethodField()

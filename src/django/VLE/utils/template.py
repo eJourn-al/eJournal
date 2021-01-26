@@ -85,20 +85,23 @@ def update_categories_of_template_chain(data, template):
         TemplateCategoryLink.objects.bulk_create(template_category_links)
 
 
-def handle_template_update(data, format):
-    current_template = Template.objects.get(pk=data['id'])
+def handle_template_update(data, current_template):
     updated_template = current_template
 
     if _should_be_archived(current_template, data):
-        current_template.archived = True
-        current_template.save()
-
-        updated_template = Template.objects.create_template_and_fields_from_data(data, format, current_template)
+        updated_template = Template.objects.create_template_and_fields_from_data(
+            data=data,
+            format=current_template.format,
+            archived_template=current_template,
+        )
 
         PresetNode.objects.filter(forced_template=current_template).update(forced_template=updated_template)
 
         if current_template.can_be_deleted():
             current_template.delete()
+        else:
+            current_template.archived = True
+            current_template.save()
 
     update_categories_of_template_chain(data, updated_template)
 
@@ -127,10 +130,3 @@ def update_templates(format, templates_data):
             new_ids[data['id']] = new_template.pk
 
     return new_ids
-
-
-def delete_or_archive_templates(templates_data):
-    template_ids = [template['id'] for template in templates_data]
-
-    Template.objects.unused().filter(pk__in=template_ids).delete()
-    Template.objects.filter(pk__in=template_ids).update(archived=True)

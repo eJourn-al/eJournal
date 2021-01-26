@@ -6,6 +6,7 @@ import VLE.utils.responses as response
 import VLE.utils.template as template_utils
 from VLE.models import Assignment, Template
 from VLE.serializers import TemplateSerializer
+from VLE.utils import file_handling
 
 
 class TemplateView(viewsets.ViewSet):
@@ -19,7 +20,7 @@ class TemplateView(viewsets.ViewSet):
 
         serializer = TemplateSerializer(
             TemplateSerializer.setup_eager_loading(
-                assignment.format.template_set.all()
+                assignment.format.template_set.filter(archived=False)
             ),
             context={'user': request.user},
             many=True,
@@ -27,14 +28,32 @@ class TemplateView(viewsets.ViewSet):
 
         return response.success({'templates': serializer.data})
 
+    # TODO Category: How do nested transaction atomic blocks interact?
+    # TODO Category: Establish file can be slow, how does this impact an atomic block?
     def create(self, request):
         assignment_id, = utils.required_typed_params(request.data, (int, 'assignment_id'))
+        template_import, = utils.optional_typed_params(request.data, (bool, 'template_import'))
 
         assignment = Assignment.objects.select_related('format').get(pk=assignment_id)
         request.user.check_permission('can_edit_assignment', assignment)
 
         Template.validate(request.data, assignment=assignment)
-        template = Template.objects.create_template_and_fields_from_data(request.data, assignment.format)
+
+        with transaction.atomic():
+            template = Template.objects.create_template_and_fields_from_data(
+                request.data,
+                assignment.format,
+                template_import=template_import,
+                author=request.user,
+            )
+
+            if not template_import:
+                for field in template.field_set.all():
+                    file_handling.establish_rich_text(
+                        author=request.user,
+                        rich_text=field.description,
+                        assignment=assignment,
+                    )
 
         return response.created({
             'template': TemplateSerializer(
@@ -45,12 +64,21 @@ class TemplateView(viewsets.ViewSet):
 
     def partial_update(self, request, pk):
         template = Template.objects.select_related('format', 'format__assignment').get(pk=pk)
+        assignment = template.format.assignment
 
-        request.user.check_permission('can_edit_assignment', template.format.assignment)
+        request.user.check_permission('can_edit_assignment', assignment)
 
-        Template.validate(request.data, assignment=template.format.assignment, old=template)
+        Template.validate(request.data, assignment=assignment, old=template)
+
         with transaction.atomic():
-            template = template_utils.handle_template_update(request.data, template.format)
+            template = template_utils.handle_template_update(request.data, template)
+
+            for field in template.field_set.all():
+                file_handling.establish_rich_text(
+                    author=request.user,
+                    rich_text=field.description,
+                    assignment=assignment,
+                )
 
         return response.success({
             'template': TemplateSerializer(

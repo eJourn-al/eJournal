@@ -9,7 +9,7 @@ class TemplateFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = 'VLE.Template'
 
-    name = 'Empty Template'
+    name = factory.Sequence(lambda x: "Template {}".format(x))
 
     # Forces format specification
     format = None
@@ -100,13 +100,24 @@ class TemplateCreationParamsFactory(factory.Factory):
     def _adjust_kwargs(cls, **kwargs):
         assert kwargs['assignment_id']
 
-        kwargs['field_set'] = [{
-            'type': Field.TEXT,
-            'title': 'Title',
-            'description': '',
-            'options': '',
-            'location': 0,
-            'required': True,
-        }]
+        n_fields = kwargs.pop('n_fields', 1)
+        n_fields_with_file_in_description = kwargs.pop('n_fields_with_file_in_description', 0)
+        author = kwargs.pop('author', None)
+
+        for i in range(n_fields):
+            description = ''
+
+            if i < n_fields_with_file_in_description:
+                fc = test.factory.TempFileContext(author=author)
+                description = f'<img src="{fc.download_url(access_id=fc.access_id)}"/>'
+
+            kwargs['field_set'] = [{
+                'type': Field.TEXT,
+                'title': 'Title',
+                'description': description,
+                'options': '',
+                'location': i,
+                'required': True,
+            }]
 
         return kwargs
