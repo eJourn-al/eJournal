@@ -4,11 +4,7 @@
             Actions
         </h3>
 
-        <manage-assignment-categories
-            ref="manageAssignmentCategories"
-            :disabled="templatesChanged"
-            :templates="templates"
-        />
+        <manage-assignment-categories/>
     </section>
 </template>
 
@@ -20,12 +16,5 @@ export default {
     components: {
         ManageAssignmentCategories,
     },
-    // TODO: Refactor (remove probably)
-    props: ['templatesChanged', 'templates'],
-
 }
 </script>
-
-<style>
-
-</style>

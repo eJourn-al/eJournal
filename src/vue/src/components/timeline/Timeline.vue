@@ -22,7 +22,7 @@
                 class="timeline-inner"
             >
                 <category-select
-                    v-if="$store.getters['category/assignmentCategories'].length"
+                    v-if="assignmentHasCategories"
                     v-model="filteredCategories"
                     class="mt-2"
                     :options="$store.getters['category/assignmentCategories']"
@@ -43,7 +43,7 @@
                         :edit="edit"
                         :nodes="filteredNodes"
                         :allNodes="nodes"
-                        :selected="mappedSelected"
+                        :selectedIndex="mappedSelected"
                         @select-node="mapAndEmitSelectedNode"
                     />
                 </div>
@@ -79,6 +79,8 @@
 import CategorySelect from '@/components/category/CategorySelect.vue'
 import TimelineNodes from '@/components/timeline/TimelineNodes.vue'
 
+import { mapGetters } from 'vuex'
+
 export default {
     components: {
         CategorySelect,
@@ -97,10 +99,10 @@ export default {
             required: true,
             type: Array,
         },
-        /* Index of the selected node as part of the full (non filtered) nodes array */
+        /* Index of the selected node as part of the full (non filtered) nodes array
+         * Can be null, indicating nothing should be selected. */
         selected: {
             required: true,
-            type: Number,
         },
         assignment: {
             required: true,
@@ -115,13 +117,16 @@ export default {
         }
     },
     computed: {
+        ...mapGetters({
+            assignmentHasCategories: 'category/assignmentHasCategories',
+        }),
         filteredCategories: {
-            set (value) { this.$store.commit('category/setFilteredCategories', value) },
+            set (value) { this.$store.commit('category/SET_FILTERED_CATEGORIES', value) },
             get () { return this.$store.getters['category/filteredCategories'] },
         },
         /* Selected node is actually part of the node array property, see virtual nodes in header */
         selectedNodeIsActualObject () {
-            return this.selected >= 0 && this.selected < this.nodes.length
+            return this.selected !== null && this.selected >= 0 && this.selected < this.nodes.length
         },
     },
     watch: {
@@ -129,7 +134,9 @@ export default {
          * assignment info (-1) and end of assignment (nodes.length + 1)
          * The selected node index needs to be mapped to the correct index of the filtered nodes array */
         selected (val) {
-            if (val < 0) { // Virtual node: assignment details
+            if (val === null) { // No node should be selected
+                this.mappedSelected = val
+            } else if (val < 0) { // Virtual node: assignment details
                 this.mappedSelected = val
             } else if (val === this.nodes.length) { // Virtual node: add node (only virtual in (format) edit mode...)
                 this.mappedSelected = val
@@ -150,7 +157,7 @@ export default {
     created () {
         this.filteredNodes = this.nodes
         this.mappedSelected = this.selected
-        this.$store.commit('category/setTimelineInstance', this)
+        this.$store.commit('category/SET_TIMELINE_INSTANCE', this)
     },
     methods: {
         mapAndEmitSelectedNode (index) {

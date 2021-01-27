@@ -4,7 +4,7 @@ import router from '@/router/index.js'
 
 function fromCache ({ state, commit }, cache, cacheKey, fn, force = false) {
     if (!(cacheKey in state[cache]) || force) {
-        commit('updateCache', { cache, cacheKey, data: fn() })
+        commit('UPDATE_CACHE', { cache, cacheKey, data: fn() })
     }
 
     return state[cache][cacheKey]
@@ -21,32 +21,28 @@ const getters = {
 }
 
 const mutations = {
-    updateCache (state, { cache, cacheKey, data }) {
+    UPDATE_CACHE (state, { cache, cacheKey, data }) {
         Vue.set(state[cache], cacheKey, data)
     },
-    setAssignmentTemplates (state, { aID, templates }) {
+    SET_ASSIGNMENT_TEMPLATES (state, { aID, templates }) {
         Vue.set(state.assignmentsTemplates, aID, templates)
     },
-    // TODO: Add and update should do so whilest ordering based on template name?
-    addAssignmentTemplate (state, { aID, template }) {
+    ADD_ASSIGNMENT_TEMPLATE (state, { aID, template }) {
         state.assignmentsTemplates[aID].push(template)
+        state.assignmentsTemplates[aID].sort((a, b) => a.name.localeCompare(b.name))
     },
-    updateAssignmentTemplate (state, { aID, template, oldId }) {
+    UPDATE_ASSIGNMENT_TEMPLATE (state, { aID, template, oldId }) {
         const updatedTemplateIndex = state.assignmentsTemplates[aID].findIndex(elem => elem.id === oldId)
         Vue.set(state.assignmentsTemplates[aID], updatedTemplateIndex, template)
+        state.assignmentsTemplates[aID].sort((a, b) => a.name.localeCompare(b.name))
     },
-    deleteAssignmentTemplate (state, { aID, id }) {
+    DELETE_ASSIGNMENT_TEMPLATE (state, { aID, id }) {
         Vue.delete(
             state.assignmentsTemplates[aID],
             state.assignmentsTemplates[aID].findIndex(elem => elem.id === id),
         )
     },
-    /* TODO if needed, Make a timeline module which just contains the state of the active instance
-     * Could also contain the active filter (category) */
-    setTimelineInstance (state, instance) {
-        state.timelineInstance = instance
-    },
-    propogateCategoryTemplateUpdate (state, { aID, updatedCategory }) {
+    PROPOGATE_CATEGORY_TEMPLATE_UPDATE (state, { aID, updatedCategory }) {
         state.assignmentsTemplates[aID].forEach((template) => {
             const templateCategoryIndex = template.categories.findIndex(category => category.id === updatedCategory.id)
             const templateLinkedToCategory = templateCategoryIndex !== -1
@@ -71,25 +67,26 @@ const actions = {
         function fn () {
             return auth.get('templates', { assignment_id: aID }, connArgs)
                 .then((response) => {
-                    context.commit('setAssignmentTemplates', { aID, templates: response.data.templates })
+                    context.commit('SET_ASSIGNMENT_TEMPLATES', { aID, templates: response.data.templates })
                     return response.data.templates
                 })
         }
 
         return fromCache(context, 'listCache', aID, fn.bind(null), force)
     },
-    create (context, { template, aID, connArgs = auth.DEFAULT_CONN_ARGS }) {
+    create (context, { template, aID, templateImport = false, connArgs = auth.DEFAULT_CONN_ARGS }) { // eslint-disable-line
         function fn () {
             const payload = JSON.parse(JSON.stringify(template))
             payload.assignment_id = aID
+            payload.template_import = templateImport
 
             return auth.create('templates', payload, connArgs)
                 .then((response) => {
                     const createdTemplate = response.data.template
 
-                    context.commit('addAssignmentTemplate', { aID, template: createdTemplate })
+                    context.commit('ADD_ASSIGNMENT_TEMPLATE', { aID, template: createdTemplate })
                     context.commit(
-                        'category/propogateTemplateCategoryUpdate',
+                        'category/PROPOGATE_TEMPLATE_CATEGORY_UPDATE',
                         { aID, updatedTemplate: createdTemplate },
                         { root: true },
                     )
@@ -106,9 +103,9 @@ const actions = {
                 .then((response) => {
                     const updatedTemplate = response.data.template
 
-                    context.commit('updateAssignmentTemplate', { aID, template: updatedTemplate, oldId: id })
+                    context.commit('UPDATE_ASSIGNMENT_TEMPLATE', { aID, template: updatedTemplate, oldId: id })
                     context.commit(
-                        'category/propogateTemplateCategoryUpdate',
+                        'category/PROPOGATE_TEMPLATE_CATEGORY_UPDATE',
                         { aID, updatedTemplate, oldTemplateId: id },
                         { root: true },
                     )
@@ -123,8 +120,8 @@ const actions = {
         function fn () {
             return auth.delete(`templates/${id}`, null, connArgs)
                 .then((response) => {
-                    context.commit('deleteAssignmentTemplate', { id, aID })
-                    context.commit('category/propogateTemplateDelete', { aID, deletedTemplateId: id }, { root: true })
+                    context.commit('DELETE_ASSIGNMENT_TEMPLATE', { id, aID })
+                    context.commit('category/PROPOGATE_TEMPLATE_DELETE', { aID, deletedTemplateId: id }, { root: true })
 
                     return response.data
                 })

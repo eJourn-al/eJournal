@@ -4,7 +4,7 @@ import router from '@/router/index.js'
 
 function fromCache ({ state, commit }, cache, cacheKey, fn, force = false) {
     if (!(cacheKey in state[cache]) || force) {
-        commit('updateCache', { cache, cacheKey, data: fn() })
+        commit('UPDATE_CACHE', { cache, cacheKey, data: fn() })
     }
 
     return state[cache][cacheKey]
@@ -16,40 +16,49 @@ const getters = {
         if (aID in state.assignmentsCategories) { return state.assignmentsCategories[aID] }
         return []
     },
+    assignmentHasCategories: (state) => {
+        const aID = router.currentRoute.params.aID
+
+        if (aID in state.assignmentsCategories) {
+            return state.assignmentsCategories[aID].some(category => 'id' in category && category.id >= 0)
+        }
+
+        return false
+    },
     assignmentsCategories: state => state.assignmentCategories,
     filteredCategories: state => state.filteredCategories,
     timelineInstance: state => state.timelineInstance,
 }
 
 const mutations = {
-    updateCache (state, { cache, cacheKey, data }) {
+    UPDATE_CACHE (state, { cache, cacheKey, data }) {
         Vue.set(state[cache], cacheKey, data)
     },
-    updateAssignmentCategories (state, { aID, categories }) {
+    UPDATE_ASSIGNMENT_CATEGORIES (state, { aID, categories }) {
         Vue.set(state.assignmentsCategories, aID, categories)
     },
-    addAssignmentCategory (state, { aID, category }) {
+    ADD_ASSIGNMENT_CATEGORY (state, { aID, category }) {
         state.assignmentsCategories[aID].push(category)
     },
-    deleteAssignmentCategory (state, { aID, id }) {
+    DELETE_ASSIGNMENT_CATEGORY (state, { aID, id }) {
         Vue.delete(
             state.assignmentsCategories[aID],
             state.assignmentsCategories[aID].findIndex(elem => elem.id === id),
         )
     },
-    setIdOfCreatedCategory (state, { category, id }) {
+    SET_ID_OF_CREATED_CATEGORY (state, { category, id }) {
         category.id = id
     },
-    setFilteredCategories (state, filteredCategories) {
+    SET_FILTERED_CATEGORIES (state, filteredCategories) {
         state.filteredCategories = filteredCategories
     },
-    clearFilteredCategories (state) {
+    CLEAR_FILTERED_CATEGORIES (state) {
         state.filteredCategories = []
     },
-    setTimelineInstance (state, instance) {
+    SET_TIMELINE_INSTANCE (state, instance) {
         state.timelineInstance = instance
     },
-    propogateTemplateCategoryUpdate (state, { aID, updatedTemplate, oldTemplateId }) {
+    PROPOGATE_TEMPLATE_CATEGORY_UPDATE (state, { aID, updatedTemplate, oldTemplateId }) {
         state.assignmentsCategories[aID].forEach((category) => {
             const categoryTemplateIndex = category.templates.findIndex(
                 template => template.id === updatedTemplate.id || template.id === oldTemplateId)
@@ -68,7 +77,7 @@ const mutations = {
             }
         })
     },
-    propogateTemplateDelete (state, { aID, deletedTemplateId }) {
+    PROPOGATE_TEMPLATE_DELETE (state, { aID, deletedTemplateId }) {
         state.assignmentsCategories[aID].forEach((category) => {
             const categoryTemplateIndex = category.templates.findIndex(template => template.id === deletedTemplateId)
 
@@ -89,7 +98,7 @@ const actions = {
         function fn () {
             return auth.get('categories', { assignment_id: aID }, connArgs)
                 .then((response) => {
-                    context.commit('updateAssignmentCategories', { aID, categories: response.data.categories })
+                    context.commit('UPDATE_ASSIGNMENT_CATEGORIES', { aID, categories: response.data.categories })
                     return response.data.categories
                 })
         }
@@ -104,11 +113,11 @@ const actions = {
                     const createdCategory = response.data.category
 
                     context.commit(
-                        'addAssignmentCategory',
+                        'ADD_ASSIGNMENT_CATEGORY',
                         { aID: router.currentRoute.params.aID, category: createdCategory },
                     )
                     context.commit(
-                        'template/propogateCategoryTemplateUpdate',
+                        'template/PROPOGATE_CATEGORY_TEMPLATE_UPDATE',
                         { aID: router.currentRoute.params.aID, updatedCategory: createdCategory },
                         { root: true },
                     )
@@ -132,9 +141,9 @@ const actions = {
             return auth.create('categories', payload, connArgs)
                 .then((response) => {
                     const createdCategory = response.data.category
-                    context.commit('setIdOfCreatedCategory', { category: localCategory, id: createdCategory.id })
+                    context.commit('SET_ID_OF_CREATED_CATEGORY', { category: localCategory, id: createdCategory.id })
                     context.commit(
-                        'template/propogateCategoryTemplateUpdate',
+                        'template/PROPOGATE_CATEGORY_TEMPLATE_UPDATE',
                         { aID: router.currentRoute.params.aID, updatedCategory: createdCategory },
                         { root: true },
                     )
@@ -145,27 +154,14 @@ const actions = {
 
         return fn()
     },
-    // TODO Category: evaluate update store param
-    update (context, { id, data, updateStore = false, connArgs = auth.DEFAULT_CONN_ARGS }) { // eslint-disable-line
+    update (context, { id, data, connArgs = auth.DEFAULT_CONN_ARGS }) {
         function fn () {
             return auth.update(`categories/${id}`, data, connArgs)
                 .then((response) => {
                     const updatedCategory = response.data.category
 
-                    if (updateStore) {
-                        const aID = router.currentRoute.params.aID
-                        const updatedCategories = context.state.assignmentCategories.map((category) => {
-                            if (category.id === updatedCategory.id) {
-                                return updatedCategory
-                            }
-                            return category
-                        })
-
-                        context.commit('updateAssignmentCategories', { aID, categories: updatedCategories })
-                    }
-
                     context.commit(
-                        'template/propogateCategoryTemplateUpdate',
+                        'template/PROPOGATE_CATEGORY_TEMPLATE_UPDATE',
                         { aID: router.currentRoute.params.aID, updatedCategory },
                         { root: true },
                     )
@@ -183,8 +179,8 @@ const actions = {
                 .then((response) => {
                     const updatedFilteredCategories = context.getters.filteredCategories.filter(elem => elem.id !== id)
 
-                    context.commit('setFilteredCategories', updatedFilteredCategories)
-                    context.commit('deleteAssignmentCategory', { aID: router.currentRoute.params.aID, id })
+                    context.commit('SET_FILTERED_CATEGORIES', updatedFilteredCategories)
+                    context.commit('DELETE_ASSIGNMENT_CATEGORY', { aID: router.currentRoute.params.aID, id })
 
                     return response.data
                 })

@@ -1,0 +1,227 @@
+<template>
+    <div>
+        <preset-node-type-selection
+            v-if="!edit"
+            :presetNode="presetNode"
+        />
+
+        <b-card
+            v-if="presetNode.type"
+            :class="$root.getBorderClass($route.params.cID)"
+            class="no-hover overflow-x-hidden"
+        >
+            <b-row
+                v-if="edit"
+                no-gutters
+                class="multi-form"
+            >
+                <span class="theme-h2">
+                    {{ presetNode.display_name }}
+                </span>
+
+                <b-button
+                    class="red-button ml-auto"
+                    @click="setModeToRead()"
+                >
+                    <icon name="ban"/>
+                    Cancel
+                </b-button>
+            </b-row>
+
+            <b-form-group
+                label="Display name"
+                class="required"
+                :invalid-feedback="displayNameInvalidFeedback"
+            >
+                <b-input
+                    v-model="presetNode.display_name"
+                    class="theme-input"
+                    placeholder="Timeline display name"
+                    trim
+                    required
+                    :state="displayNameInputState"
+                />
+            </b-form-group>
+
+            <preset-node-edit-select-and-preview-template
+                v-if="presetNode.type === 'd'"
+                :presetNode="presetNode"
+            />
+
+            <b-form-group
+                v-else-if="presetNode.type === 'p'"
+                class="required"
+                :invalid-feedback="targetInvalidFeedback"
+            >
+                <template #label>
+                    Number of points
+                    <tooltip
+                        tip="The number of points students should have achieved by the deadline of this node to be on
+                        schedule, new entries can still be added until the assignment's lock date"
+                    />
+                </template>
+
+                <b-input
+                    v-model="presetNode.target"
+                    type="number"
+                    class="theme-input"
+                    placeholder="Number of points"
+                    min="1"
+                    required
+                    :max="assignment.points_possible"
+                    :state="targetInputState"
+                />
+            </b-form-group>
+
+            <b-form-group label="Description">
+                <text-editor
+                    :id="`preset-description-${edit ? presetNode.id : presetNode.type}`"
+                    :key="`preset-description-${edit ? presetNode.id : presetNode.type}`"
+                    v-model="presetNode.description"
+                    class="multi-form"
+                    placeholder="Description"
+                    footer="false"
+                />
+            </b-form-group>
+
+            <preset-node-edit-dates :presetNode="presetNode"/>
+
+            <b-form-group>
+                <template
+                    v-if="presetNode.attached_files.length > 0"
+                    #label
+                >
+                    Files
+                </template>
+
+                <files-list
+                    :attachNew="true"
+                    :files="presetNode.attached_files"
+                    @uploading-file="uploadingFiles ++"
+                    @fileUploadSuccess="presetNode.attached_files.push($event) && uploadingFiles --"
+                    @fileUploadFailed="uploadingFiles --"
+                    @fileRemoved="(i) => presetNode.attached_files.splice(i, 1)"
+                />
+            </b-form-group>
+
+            <hr/>
+
+            <b-button
+                v-if="edit"
+                class="red-button"
+                @click.stop="emitDeletePreset"
+            >
+                <icon name="trash"/>
+                Delete Preset
+            </b-button>
+
+            <b-button
+                class="green-button float-right"
+                @click.stop="finalizePresetNodeChanges()"
+            >
+                <icon :name="(edit) ? 'save' : 'plus'"/>
+                <!-- QUESTION: User facing it might make more sense to use 'deadline' over 'preset'? -->
+                {{ (edit) ? 'Save' : 'Add Preset' }}
+            </b-button>
+        </b-card>
+    </div>
+</template>
+
+<script>
+import PresetNodeEditDates from '@/components/format/timeline_controlled/preset_node/PresetNodeEditDates.vue'
+import PresetNodeEditSelectAndPreviewTemplate from
+    '@/components/format/timeline_controlled/preset_node/PresetNodeEditSelectAndPreviewTemplate.vue'
+import PresetNodeTypeSelection from '@/components/format/timeline_controlled/preset_node/PresetNodeTypeSelection.vue'
+import Tooltip from '@/components/assets/Tooltip.vue'
+import filesList from '@/components/assets/file_handling/FilesList.vue'
+
+import { mapActions, mapGetters, mapMutations } from 'vuex'
+
+export default {
+    components: {
+        TextEditor: () => import(/* webpackChunkName: 'text-editor' */ '@/components/assets/TextEditor.vue'),
+        PresetNodeEditDates,
+        PresetNodeEditSelectAndPreviewTemplate,
+        PresetNodeTypeSelection,
+        Tooltip,
+        filesList,
+    },
+    data () {
+        return {
+            showTemplatePreview: false,
+            displayNameInputState: null,
+            displayNameInvalidFeedback: null,
+            targetInputState: null,
+            targetInvalidFeedback: null,
+            validDates: null,
+            uploadingFiles: 0,
+        }
+    },
+    computed: {
+        ...mapGetters({
+            templates: 'template/assignmentTemplates',
+            assignment: 'assignment/assignment',
+            presetNode: 'assignmentEditor/selectedPresetNode',
+        }),
+        edit () {
+            return this.presetNode.id >= 0
+        },
+    },
+    watch: {
+        'presetNode.display_name': {
+            handler (displayName) {
+                if (displayName === '') {
+                    this.displayNameInputState = false
+                    this.displayNameInvalidFeedback = 'Display name cannot be empty.'
+                } else {
+                    this.displayNameInputState = null
+                }
+            },
+        },
+        'presetNode.target': {
+            handler (target) {
+                if (target < 0) {
+                    this.targetInputState = false
+                    this.targetInvalidFeedback = 'Number of points should be a positive number.'
+                } else if (target > this.assignment.points_possible) {
+                    this.targetInputState = false
+                    this.targetInvalidFeedback = `
+                        Number of points exceeds the maximum number of points of the assignment.
+                    `
+                } else if (target === '') {
+                    this.targetInputState = false
+                    this.targetInvalidFeedback = 'Number of points is required.'
+                } else {
+                    this.targetInputState = null
+                }
+            },
+        },
+    },
+    methods: {
+        ...mapActions({
+            create: 'presetNode/create',
+            update: 'presetNode/update',
+            presetNodeCreated: 'assignmentEditor/presetNodeCreated',
+        }),
+        ...mapMutations({
+            setModeToRead: 'assignmentEditor/SET_ACTIVE_COMPONENT_MODE_TO_READ',
+        }),
+        emitDeletePreset () {
+            if (window.confirm('Are you sure you want to remove this preset from this assignment?')) {
+                this.$emit('delete-preset')
+            }
+        },
+        finalizePresetNodeChanges () {
+            if (this.edit) {
+                this.update({ data: this.presetNode, aID: this.$route.params.aID })
+                    .then(() => { this.setModeToRead() })
+            } else {
+                this.create({ data: this.presetNode, aID: this.$route.params.aID })
+                    .then((presetNode) => {
+                        this.presetNodeCreated({ presetNode })
+                    })
+            }
+        },
+    },
+}
+</script>

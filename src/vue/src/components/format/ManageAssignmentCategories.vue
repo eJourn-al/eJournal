@@ -4,16 +4,13 @@
         v-intro-step="4"
         class="d-block"
     >
-        <div v-b-tooltip:hover="(disabled) ? 'First save the changes made to the assignment' : ''">
-            <b-button
-                v-b-modal="'categories-modal'"
-                class="orange-button mt-2 full-width"
-                :class="{'input-disabled': disabled}"
-            >
-                <icon name="layer-group"/>
-                Manage Categories
-            </b-button>
-        </div>
+        <b-button
+            v-b-modal="'categories-modal'"
+            class="orange-button mt-2 full-width"
+        >
+            <icon name="layer-group"/>
+            Manage Categories
+        </b-button>
 
         <b-modal
             id="categories-modal"
@@ -114,22 +111,14 @@ import CategoryEdit from '@/components/category/CategoryEdit.vue'
 import colorUtils from '@/utils/colors.js'
 import loadSpinner from '@/components/loading/LoadSpinner.vue'
 
+import { mapActions, mapGetters, mapMutations } from 'vuex'
+
 export default {
     name: 'ManageAssignmentCategories',
     components: {
         loadSpinner,
         CategoryDisplay,
         CategoryEdit,
-    },
-    props: {
-        templates: {
-            required: true,
-            type: Array,
-        },
-        disabled: {
-            default: false,
-            type: Boolean,
-        },
     },
     data () {
         return {
@@ -152,6 +141,9 @@ export default {
         }
     },
     computed: {
+        ...mapGetters({
+            templates: 'template/assignmentTemplates',
+        }),
         categories: {
             set () {
                 /* Could be a strict mutation, but we allow _showDetails to be set in this component for ease of use */
@@ -160,17 +152,20 @@ export default {
         },
     },
     methods: {
+        ...mapActions({
+            categoryDelete: 'category/delete',
+        }),
+        ...mapMutations({
+            deleteAssignmentCategory: 'category/DELETE_ASSIGNMENT_CATEGORY',
+        }),
         deleteCategory (category) {
             if (category.id >= 0 && window.confirm(`Are you sure you want to delete ${category.name}?
 
 This action will also immediately remove the category from any associated entries. \
 This action cannot be undone.`)) {
-                this.$store.dispatch('category/delete', { id: category.id })
+                this.categoryDelete({ id: category.id })
             } else {
-                this.$store.commit(
-                    'category/deleteAssignmentCategory',
-                    { id: category.id, aID: this.$route.params.aID },
-                )
+                this.deleteAssignmentCategory({ id: category.id, aID: this.$route.params.aID })
             }
         },
         addCategory () {

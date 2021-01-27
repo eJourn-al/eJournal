@@ -9,6 +9,7 @@ import connection from './modules/connection.js'
 import content from './modules/content.js'
 import permissions from './modules/permissions.js'
 import preferences from './modules/preferences.js'
+import presetNode from './modules/presetNode.js'
 import sentry from './modules/sentry.js'
 import template from './modules/template.js'
 import user from './modules/user.js'
@@ -28,6 +29,7 @@ export default new Vuex.Store({
         content,
         permissions,
         preferences,
+        presetNode,
         sentry,
         template,
         user,

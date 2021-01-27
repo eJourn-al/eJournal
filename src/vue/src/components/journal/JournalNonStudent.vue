@@ -1,98 +1,73 @@
 <template>
-    <b-row
-        class="outer-container-timeline-page"
-        noGutters
-    >
-        <b-col
-            md="12"
-            lg="8"
-            xl="9"
-            class="inner-container-timeline-page"
-        >
-            <b-col
-                md="12"
-                lg="auto"
-                xl="4"
-                class="left-content-timeline-page"
-            >
-                <bread-crumb v-if="$root.lgMax"/>
-                <timeline
-                    v-if="!loadingNodes"
-                    :selected="currentNode"
-                    :nodes="nodes"
-                    :assignment="assignment"
-                    @select-node="selectNode"
-                />
-            </b-col>
+    <timeline-layout>
+        <template #left>
+            <bread-crumb v-if="$root.lgMax"/>
+            <timeline
+                v-if="!loadingNodes"
+                :selected="currentNode"
+                :nodes="nodes"
+                :assignment="assignment"
+                @select-node="selectNode"
+            />
+        </template>
 
-            <b-col
-                md="12"
-                lg="auto"
-                xl="8"
-                class="main-content-timeline-page"
+        <template #center>
+            <bread-crumb v-if="$root.xl"/>
+            <b-alert
+                v-if="!loadingNodes && journal.needs_lti_link.length > 0 && assignment.active_lti_course"
+                show
             >
-                <bread-crumb v-if="$root.xl"/>
-                <b-alert
-                    v-if="!loadingNodes && journal.needs_lti_link.length > 0 && assignment.active_lti_course"
-                    show
-                >
-                    <span v-if="assignment.is_group_assignment">
-                        <b>Warning:</b> The following journal members have not visited the assignment in the active LMS
-                        (Canvas) course '{{ assignment.active_lti_course.name }}' yet:
-                        <ul class="pt-1 pb-1 mb-0">
-                            <li
-                                v-for="name in journal.needs_lti_link"
-                                :key="`lti-author-${name}`"
-                            >
-                                {{ name }}
-                            </li>
-                        </ul>
-                        This journal cannot be updated and grades cannot be passed back until each member visits the
-                        assignment at least once.
-                    </span>
-                    <span v-else>
-                        <b>Warning:</b> This student has not visited the assignment in the active LMS (Canvas) course
-                        '{{ assignment.active_lti_course.name }}' yet. They cannot update this journal and grades cannot
-                        be passed back until they visit the assignment at least once.
-                    </span>
-                </b-alert>
-                <load-wrapper :loading="loadingNodes">
-                    <div v-if="nodes.length > currentNode && currentNode !== -1">
-                        <div v-if="nodes[currentNode].type == 'e' || nodes[currentNode].type == 'd'">
-                            <entry-non-student
-                                ref="entry-template-card"
-                                :journal="journal"
-                                :entryNode="nodes[currentNode]"
-                                :assignment="assignment"
-                                @check-grade="loadJournal(true)"
-                            />
-                        </div>
-                        <div v-else-if="nodes[currentNode].type == 'p'">
-                            <progress-node
-                                :currentNode="nodes[currentNode]"
-                                :nodes="nodes"
-                                :bonusPoints="journal.bonus_points"
-                            />
-                        </div>
+                <span v-if="assignment.is_group_assignment">
+                    <b>Warning:</b> The following journal members have not visited the assignment in the active LMS
+                    (Canvas) course '{{ assignment.active_lti_course.name }}' yet:
+                    <ul class="pt-1 pb-1 mb-0">
+                        <li
+                            v-for="name in journal.needs_lti_link"
+                            :key="`lti-author-${name}`"
+                        >
+                            {{ name }}
+                        </li>
+                    </ul>
+                    This journal cannot be updated and grades cannot be passed back until each member visits the
+                    assignment at least once.
+                </span>
+                <span v-else>
+                    <b>Warning:</b> This student has not visited the assignment in the active LMS (Canvas) course
+                    '{{ assignment.active_lti_course.name }}' yet. They cannot update this journal and grades cannot
+                    be passed back until they visit the assignment at least once.
+                </span>
+            </b-alert>
+            <load-wrapper :loading="loadingNodes">
+                <div v-if="nodes.length > currentNode && currentNode !== -1">
+                    <div v-if="nodes[currentNode].type == 'e' || nodes[currentNode].type == 'd'">
+                        <entry-non-student
+                            ref="entry-template-card"
+                            :journal="journal"
+                            :entryNode="nodes[currentNode]"
+                            :assignment="assignment"
+                            @check-grade="loadJournal(true)"
+                        />
                     </div>
-                    <journal-start-card
-                        v-else-if="currentNode === -1"
-                        :assignment="assignment"
-                    />
-                    <journal-end-card
-                        v-else
-                        :assignment="assignment"
-                    />
-                </load-wrapper>
-            </b-col>
-        </b-col>
+                    <div v-else-if="nodes[currentNode].type == 'p'">
+                        <progress-node
+                            :currentNode="nodes[currentNode]"
+                            :nodes="nodes"
+                            :bonusPoints="journal.bonus_points"
+                        />
+                    </div>
+                </div>
+                <journal-start-card
+                    v-else-if="currentNode === -1"
+                    :assignment="assignment"
+                />
+                <journal-end-card
+                    v-else
+                    :assignment="assignment"
+                />
+            </load-wrapper>
+        </template>
 
-        <b-col
-            md="12"
-            lg="4"
-            xl="3"
-            class="right-content-timeline-page right-content"
-        >
+        <template #right>
             <b-row>
                 <b-col
                     md="6"
@@ -136,6 +111,7 @@
                         </b-button>
                     </div>
                 </b-col>
+
                 <b-col
                     v-if="journal && ($hasPermission('can_grade') || $hasPermission('can_publish_grades'))"
                     md="6"
@@ -196,8 +172,8 @@
                     </div>
                 </b-col>
             </b-row>
-        </b-col>
-    </b-row>
+        </template>
+    </timeline-layout>
 </template>
 
 <script>
@@ -210,6 +186,7 @@ import JournalStartCard from '@/components/journal/JournalStartCard.vue'
 import LoadWrapper from '@/components/loading/LoadWrapper.vue'
 import ProgressNode from '@/components/entry/ProgressNode.vue'
 import Timeline from '@/components/timeline/Timeline.vue'
+import TimelineLayout from '@/components/columns/TimelineLayout.vue'
 
 import { mapGetters, mapMutations } from 'vuex'
 import assignmentAPI from '@/api/assignment.js'
@@ -222,6 +199,7 @@ export default {
         BreadCrumb,
         LoadWrapper,
         Timeline,
+        TimelineLayout,
         JournalDetails,
         JournalStartCard,
         JournalEndCard,

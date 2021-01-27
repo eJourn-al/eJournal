@@ -1,12 +1,5 @@
 <template>
-    <div
-        v-intro="'Every assignment contains customizable <i>templates</i> which specify what the contents of \
-        each journal entry should be. There are two different types of templates:<br/><br/><ul><li><b>\
-        Unlimited templates</b> can be freely used by students as often as they want</li><li><b>Preset-only \
-        templates</b> can be used only for preset entries that you add to the timeline</li></ul>You can \
-        preview and edit a template by clicking on it.'"
-        v-intro-step="2"
-    >
+    <div>
         <h3 class="theme-h3">
             Entry Templates
         </h3>
@@ -36,7 +29,7 @@
 
                 <b-button
                     class="green-button mt-2 full-width"
-                    @click="newTemplate()"
+                    @click="createTemplate()"
                 >
                     <icon name="plus"/>
                     Create New Template
@@ -44,7 +37,7 @@
 
                 <b-button
                     class="orange-button mt-2 full-width"
-                    @click.stop="setActiveComponent(activeComponentOptions.templateImport)"
+                    @click.stop="importTemplate()"
                 >
                     <icon name="file-import"/>
                     Import Template
@@ -67,48 +60,22 @@ export default {
     computed: {
         ...mapGetters({
             templates: 'template/assignmentTemplates',
-            activeComponent: 'assignmentEditor/activeComponent',
-            activeComponentOptions: 'assignmentEditor/activeComponentOptions',
-            selectedTemplate: 'assignmentEditor/selectedTemplate',
-            templateDraft: 'assignmentEditor/templateDraft',
         }),
     },
     methods: {
         ...mapMutations({
-            selectTemplate: 'assignmentEditor/selectTemplate',
-            createTemplate: 'assignmentEditor/createTemplate',
-            setActiveComponent: 'assignmentEditor/setActiveComponent',
+            selectTemplate: 'assignmentEditor/SELECT_TEMPLATE',
+            createTemplate: 'assignmentEditor/CREATE_TEMPLATE',
+            importTemplate: 'assignmentEditor/SET_ACTIVE_COMPONENT_TO_TEMPLATE_IMPORT',
         }),
         ...mapActions({
-            delete: 'template/delete',
+            deleteTemplate: 'template/delete',
             templateDeleted: 'assignmentEditor/templateDeleted',
         }),
-        newTemplate () {
-            if (this.templateDraft) {
-                this.selectTemplate({ template: this.templateDraft })
-            } else {
-                const template = {
-                    field_set: [{
-                        type: 'rt',
-                        title: 'Content',
-                        description: '',
-                        options: null,
-                        location: 0,
-                        required: true,
-                    }],
-                    name: 'Entry',
-                    id: -1,
-                    preset_only: false,
-                    fixed_categories: true,
-                }
-
-                this.createTemplate({ template })
-            }
-        },
         deleteTemplate (template) {
             if (window.confirm(
                 `Are you sure you want to delete template "${template.name}" from this assignment?`)) {
-                this.delete({ id: template.id, aID: this.$route.params.aID })
+                this.deleteTemplate({ id: template.id, aID: this.$route.params.aID })
                     .then(() => { this.templateDeleted(template) })
             }
         },

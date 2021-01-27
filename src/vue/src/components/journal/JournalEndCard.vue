@@ -5,8 +5,11 @@
     >
         <h2 class="theme-h2">
             End of assignment
+            <slot name="edit-button"/>
         </h2>
-        <hr class="full-width"/>
+
+        <hr/>
+
         <span
             v-if="assignment.due_date"
             class="text-grey"

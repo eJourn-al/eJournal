@@ -37,7 +37,9 @@
                     <span v-else>This template can be freely used by students as often as they want</span>
                 </b-td>
             </b-tr>
-            <b-tr>
+
+            <!-- Question: @ Lars, hide this as well or hide nothing? -->
+            <b-tr v-if="assignmentHasCategories">
                 <b-td class="template-availability">
                     <b-button
                         :class="(template.fixed_categories) ? 'red-button' : 'green-button'"
@@ -65,6 +67,8 @@
 </template>
 
 <script>
+import { mapGetters } from 'vuex'
+
 export default {
     name: 'TemplateEditSettings',
     props: {
@@ -72,6 +76,11 @@ export default {
             required: true,
             type: Object,
         },
+    },
+    computed: {
+        ...mapGetters({
+            assignmentHasCategories: 'category/assignmentHasCategories',
+        }),
     },
 }
 </script>

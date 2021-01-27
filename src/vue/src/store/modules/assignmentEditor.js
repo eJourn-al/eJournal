@@ -6,45 +6,127 @@ const readSymbol = Symbol('read')
 const editSymbol = Symbol('edit')
 
 const getters = {
-    activeComponentOptions: state => state.activeComponentOptions,
     activeComponent: state => state.activeComponent,
-    activeComponentModeOptions: state => state.activeComponentModeOptions,
+    activeComponentOptions: state => state.activeComponentOptions,
+
     activeComponentMode: state => state.activeComponentMode,
+    activeComponentModeOptions: state => state.activeComponentModeOptions,
+    readMode: state => state.activeComponentMode === state.activeComponentModeOptions.read,
+    editMode: state => state.activeComponentMode === state.activeComponentModeOptions.edit,
+
     selectedTemplate: state => state.selectedTemplate,
     templateDraft: state => state.templateDraft,
+
+    selectedPresetNode: state => state.selectedPresetNode,
+    presetNodeDraft: state => state.presetNodeDraft,
+
+    selectedTimelineElementIndex: state => state.selectedTimelineElementIndex,
 }
 
 const mutations = {
-    setActiveComponent (state, componentSymbol) {
-        state.activeComponent = componentSymbol
-    },
-    setActiveComponentMode (state, modeSymbol) {
-        state.activeComponentMode = modeSymbol
-    },
-    setActiveComponentModeToRead (state) {
+    SET_ACTIVE_COMPONENT_MODE_TO_READ (state) {
         state.activeComponentMode = state.activeComponentModeOptions.read
     },
-    selectTemplate (state, { template, mode = editSymbol }) {
+    SET_ACTIVE_COMPONENT_MODE_TO_EDIT (state) {
+        state.activeComponentMode = state.activeComponentModeOptions.edit
+    },
+
+    SELECT_TEMPLATE (state, { template, mode = readSymbol }) {
         state.selectedTemplate = template
         state.activeComponent = state.activeComponentOptions.template
         state.activeComponentMode = mode
     },
-    createTemplate (state, { template }) {
-        state.selectedTemplate = template
-        state.templateDraft = template
+    CREATE_TEMPLATE (state) {
+        if (state.templateDraft) {
+            state.selectedTemplate = state.templateDraft
+        } else {
+            const newTemplate = {
+                field_set: [{
+                    type: 'rt',
+                    title: 'Content',
+                    description: '',
+                    options: null,
+                    location: 0,
+                    required: true,
+                }],
+                name: 'Entry',
+                id: -1,
+                preset_only: false,
+                fixed_categories: true,
+                categories: [],
+            }
+
+            state.selectedTemplate = newTemplate
+            state.templateDraft = newTemplate
+        }
+
         state.activeComponent = state.activeComponentOptions.template
         state.activeComponentMode = state.activeComponentModeOptions.edit
     },
-    templateCreated (state) {
+    TEMPLATE_CREATED (state, { template }) {
         state.templateDraft = null
+        state.selectedTemplate = template
+        state.activeComponent = state.activeComponentOptions.template
         state.activeComponentMode = state.activeComponentModeOptions.read
     },
-    clearSelectedTemplate (state) {
+    SET_ACTIVE_COMPONENT_TO_TEMPLATE_IMPORT (state) {
+        state.activeComponent = state.activeComponentOptions.templateImport
+    },
+    CLEAR_SELECTED_TEMPLATE (state) {
         state.selectedTemplate = null
     },
-    clearActiveComponent (state) {
+
+    SET_TIMELINE_ELEMENT_INDEX (state, { index }) {
+        state.selectedTimelineElementIndex = index
+    },
+    SELECT_TIMELINE_ELEMENT (state, { timelineElementIndex, mode = editSymbol }) {
+        state.selectedTimelineElementIndex = timelineElementIndex
+        state.activeComponent = state.activeComponentOptions.timeline
+        state.activeComponentMode = mode
+    },
+    SET_SELECTED_PRESET_NODE (state, { presetNode }) {
+        state.selectedPresetNode = presetNode
+    },
+    CREATE_PRESET_NODE (state) {
+        if (state.presetNodeDraft) {
+            state.selectedPresetNode = state.presetNodeDraft
+        } else {
+            const newPreset = {
+                id: -1,
+                type: null,
+                template: '',
+                display_name: '',
+                description: '',
+                attached_files: [],
+            }
+
+            state.selectedPresetNode = newPreset
+            state.presetNodeDraft = newPreset
+        }
+
+        state.activeComponent = state.activeComponentOptions.timeline
+        state.activeComponentMode = state.activeComponentModeOptions.edit
+    },
+    PRESET_NODE_SELECTED (state, { presetNode }) {
+        state.selectedPresetNode = presetNode
+    },
+    CLEAR_PRESET_NODE_DRAFT (state) {
+        state.presetNodeDraft = null
+    },
+
+    CLEAR_ACTIVE_COMPONENT (state) {
         state.activeComponentMode = state.activeComponentModeOptions.read
         state.activeComponent = state.activeComponentOptions.timeline
+    },
+
+    RESET (state) {
+        state.selectedTimelineElementIndex = -1
+
+        state.selectedTemplate = null
+        state.templateDraft = null
+
+        state.selectedPresetNode = null
+        state.presetNodeDraft = null
     },
 }
 
@@ -54,9 +136,33 @@ const actions = {
             context.state.activeComponent === context.state.activeComponentOptions.template
             && context.state.selectedTemplate === template
         ) {
-            context.commit('clearActiveComponent')
-            context.commit('clearSelectedTemplate')
+            context.commit('CLEAR_ACTIVE_COMPONENT')
+            context.commit('CLEAR_SELECTED_TEMPLATE')
         }
+    },
+    timelineElementSelected (context, { timelineElementIndex, mode = editSymbol }) {
+        context.commit('SELECT_TIMELINE_ELEMENT', { timelineElementIndex, mode })
+
+        const presetNodes = context.rootGetters['presetNode/assignmentPresetNodes']
+
+        /* Actual preset node selected */
+        if (timelineElementIndex >= 0 && timelineElementIndex < presetNodes.length) {
+            context.commit('PRESET_NODE_SELECTED', { presetNode: presetNodes[timelineElementIndex] })
+        /* Add node is selected */
+        } else if (timelineElementIndex === presetNodes.length) {
+            context.commit('CREATE_PRESET_NODE')
+        }
+    },
+    presetNodeCreated (context, { presetNode }) {
+        context.commit('CLEAR_PRESET_NODE_DRAFT')
+        context.commit('SET_SELECTED_PRESET_NODE', { presetNode })
+        context.commit('SET_ACTIVE_COMPONENT_MODE_TO_READ')
+
+        const presetNodes = context.rootGetters['presetNode/assignmentPresetNodes']
+        context.commit(
+            'SET_TIMELINE_ELEMENT_INDEX',
+            { index: presetNodes.findIndex(elem => elem.id === presetNode.id) },
+        )
     },
 }
 
@@ -69,13 +175,20 @@ export default {
             templateImport: templateImportSymbol,
         },
         activeComponent: timelineSymbol,
+
         activeComponentModeOptions: {
             read: readSymbol,
             edit: editSymbol,
         },
         activeComponentMode: readSymbol,
-        selectedTemplate: null, /* TODO: Would a more generic type be preferred, e.g. activeComponentData */
+
+        selectedTimelineElementIndex: -1, /* See timeline.vue for mapping (due for refactor). */
+
+        selectedTemplate: null,
         templateDraft: null,
+
+        selectedPresetNode: null,
+        presetNodeDraft: null,
     },
     getters,
     mutations,

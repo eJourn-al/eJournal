@@ -76,10 +76,6 @@ def remove_unused_assignment_files():
     ass_fcs_without_reference = ass_fcs_without_reference.exclude(pk__in=fc_ids_attached_to_preset_nodes)
 
     for fc in ass_fcs_without_reference:
-        # QUESTION: If we remove the assignment in the filter here as well as no longer cascade on assignment delete
-        # We could share files across field descriptions / presetnode description iso having to copy on import.
-        # Good approach?
-
         found = VLE.models.Field.objects.filter(
             template__format__assignment=fc.assignment, description__contains=fc.access_id).exists()
         found = found or VLE.models.PresetNode.objects.filter(

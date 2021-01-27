@@ -75,3 +75,8 @@ $font-family-sans-serif: 'Roboto', sans-serif
         @extend .field-heading
         font-weight: bold // QUESTION: Why is field-heading always used in conjunction with theme-h2? (forces bold here)
         padding: 0px
+
+    &.required
+        legend::after
+            content: " *"
+            color: $theme-red

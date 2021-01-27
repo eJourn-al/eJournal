@@ -1,138 +1,127 @@
 <template>
-    <b-card
-        class="no-hover"
-        :class="$root.getBorderClass($route.params.cID)"
-    >
-        <!-- TODO THIS REQUIRES AN ACTUAL LOADWRAPPER  -->
-        <div v-if="importableTemplates && importableTemplates.length > 0">
-            <h2 class="theme-h2 multi-form">
-                Select a template to import
-            </h2>
-            <p>
-                This action will create a new template in the current assignment that is identical to the template
-                of your choice. Any changes made will only affect the current assignment.
-            </p>
+    <load-wrapper :loading="loading">
+        <b-card
+            class="no-hover"
+            :class="$root.getBorderClass($route.params.cID)"
+        >
+            <div v-if="importableTemplates && importableTemplates.length > 0">
+                <h2 class="theme-h2 multi-form">
+                    Select a template to import
+                </h2>
+                <p>
+                    This action will create a new template in the current assignment that is identical to the template
+                    of your choice. Any changes made will only affect the current assignment.
+                </p>
 
-            <theme-select
-                v-model="selectedCourse"
-                label="name"
-                trackBy="id"
-                :options="courses"
-                :multiple="false"
-                :searchable="true"
-                placeholder="Select A Course"
-                class="multi-form"
-                @select="() => {
-                    selectedAssignment = null
-                    selectedTemplate = null
-                    previewTemplate = false
-                    templates = []
-                }"
-            />
-            <theme-select
-                v-if="selectedCourse"
-                v-model="selectedAssignment"
-                label="name"
-                trackBy="id"
-                :options="assignments"
-                :multiple="false"
-                :searchable="true"
-                placeholder="Select An Assignment"
-                class="multi-form"
-                @select="() => {
-                    selectedTemplate = null
-                    previewTemplate = false
-                    templates = []
-                }"
-                @input="getTemplatesForSelectedAssignment"
-            />
-            <theme-select
-                v-if="selectedAssignment"
-                v-model="selectedTemplate"
-                label="name"
-                trackBy="id"
-                :options="templates"
-                :multiple="false"
-                :searchable="true"
-                placeholder="Select A Template"
-                class="multi-form"
-                @select="() => {
-                    if (previewTemplate) {
-                        previewTemplate = null
-                    }
-                }"
-            />
-
-            <hr/>
-
-            <b-card
-                v-if="previewTemplate"
-                class="no-hover multi-form"
-            >
-                <entry-fields
-                    :template="selectedTemplate"
-                    :content="() => Object()"
-                    :edit="true"
-                    :readOnly="true"
+                <theme-select
+                    v-model="selectedCourse"
+                    label="name"
+                    trackBy="id"
+                    :options="courses"
+                    :multiple="false"
+                    :searchable="true"
+                    placeholder="Select A Course"
+                    class="multi-form"
+                    @select="() => {
+                        selectedAssignment = null
+                        selectedTemplate = null
+                        previewTemplate = false
+                        templates = []
+                    }"
+                />
+                <theme-select
+                    v-if="selectedCourse"
+                    v-model="selectedAssignment"
+                    label="name"
+                    trackBy="id"
+                    :options="assignments"
+                    :multiple="false"
+                    :searchable="true"
+                    placeholder="Select An Assignment"
+                    class="multi-form"
+                    @select="() => {
+                        selectedTemplate = null
+                        previewTemplate = false
+                        templates = []
+                    }"
+                    @input="getTemplatesForSelectedAssignment"
+                />
+                <theme-select
+                    v-if="selectedAssignment"
+                    v-model="selectedTemplate"
+                    label="name"
+                    trackBy="id"
+                    :options="templates"
+                    :multiple="false"
+                    :searchable="true"
+                    placeholder="Select A Template"
+                    class="multi-form"
+                    @select="() => {
+                        if (previewTemplate) {
+                            previewTemplate = null
+                        }
+                    }"
                 />
 
-                <category-display
-                    :id="`import-template-${selectedTemplate.id}-preview`"
-                    :categories="selectedTemplate.categories"
+                <hr/>
+
+                <entry-preview
+                    v-if="previewTemplate"
+                    class="multi-form"
                     :template="selectedTemplate"
                 />
-            </b-card>
 
-            <b-button
-                v-if="!previewTemplate"
-                class="green-button"
-                :class="{ 'input-disabled': !selectedTemplate }"
-                @click="previewTemplate = true"
-            >
-                <icon name="eye"/>
-                Show preview
-            </b-button>
-            <b-button
-                v-else
-                class="red-button"
-                @click="previewTemplate = false"
-            >
-                <icon name="eye-slash"/>
-                Hide preview
-            </b-button>
+                <b-button
+                    v-if="!previewTemplate"
+                    class="green-button"
+                    :class="{ 'input-disabled': !selectedTemplate }"
+                    @click="previewTemplate = true"
+                >
+                    <icon name="eye"/>
+                    Show preview
+                </b-button>
+                <b-button
+                    v-else
+                    class="red-button"
+                    @click="previewTemplate = false"
+                >
+                    <icon name="eye-slash"/>
+                    Hide preview
+                </b-button>
 
-            <b-button
-                class="green-button float-right"
-                :class="{ 'input-disabled': !selectedTemplate }"
-                @click="importTemplate(selectedTemplate)"
-            >
-                <icon name="plus"/>
-                Add template
-            </b-button>
-        </div>
+                <b-button
+                    class="green-button float-right"
+                    :class="{ 'input-disabled': !selectedTemplate }"
+                    @click="importTemplate(selectedTemplate)"
+                >
+                    <icon name="plus"/>
+                    Add template
+                </b-button>
+            </div>
 
-        <div v-else>
-            <b>No existing templates available</b>
-            <hr class="m-0 mb-1"/>
-            Only templates in assignments where you have permission to edit are available to import.
-        </div>
-    </b-card>
+            <div v-else>
+                <b>No existing templates available</b>
+                <hr class="m-0 mb-1"/>
+                Only templates in assignments where you have permission to edit are available to import.
+            </div>
+        </b-card>
+    </load-wrapper>
 </template>
 
 <script>
-import CategoryDisplay from '@/components/category/CategoryDisplay.vue'
-import EntryFields from '@/components/entry/EntryFields.vue'
+import EntryPreview from '@/components/entry/EntryPreview.vue'
+import LoadWrapper from '@/components/loading/LoadWrapper.vue'
 
 import assignmentAPI from '@/api/assignment.js'
 import utils from '@/utils/generic_utils.js'
 
-import { mapMutations } from 'vuex'
+import { mapActions, mapMutations } from 'vuex'
 
 export default {
     name: 'TemplateImport',
     components: {
-        EntryFields,
-        CategoryDisplay,
+        EntryPreview,
+        LoadWrapper,
     },
     data () {
         return {
@@ -142,6 +131,7 @@ export default {
             previewTemplate: null,
             importableTemplates: [],
 
+            loading: true,
             // The actual templates (so containing fields, description etc.) which can be selected.
             templates: [],
         }
@@ -162,6 +152,7 @@ export default {
     created () {
         assignmentAPI.getImportable()
             .then((data) => {
+                this.loading = false
                 data.forEach((d) => {
                     d.assignments = d.assignments.filter(assignment => assignment.id !== this.$route.params.aID)
                 })
@@ -170,16 +161,25 @@ export default {
     },
     methods: {
         ...mapMutations({
-            selectTemplate: 'assignmentEditor/selectTemplate',
+            templateCreated: 'assignmentEditor/TEMPLATE_CREATED',
+        }),
+        ...mapActions({
+            create: 'template/create',
         }),
         importTemplate (template) {
-            // TODO: Create template based on old one (create)
-            console.log('TODO CREATE', template)
-            this.selectedCourse = null
-            this.selectedAssignment = null
-            this.selectedTemplate = null
-            this.previewTemplate = false
-            this.selectTemplate({ template })
+            const payload = JSON.parse(JSON.stringify(template))
+            payload.id = -1
+            payload.categories = []
+
+            this.create({ template: payload, aID: this.$route.params.aID, templateImport: true })
+                .then((createdTemplate) => {
+                    this.selectedCourse = null
+                    this.selectedAssignment = null
+                    this.selectedTemplate = null
+                    this.previewTemplate = false
+
+                    this.templateCreated({ createdTemplate })
+                })
         },
         getTemplatesForSelectedAssignment () {
             assignmentAPI.getTemplates(this.selectedAssignment.id)

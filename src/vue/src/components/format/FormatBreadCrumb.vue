@@ -1,9 +1,5 @@
 <template>
-    <bread-crumb
-        v-intro="'Welcome to the assignment editor!<br/>This is where you can configure the structure of \
-        your assignment. Proceed with this tutorial to learn more.'"
-        v-intro-step="1"
-    >
+    <bread-crumb>
         <format-tutorial-icon @click.native.stop="$emit('start-tutorial')"/>
     </bread-crumb>
 </template>

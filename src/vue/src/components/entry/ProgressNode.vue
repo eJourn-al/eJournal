@@ -3,9 +3,19 @@
         :class="borderColor"
         class="no-hover"
     >
-        <h2 class="theme-h2 mb-2">
+        <b-row
+            no-gutters
+            class="multi-form"
+        >
+            <span class="theme-h2">{{ currentNode.display_name }}</span>
+
+            <slot name="edit-button"/>
+        </b-row>
+
+        <h2 class="theme-h2 multi-form">
             Target: {{ currentNode.target }} point<span v-if="currentNode.target > 1">s</span>
         </h2>
+
         <p
             v-if="currentNode.description"
             class="mb-0"

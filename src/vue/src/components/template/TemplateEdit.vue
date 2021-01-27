@@ -3,32 +3,40 @@
         :class="$root.getBorderClass($route.params.cID)"
         class="no-hover template-card"
     >
-        <!-- <h2 class="theme-h2 multi-form">
-            {{ `${(edit) ? 'Edit' : 'Create'} Template` }}
-        </h2> -->
+        <entry-preview
+            v-if="mode === activeComponentModeOptions.read"
+            :template="template"
+        >
+            <template #edit-button>
+                <b-button
+                    class="orange-button ml-auto"
+                    @click="setModeToEdit()"
+                >
+                    <icon name="edit"/>
+                    Edit
+                </b-button>
+            </template>
+        </entry-preview>
 
-        <div class="d-flex">
-            <b-button
-                :class="{'active': mode === activeComponentModeOptions.edit}"
-                class="orange-button flex-basis-100"
-                @click="setActiveComponentMode(activeComponentModeOptions.edit)"
+        <template v-else>
+            <b-row
+                no-gutters
+                class="multi-form"
             >
-                <icon name="edit"/>
-                Edit
-            </b-button>
-            <b-button
-                :class="{'active': mode === activeComponentModeOptions.read}"
-                class="green-button flex-basis-100"
-                @click="setActiveComponentMode(activeComponentModeOptions.read)"
-            >
-                <icon name="eye"/>
-                Preview
-            </b-button>
-        </div>
+                <span class="theme-h2">
+                    {{ (template.name) ? template.name : 'Template name' }}
+                </span>
 
-        <hr/>
+                <b-button
+                    class="ml-auto"
+                    :class="(create) ? 'green-button' : 'red-button'"
+                    @click="setModeToRead()"
+                >
+                    <icon :name="(create) ? 'eye' : 'ban'"/>
+                    {{ (create) ? 'Preview' : 'Cancel' }}
+                </b-button>
+            </b-row>
 
-        <div v-show="mode === activeComponentModeOptions.edit">
             <b-form-group
                 label="Name"
                 :invalid-feedback="nameInvalidFeedback"
@@ -52,47 +60,33 @@
 
             <hr/>
 
-            <!-- TODO: Make it safe to use categories length to improve placeholder and hide categories when no exist-->
-            <b-form-group label="Categories">
-                <category-select
-                    v-model="template.categories"
-                    :options="$store.getters['category/assignmentCategories']"
-                    :openDirection="'top'"
-                    placeholder="Set categories"
-                />
-            </b-form-group>
+            <template v-if="assignmentHasCategories">
+                <b-form-group label="Categories">
+                    <category-select
+                        v-model="template.categories"
+                        :options="assignmentCategories"
+                        :openDirection="'top'"
+                        placeholder="Set categories"
+                    />
+                </b-form-group>
+
+                <hr/>
+            </template>
 
             <b-button
                 class="green-button float-right"
                 @click="finalizeTemplateChanges"
             >
-                <icon :name="(edit) ? 'save' : 'plus'"/>
-                {{ `${(edit) ? 'Update' : 'Add'} Template` }}
+                <icon :name="(create) ? 'plus' : 'save'"/>
+                {{ `${(create) ? 'Add' : 'Save'} Template` }}
             </b-button>
-        </div>
-
-        <template v-if="mode === activeComponentModeOptions.read">
-            <!-- TODO: Add entry title component after merge branch consistent-entry-title -->
-
-            <entry-fields
-                :template="template"
-                :content="() => Object()"
-                :edit="true"
-                :readOnly="true"
-            />
-            <category-display
-                :id="`template-${template.id}-preview`"
-                :template="template"
-                :categories="template.categories"
-            />
         </template>
     </b-card>
 </template>
 
 <script>
-import CategoryDisplay from '@/components/category/CategoryDisplay.vue'
 import CategorySelect from '@/components/category/CategorySelect.vue'
-import EntryFields from '@/components/entry/EntryFields.vue'
+import EntryPreview from '@/components/entry/EntryPreview.vue'
 import TemplateEditFields from '@/components/template/TemplateEditFields.vue'
 import TemplateEditSettings from '@/components/template/TemplateEditSettings.vue'
 
@@ -100,9 +94,8 @@ import { mapActions, mapGetters, mapMutations } from 'vuex'
 
 export default {
     components: {
-        CategoryDisplay,
         CategorySelect,
-        EntryFields,
+        EntryPreview,
         TemplateEditFields,
         TemplateEditSettings,
     },
@@ -122,8 +115,10 @@ export default {
             templates: 'template/assignmentTemplates',
             activeComponentModeOptions: 'assignmentEditor/activeComponentModeOptions',
             mode: 'assignmentEditor/activeComponentMode',
+            assignmentCategories: 'category/assignmentCategories',
+            assignmentHasCategories: 'category/assignmentHasCategories',
         }),
-        edit () { return this.template.id >= 0 },
+        create () { return this.template.id < 0 },
         nameInputState () {
             if (this.template.name === '') {
                 this.nameInvalidFeedback = 'Name cannot be empty' // eslint-disable-line
@@ -140,15 +135,13 @@ export default {
     },
     methods: {
         ...mapMutations({
-            selectTemplate: 'assignmentEditor/selectTemplate',
-            setActiveComponent: 'assignmentEditor/setActiveComponent',
-            setActiveComponentMode: 'assignmentEditor/setActiveComponentMode',
-            setActiveComponentModeToRead: 'assignmentEditor/setActiveComponentModeToRead',
-            templateCreated: 'assignmentEditor/templateCreated',
+            templateCreated: 'assignmentEditor/TEMPLATE_CREATED',
+            setModeToEdit: 'assignmentEditor/SET_ACTIVE_COMPONENT_MODE_TO_EDIT',
+            setModeToRead: 'assignmentEditor/SET_ACTIVE_COMPONENT_MODE_TO_READ',
         }),
         ...mapActions({
-            create: 'template/create',
-            update: 'template/update',
+            createTemplate: 'template/create',
+            updateTemplate: 'template/update',
         }),
         finalizeTemplateChanges () {
             if (this.nameInputState === false) {
@@ -156,12 +149,12 @@ export default {
                 return
             }
 
-            if (this.edit) {
-                this.update({ id: this.template.id, data: this.template, aID: this.$route.params.aID })
-                    .then(() => { this.setActiveComponentModeToRead() })
+            if (this.create) {
+                this.createTemplate({ template: this.template, aID: this.$route.params.aID })
+                    .then((template) => { this.templateCreated({ template }) })
             } else {
-                this.create({ template: this.template, aID: this.$route.params.aID })
-                    .then(() => { this.templateCreated() })
+                this.updateTemplate({ id: this.template.id, data: this.template, aID: this.$route.params.aID })
+                    .then(() => { this.setModeToRead() })
             }
         },
     },
