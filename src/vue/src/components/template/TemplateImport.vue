@@ -65,11 +65,14 @@
 
                 <hr/>
 
-                <entry-preview
-                    v-if="previewTemplate"
-                    class="multi-form"
-                    :template="selectedTemplate"
-                />
+                <template v-if="previewTemplate">
+                    <entry-preview
+                        class="multi-form"
+                        :template="selectedTemplate"
+                    />
+
+                    <hr/>
+                </template>
 
                 <b-button
                     v-if="!previewTemplate"

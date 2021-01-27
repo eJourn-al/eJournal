@@ -29,8 +29,7 @@
             <b-form-group
                 :invalid-feedback="dueDateInvalidFeedback"
                 :state="dueDateInputState"
-                :class="{ 'multi-form': $root.lgMax}"
-                class="required"
+                class="required multi-form"
             >
                 <template #label>
                     Due date
