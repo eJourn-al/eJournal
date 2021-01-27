@@ -1,10 +1,17 @@
 <template>
     <div>
-        <h3 class="theme-h3">
-            Entry Templates
+        <h3
+            class="theme-h3 cursor-pointer unselectable"
+            @click="expanded = !expanded"
+        >
+            Templates
+            <icon :name="(expanded) ? 'angle-down' : 'angle-up'"/>
         </h3>
 
-        <div class="d-block">
+        <div
+            v-if="expanded"
+            class="d-block"
+        >
             <b-card
                 :class="$root.getBorderClass($route.params.cID)"
                 class="no-hover"
@@ -57,6 +64,11 @@ export default {
     components: {
         TemplateMenuItem,
     },
+    data () {
+        return {
+            expanded: true,
+        }
+    },
     computed: {
         ...mapGetters({
             templates: 'template/assignmentTemplates',
@@ -69,13 +81,13 @@ export default {
             importTemplate: 'assignmentEditor/SET_ACTIVE_COMPONENT_TO_TEMPLATE_IMPORT',
         }),
         ...mapActions({
-            deleteTemplate: 'template/delete',
+            templateDelete: 'template/delete',
             templateDeleted: 'assignmentEditor/templateDeleted',
         }),
         deleteTemplate (template) {
             if (window.confirm(
                 `Are you sure you want to delete template "${template.name}" from this assignment?`)) {
-                this.deleteTemplate({ id: template.id, aID: this.$route.params.aID })
+                this.templateDelete({ id: template.id, aID: this.$route.params.aID })
                     .then(() => { this.templateDeleted(template) })
             }
         },
@@ -84,8 +96,6 @@ export default {
 </script>
 
 <style lang="sass">
-@import '~sass/partials/timeline-page-layout.sass'
-
 .template-list-header
     border-bottom: 2px solid $theme-dark-grey
 </style>

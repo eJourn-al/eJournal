@@ -36,9 +36,11 @@ const mutations = {
     },
     UPDATE_ASSIGNMENT_CATEGORIES (state, { aID, categories }) {
         Vue.set(state.assignmentsCategories, aID, categories)
+        state.assignmentsCategories[aID].sort((a, b) => a.name.localeCompare(b.name))
     },
     ADD_ASSIGNMENT_CATEGORY (state, { aID, category }) {
         state.assignmentsCategories[aID].push(category)
+        state.assignmentsCategories[aID].sort((a, b) => a.name.localeCompare(b.name))
     },
     DELETE_ASSIGNMENT_CATEGORY (state, { aID, id }) {
         Vue.delete(
@@ -106,9 +108,14 @@ const actions = {
         return fromCache(context, 'listCache', aID, fn.bind(null), force)
     },
     /* NOTE: Plain create is currently unused */
-    create (context, { data, connArgs = auth.DEFAULT_CONN_ARGS }) {
+    create (context, { category, aID, connArgs = auth.DEFAULT_CONN_ARGS }) { // eslint-disable-line
         function fn () {
-            return auth.create('categories', data, connArgs)
+            /* Create a payload so we do not modify the local categories templates directly */
+            const payload = JSON.parse(JSON.stringify(category))
+            payload.templates = category.templates.map(elem => elem.id)
+            payload.assignment_id = aID
+
+            return auth.create('categories', payload, connArgs)
                 .then((response) => {
                     const createdCategory = response.data.category
 
@@ -130,33 +137,14 @@ const actions = {
 
         return fn()
     },
-    createAndOnlyUpdateId (context, { localCategory, aID, connArgs = auth.DEFAULT_CONN_ARGS }) {
+    update (context, { id, category, aID, connArgs = auth.DEFAULT_CONN_ARGS }) { // eslint-disable-line
         function fn () {
-            const payload = JSON.parse(JSON.stringify(localCategory))
-
-            /* Create a payload so we do not modify the localCategories templates directly */
-            payload.templates = localCategory.templates.map(elem => elem.id)
+            /* Create a payload so we do not modify the local categories templates directly */
+            const payload = JSON.parse(JSON.stringify(category))
+            payload.templates = category.templates.map(elem => elem.id)
             payload.assignment_id = aID
 
-            return auth.create('categories', payload, connArgs)
-                .then((response) => {
-                    const createdCategory = response.data.category
-                    context.commit('SET_ID_OF_CREATED_CATEGORY', { category: localCategory, id: createdCategory.id })
-                    context.commit(
-                        'template/PROPOGATE_CATEGORY_TEMPLATE_UPDATE',
-                        { aID: router.currentRoute.params.aID, updatedCategory: createdCategory },
-                        { root: true },
-                    )
-
-                    return createdCategory
-                })
-        }
-
-        return fn()
-    },
-    update (context, { id, data, connArgs = auth.DEFAULT_CONN_ARGS }) {
-        function fn () {
-            return auth.update(`categories/${id}`, data, connArgs)
+            return auth.update(`categories/${id}`, category, connArgs)
                 .then((response) => {
                     const updatedCategory = response.data.category
 

@@ -7,6 +7,11 @@
 
         <template-import v-else-if="activeComponent === activeComponentOptions.templateImport"/>
 
+        <category-edit
+            v-else-if="activeComponent === activeComponentOptions.category"
+            :category="selectedCategory"
+        />
+
         <selected-timeline-component-switch v-else-if="activeComponent === activeComponentOptions.timeline"/>
 
         <b-card
@@ -19,6 +24,7 @@
 </template>
 
 <script>
+import CategoryEdit from '@/components/category/CategoryEdit.vue'
 import SelectedTimelineComponentSwitch from
     '@/components/format/timeline_controlled/SelectedTimelineComponentSwitch.vue'
 import TemplateEdit from '@/components/template/TemplateEdit.vue'
@@ -29,22 +35,18 @@ import { mapGetters } from 'vuex'
 export default {
     name: 'FormatActiveComponents',
     components: {
+        CategoryEdit,
         SelectedTimelineComponentSwitch,
         TemplateEdit,
         TemplateImport,
-    },
-    props: {
     },
     computed: {
         ...mapGetters({
             activeComponent: 'assignmentEditor/activeComponent',
             activeComponentOptions: 'assignmentEditor/activeComponentOptions',
+            selectedCategory: 'assignmentEditor/selectedCategory',
             selectedTemplate: 'assignmentEditor/selectedTemplate',
         }),
     },
 }
 </script>
-
-<style>
-
-</style>

@@ -39,14 +39,17 @@
                     v-intro-step="2"
                 />
 
-                <format-actions/>
+                <category-menu
+                    v-intro="categoryIntroText"
+                    v-intro-step="4"
+                />
             </template>
         </timeline-layout>
     </load-wrapper>
 </template>
 
 <script>
-import FormatActions from '@/components/format/FormatActions.vue'
+import CategoryMenu from '@/components/category/CategoryMenu.vue'
 import FormatActiveComponents from '@/components/format/FormatActiveComponents.vue'
 import FormatBreadCrumb from '@/components/format/FormatBreadCrumb.vue'
 import LoadWrapper from '@/components/loading/LoadWrapper.vue'
@@ -60,7 +63,7 @@ export default {
     name: 'FormatEdit',
     components: {
         timeline,
-        FormatActions,
+        CategoryMenu,
         FormatActiveComponents,
         FormatBreadCrumb,
         LoadWrapper,
@@ -98,6 +101,15 @@ The timeline contains a node for every entry. You can add two different types of
 
 New nodes can be added via the '+' node. Click any node to view its contents.
 `,
+            categoryIntroText: `
+<i>Categories</i> can be linked to entries and be used to filter the timeline.<br/><br/>
+
+You can choose to link specific templates to categories. When a student makes use of these templates
+to create an entry, the category will be linked to the entry by default.<br/><br/>
+
+Whether the student can edit which categories belong to an entry themselves, can be configured via the
+respective template setting "<i>Fixed Categories / Custom Categories</i>".
+`,
             loading: true,
         }
     },
@@ -130,10 +142,11 @@ New nodes can be added via the '+' node. Click any node to view its contents.
 
         Promise.all(init).then(() => {
             this.loading = false
+            this.$intro().showHints()
 
             if (this.savedPreferences.show_format_tutorial) {
                 this.changePreference({ show_format_tutorial: false })
-                this.$intro().start()
+                // this.$intro().start()
             }
         })
     },

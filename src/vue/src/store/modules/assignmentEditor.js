@@ -1,3 +1,6 @@
+import colorUtils from '@/utils/colors.js'
+
+const categorySymbol = Symbol('category')
 const timelineSymbol = Symbol('timeline')
 const templateSymbol = Symbol('template')
 const templateImportSymbol = Symbol('templateImport')
@@ -14,6 +17,9 @@ const getters = {
     readMode: state => state.activeComponentMode === state.activeComponentModeOptions.read,
     editMode: state => state.activeComponentMode === state.activeComponentModeOptions.edit,
 
+    selectedCategory: state => state.selectedCategory,
+    categoryDraft: state => state.categoryDraft,
+
     selectedTemplate: state => state.selectedTemplate,
     templateDraft: state => state.templateDraft,
 
@@ -29,6 +35,37 @@ const mutations = {
     },
     SET_ACTIVE_COMPONENT_MODE_TO_EDIT (state) {
         state.activeComponentMode = state.activeComponentModeOptions.edit
+    },
+
+    SELECT_CATEGORY (state, { category, mode = readSymbol }) {
+        state.selectedCategory = category
+        state.activeComponent = state.activeComponentOptions.category
+        state.activeComponentMode = mode
+    },
+    CREATE_CATEGORY (state) {
+        if (state.categoryDraft) {
+            state.selectedCategory = state.categoryDraft
+        } else {
+            const newCategory = {
+                id: -1,
+                name: null,
+                description: '',
+                color: colorUtils.randomBrightRGBcolor(),
+                templates: [],
+            }
+
+            state.selectedCategory = newCategory
+            state.categoryDraft = newCategory
+        }
+
+        state.activeComponent = state.activeComponentOptions.category
+        state.activeComponentMode = state.activeComponentModeOptions.edit
+    },
+    CATEGORY_CREATED (state, { category }) {
+        state.categoryDraft = null
+        state.selectedCategory = category
+        state.activeComponent = state.activeComponentOptions.category
+        state.activeComponentMode = state.activeComponentModeOptions.read
     },
 
     SELECT_TEMPLATE (state, { template, mode = readSymbol }) {
@@ -122,6 +159,9 @@ const mutations = {
     RESET (state) {
         state.selectedTimelineElementIndex = -1
 
+        state.selectedCategory = null
+        state.categoryDraft = null
+
         state.selectedTemplate = null
         state.templateDraft = null
 
@@ -170,6 +210,7 @@ export default {
     namespaced: true,
     state: {
         activeComponentOptions: {
+            category: categorySymbol,
             timeline: timelineSymbol,
             template: templateSymbol,
             templateImport: templateImportSymbol,
@@ -183,6 +224,9 @@ export default {
         activeComponentMode: readSymbol,
 
         selectedTimelineElementIndex: -1, /* See timeline.vue for mapping (due for refactor). */
+
+        selectedCategory: null,
+        categoryDraft: null,
 
         selectedTemplate: null,
         templateDraft: null,
