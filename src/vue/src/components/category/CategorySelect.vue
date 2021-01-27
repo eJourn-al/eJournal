@@ -18,6 +18,7 @@
             :hide-selected="true"
             :clear-on-select="false"
             :close-on-select="false"
+            :max="options.length"
 
             @input="newValue => $emit('input', newValue)"
             @select="(selectedOption, id) => $emit('select', selectedOption, id)"
@@ -59,6 +60,12 @@
                         />
                     </template>
                 </div>
+            </template>
+
+            <template
+                slot="maxElements"
+            >
+                No more categories.
             </template>
         </multiselect>
 
