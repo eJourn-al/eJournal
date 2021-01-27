@@ -78,7 +78,7 @@
                 @click="finalizeTemplateChanges"
             >
                 <icon :name="(create) ? 'plus' : 'save'"/>
-                {{ `${(create) ? 'Add' : 'Save'} Template` }}
+                {{ (create) ? 'Add Template' : 'Save' }}
             </b-button>
         </template>
     </b-card>
