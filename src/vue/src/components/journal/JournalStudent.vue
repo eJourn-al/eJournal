@@ -1,123 +1,122 @@
 <template>
-    <b-row
-        class="outer-container-timeline-page"
-        noGutters
-    >
+    <b-row noGutters>
         <b-col
             md="12"
             lg="8"
             xl="9"
-            class="inner-container-timeline-page"
         >
-            <b-col
-                md="12"
-                lg="auto"
-                xl="4"
-                class="left-content-timeline-page"
-            >
-                <bread-crumb v-if="$root.lgMax">
-                    <template v-if="!loadingNodes && assignment.is_group_assignment">
-                        - {{ journal.name }}
-                    </template>
-                </bread-crumb>
-                <timeline
-                    v-if="!loadingNodes"
-                    :selected="currentNode"
-                    :nodes="nodes"
-                    :assignment="assignment"
-                    @select-node="selectNode"
-                />
-            </b-col>
-
-            <b-col
-                md="12"
-                lg="auto"
-                xl="8"
-                class="main-content-timeline-page"
-            >
-                <bread-crumb v-if="$root.xl">
-                    <template v-if="!loadingNodes && assignment.is_group_assignment">
-                        - {{ journal.name }}
-                    </template>
-                </bread-crumb>
-                <b-alert
-                    v-if="!loadingNodes && journal.needs_lti_link.length > 0 && assignment.active_lti_course"
-                    show
+            <b-row noGutters>
+                <b-col
+                    md="12"
+                    lg="auto"
+                    xl="4"
+                    class="left-content-timeline-page"
                 >
-                    <b>Warning:</b> You cannot update this journal until
-                    {{ assignment.is_group_assignment ? 'all group members' : 'you' }}
-                    visit the assignment though the LMS (Canvas) course
-                    '{{ assignment.active_lti_course.name }}' at least once.
-                </b-alert>
-                <load-wrapper :loading="loadingNodes">
-                    <template
-                        v-if="nodes[currentNode] && nodes[currentNode].type == 'a'"
-                    >
-                        <h4 class="theme-h4 mb-2 d-block">
-                            <span>New entry</span>
-                        </h4>
-                        <b-form-select
-                            v-if="nodes[currentNode].templates.length > 1"
-                            v-model="selectedTemplate"
-                            class="theme-select mb-2"
-                        >
-                            <option
-                                :value="null"
-                                disabled
-                            >
-                                Select a template
-                            </option>
-                            <option
-                                v-for="template in nodes[currentNode].templates"
-                                :key="template.id"
-                                :value="template"
-                            >
-                                {{ template.name }}
-                            </option>
-                        </b-form-select>
-                    </template>
-                    <journal-start-card
-                        v-if="currentNode === -1"
-                        :assignment="assignment"
-                    />
-                    <journal-end-card
-                        v-else-if="currentNode >= nodes.length"
-                        :assignment="assignment"
-                    />
-                    <progress-node
-                        v-else-if="nodes[currentNode].type == 'p'"
-                        :currentNode="nodes[currentNode]"
+                    <bread-crumb v-if="$root.lgMax">
+                        <template v-if="!loadingNodes && assignment.is_group_assignment">
+                            - {{ journal.name }}
+                        </template>
+                    </bread-crumb>
+                    <timeline
+                        v-if="!loadingNodes"
+                        :selected="currentNode"
                         :nodes="nodes"
-                        :bonusPoints="journal.bonus_points"
-                    />
-                    <b-card
-                        v-else-if="nodes[currentNode].type == 'd' && !nodes[currentNode].entry && currentNodeIsLocked"
-                        :class="$root.getBorderClass($route.params.cID)"
-                        class="no-hover"
-                    >
-                        <h2 class="theme-h2 mb-2">
-                            {{ nodes[currentNode].template.name }}
-                        </h2>
-                        <hr class="full-width"/>
-                        <b>This preset is locked. You cannot submit an entry at the moment.</b><br/>
-                        {{ deadlineRange }}
-                    </b-card>
-                    <entry
-                        v-else-if="(nodes[currentNode].type == 'd' || nodes[currentNode].type == 'e'
-                            || nodes[currentNode].type == 'a') && currentTemplate"
-                        ref="entry"
-                        :class="{'input-disabled': !loadingNodes && journal.needs_lti_link.length > 0
-                            && assignment.active_lti_course}"
-                        :template="currentTemplate"
                         :assignment="assignment"
-                        :node="nodes[currentNode]"
-                        :create="nodes[currentNode].type == 'a' || (nodes[currentNode].type == 'd'
-                            && !nodes[currentNode].entry)"
-                        @entry-deleted="removeCurrentEntry"
-                        @entry-posted="entryPosted"
+                        @select-node="selectNode"
                     />
-                </load-wrapper>
-            </b-col>
+                </b-col>
+
+                <b-col
+                    md="12"
+                    lg="auto"
+                    xl="8"
+                    class="main-content-timeline-page"
+                >
+                    <bread-crumb v-if="$root.xl">
+                        <template v-if="!loadingNodes && assignment.is_group_assignment">
+                            - {{ journal.name }}
+                        </template>
+                    </bread-crumb>
+                    <b-alert
+                        v-if="!loadingNodes && journal.needs_lti_link.length > 0 && assignment.active_lti_course"
+                        show
+                    >
+                        <b>Warning:</b> You cannot update this journal until
+                        {{ assignment.is_group_assignment ? 'all group members' : 'you' }}
+                        visit the assignment though the LMS (Canvas) course
+                        '{{ assignment.active_lti_course.name }}' at least once.
+                    </b-alert>
+                    <load-wrapper :loading="loadingNodes">
+                        <template
+                            v-if="nodes[currentNode] && nodes[currentNode].type == 'a'"
+                        >
+                            <h4 class="theme-h4 mb-2 d-block">
+                                <span>New entry</span>
+                            </h4>
+                            <b-form-select
+                                v-if="nodes[currentNode].templates.length > 1"
+                                v-model="selectedTemplate"
+                                class="theme-select mb-2"
+                            >
+                                <option
+                                    :value="null"
+                                    disabled
+                                >
+                                    Select a template
+                                </option>
+                                <option
+                                    v-for="template in nodes[currentNode].templates"
+                                    :key="template.id"
+                                    :value="template"
+                                >
+                                    {{ template.name }}
+                                </option>
+                            </b-form-select>
+                        </template>
+                        <journal-start-card
+                            v-if="currentNode === -1"
+                            :assignment="assignment"
+                        />
+                        <journal-end-card
+                            v-else-if="currentNode >= nodes.length"
+                            :assignment="assignment"
+                        />
+                        <progress-node
+                            v-else-if="nodes[currentNode].type == 'p'"
+                            :currentNode="nodes[currentNode]"
+                            :nodes="nodes"
+                            :bonusPoints="journal.bonus_points"
+                        />
+                        <b-card
+                            v-else-if="nodes[currentNode].type == 'd' && !nodes[currentNode].entry
+                                && currentNodeIsLocked"
+                            :class="$root.getBorderClass($route.params.cID)"
+                            class="no-hover"
+                        >
+                            <h2 class="theme-h2 mb-2">
+                                {{ nodes[currentNode].template.name }}
+                            </h2>
+                            <hr class="full-width"/>
+                            <b>This preset is locked. You cannot submit an entry at the moment.</b><br/>
+                            {{ deadlineRange }}
+                        </b-card>
+                        <entry
+                            v-else-if="(nodes[currentNode].type == 'd' || nodes[currentNode].type == 'e'
+                                || nodes[currentNode].type == 'a') && currentTemplate"
+                            ref="entry"
+                            :class="{'input-disabled': !loadingNodes && journal.needs_lti_link.length > 0
+                                && assignment.active_lti_course}"
+                            :template="currentTemplate"
+                            :assignment="assignment"
+                            :node="nodes[currentNode]"
+                            :create="nodes[currentNode].type == 'a' || (nodes[currentNode].type == 'd'
+                                && !nodes[currentNode].entry)"
+                            @entry-deleted="removeCurrentEntry"
+                            @entry-posted="entryPosted"
+                        />
+                    </load-wrapper>
+                </b-col>
+            </b-row>
         </b-col>
 
         <b-col
@@ -131,7 +130,7 @@
             </h3>
             <b-card
                 :class="$root.getBorderClass($route.params.cID)"
-                class="journal-details-card no-hover"
+                class="journal-details-card no-hover mb-3"
             >
                 <journal-details
                     v-if="!loadingNodes"

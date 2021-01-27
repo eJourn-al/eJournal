@@ -8,15 +8,6 @@
 <template>
     <b-row class="node-container">
         <b-col
-            cols="8"
-            class="d-flex h-100 align-items-center"
-        >
-            <timeline-node-info
-                :node="node"
-                :selected="selected"
-            />
-        </b-col>
-        <b-col
             cols="4"
             class="d-flex h-100 align-items-center justify-content-center"
         >
@@ -30,6 +21,15 @@
                 :edit="edit"
                 class="position-absolute"
                 @click.native="$emit('select-node', index)"
+            />
+        </b-col>
+        <b-col
+            cols="8"
+            class="d-flex h-100 align-items-center"
+        >
+            <timeline-node-info
+                :node="node"
+                :selected="selected"
             />
         </b-col>
     </b-row>
