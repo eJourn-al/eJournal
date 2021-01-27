@@ -85,6 +85,7 @@ There are two different types of templates:<br/><br/>
 
 You can preview and edit a template by clicking on it.
 `,
+            // QUESTION: Should we stop using 'nodes' when talking about the timeline (user facing)?
             timelineIntroText: `
 The timeline forms the basis for an assignment. The name, due date and other details
 of the assignment can also be changed here, by clicking the first node.<br/><br/>
