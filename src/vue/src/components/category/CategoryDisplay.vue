@@ -6,7 +6,7 @@
             :category="category"
             :removable="editable"
             :showInfo="true"
-            @select-category="$emit('select-category', category)"
+            @click.native="$emit('select-category', category)"
             @remove-category="$emit('remove-category', category)"
             @show-info="
                 infoCategory = $event

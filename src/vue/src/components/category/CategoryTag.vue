@@ -4,7 +4,6 @@
         class="category-tag"
         :style="`background-color: ${category.color}`"
         pill
-        @click="$emit('select-category', category)"
     >
         {{ category.name }}
 

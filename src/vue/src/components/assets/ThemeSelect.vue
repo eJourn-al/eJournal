@@ -102,8 +102,9 @@ export default {
 
 div.theme-multiselect
     color: $theme-dark-blue
-    padding-left: 5px
+    box-sizing: border-box
     .multiselect__tags
+        padding-left: 12px
         cursor: default
         font-size: 1em
         border-radius: 5px
