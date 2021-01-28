@@ -17,28 +17,22 @@
                 >
                     <icon name="hourglass-half"/>
                 </div>
-                <div v-else-if="node.entry.editable">
-                    <b-button
-                        class="ml-2 red-button float-right multi-form"
-                        @click="deleteEntry"
-                    >
-                        <icon name="trash"/>
-                        Delete
-                    </b-button>
-                    <b-button
-                        class="ml-2 orange-button float-right multi-form"
-                        @click="edit = true"
-                    >
-                        <icon name="edit"/>
-                        Edit
-                    </b-button>
-                </div>
             </template>
 
             <entry-title
                 :template="template"
                 :node="node"
-            />
+            >
+                <b-button
+                    v-if="node.entry.editable"
+                    class="ml-auto"
+                    :class="(edit) ? 'red-button' : 'orange-button'"
+                    @click="edit = !edit"
+                >
+                    <icon :name="(edit) ? 'ban' : 'edit'"/>
+                    {{ (edit) ? 'Cancel' : 'Edit' }}
+                </b-button>
+            </entry-title>
 
             <sandboxed-iframe
                 v-if="node && node.description && (edit || create)"
@@ -66,22 +60,31 @@
             />
 
             <template v-if="edit">
-                <b-button
-                    class="green-button float-right mt-2"
-                    :class="{ 'input-disabled': requestInFlight || uploadingFiles > 0 }"
-                    @click="saveChanges"
+                <hr/>
+
+                <b-row
+                    no-gutters
+                    class="mt-2"
                 >
-                    <icon name="save"/>
-                    Save
-                </b-button>
-                <b-button
-                    class="red-button mt-2"
-                    @click="edit = false"
-                >
-                    <icon name="ban"/>
-                    Cancel
-                </b-button>
+                    <b-button
+                        class="red-button"
+                        @click="deleteEntry"
+                    >
+                        <icon name="trash"/>
+                        Delete
+                    </b-button>
+
+                    <b-button
+                        class="green-button ml-auto"
+                        :class="{ 'input-disabled': requestInFlight || uploadingFiles > 0 }"
+                        @click="saveChanges"
+                    >
+                        <icon name="save"/>
+                        Save
+                    </b-button>
+                </b-row>
             </template>
+
             <b-button
                 v-else-if="create"
                 class="green-button float-right"
