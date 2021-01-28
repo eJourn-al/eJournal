@@ -98,26 +98,29 @@ class TemplateCreationParamsFactory(factory.Factory):
 
     @classmethod
     def _adjust_kwargs(cls, **kwargs):
-        assert kwargs['assignment_id']
+        assert kwargs['assignment_id'], 'assignment_id is a required parameter key for template creation'
 
         n_fields = kwargs.pop('n_fields', 1)
         n_fields_with_file_in_description = kwargs.pop('n_fields_with_file_in_description', 0)
         author = kwargs.pop('author', None)
 
+        kwargs['field_set'] = []
         for i in range(n_fields):
             description = ''
 
             if i < n_fields_with_file_in_description:
+                assert author, 'author is a required kwarg in order to generate temporary files.'
+
                 fc = test.factory.TempFileContext(author=author)
                 description = f'<img src="{fc.download_url(access_id=fc.access_id)}"/>'
 
-            kwargs['field_set'] = [{
+            kwargs['field_set'].append({
                 'type': Field.TEXT,
                 'title': 'Title',
                 'description': description,
                 'options': '',
                 'location': i,
                 'required': True,
-            }]
+            })
 
         return kwargs
