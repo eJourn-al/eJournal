@@ -35,7 +35,8 @@
                 />
 
                 <b-button
-                    class="green-button mt-2 full-width"
+                    class="green-button full-width"
+                    :class="{ 'mt-2': templates.length > 0 }"
                     @click="createTemplate()"
                 >
                     <icon name="plus"/>

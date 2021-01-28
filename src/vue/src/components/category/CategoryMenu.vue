@@ -33,7 +33,8 @@
                 />
 
                 <b-button
-                    class="green-button mt-2 full-width"
+                    class="green-button full-width"
+                    :class="{ 'mt-2': assignmentHasCategories }"
                     @click="createCategory()"
                 >
                     <icon name="plus"/>
