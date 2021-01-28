@@ -18,13 +18,13 @@ const getters = {
     editMode: state => state.activeComponentMode === state.activeComponentModeOptions.edit,
 
     selectedCategory: state => state.selectedCategory,
-    categoryDraft: state => state.categoryDraft,
+    newCategoryDraft: state => state.newCategoryDraft,
 
     selectedTemplate: state => state.selectedTemplate,
-    templateDraft: state => state.templateDraft,
+    newTemplateDraft: state => state.newTemplateDraft,
 
     selectedPresetNode: state => state.selectedPresetNode,
-    presetNodeDraft: state => state.presetNodeDraft,
+    newPresetNodeDraft: state => state.newPresetNodeDraft,
 
     selectedTimelineElementIndex: state => state.selectedTimelineElementIndex,
 }
@@ -43,8 +43,8 @@ const mutations = {
         state.activeComponentMode = mode
     },
     CREATE_CATEGORY (state) {
-        if (state.categoryDraft) {
-            state.selectedCategory = state.categoryDraft
+        if (state.newCategoryDraft) {
+            state.selectedCategory = state.newCategoryDraft
         } else {
             const newCategory = {
                 id: -1,
@@ -55,14 +55,14 @@ const mutations = {
             }
 
             state.selectedCategory = newCategory
-            state.categoryDraft = newCategory
+            state.newCategoryDraft = newCategory
         }
 
         state.activeComponent = state.activeComponentOptions.category
         state.activeComponentMode = state.activeComponentModeOptions.edit
     },
     CATEGORY_CREATED (state, { category }) {
-        state.categoryDraft = null
+        state.newCategoryDraft = null
         state.selectedCategory = category
         state.activeComponent = state.activeComponentOptions.category
         state.activeComponentMode = state.activeComponentModeOptions.read
@@ -74,8 +74,8 @@ const mutations = {
         state.activeComponentMode = mode
     },
     CREATE_TEMPLATE (state) {
-        if (state.templateDraft) {
-            state.selectedTemplate = state.templateDraft
+        if (state.newTemplateDraft) {
+            state.selectedTemplate = state.newTemplateDraft
         } else {
             const newTemplate = {
                 field_set: [{
@@ -94,14 +94,14 @@ const mutations = {
             }
 
             state.selectedTemplate = newTemplate
-            state.templateDraft = newTemplate
+            state.newTemplateDraft = newTemplate
         }
 
         state.activeComponent = state.activeComponentOptions.template
         state.activeComponentMode = state.activeComponentModeOptions.edit
     },
     TEMPLATE_CREATED (state, { template }) {
-        state.templateDraft = null
+        state.newTemplateDraft = null
         state.selectedTemplate = template
         state.activeComponent = state.activeComponentOptions.template
         state.activeComponentMode = state.activeComponentModeOptions.read
@@ -125,8 +125,8 @@ const mutations = {
         state.selectedPresetNode = presetNode
     },
     CREATE_PRESET_NODE (state) {
-        if (state.presetNodeDraft) {
-            state.selectedPresetNode = state.presetNodeDraft
+        if (state.newPresetNodeDraft) {
+            state.selectedPresetNode = state.newPresetNodeDraft
         } else {
             const newPreset = {
                 id: -1,
@@ -138,7 +138,7 @@ const mutations = {
             }
 
             state.selectedPresetNode = newPreset
-            state.presetNodeDraft = newPreset
+            state.newPresetNodeDraft = newPreset
         }
 
         state.activeComponent = state.activeComponentOptions.timeline
@@ -148,7 +148,7 @@ const mutations = {
         state.selectedPresetNode = presetNode
     },
     CLEAR_PRESET_NODE_DRAFT (state) {
-        state.presetNodeDraft = null
+        state.newPresetNodeDraft = null
     },
 
     CLEAR_ACTIVE_COMPONENT (state) {
@@ -160,13 +160,13 @@ const mutations = {
         state.selectedTimelineElementIndex = -1
 
         state.selectedCategory = null
-        state.categoryDraft = null
+        state.newCategoryDraft = null
 
         state.selectedTemplate = null
-        state.templateDraft = null
+        state.newTemplateDraft = null
 
         state.selectedPresetNode = null
-        state.presetNodeDraft = null
+        state.newPresetNodeDraft = null
     },
 }
 
@@ -226,13 +226,13 @@ export default {
         selectedTimelineElementIndex: -1, /* See timeline.vue for mapping (due for refactor). */
 
         selectedCategory: null,
-        categoryDraft: null,
+        newCategoryDraft: null,
 
         selectedTemplate: null,
-        templateDraft: null,
+        newTemplateDraft: null,
 
         selectedPresetNode: null,
-        presetNodeDraft: null,
+        newPresetNodeDraft: null,
     },
     getters,
     mutations,
