@@ -9,24 +9,16 @@ from VLE.utils import file_handling
 
 
 def _update_attached_files(preset, author, new_ids):
-    """
-    Safely updates the attached files of the provided preset node based on the list of new fc ids
-
-    The cleanup of files which are no longer referenced is handled in beats.cleanup.
-
-    # NOTE: Because attached files may be imported from another assignment, they cannot be directly removed if no
-    longer referenced, as the underlying files are not copied during import.
-    """
+    """Safely updates the attached files of the provided preset node based on the list of new fc ids"""
     new_ids = set(new_ids)
     current_ids = set(preset.attached_files.values_list('pk', flat=True))
 
     ids_to_add = new_ids - current_ids
     ids_to_remove = current_ids - new_ids
 
-    preset.attached_files.remove(*ids_to_remove)
+    preset.attached_files.filter(pk__in=ids_to_remove).delete()
 
-    for pk in ids_to_add:
-        fc = FileContext.objects.get(pk=pk, is_temp=True)
+    for fc in FileContext.objects.filter(pk__in=ids_to_add, is_temp=True, author=author):
         file_handling.establish_file(author=author, identifier=fc.access_id, assignment=preset.format.assignment)
     preset.attached_files.add(*ids_to_add)
 

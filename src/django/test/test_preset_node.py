@@ -14,6 +14,7 @@ import VLE.utils.file_handling as file_handling
 from VLE.models import Field, FileContext, Node, PresetNode
 from VLE.serializers import PresetNodeSerializer, TemplateSerializer
 from VLE.utils.error_handling import VLEMissingRequiredKey, VLEParamWrongType
+from VLE.views.preset_node import _update_attached_files
 
 
 def _validate_preset_based_on_params(data, params, assignment):
@@ -108,24 +109,6 @@ class PresetNodeTest(TestCase):
                 due_date=timezone.now(),
                 format=self.format,
             )
-
-    def test_preset_node_list(self):
-        with mock.patch('VLE.models.User.can_view') as can_view_mock:
-            resp = api.get(
-                self, 'preset_nodes', params={'assignment_id': self.assignment.pk}, user=self.assignment.author)
-            can_view_mock.assert_called_with(self.assignment), \
-                'PresetNode list permission depends on can view assignment'
-
-        presets = self.assignment.format.presetnode_set.all()
-        preset_set = set(presets.values_list('pk', flat=True))
-        assert all(preset['id'] in preset_set for preset in resp['presets']), \
-            'All serialized preset nodes belong to the provided assignment id'
-
-        presets_ordered = list(presets)
-        presets_ordered.sort(key=lambda x: x.due_date)
-        presets_ordered = [preset.pk for preset in presets_ordered]
-        resp_presets_order = [data['id'] for data in resp['presets']]
-        assert presets_ordered == resp_presets_order, 'Serialized preset nodes are ordered by due date'
 
     def test_preset_node_validate(self):
         def test_validate_deadline_preset_node():
@@ -356,6 +339,51 @@ class PresetNodeTest(TestCase):
         test_unlock_date()
         test_due_date()
         test_lock_date()
+
+    def test_preset_node__update_attached_files(self):
+        deadline = factory.DeadlinePresetNode(format=self.format, n_att_files=2)
+        att_fc_1 = deadline.attached_files.first()
+        att_fc_2 = deadline.attached_files.last()
+
+        other_user = factory.Teacher()
+        other_user_temp_file = factory.TempFileContext(author=other_user)
+
+        new_att_file = factory.TempFileContext(author=self.assignment.author)
+
+        new_att_file_ids = [att_fc_1.pk, new_att_file.pk, other_user_temp_file.pk]
+        _update_attached_files(deadline, self.assignment.author, new_att_file_ids)
+
+        assert not FileContext.objects.filter(pk=att_fc_2.pk).exists(), 'No longer attached files should be removed'
+        assert deadline.attached_files.filter(pk=att_fc_1.pk).exists(), \
+            'Files which were attached and still part of the new ids should remain'
+        assert deadline.attached_files.filter(pk=new_att_file.pk, is_temp=False, assignment=self.assignment).exists(), \
+            'Temporary files part of the new ids are correctly attached and linked'
+
+        assert deadline.attached_files.filter(pk=other_user_temp_file.pk).exists(), \
+            'A user can only claim ones own temporary files (to attach).'
+        other_user_temp_file.refresh_from_db()
+        assert other_user_temp_file.author == other_user, \
+            'Other users temporary file author remains unchanged despite being part of the list of new ids'
+        assert other_user_temp_file.is_temp, \
+            'Other users temporary file remains temporary despite being part of the list of new ids'
+
+    def test_preset_node_list(self):
+        with mock.patch('VLE.models.User.can_view') as can_view_mock:
+            resp = api.get(
+                self, 'preset_nodes', params={'assignment_id': self.assignment.pk}, user=self.assignment.author)
+            can_view_mock.assert_called_with(self.assignment), \
+                'PresetNode list permission depends on can view assignment'
+
+        presets = self.assignment.format.presetnode_set.all()
+        preset_set = set(presets.values_list('pk', flat=True))
+        assert all(preset['id'] in preset_set for preset in resp['presets']), \
+            'All serialized preset nodes belong to the provided assignment id'
+
+        presets_ordered = list(presets)
+        presets_ordered.sort(key=lambda x: x.due_date)
+        presets_ordered = [preset.pk for preset in presets_ordered]
+        resp_presets_order = [data['id'] for data in resp['presets']]
+        assert presets_ordered == resp_presets_order, 'Serialized preset nodes are ordered by due date'
 
     def test_preset_node_create(self):
         deadline_creation_params = factory.DeadlinePresetNodeCreationParams(
