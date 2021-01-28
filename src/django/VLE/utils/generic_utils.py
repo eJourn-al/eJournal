@@ -14,7 +14,6 @@ from django.core.files.base import ContentFile
 import VLE.utils.error_handling
 
 
-# START: API-POST functions
 def required_params(post, *keys):
     """Get required post parameters, throwing KeyError if not present."""
     if keys and not post:
@@ -46,45 +45,33 @@ def optional_params(post, *keys):
     return result
 
 
-# TODO Category: Extract conversion logic and reuse in params funcs
-def convert_data_to_expected_type(typed_field, data):
-    type = typed_field.type
-    key = typed_field.key
-
-    if data[key] is None:
+def cast_value(value, type, optional=False):
+    if value is None:
         return None
 
-    try:
-        if type == bool and data[key] == 'false':
-            return False
-        elif type == datetime.datetime:
-            return datetime.strptime(data[key], settings.ALLOWED_DATETIME_FORMAT)
-        else:
-            return type(data[key])
-    except ValueError as err:
-        raise VLE.utils.error_handling.VLEParamWrongType(err)
+    if type == bool and value == 'false':
+        return False
+    elif type == datetime:
+        if optional and value == '':
+            return None
+        return datetime.strptime(value, settings.ALLOWED_DATETIME_FORMAT)
+    else:
+        return type(value)
 
 
-def required_typed_params(post, *keys):
-    if keys and not post:
-        raise VLE.utils.error_handling.VLEMissingRequiredKey([key[1] for key in keys])
+def required_typed_params(data, *type_key_tuples):
+    if type_key_tuples and not data:
+        raise VLE.utils.error_handling.VLEMissingRequiredKey([tuple[1] for tuple in type_key_tuples])
 
     result = []
-    for func, key in keys:
+    for type, key in type_key_tuples:
         try:
-            if post[key] == '':
+            if data[key] == '':
                 VLE.utils.error_handling.VLEMissingRequiredKey(key)
-            if isinstance(post[key], list):
-                result.append([func(elem) for elem in post[key]])
-            elif post[key] is not None:
-                if func == bool and post[key] == 'false':
-                    result.append(False)
-                elif func == datetime:
-                    result.append(datetime.strptime(post[key], settings.ALLOWED_DATETIME_FORMAT))
-                else:
-                    result.append(func(post[key]))
+            if isinstance(data[key], list):
+                result.append([cast_value(elem, type) for elem in data[key]])
             else:
-                result.append(None)
+                result.append(cast_value(data[key], type))
         except ValueError as err:
             raise VLE.utils.error_handling.VLEParamWrongType(err)
         except KeyError:
@@ -93,30 +80,23 @@ def required_typed_params(post, *keys):
     return result
 
 
-def optional_typed_params(post, *keys):
-    if keys and not post:
-        return [None] * len(keys)
+def optional_typed_params(data, *type_key_tuples):
+    if type_key_tuples and not data:
+        return [None] * len(type_key_tuples)
 
     result = []
-    for func, key in keys:
-        if key and key in post and post[key] != '':
-            try:
-                if post[key] is not None:
-                    if func == bool and post[key] == 'false':
-                        result.append(False)
-                    elif func == datetime:
-                        result.append(datetime.strptime(post[key], settings.ALLOWED_DATETIME_FORMAT))
-                    else:
-                        result.append(func(post[key]))
-                else:
-                    result.append(None)
-            except ValueError as err:
-                raise VLE.utils.error_handling.VLEParamWrongType(err)
-        else:
+    for type, key in type_key_tuples:
+        try:
+            if isinstance(data[key], list):
+                result.append([cast_value(elem, type, optional=True) for elem in data[key]])
+            else:
+                result.append(cast_value(data[key], type, optional=True))
+        except ValueError as err:
+            raise VLE.utils.error_handling.VLEParamWrongType(err)
+        except KeyError:
             result.append(None)
 
     return result
-# END: API-POST functions
 
 
 def base64ToContentFile(string, filename):
