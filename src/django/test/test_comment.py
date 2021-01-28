@@ -1,3 +1,4 @@
+
 import mimetypes
 import random
 import string
@@ -6,6 +7,7 @@ from test.utils import api
 
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
+from django.test.utils import override_settings
 
 import VLE.factory as nfac
 from VLE.models import Comment, FileContext, Notification, Participation, User
@@ -53,6 +55,7 @@ class CommentAPITest(TestCase):
         assert self.entry_published_comments == 1, 'Journal should have 3 comments of which only one is published'
         assert self.entry_unpublished_comments == 2, 'Expected 2 unpublished comments'
 
+    @override_settings(CELERY_TASK_ALWAYS_EAGER=True)
     def test_comment_factory(self):
         entry = factory.UnlimitedEntry()
         comment = factory.StudentComment(entry=entry)

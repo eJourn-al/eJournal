@@ -27,7 +27,8 @@ import VLE.permissions
 import VLE.utils.file_handling as file_handling
 import VLE.utils.generic_utils as generic_utils
 from VLE.tasks.email import send_push_notification
-from VLE.tasks.notifications import generate_new_assignment_notifications, generate_new_node_notifications
+from VLE.tasks.notifications import (generate_new_assignment_notifications, generate_new_comment_notifications,
+                                     generate_new_entry_notifications, generate_new_node_notifications)
 from VLE.utils import sanitization
 from VLE.utils.error_handling import (VLEBadRequest, VLEParticipationError, VLEPermissionError, VLEProgrammingError,
                                       VLEUnverifiedEmailError)
@@ -2651,15 +2652,10 @@ class Entry(CreateUpdateModel):
                     not self.jir):
                 raise ValidationError('Saving non-teacher entry created by user not part of journal.')
 
-        super(Entry, self).save(*args, **kwargs)
+        super().save(*args, **kwargs)
 
         if is_new and not isinstance(self, TeacherEntry):
-            for user in VLE.permissions.get_supervisors_of(self.node.journal):
-                Notification.objects.create(
-                    type=Notification.NEW_ENTRY,
-                    user=user,
-                    entry=self,
-                )
+            generate_new_entry_notifications.delay(self.pk, self.node.pk)
 
     def to_string(self, user=None):
         return "Entry"
@@ -3118,20 +3114,8 @@ class Comment(CreateUpdateModel):
         self.text = sanitization.strip_script_tags(self.text)
         super(Comment, self).save(*args, **kwargs)
 
-        if is_new:
-            if self.published:
-                for user in VLE.permissions.get_supervisors_of(self.entry.node.journal).exclude(pk=self.author.pk):
-                    Notification.objects.create(
-                        type=Notification.NEW_COMMENT,
-                        user=user,
-                        comment=self,
-                    )
-                for author in self.entry.node.journal.authors.all().exclude(user=self.author):
-                    Notification.objects.create(
-                        type=Notification.NEW_COMMENT,
-                        user=author.user,
-                        comment=self,
-                    )
+        if is_new and self.published:
+            generate_new_comment_notifications.delay(self.pk)
 
     def to_string(self, user=None):
         return "Comment"

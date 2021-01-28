@@ -5,6 +5,7 @@ Test all about the timeline.
 """
 import datetime
 import test.factory as factory
+from test.utils.performance import assert_num_queries_less_than
 
 from django.test import TestCase
 from django.utils import timezone
@@ -99,7 +100,7 @@ class TimelineTests(TestCase):
         author = preset_entry.node.journal.author
 
         # No additional queries are performed besides the nested serializer queries plus fetching the attached files
-        with self.assertNumQueries(
+        with assert_num_queries_less_than(
                 self.template_serializer_query_count + self.entry_serializer_default_query_count + 1):
             data = timeline.get_deadline(journal, node, author)
 

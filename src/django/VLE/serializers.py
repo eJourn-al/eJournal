@@ -921,6 +921,8 @@ class EntrySerializer(serializers.ModelSerializer, EagerLoadingMixin):
         'node__journal__assignment',  # used in permission check can grade and locked check
         'jir__source__assignment',
         'jir__processor',
+        'node',
+        'node__preset',
     ]
 
     # NOTE: Comments (comment_set) are only serialized via GDPR, which prefetches the comment_set itself.
@@ -948,6 +950,9 @@ class EntrySerializer(serializers.ModelSerializer, EagerLoadingMixin):
     def get_title(self, entry):
         if (entry.teacher_entry and entry.teacher_entry.show_title_in_timeline):
             return entry.teacher_entry.title
+
+        if entry.node.preset:
+            return entry.node.preset.display_name
 
         return entry.template.name
 
