@@ -50,7 +50,7 @@ export default {
         isActive () {
             return (
                 this.activeComponent === this.activeComponentOptions.template
-                && this.selectedTemplate === this.template
+                && this.selectedTemplate.id === this.template.id
             )
         },
     },

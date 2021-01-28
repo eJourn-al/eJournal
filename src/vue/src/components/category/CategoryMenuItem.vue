@@ -37,13 +37,13 @@ export default {
     computed: {
         ...mapGetters({
             activeComponent: 'assignmentEditor/activeComponent',
-            selectedTemplate: 'assignmentEditor/selectedTemplate',
+            selectedCategory: 'assignmentEditor/selectedCategory',
             activeComponentOptions: 'assignmentEditor/activeComponentOptions',
         }),
         isActive () {
             return (
                 this.activeComponent === this.activeComponentOptions.category
-                && this.selectedCategory === this.category
+                && this.selectedCategory.id === this.category.id
             )
         },
     },
