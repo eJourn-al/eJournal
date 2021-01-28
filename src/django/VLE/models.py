@@ -1977,10 +1977,10 @@ class Journal(CreateUpdateModel):
 
     def remove_jirs_on_user_remove_from_jounal(self, user):
         """
-        Removes any pending JIRs if no other of the journal authors are also author in the JIR source.
+        Removes any pending JIRs if none of the other journal's authors are also author in the JIR source.
 
         Args:
-            journal (:model:`VLE.journal`): Journal where the user being remove from.
+            self (:model:`VLE.journal`): Journal where the user is being removed from.
             user (:model:`VLE.user`): User removed from the journal.
         """
         journal_authors_except_user = self.authors.all().exclude(user=user)
