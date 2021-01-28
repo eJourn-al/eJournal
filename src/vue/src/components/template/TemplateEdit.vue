@@ -4,7 +4,7 @@
         class="no-hover template-card"
     >
         <entry-preview
-            v-if="mode === activeComponentModeOptions.read"
+            v-if="readMode"
             :template="template"
         >
             <template #edit-button>
@@ -30,7 +30,7 @@
                 <b-button
                     class="ml-auto"
                     :class="(create) ? 'green-button' : 'red-button'"
-                    @click="setModeToRead()"
+                    @click="(create) ? setModeToRead() : cancelTemplateEdit(); setModeToRead()"
                 >
                     <icon :name="(create) ? 'eye' : 'ban'"/>
                     {{ (create) ? 'Preview' : 'Cancel' }}
@@ -112,11 +112,10 @@ export default {
     },
     computed: {
         ...mapGetters({
-            templates: 'template/assignmentTemplates',
-            activeComponentModeOptions: 'assignmentEditor/activeComponentModeOptions',
-            mode: 'assignmentEditor/activeComponentMode',
+            readMode: 'assignmentEditor/readMode',
             assignmentCategories: 'category/assignmentCategories',
             assignmentHasCategories: 'category/assignmentHasCategories',
+            templates: 'template/assignmentTemplates',
         }),
         create () { return this.template.id < 0 },
         nameInputState () {
@@ -135,11 +134,12 @@ export default {
     },
     methods: {
         ...mapMutations({
-            templateCreated: 'assignmentEditor/TEMPLATE_CREATED',
             setModeToEdit: 'assignmentEditor/SET_ACTIVE_COMPONENT_MODE_TO_EDIT',
             setModeToRead: 'assignmentEditor/SET_ACTIVE_COMPONENT_MODE_TO_READ',
+            templateCreated: 'assignmentEditor/TEMPLATE_CREATED',
         }),
         ...mapActions({
+            cancelTemplateEdit: 'assignmentEditor/cancelTemplateEdit',
             createTemplate: 'template/create',
             updateTemplate: 'template/update',
         }),

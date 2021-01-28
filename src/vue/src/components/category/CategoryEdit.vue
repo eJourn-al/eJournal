@@ -14,7 +14,7 @@
             <b-button
                 class="ml-auto"
                 :class="headerButtonClass"
-                @click="(readMode) ? setModeToEdit() : setModeToRead()"
+                @click="changeMode()"
             >
                 <icon :name="headerButtonIconName"/>
                 {{ headerButtonText }}
@@ -173,6 +173,7 @@ export default {
     },
     methods: {
         ...mapActions({
+            cancelCategoryEdit: 'assignmentEditor/cancelCategoryEdit',
             categoryCreate: 'category/create',
             categoryUpdate: 'category/update',
         }),
@@ -181,6 +182,16 @@ export default {
             setModeToEdit: 'assignmentEditor/SET_ACTIVE_COMPONENT_MODE_TO_EDIT',
             setModeToRead: 'assignmentEditor/SET_ACTIVE_COMPONENT_MODE_TO_READ',
         }),
+        changeMode () {
+            if (this.readMode) {
+                this.setModeToEdit()
+            } else {
+                if (!this.create) {
+                    this.cancelCategoryEdit()
+                }
+                this.setModeToRead()
+            }
+        },
         finalizeCategoryChanges () {
             if (this.create) {
                 this.categoryCreate({ category: this.category, aID: this.$route.params.aID })

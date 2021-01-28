@@ -21,7 +21,7 @@
 
                 <b-button
                     class="red-button ml-auto"
-                    @click="setModeToRead()"
+                    @click="cancelPresetNodeEdit(); setModeToRead()"
                 >
                     <icon name="ban"/>
                     Cancel
@@ -201,6 +201,7 @@ export default {
         ...mapActions({
             create: 'presetNode/create',
             update: 'presetNode/update',
+            cancelPresetNodeEdit: 'assignmentEditor/cancelPresetNodeEdit',
             presetNodeCreated: 'assignmentEditor/presetNodeCreated',
         }),
         ...mapMutations({

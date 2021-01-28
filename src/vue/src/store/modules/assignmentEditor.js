@@ -38,7 +38,7 @@ const mutations = {
     },
 
     SELECT_CATEGORY (state, { category, mode = readSymbol }) {
-        state.selectedCategory = category
+        state.selectedCategory = JSON.parse(JSON.stringify(category))
         state.activeComponent = state.activeComponentOptions.category
         state.activeComponentMode = mode
     },
@@ -69,7 +69,7 @@ const mutations = {
     },
 
     SELECT_TEMPLATE (state, { template, mode = readSymbol }) {
-        state.selectedTemplate = template
+        state.selectedTemplate = JSON.parse(JSON.stringify(template))
         state.activeComponent = state.activeComponentOptions.template
         state.activeComponentMode = mode
     },
@@ -121,9 +121,6 @@ const mutations = {
         state.activeComponent = state.activeComponentOptions.timeline
         state.activeComponentMode = mode
     },
-    SET_SELECTED_PRESET_NODE (state, { presetNode }) {
-        state.selectedPresetNode = presetNode
-    },
     CREATE_PRESET_NODE (state) {
         if (state.newPresetNodeDraft) {
             state.selectedPresetNode = state.newPresetNodeDraft
@@ -144,8 +141,8 @@ const mutations = {
         state.activeComponent = state.activeComponentOptions.timeline
         state.activeComponentMode = state.activeComponentModeOptions.edit
     },
-    PRESET_NODE_SELECTED (state, { presetNode }) {
-        state.selectedPresetNode = presetNode
+    SELECT_PRESET_NODE (state, { presetNode }) {
+        state.selectedPresetNode = JSON.parse(JSON.stringify(presetNode))
     },
     CLEAR_PRESET_NODE_DRAFT (state) {
         state.newPresetNodeDraft = null
@@ -187,7 +184,7 @@ const actions = {
 
         /* Actual preset node selected */
         if (timelineElementIndex >= 0 && timelineElementIndex < presetNodes.length) {
-            context.commit('PRESET_NODE_SELECTED', { presetNode: presetNodes[timelineElementIndex] })
+            context.commit('SELECT_PRESET_NODE', { presetNode: presetNodes[timelineElementIndex] })
         /* Add node is selected */
         } else if (timelineElementIndex === presetNodes.length) {
             context.commit('CREATE_PRESET_NODE')
@@ -195,7 +192,7 @@ const actions = {
     },
     presetNodeCreated (context, { presetNode }) {
         context.commit('CLEAR_PRESET_NODE_DRAFT')
-        context.commit('SET_SELECTED_PRESET_NODE', { presetNode })
+        context.commit('SELECT_PRESET_NODE', { presetNode })
         context.commit('SET_ACTIVE_COMPONENT_MODE_TO_READ')
 
         const presetNodes = context.rootGetters['presetNode/assignmentPresetNodes']
@@ -203,6 +200,25 @@ const actions = {
             'SET_TIMELINE_ELEMENT_INDEX',
             { index: presetNodes.findIndex(elem => elem.id === presetNode.id) },
         )
+    },
+
+    cancelCategoryEdit (context) {
+        const categories = context.rootGetters['category/assignmentCategories']
+        const originalCategory = categories.find(category => category.id === context.state.selectedCategory.id)
+
+        context.commit('SELECT_CATEGORY', { category: originalCategory })
+    },
+    cancelPresetNodeEdit (context) {
+        const presetNodes = context.rootGetters['presetNode/assignmentPresetNodes']
+        const originalPresetNode = presetNodes.find(preset => preset.id === context.state.selectedPresetNode.id)
+
+        context.commit('SELECT_PRESET_NODE', { presetNode: originalPresetNode })
+    },
+    cancelTemplateEdit (context) {
+        const templates = context.rootGetters['template/assignmentTemplates']
+        const originalTemplate = templates.find(template => template.id === context.state.selectedTemplate.id)
+
+        context.commit('SELECT_TEMPLATE', { template: originalTemplate })
     },
 }
 
