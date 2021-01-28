@@ -6,11 +6,11 @@
     Nodes are accessed via array index. Some 'virtual' nodes exists, these are not part of the nodes array.
         - Start of assignment: -1
         - Add node
-            - Virtual when adding a preset to the format: nodes.length
+            - Virtual when adding a preset to the assignment: nodes.length
               (not virtual when adding an entry to the timeline, but has NO nID)
         - End of assignment: nodes.length + 1
     Passed property nodes can consist of two types:
-        - Preset nodes (edit = true) (format edit view)
+        - Preset nodes (edit = true) (assignment edit view)
         - nodes (journal view)
 -->
 
@@ -111,7 +111,7 @@ export default {
         TimelineNodes,
     },
     props: {
-        /* Boolean used to indicate the assignment format is being edited, new preset nodes can be inserted
+        /* Boolean used to indicate the assignment is being edited, new preset nodes can be inserted
          * which will not yet be saved / have an id.
          * Entries are created one at a time and are always inserted after save (with id) */
         edit: {
@@ -162,7 +162,7 @@ export default {
                 this.mappedSelected = val
             } else if (val < 0) { // Virtual node: assignment details
                 this.mappedSelected = val
-            } else if (val === this.nodes.length) { // Virtual node: add node (only virtual in (format) edit mode...)
+            } else if (val === this.nodes.length) { // Virtual node: add node (only virtual in assignment edit mode...)
                 this.mappedSelected = val
             } else if (val === this.nodes.length + 1) { // Virtual node: end of assignment
                 this.mappedSelected = val
@@ -192,7 +192,7 @@ export default {
         mappedNodesIndex (index) {
             /* Working with virtual nodes (start, end of assignment)
              * NOTE: The add node does exist, and is simply added in the backend
-             * (only for journal view not format edit). */
+             * (only for journal view not assignment edit). */
             if (index < 0 || index >= this.filteredNodes.length) {
                 return index
             } else {
@@ -212,7 +212,7 @@ export default {
         /* When a category is linked to or removed from a template, the current list of nodes can become stale.
          * Each of these nodes has been serialized before the category update, and needs to be synced with possible
          * changes. Because these changes can impact the filter, we filter once again afterwards.
-         * This only happens during format edit, so we can assume the nodes consist of preset nodes.
+         * This only happens during assignment edit, so we can assume the nodes consist of preset nodes.
          *
          * NOTE: called from store
          */

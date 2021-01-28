@@ -128,10 +128,11 @@
 </template>
 
 <script>
-import PresetNodeEditDates from '@/components/format/timeline_controlled/preset_node/PresetNodeEditDates.vue'
+import PresetNodeEditDates from '@/components/assignment_editor/timeline_controlled/preset_node/PresetNodeEditDates.vue'
 import PresetNodeEditSelectAndPreviewTemplate from
-    '@/components/format/timeline_controlled/preset_node/PresetNodeEditSelectAndPreviewTemplate.vue'
-import PresetNodeTypeSelection from '@/components/format/timeline_controlled/preset_node/PresetNodeTypeSelection.vue'
+    '@/components/assignment_editor/timeline_controlled/preset_node/PresetNodeEditSelectAndPreviewTemplate.vue'
+import PresetNodeTypeSelection from
+    '@/components/assignment_editor/timeline_controlled/preset_node/PresetNodeTypeSelection.vue'
 import Tooltip from '@/components/assets/Tooltip.vue'
 import filesList from '@/components/assets/file_handling/FilesList.vue'
 

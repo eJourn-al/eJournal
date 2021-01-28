@@ -107,9 +107,9 @@ const router = new Router({
             aID: Number.parseInt(route.params.aID, 10),
         }),
     }, {
-        path: '/Home/Course/:cID/Assignment/:aID/Format',
-        name: 'FormatEdit',
-        component: () => import(/* webpackChunkName: 'format-edit' */ '@/views/FormatEdit.vue'),
+        path: '/Home/Course/:cID/Assignment/:aID/AssignmentEditor',
+        name: 'AssignmentEditor',
+        component: () => import(/* webpackChunkName: 'format-edit' */ '@/views/AssignmentEditor.vue'),
         props: route => ({
             cID: Number.parseInt(route.params.cID, 10),
             aID: Number.parseInt(route.params.aID, 10),

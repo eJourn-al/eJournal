@@ -2,7 +2,7 @@
     <load-wrapper :loading="loading">
         <timeline-layout>
             <template v-slot:left>
-                <format-bread-crumb
+                <assignment-editor-bread-crumb
                     v-if="$root.lgMax"
                     v-intro="welcomeIntroText"
                     v-intro-step="1"
@@ -23,14 +23,14 @@
             </template>
 
             <template v-slot:center>
-                <format-bread-crumb
+                <assignment-editor-bread-crumb
                     v-if="$root.xl"
                     v-intro="welcomeIntroText"
                     v-intro-step="1"
                     @start-tutorial="$intro().start()"
                 />
 
-                <format-active-components/>
+                <assignment-editor-active-component-switch/>
             </template>
 
             <template v-slot:right>
@@ -49,9 +49,10 @@
 </template>
 
 <script>
+import AssignmentEditorActiveComponentSwitch from
+    '@/components/assignment_editor/AssignmentEditorActiveComponentSwitch.vue'
+import AssignmentEditorBreadCrumb from '@/components/assignment_editor/AssignmentEditorBreadCrumb.vue'
 import CategoryMenu from '@/components/category/CategoryMenu.vue'
-import FormatActiveComponents from '@/components/format/FormatActiveComponents.vue'
-import FormatBreadCrumb from '@/components/format/FormatBreadCrumb.vue'
 import LoadWrapper from '@/components/loading/LoadWrapper.vue'
 import TemplateMenu from '@/components/template/TemplateMenu.vue'
 import TimelineLayout from '@/components/columns/TimelineLayout.vue'
@@ -60,12 +61,12 @@ import timeline from '@/components/timeline/Timeline.vue'
 import { mapActions, mapGetters, mapMutations } from 'vuex'
 
 export default {
-    name: 'FormatEdit',
+    name: 'AssignmentEditor',
     components: {
         timeline,
+        AssignmentEditorActiveComponentSwitch,
+        AssignmentEditorBreadCrumb,
         CategoryMenu,
-        FormatActiveComponents,
-        FormatBreadCrumb,
         LoadWrapper,
         TemplateMenu,
         TimelineLayout,

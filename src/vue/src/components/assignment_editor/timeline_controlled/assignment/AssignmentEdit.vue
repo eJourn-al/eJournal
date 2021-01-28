@@ -41,7 +41,7 @@ import AssignmentDetails from '@/components/assignment/AssignmentDetails.vue'
 import { mapActions, mapGetters, mapMutations } from 'vuex'
 
 export default {
-    name: 'FormatSelectedTimelineItemsSwitch',
+    name: 'AssignmentEdit',
     components: {
         AssignmentDetails,
     },

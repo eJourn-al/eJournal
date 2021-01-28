@@ -13,6 +13,6 @@
 
 <script>
 export default {
-    name: 'FormatTutorialIcon',
+    name: 'AssignmentEditorTutorialIcon',
 }
 </script>

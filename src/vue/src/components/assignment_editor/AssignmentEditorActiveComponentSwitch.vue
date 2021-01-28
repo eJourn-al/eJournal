@@ -26,14 +26,14 @@
 <script>
 import CategoryEdit from '@/components/category/CategoryEdit.vue'
 import SelectedTimelineComponentSwitch from
-    '@/components/format/timeline_controlled/SelectedTimelineComponentSwitch.vue'
+    '@/components/assignment_editor/timeline_controlled/SelectedTimelineComponentSwitch.vue'
 import TemplateEdit from '@/components/template/TemplateEdit.vue'
 import TemplateImport from '@/components/template/TemplateImport.vue'
 
 import { mapGetters } from 'vuex'
 
 export default {
-    name: 'FormatActiveComponents',
+    name: 'AssignmentEditorActiveComponentSwitch',
     components: {
         CategoryEdit,
         SelectedTimelineComponentSwitch,

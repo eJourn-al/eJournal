@@ -626,7 +626,7 @@ export default {
         },
         handleEdit () {
             this.$router.push({
-                name: 'FormatEdit',
+                name: 'AssignmentEditor',
                 params: {
                     cID: this.cID,
                     aID: this.aID,

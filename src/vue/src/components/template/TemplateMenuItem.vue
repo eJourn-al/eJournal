@@ -1,5 +1,5 @@
 <!--
-    Used in a card in the format editor to open template editor and delete templates from pool.
+    Used in a card in the assignment editor to open template editor and delete templates from pool.
 -->
 
 <template>

@@ -154,7 +154,7 @@ new Vue({
 
             if (this.$hasPermission('can_view_all_journals', 'assignment', assignment.id)) {
                 if (!assignment.is_published && !assignment.is_group_assignment) { // Teacher not published route
-                    route.name = 'FormatEdit'
+                    route.name = 'AssignmentEditor'
                 } else { // Teacher published route
                     route.name = 'Assignment'
                 }

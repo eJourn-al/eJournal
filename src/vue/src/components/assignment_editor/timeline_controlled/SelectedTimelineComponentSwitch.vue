@@ -21,11 +21,13 @@
 </template>
 
 <script>
-import AssignmentEdit from '@/components/format/timeline_controlled/assignment/AssignmentEdit.vue'
-import AssignmentEndReadMode from '@/components/format/timeline_controlled/assignment/AssignmentEndReadMode.vue'
-import AssignmentStartReadMode from '@/components/format/timeline_controlled/assignment/AssignmentStartReadMode.vue'
-import PresetNodeEdit from '@/components/format/timeline_controlled/preset_node/PresetNodeEdit.vue'
-import PresetNodeReadMode from '@/components/format/timeline_controlled/preset_node/PresetNodeReadMode.vue'
+import AssignmentEdit from '@/components/assignment_editor/timeline_controlled/assignment/AssignmentEdit.vue'
+import AssignmentEndReadMode from
+    '@/components/assignment_editor/timeline_controlled/assignment/AssignmentEndReadMode.vue'
+import AssignmentStartReadMode
+    from '@/components/assignment_editor/timeline_controlled/assignment/AssignmentStartReadMode.vue'
+import PresetNodeEdit from '@/components/assignment_editor/timeline_controlled/preset_node/PresetNodeEdit.vue'
+import PresetNodeReadMode from '@/components/assignment_editor/timeline_controlled/preset_node/PresetNodeReadMode.vue'
 
 import { mapGetters } from 'vuex'
 
