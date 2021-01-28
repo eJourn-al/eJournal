@@ -106,23 +106,25 @@
 
             <hr/>
 
-            <b-button
-                v-if="edit"
-                class="red-button"
-                @click.stop="emitDeletePreset"
-            >
-                <icon name="trash"/>
-                Delete Preset
-            </b-button>
+            <b-row no-gutters>
+                <b-button
+                    v-if="edit"
+                    class="red-button"
+                    @click.stop="deletePresetNode()"
+                >
+                    <icon name="trash"/>
+                    Delete
+                </b-button>
 
-            <b-button
-                class="green-button float-right"
-                @click.stop="finalizePresetNodeChanges()"
-            >
-                <icon :name="(edit) ? 'save' : 'plus'"/>
-                <!-- QUESTION: User facing it might make more sense to use 'deadline' over 'preset'? -->
-                {{ (edit) ? 'Save' : 'Add Preset' }}
-            </b-button>
+                <b-button
+                    class="green-button ml-auto"
+                    @click.stop="finalizePresetNodeChanges()"
+                >
+                    <icon :name="(edit) ? 'save' : 'plus'"/>
+                    <!-- QUESTION: User facing it might make more sense to use 'deadline' over 'preset'? -->
+                    {{ (edit) ? 'Save' : 'Add Preset' }}
+                </b-button>
+            </b-row>
         </b-card>
     </div>
 </template>
@@ -201,16 +203,20 @@ export default {
     methods: {
         ...mapActions({
             create: 'presetNode/create',
+            delete: 'presetNode/delete',
             update: 'presetNode/update',
             cancelPresetNodeEdit: 'assignmentEditor/cancelPresetNodeEdit',
             presetNodeCreated: 'assignmentEditor/presetNodeCreated',
+            presetNodeDeleted: 'assignmentEditor/presetNodeDeleted',
         }),
         ...mapMutations({
             setModeToRead: 'assignmentEditor/SET_ACTIVE_COMPONENT_MODE_TO_READ',
         }),
-        emitDeletePreset () {
-            if (window.confirm('Are you sure you want to remove this preset from this assignment?')) {
-                this.$emit('delete-preset')
+        deletePresetNode () {
+            if (window.confirm(
+                `Are you sure you want to remove '${this.presetNode.display_name}' from the assignment?`)) {
+                this.delete({ id: this.presetNode.id, aID: this.$route.params.aID })
+                    .then(() => { this.presetNodeDeleted({ presetNode: this.presetNode }) })
             }
         },
         finalizePresetNodeChanges () {
@@ -219,8 +225,8 @@ export default {
                     .then(() => { this.setModeToRead() })
             } else {
                 this.create({ data: this.presetNode, aID: this.$route.params.aID })
-                    .then((presetNode) => {
-                        this.presetNodeCreated({ presetNode })
+                    .then((createdPresetNode) => {
+                        this.presetNodeCreated({ presetNode: createdPresetNode })
                     })
             }
         },

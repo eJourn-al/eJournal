@@ -73,13 +73,24 @@
                 <hr/>
             </template>
 
-            <b-button
-                class="green-button float-right"
-                @click="finalizeTemplateChanges"
-            >
-                <icon :name="(create) ? 'plus' : 'save'"/>
-                {{ (create) ? 'Add Template' : 'Save' }}
-            </b-button>
+            <b-row no-gutters>
+                <b-button
+                    v-if="!create"
+                    class="red-button"
+                    @click.stop="confirmDeleteTemplate()"
+                >
+                    <icon name="trash"/>
+                    Delete
+                </b-button>
+
+                <b-button
+                    class="green-button ml-auto"
+                    @click="finalizeTemplateChanges"
+                >
+                    <icon :name="(create) ? 'plus' : 'save'"/>
+                    {{ (create) ? 'Add Template' : 'Save' }}
+                </b-button>
+            </b-row>
         </template>
     </b-card>
 </template>
@@ -140,8 +151,10 @@ export default {
         }),
         ...mapActions({
             cancelTemplateEdit: 'assignmentEditor/cancelTemplateEdit',
+            templateDeleted: 'assignmentEditor/templateDeleted',
             createTemplate: 'template/create',
             updateTemplate: 'template/update',
+            deleteTemplate: 'template/delete',
         }),
         finalizeTemplateChanges () {
             if (this.nameInputState === false) {
@@ -155,6 +168,13 @@ export default {
             } else {
                 this.updateTemplate({ id: this.template.id, data: this.template, aID: this.$route.params.aID })
                     .then(() => { this.setModeToRead() })
+            }
+        },
+        confirmDeleteTemplate () {
+            if (window.confirm(
+                `Are you sure you want to delete template "${this.template.name}" from the assignment?`)) {
+                this.deleteTemplate({ id: this.template.id, aID: this.$route.params.aID })
+                    .then(() => { this.templateDeleted({ template: this.template }) })
             }
         },
     },

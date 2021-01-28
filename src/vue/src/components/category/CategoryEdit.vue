@@ -86,13 +86,24 @@
 
             <hr/>
 
-            <b-button
-                class="green-button float-right"
-                @click="finalizeCategoryChanges"
-            >
-                <icon :name="(create) ? 'plus' : 'save'"/>
-                {{ (create) ? 'Add Category' : 'Save' }}
-            </b-button>
+            <b-row no-gutters>
+                <b-button
+                    v-if="!create"
+                    class="red-button"
+                    @click.stop="confirmDeleteCategory()"
+                >
+                    <icon name="trash"/>
+                    Delete
+                </b-button>
+
+                <b-button
+                    class="green-button ml-auto"
+                    @click="finalizeCategoryChanges"
+                >
+                    <icon :name="(create) ? 'plus' : 'save'"/>
+                    {{ (create) ? 'Add Category' : 'Save' }}
+                </b-button>
+            </b-row>
         </template>
     </b-card>
 </template>
@@ -174,7 +185,9 @@ export default {
     methods: {
         ...mapActions({
             cancelCategoryEdit: 'assignmentEditor/cancelCategoryEdit',
+            categoryDeleted: 'assignmentEditor/categoryDeleted',
             categoryCreate: 'category/create',
+            categoryDelete: 'category/delete',
             categoryUpdate: 'category/update',
         }),
         ...mapMutations({
@@ -199,6 +212,15 @@ export default {
             } else {
                 this.categoryUpdate({ id: this.category.id, category: this.category, aID: this.$route.params.aID })
                     .then(() => { this.setModeToRead() })
+            }
+        },
+        confirmDeleteCategory () {
+            if (window.confirm(`
+Are you sure you want to delete ${this.category.name}?
+
+This action will also remove the category from any associated entries. This action cannot be undone.`)) {
+                this.categoryDelete({ id: this.category.id })
+                    .then(() => { this.categoryDeleted({ category: this.category }) })
             }
         },
     },

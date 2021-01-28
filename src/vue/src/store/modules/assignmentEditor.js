@@ -67,6 +67,9 @@ const mutations = {
         state.activeComponent = state.activeComponentOptions.category
         state.activeComponentMode = state.activeComponentModeOptions.read
     },
+    CLEAR_SELECTED_CATEGORY (state) {
+        state.selectedCategory = null
+    },
 
     SELECT_TEMPLATE (state, { template, mode = readSymbol }) {
         state.selectedTemplate = JSON.parse(JSON.stringify(template))
@@ -147,10 +150,14 @@ const mutations = {
     CLEAR_PRESET_NODE_DRAFT (state) {
         state.newPresetNodeDraft = null
     },
+    CLEAR_SELECTED_PRESET_NODE (state) {
+        state.selectedPresetNode = null
+    },
 
     CLEAR_ACTIVE_COMPONENT (state) {
         state.activeComponentMode = state.activeComponentModeOptions.read
         state.activeComponent = state.activeComponentOptions.timeline
+        state.selectedTimelineElementIndex = -1
     },
 
     RESET (state) {
@@ -168,15 +175,34 @@ const mutations = {
 }
 
 const actions = {
-    templateDeleted (context, template) {
+    categoryDeleted (context, { category }) {
+        if (
+            context.state.activeComponent === context.state.activeComponentOptions.category
+            && context.state.selectedCategory.id === category.id
+        ) {
+            context.commit('CLEAR_ACTIVE_COMPONENT')
+            context.commit('CLEAR_SELECTED_CATEGORY')
+        }
+    },
+    presetNodeDeleted (context, { presetNode }) {
+        if (
+            context.state.activeComponent === context.state.activeComponentOptions.timeline
+            && context.state.selectedPresetNode.id === presetNode.id
+        ) {
+            context.commit('CLEAR_ACTIVE_COMPONENT')
+            context.commit('CLEAR_SELECTED_PRESET_NODE')
+        }
+    },
+    templateDeleted (context, { template }) {
         if (
             context.state.activeComponent === context.state.activeComponentOptions.template
-            && context.state.selectedTemplate === template
+            && context.state.selectedTemplate.id === template.id
         ) {
             context.commit('CLEAR_ACTIVE_COMPONENT')
             context.commit('CLEAR_SELECTED_TEMPLATE')
         }
     },
+
     timelineElementSelected (context, { timelineElementIndex, mode = editSymbol }) {
         context.commit('SELECT_TIMELINE_ELEMENT', { timelineElementIndex, mode })
 
@@ -190,6 +216,7 @@ const actions = {
             context.commit('CREATE_PRESET_NODE')
         }
     },
+
     presetNodeCreated (context, { presetNode }) {
         context.commit('CLEAR_PRESET_NODE_DRAFT')
         context.commit('SELECT_PRESET_NODE', { presetNode })

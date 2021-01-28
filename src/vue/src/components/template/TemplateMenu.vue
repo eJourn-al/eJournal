@@ -88,7 +88,7 @@ export default {
             if (window.confirm(
                 `Are you sure you want to delete template "${template.name}" from this assignment?`)) {
                 this.templateDelete({ id: template.id, aID: this.$route.params.aID })
-                    .then(() => { this.templateDeleted(template) })
+                    .then(() => { this.templateDeleted({ template }) })
             }
         },
     },
