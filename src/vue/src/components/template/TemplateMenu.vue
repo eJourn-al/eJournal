@@ -18,7 +18,7 @@
             >
                 <div
                     v-if="templates.length > 0"
-                    class="template-list-header"
+                    class="menu-list-header"
                 >
                     <b class="float-right">
                         Type
@@ -94,8 +94,3 @@ export default {
     },
 }
 </script>
-
-<style lang="sass">
-.template-list-header
-    border-bottom: 2px solid $theme-dark-grey
-</style>

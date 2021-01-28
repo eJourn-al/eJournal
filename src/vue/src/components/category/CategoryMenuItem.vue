@@ -1,6 +1,6 @@
 <template>
     <div
-        class="template-link"
+        class="menu-item-link unselectable"
         :class="{ active: isActive }"
         @click="$emit('select-category', category)"
     >
@@ -49,33 +49,3 @@ export default {
     },
 }
 </script>
-
-<style lang="sass">
-// TODO Category: Extract and centralize
-.template-list-header
-    border-bottom: 2px solid $theme-dark-grey
-
-.template-link
-    padding: 5px
-    border-bottom: 1px solid $theme-dark-grey
-    cursor: pointer
-    vertical-align: middle
-    svg
-        margin-top: 3px
-    .max-one-line
-        width: calc(100% - 2em)
-    .edit-icon
-        margin-top: 4px
-    .edit-icon, .trash-icon
-        width: 0px
-        visibility: hidden
-    &:hover
-        background-color: $theme-dark-grey
-        .max-one-line
-            width: calc(100% - 5em)
-        .edit-icon, .trash-icon
-            visibility: visible
-            width: auto
-    &.active
-        background-color: $theme-dark-grey
-</style>

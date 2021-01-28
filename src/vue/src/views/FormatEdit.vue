@@ -173,6 +173,30 @@ respective template setting "<i>Fixed Categories / Custom Categories</i>".
 </script>
 
 <style lang="sass">
-.template-list-header
+.menu-list-header
     border-bottom: 2px solid $theme-dark-grey
+
+.menu-item-link
+    padding: 5px
+    border-bottom: 1px solid $theme-dark-grey
+    cursor: pointer
+    vertical-align: middle
+    svg
+        margin-top: 3px
+    .max-one-line
+        width: calc(100% - 2em)
+    .edit-icon
+        margin-top: 4px
+    .edit-icon, .trash-icon
+        width: 0px
+        visibility: hidden
+    &:hover
+        background-color: $theme-dark-grey
+        .max-one-line
+            width: calc(100% - 5em)
+        .edit-icon, .trash-icon
+            visibility: visible
+            width: auto
+    &.active
+        background-color: $theme-dark-grey
 </style>
