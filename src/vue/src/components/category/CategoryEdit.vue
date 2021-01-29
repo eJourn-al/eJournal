@@ -36,10 +36,10 @@
             <b-form-group
                 label="Name"
                 :invalid-feedback="nameInvalidFeedback"
+                :state="nameInputState"
             >
                 <b-form-input
                     v-model="category.name"
-                    :state="nameInputState"
                     autofocus
                     placeholder="Name"
                     class="theme-input"
@@ -76,10 +76,10 @@
             <b-form-group
                 label="Color"
                 :invalid-feedback="colorInvalidFeedback"
+                :state="colorInputState"
             >
                 <b-input
                     v-model="category.color"
-                    :state="colorInputState"
                     type="color"
                 />
             </b-form-group>
@@ -185,13 +185,14 @@ export default {
     methods: {
         ...mapActions({
             cancelCategoryEdit: 'assignmentEditor/cancelCategoryEdit',
+            categoryCreated: 'assignmentEditor/categoryCreated',
             categoryDeleted: 'assignmentEditor/categoryDeleted',
+            categoryUpdated: 'assignmentEditor/categoryUpdated',
             categoryCreate: 'category/create',
             categoryDelete: 'category/delete',
             categoryUpdate: 'category/update',
         }),
         ...mapMutations({
-            categoryCreated: 'assignmentEditor/CATEGORY_CREATED',
             setModeToEdit: 'assignmentEditor/SET_ACTIVE_COMPONENT_MODE_TO_EDIT',
             setModeToRead: 'assignmentEditor/SET_ACTIVE_COMPONENT_MODE_TO_READ',
         }),
@@ -200,7 +201,7 @@ export default {
                 this.setModeToEdit()
             } else {
                 if (!this.create) {
-                    this.cancelCategoryEdit()
+                    this.cancelCategoryEdit({ category: this.category })
                 }
                 this.setModeToRead()
             }
@@ -211,7 +212,7 @@ export default {
                     .then((category) => { this.categoryCreated({ category }) })
             } else {
                 this.categoryUpdate({ id: this.category.id, category: this.category, aID: this.$route.params.aID })
-                    .then(() => { this.setModeToRead() })
+                    .then(() => { this.categoryUpdated({ category: this.category }) })
             }
         },
         confirmDeleteCategory () {

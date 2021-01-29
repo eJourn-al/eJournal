@@ -142,20 +142,23 @@ respective template setting "<i>Fixed Categories / Custom Categories</i>".
         ]
 
         Promise.all(init).then(() => {
+            /* Start with the assignment details selected in read mode */
+            this.timelineElementSelected({ timelineElementIndex: -1, mode: this.activeComponentModeOptions.read })
             this.loading = false
-            this.$intro().showHints()
 
             if (this.savedPreferences.show_format_tutorial) {
                 this.changePreference({ show_format_tutorial: false })
-                // this.$intro().start()
+                this.$intro().start()
             }
         })
     },
     methods: {
         ...mapMutations({
             changePreference: 'preferences/CHANGE_PREFERENCES',
+            reset: 'assignmentEditor/RESET',
         }),
         ...mapActions({
+            confirmIfDirty: 'assignmentEditor/confirmIfDirty',
             timelineElementSelected: 'assignmentEditor/timelineElementSelected',
             assignmentRetrieve: 'assignment/retrieve',
             presetNodeList: 'presetNode/list',
@@ -163,12 +166,13 @@ respective template setting "<i>Fixed Categories / Custom Categories</i>".
             templateList: 'template/list',
         }),
     },
-    // Question: Should a warning be given if any changes are unsaved?
-    // E.g. drafts exist?
-    // All modifications remain untill the user switches assignment route or closes the tab
     beforeRouteLeave (to, from, next) {
         this.$intro().exit()
-        next()
+
+        if (this.confirmIfDirty()) {
+            this.reset()
+            next()
+        }
     },
 }
 </script>

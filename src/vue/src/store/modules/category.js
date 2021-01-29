@@ -34,12 +34,16 @@ const mutations = {
     UPDATE_CACHE (state, { cache, cacheKey, data }) {
         Vue.set(state[cache], cacheKey, data)
     },
-    UPDATE_ASSIGNMENT_CATEGORIES (state, { aID, categories }) {
+    SET_ASSIGNMENT_CATEGORIES (state, { aID, categories }) {
         Vue.set(state.assignmentsCategories, aID, categories)
-        state.assignmentsCategories[aID].sort((a, b) => a.name.localeCompare(b.name))
     },
     ADD_ASSIGNMENT_CATEGORY (state, { aID, category }) {
         state.assignmentsCategories[aID].push(category)
+        state.assignmentsCategories[aID].sort((a, b) => a.name.localeCompare(b.name))
+    },
+    UPDATE_ASSIGNMENT_CATEGORY (state, { aID, category, oldId }) {
+        const updatedCategoryIndex = state.assignmentsCategories[aID].findIndex(elem => elem.id === oldId)
+        Vue.set(state.assignmentsCategories[aID], updatedCategoryIndex, category)
         state.assignmentsCategories[aID].sort((a, b) => a.name.localeCompare(b.name))
     },
     DELETE_ASSIGNMENT_CATEGORY (state, { aID, id }) {
@@ -100,7 +104,7 @@ const actions = {
         function fn () {
             return auth.get('categories', { assignment_id: aID }, connArgs)
                 .then((response) => {
-                    context.commit('UPDATE_ASSIGNMENT_CATEGORIES', { aID, categories: response.data.categories })
+                    context.commit('SET_ASSIGNMENT_CATEGORIES', { aID, categories: response.data.categories })
                     return response.data.categories
                 })
         }
@@ -112,7 +116,7 @@ const actions = {
         function fn () {
             /* Create a payload so we do not modify the local categories templates directly */
             const payload = JSON.parse(JSON.stringify(category))
-            payload.templates = category.templates.map(elem => elem.id)
+            payload.templates = payload.templates.map(elem => elem.id)
             payload.assignment_id = aID
 
             return auth.create('categories', payload, connArgs)
@@ -141,16 +145,17 @@ const actions = {
         function fn () {
             /* Create a payload so we do not modify the local categories templates directly */
             const payload = JSON.parse(JSON.stringify(category))
-            payload.templates = category.templates.map(elem => elem.id)
+            payload.templates = payload.templates.map(elem => elem.id)
             payload.assignment_id = aID
 
-            return auth.update(`categories/${id}`, category, connArgs)
+            return auth.update(`categories/${id}`, payload, connArgs)
                 .then((response) => {
                     const updatedCategory = response.data.category
 
+                    context.commit('UPDATE_ASSIGNMENT_CATEGORY', { aID, category: updatedCategory, oldId: id })
                     context.commit(
                         'template/PROPOGATE_CATEGORY_TEMPLATE_UPDATE',
-                        { aID: router.currentRoute.params.aID, updatedCategory },
+                        { aID, updatedCategory },
                         { root: true },
                     )
                     context.state.timelineInstance.syncNodes()

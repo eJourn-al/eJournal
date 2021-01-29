@@ -1,3 +1,4 @@
+import Vue from 'vue'
 import colorUtils from '@/utils/colors.js'
 
 const categorySymbol = Symbol('category')
@@ -8,6 +9,20 @@ const templateImportSymbol = Symbol('templateImport')
 const readSymbol = Symbol('read')
 const editSymbol = Symbol('edit')
 
+function fromDraft (drafts, obj) {
+    if (obj.id in drafts) {
+        const draft = drafts[obj.id]
+        draft.edited = JSON.stringify(draft.draft) !== JSON.stringify(obj)
+
+        return draft
+    }
+
+    const draft = { draft: JSON.parse(JSON.stringify(obj)), edited: false }
+    drafts[obj.id] = draft
+
+    return draft
+}
+
 const getters = {
     activeComponent: state => state.activeComponent,
     activeComponentOptions: state => state.activeComponentOptions,
@@ -16,6 +31,8 @@ const getters = {
     activeComponentModeOptions: state => state.activeComponentModeOptions,
     readMode: state => state.activeComponentMode === state.activeComponentModeOptions.read,
     editMode: state => state.activeComponentMode === state.activeComponentModeOptions.edit,
+
+    assignmentDetailsDraft: state => state.assignmentDetailsDraft,
 
     selectedCategory: state => state.selectedCategory,
     newCategoryDraft: state => state.newCategoryDraft,
@@ -37,10 +54,27 @@ const mutations = {
         state.activeComponentMode = state.activeComponentModeOptions.edit
     },
 
-    SELECT_CATEGORY (state, { category, mode = readSymbol }) {
-        state.selectedCategory = JSON.parse(JSON.stringify(category))
+    SELECT_ASSIGNMENT_DETAILS (state, { originalAssignment }) {
+        if (state.assignmentDetailsDraft) {
+            const edited = JSON.stringify(originalAssignment) !== JSON.stringify(state.assignmentDetailsDraft)
+            state.activeComponentMode = (edited)
+                ? state.activeComponentModeOptions.edit : state.activeComponentModeOptions.read
+        } else {
+            state.assignmentDetailsDraft = JSON.parse(JSON.stringify(originalAssignment))
+            state.activeComponentMode = state.activeComponentModeOptions.read
+        }
+    },
+    CLEAR_ASSIGNMENT_DETAILS_DRAFT (state) {
+        state.assignmentDetailsDraft = null
+    },
+
+    SELECT_CATEGORY (state, { category }) {
+        const draft = fromDraft(state.categoryDrafts, category)
+
+        state.selectedCategory = draft.draft
         state.activeComponent = state.activeComponentOptions.category
-        state.activeComponentMode = mode
+        state.activeComponentMode = (draft.edited)
+            ? state.activeComponentModeOptions.edit : state.activeComponentModeOptions.read
     },
     CREATE_CATEGORY (state) {
         if (state.newCategoryDraft) {
@@ -61,20 +95,21 @@ const mutations = {
         state.activeComponent = state.activeComponentOptions.category
         state.activeComponentMode = state.activeComponentModeOptions.edit
     },
-    CATEGORY_CREATED (state, { category }) {
+    CLEAR_NEW_CATEGORY_DRAFT (state) {
         state.newCategoryDraft = null
-        state.selectedCategory = category
-        state.activeComponent = state.activeComponentOptions.category
-        state.activeComponentMode = state.activeComponentModeOptions.read
     },
     CLEAR_SELECTED_CATEGORY (state) {
+        Vue.delete(state.categoryDrafts, state.selectedCategory.id)
         state.selectedCategory = null
     },
 
-    SELECT_TEMPLATE (state, { template, mode = readSymbol }) {
-        state.selectedTemplate = JSON.parse(JSON.stringify(template))
+    SELECT_TEMPLATE (state, { template }) {
+        const draft = fromDraft(state.templateDrafts, template)
+
+        state.selectedTemplate = draft.draft
         state.activeComponent = state.activeComponentOptions.template
-        state.activeComponentMode = mode
+        state.activeComponentMode = (draft.edited)
+            ? state.activeComponentModeOptions.edit : state.activeComponentModeOptions.read
     },
     CREATE_TEMPLATE (state) {
         if (state.newTemplateDraft) {
@@ -103,16 +138,14 @@ const mutations = {
         state.activeComponent = state.activeComponentOptions.template
         state.activeComponentMode = state.activeComponentModeOptions.edit
     },
-    TEMPLATE_CREATED (state, { template }) {
+    CLEAR_NEW_TEMPLATE_DRAFT (state) {
         state.newTemplateDraft = null
-        state.selectedTemplate = template
-        state.activeComponent = state.activeComponentOptions.template
-        state.activeComponentMode = state.activeComponentModeOptions.read
     },
     SET_ACTIVE_COMPONENT_TO_TEMPLATE_IMPORT (state) {
         state.activeComponent = state.activeComponentOptions.templateImport
     },
     CLEAR_SELECTED_TEMPLATE (state) {
+        Vue.delete(state.templateDrafts, state.selectedTemplate.id)
         state.selectedTemplate = null
     },
 
@@ -145,12 +178,18 @@ const mutations = {
         state.activeComponentMode = state.activeComponentModeOptions.edit
     },
     SELECT_PRESET_NODE (state, { presetNode }) {
-        state.selectedPresetNode = JSON.parse(JSON.stringify(presetNode))
+        const draft = fromDraft(state.presetNodeDrafts, presetNode)
+
+        state.selectedPresetNode = draft.draft
+        state.activeComponent = state.activeComponentOptions.timeline
+        state.activeComponentMode = (draft.edited)
+            ? state.activeComponentModeOptions.edit : state.activeComponentModeOptions.read
     },
-    CLEAR_PRESET_NODE_DRAFT (state) {
+    CLEAR_NEW_PRESET_NODE_DRAFT (state) {
         state.newPresetNodeDraft = null
     },
     CLEAR_SELECTED_PRESET_NODE (state) {
+        Vue.delete(state.presetNodeDrafts, state.selectedPresetNode.id)
         state.selectedPresetNode = null
     },
 
@@ -159,22 +198,40 @@ const mutations = {
         state.activeComponent = state.activeComponentOptions.timeline
         state.selectedTimelineElementIndex = -1
     },
+    CLEAR_DRAFT (state, { drafts, obj }) {
+        Vue.delete(drafts, obj.id)
+    },
 
     RESET (state) {
         state.selectedTimelineElementIndex = -1
 
+        state.assignmentDetailsDraft = null
+
         state.selectedCategory = null
         state.newCategoryDraft = null
+        state.categoryDrafts = {}
 
         state.selectedTemplate = null
         state.newTemplateDraft = null
+        state.templateDrafts = {}
 
         state.selectedPresetNode = null
         state.newPresetNodeDraft = null
+        state.presetNodeDrafts = {}
     },
 }
 
 const actions = {
+    categoryCreated (context, { category }) {
+        context.commit('CLEAR_NEW_CATEGORY_DRAFT')
+        context.commit('SELECT_CATEGORY', { category })
+    },
+    templateCreated (context, { template }) {
+        context.commit('CLEAR_NEW_TEMPLATE_DRAFT')
+        context.commit('SELECT_TEMPLATE', { template })
+    },
+
+    // TODO: Are the guards really needed? -> No move to using passed obj
     categoryDeleted (context, { category }) {
         if (
             context.state.activeComponent === context.state.activeComponentOptions.category
@@ -203,6 +260,19 @@ const actions = {
         }
     },
 
+    categoryUpdated (context, { category }) {
+        context.commit('CLEAR_DRAFT', { drafts: context.state.categoryDrafts, obj: category })
+        context.commit('SELECT_CATEGORY', { category })
+    },
+    presetNodeUpdated (context, { presetNode }) {
+        context.commit('CLEAR_DRAFT', { drafts: context.state.presetNodeDrafts, obj: presetNode })
+        context.commit('SELECT_PRESET_NODE', { presetNode })
+    },
+    templateUpdated (context, { template }) {
+        context.commit('CLEAR_DRAFT', { drafts: context.state.templateDrafts, obj: template })
+        context.commit('SELECT_TEMPLATE', { template })
+    },
+
     timelineElementSelected (context, { timelineElementIndex, mode = editSymbol }) {
         context.commit('SELECT_TIMELINE_ELEMENT', { timelineElementIndex, mode })
 
@@ -214,13 +284,16 @@ const actions = {
         /* Add node is selected */
         } else if (timelineElementIndex === presetNodes.length) {
             context.commit('CREATE_PRESET_NODE')
+        /* End or start of assignment is selected */
+        } else {
+            const originalAssignment = context.rootGetters['assignment/assignment']
+            context.commit('SELECT_ASSIGNMENT_DETAILS', { originalAssignment })
         }
     },
 
     presetNodeCreated (context, { presetNode }) {
-        context.commit('CLEAR_PRESET_NODE_DRAFT')
+        context.commit('CLEAR_NEW_PRESET_NODE_DRAFT')
         context.commit('SELECT_PRESET_NODE', { presetNode })
-        context.commit('SET_ACTIVE_COMPONENT_MODE_TO_READ')
 
         const presetNodes = context.rootGetters['presetNode/assignmentPresetNodes']
         context.commit(
@@ -229,23 +302,89 @@ const actions = {
         )
     },
 
-    cancelCategoryEdit (context) {
+    cancelCategoryEdit (context, { category }) {
         const categories = context.rootGetters['category/assignmentCategories']
-        const originalCategory = categories.find(category => category.id === context.state.selectedCategory.id)
+        const originalCategory = categories.find(elem => elem.id === category.id)
 
+        context.commit('CLEAR_DRAFT', { drafts: context.state.categoryDrafts, obj: category })
         context.commit('SELECT_CATEGORY', { category: originalCategory })
     },
-    cancelPresetNodeEdit (context) {
+    cancelPresetNodeEdit (context, { presetNode }) {
         const presetNodes = context.rootGetters['presetNode/assignmentPresetNodes']
-        const originalPresetNode = presetNodes.find(preset => preset.id === context.state.selectedPresetNode.id)
+        const originalPresetNode = presetNodes.find(elem => elem.id === presetNode.id)
 
+        context.commit('CLEAR_DRAFT', { drafts: context.state.presetNodeDrafts, obj: presetNode })
         context.commit('SELECT_PRESET_NODE', { presetNode: originalPresetNode })
     },
-    cancelTemplateEdit (context) {
+    cancelTemplateEdit (context, { template }) {
         const templates = context.rootGetters['template/assignmentTemplates']
-        const originalTemplate = templates.find(template => template.id === context.state.selectedTemplate.id)
+        const originalTemplate = templates.find(elem => elem.id === template.id)
 
+        context.commit('CLEAR_DRAFT', { drafts: context.state.templateDrafts, obj: template })
         context.commit('SELECT_TEMPLATE', { template: originalTemplate })
+    },
+
+    confirmIfDirty (context) {
+        const dirtyWarnings = []
+        const assignment = context.rootGetters['assignment/assignment']
+        const categories = context.rootGetters['category/assignmentCategories']
+        const presetNodes = context.rootGetters['presetNode/assignmentPresetNodes']
+        const templates = context.rootGetters['template/assignmentTemplates']
+
+        if (context.state.assignmentDetailsDraft
+            && JSON.stringify(context.state.assignmentDetailsDraft) !== JSON.stringify(assignment)) {
+            dirtyWarnings.push('Edit to assignment details.')
+        }
+
+        if (context.state.newCategoryDraft) {
+            const category = context.state.newCategoryDraft
+            dirtyWarnings.push(`New category ${category.name ? `'${category.name}'` : ''} draft.`)
+        }
+        if (context.state.newPresetNodeDraft) {
+            const presetNode = context.state.newPresetNodeDraft
+            dirtyWarnings.push(`New deadline ${presetNode.display_name
+                ? `'${presetNode.display_name.name}'` : ''} draft.`)
+        }
+        if (context.state.newTemplateDraft) {
+            const template = context.state.newTemplateDraft
+            dirtyWarnings.push(`New template ${template.name ? `'${template.name}'` : ''} draft.`)
+        }
+
+        Object.values(context.state.categoryDrafts).forEach((draft) => {
+            const categoryDraft = draft.draft
+            const originalCategory = categories.find(elem => elem.id === categoryDraft.id)
+
+            if (JSON.stringify(originalCategory) !== JSON.stringify(categoryDraft)) {
+                dirtyWarnings.push(`Edit to category '${originalCategory.name}'.`)
+            }
+        })
+        Object.values(context.state.presetNodeDrafts).forEach((draft) => {
+            const presetNodeDraft = draft.draft
+            const originalPresetNode = presetNodes.find(elem => elem.id === presetNodeDraft.id)
+
+            if (JSON.stringify(originalPresetNode) !== JSON.stringify(presetNodeDraft)) {
+                dirtyWarnings.push(`Edit to deadline '${originalPresetNode.display_name}'.`)
+            }
+        })
+        Object.values(context.state.templateDrafts).forEach((draft) => {
+            const templateDraft = draft.draft
+            const originalTemplate = templates.find(elem => elem.id === templateDraft.id)
+
+            if (JSON.stringify(originalTemplate) !== JSON.stringify(templateDraft)) {
+                dirtyWarnings.push(`Edit to template '${originalTemplate.name}'.`)
+            }
+        })
+
+        if (dirtyWarnings.length > 0) {
+            return window.confirm(`
+The following unsaved changes will be lost:
+
+${dirtyWarnings.map(warn => `- ${warn}\n`)}
+Are you sure you want to continue?
+            `)
+        }
+
+        return true
     },
 }
 
@@ -268,14 +407,19 @@ export default {
 
         selectedTimelineElementIndex: -1, /* See timeline.vue for mapping (due for refactor). */
 
+        assignmentDetailsDraft: null,
+
         selectedCategory: null,
         newCategoryDraft: null,
+        categoryDrafts: {},
 
         selectedTemplate: null,
         newTemplateDraft: null,
+        templateDrafts: {},
 
         selectedPresetNode: null,
         newPresetNodeDraft: null,
+        presetNodeDrafts: {},
     },
     getters,
     mutations,

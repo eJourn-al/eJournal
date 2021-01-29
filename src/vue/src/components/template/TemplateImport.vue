@@ -164,7 +164,7 @@ export default {
     },
     methods: {
         ...mapMutations({
-            templateCreated: 'assignmentEditor/TEMPLATE_CREATED',
+            templateSelected: 'assignmentEditor/SELECT_TEMPLATE',
         }),
         ...mapActions({
             create: 'template/create',
@@ -181,7 +181,7 @@ export default {
                     this.selectedTemplate = null
                     this.previewTemplate = false
 
-                    this.templateCreated({ createdTemplate })
+                    this.templateSelected({ template: createdTemplate })
                 })
         },
         getTemplatesForSelectedAssignment () {

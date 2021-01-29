@@ -21,7 +21,7 @@
 
                 <b-button
                     class="red-button ml-auto"
-                    @click="cancelPresetNodeEdit(); setModeToRead()"
+                    @click="cancelPresetNodeEdit({ presetNode }); setModeToRead()"
                 >
                     <icon name="ban"/>
                     Cancel
@@ -32,6 +32,7 @@
                 label="Display name"
                 class="required"
                 :invalid-feedback="displayNameInvalidFeedback"
+                :state="displayNameInputState"
             >
                 <b-input
                     v-model="presetNode.display_name"
@@ -39,7 +40,6 @@
                     placeholder="Timeline display name"
                     trim
                     required
-                    :state="displayNameInputState"
                 />
             </b-form-group>
 
@@ -52,6 +52,7 @@
                 v-else-if="presetNode.type === 'p'"
                 class="required"
                 :invalid-feedback="targetInvalidFeedback"
+                :state="targetInputState"
             >
                 <template #label>
                     Number of points
@@ -69,7 +70,6 @@
                     min="1"
                     required
                     :max="assignment.points_possible"
-                    :state="targetInputState"
                 />
             </b-form-group>
 
@@ -208,6 +208,7 @@ export default {
             cancelPresetNodeEdit: 'assignmentEditor/cancelPresetNodeEdit',
             presetNodeCreated: 'assignmentEditor/presetNodeCreated',
             presetNodeDeleted: 'assignmentEditor/presetNodeDeleted',
+            presetNodeUpdated: 'assignmentEditor/presetNodeUpdated',
         }),
         ...mapMutations({
             setModeToRead: 'assignmentEditor/SET_ACTIVE_COMPONENT_MODE_TO_READ',
@@ -222,7 +223,7 @@ export default {
         finalizePresetNodeChanges () {
             if (this.edit) {
                 this.update({ data: this.presetNode, aID: this.$route.params.aID })
-                    .then(() => { this.setModeToRead() })
+                    .then(() => { this.presetNodeUpdated({ presetNode: this.presetNode }) })
             } else {
                 this.create({ data: this.presetNode, aID: this.$route.params.aID })
                     .then((createdPresetNode) => {

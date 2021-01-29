@@ -30,7 +30,7 @@
                 <b-button
                     class="ml-auto"
                     :class="(create) ? 'green-button' : 'red-button'"
-                    @click="(create) ? setModeToRead() : cancelTemplateEdit(); setModeToRead()"
+                    @click="(create) ? setModeToRead() : cancelTemplateEdit({ template })"
                 >
                     <icon :name="(create) ? 'eye' : 'ban'"/>
                     {{ (create) ? 'Preview' : 'Cancel' }}
@@ -40,6 +40,7 @@
             <b-form-group
                 label="Name"
                 :invalid-feedback="nameInvalidFeedback"
+                :state="nameInputState"
             >
                 <b-input
                     v-model="template.name"
@@ -48,7 +49,6 @@
                     type="text"
                     trim
                     required
-                    :state="nameInputState"
                 />
             </b-form-group>
 
@@ -119,6 +119,7 @@ export default {
     data () {
         return {
             nameInvalidFeedback: null,
+            nameInputState: null,
         }
     },
     computed: {
@@ -129,29 +130,32 @@ export default {
             templates: 'template/assignmentTemplates',
         }),
         create () { return this.template.id < 0 },
-        nameInputState () {
-            if (this.template.name === '') {
-                this.nameInvalidFeedback = 'Name cannot be empty' // eslint-disable-line
-                return false
-            }
-            if (this.templates.some(elem => elem.id !== this.template.id && elem.name === this.template.name)) {
-                this.nameInvalidFeedback = 'Name is not unique' // eslint-disable-line
-                return false
-            }
-
-            this.nameInvalidFeedback = null // eslint-disable-line
-            return null
+    },
+    watch: {
+        'template.name': {
+            handler (name) {
+                if (name === '') {
+                    this.nameInvalidFeedback = 'Name cannot be empty'
+                    this.nameInputState = false
+                } else if (this.templates.some(elem => elem.id !== this.template.id && elem.name === name)) {
+                    this.nameInvalidFeedback = 'Name is not unique'
+                    this.nameInputState = false
+                } else {
+                    this.nameInputState = null
+                }
+            },
         },
     },
     methods: {
         ...mapMutations({
             setModeToEdit: 'assignmentEditor/SET_ACTIVE_COMPONENT_MODE_TO_EDIT',
             setModeToRead: 'assignmentEditor/SET_ACTIVE_COMPONENT_MODE_TO_READ',
-            templateCreated: 'assignmentEditor/TEMPLATE_CREATED',
         }),
         ...mapActions({
             cancelTemplateEdit: 'assignmentEditor/cancelTemplateEdit',
+            templateCreated: 'assignmentEditor/templateCreated',
             templateDeleted: 'assignmentEditor/templateDeleted',
+            templateUpdated: 'assignmentEditor/templateUpdated',
             createTemplate: 'template/create',
             updateTemplate: 'template/update',
             deleteTemplate: 'template/delete',
@@ -167,7 +171,7 @@ export default {
                     .then((template) => { this.templateCreated({ template }) })
             } else {
                 this.updateTemplate({ id: this.template.id, data: this.template, aID: this.$route.params.aID })
-                    .then(() => { this.setModeToRead() })
+                    .then(() => { this.templateUpdated({ template: this.template }) })
             }
         },
         confirmDeleteTemplate () {

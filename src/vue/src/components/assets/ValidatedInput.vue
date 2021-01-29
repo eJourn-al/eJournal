@@ -1,9 +1,11 @@
 <template>
     <!-- eslint-disable vue/attribute-hyphenation -->
-    <b-form-group :invalid-feedback="invalidFeedback">
+    <b-form-group
+        :invalid-feedback="invalidFeedback"
+        :state="state"
+    >
         <b-form-input
             v-model="data"
-            :state="state"
             :placeholder="placeholder"
             class="theme-input"
             type="text"

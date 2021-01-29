@@ -11,7 +11,7 @@
 
             <b-button
                 class="red-button ml-auto"
-                @click="setModeToRead()"
+                @click="clearAssignmentDetailsDraft(); selectAssignmentDetails({ originalAssignment })"
             >
                 <icon name="ban"/>
                 Cancel
@@ -19,7 +19,7 @@
         </b-row>
 
         <assignment-details
-            :assignmentDetails="assignment"
+            :assignmentDetails="assignmentDetailsDraft"
             :presetNodes="assignmentPresetNodes"
         />
 
@@ -27,7 +27,11 @@
 
         <b-button
             class="float-right green-button"
-            @click.stop="updateAssignment(assignment).then(() => { setModeToEdit() })"
+            @click.stop="updateAssignment({ id: assignmentDetailsDraft.id, data: assignmentDetailsDraft}).then(() => {
+                clearAssignmentDetailsDraft()
+                selectAssignmentDetails({ originalAssignment })
+                setModeToRead()
+            })"
         >
             <icon name="save"/>
             Save
@@ -47,7 +51,8 @@ export default {
     },
     computed: {
         ...mapGetters({
-            assignment: 'assignment/assignment',
+            originalAssignment: 'assignment/assignment',
+            assignmentDetailsDraft: 'assignmentEditor/assignmentDetailsDraft',
             assignmentPresetNodes: 'presetNode/assignmentPresetNodes',
         }),
     },
@@ -56,13 +61,10 @@ export default {
             updateAssignment: 'assignment/update',
         }),
         ...mapMutations({
-            setModeToEdit: 'assignmentEditor/SET_ACTIVE_COMPONENT_MODE_TO_EDIT',
+            clearAssignmentDetailsDraft: 'assignmentEditor/CLEAR_ASSIGNMENT_DETAILS_DRAFT',
+            selectAssignmentDetails: 'assignmentEditor/SELECT_ASSIGNMENT_DETAILS',
             setModeToRead: 'assignmentEditor/SET_ACTIVE_COMPONENT_MODE_TO_READ',
         }),
     },
 }
 </script>
-
-<style>
-
-</style>

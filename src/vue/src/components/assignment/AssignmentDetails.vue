@@ -47,6 +47,7 @@
 
             <b-form-group
                 class="required"
+                :state="pointsPossibleInputState"
                 :invalid-feedback="pointsPossibleInvalidFeedback"
             >
                 <template #label>
@@ -64,7 +65,6 @@
                     type="number"
                     required
                     :min="minimumPointsPossible"
-                    :state="pointsPossibleInputState"
                 />
             </b-form-group>
 
@@ -276,7 +276,10 @@ export default {
         },
         'assignmentDetails.points_possible': {
             handler (points) {
-                if (points < 0) {
+                if (points === '') {
+                    this.pointsPossibleInputState = false
+                    this.pointsPossibleInvalidFeedback = 'Points possible is required.'
+                } else if (points < 0) {
                     this.pointsPossibleInputState = false
                     this.pointsPossibleInvalidFeedback = 'Points possible should a be positive number.'
                 } else if (points < this.minimumPointsPossible) {

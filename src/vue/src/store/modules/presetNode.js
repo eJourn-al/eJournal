@@ -31,9 +31,9 @@ const mutations = {
         state.assignmentsPresetNodes[aID].sort((a, b) => new Date(a.due_date) - new Date(b.due_date))
     },
     UPDATE_ASSIGNMENT_PRESET_NODE (state, { aID, presetNode }) {
-        const updatedTemplateIndex = state.assignmentsTemplates[aID].findIndex(elem => elem.id === presetNode.id)
+        const updatedPresetNodeIndex = state.assignmentsPresetNodes[aID].findIndex(elem => elem.id === presetNode.id)
 
-        Vue.set(state.assignmentsPresetNodes[aID], updatedTemplateIndex, presetNode)
+        Vue.set(state.assignmentsPresetNodes[aID], updatedPresetNodeIndex, presetNode)
         state.assignmentsPresetNodes[aID].sort((a, b) => new Date(a.due_date) - new Date(b.due_date))
     },
     DELETE_ASSIGNMENT_PRESET_NODE (state, { aID, id }) {
