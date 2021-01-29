@@ -231,30 +231,20 @@ const actions = {
         context.commit('SELECT_TEMPLATE', { template })
     },
 
-    // TODO: Are the guards really needed? -> No move to using passed obj
     categoryDeleted (context, { category }) {
-        if (
-            context.state.activeComponent === context.state.activeComponentOptions.category
-            && context.state.selectedCategory.id === category.id
-        ) {
+        if (context.state.selectedCategory.id === category.id) {
             context.commit('CLEAR_ACTIVE_COMPONENT')
             context.commit('CLEAR_SELECTED_CATEGORY')
         }
     },
     presetNodeDeleted (context, { presetNode }) {
-        if (
-            context.state.activeComponent === context.state.activeComponentOptions.timeline
-            && context.state.selectedPresetNode.id === presetNode.id
-        ) {
+        if (context.state.selectedPresetNode.id === presetNode.id) {
             context.commit('CLEAR_ACTIVE_COMPONENT')
             context.commit('CLEAR_SELECTED_PRESET_NODE')
         }
     },
     templateDeleted (context, { template }) {
-        if (
-            context.state.activeComponent === context.state.activeComponentOptions.template
-            && context.state.selectedTemplate.id === template.id
-        ) {
+        if (context.state.selectedTemplate.id === template.id) {
             context.commit('CLEAR_ACTIVE_COMPONENT')
             context.commit('CLEAR_SELECTED_TEMPLATE')
         }

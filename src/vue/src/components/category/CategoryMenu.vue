@@ -72,6 +72,7 @@ export default {
     methods: {
         ...mapActions({
             categoryDelete: 'category/delete',
+            categoryDeleted: 'assignmentEditor/categoryDeleted',
         }),
         ...mapMutations({
             createCategory: 'assignmentEditor/CREATE_CATEGORY',
@@ -82,6 +83,7 @@ export default {
 This action will also immediately remove the category from any associated entries. \
 This action cannot be undone.`)) {
                 this.categoryDelete({ id: category.id })
+                    .then(() => { this.categoryDeleted({ category }) })
             }
         },
     },

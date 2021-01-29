@@ -69,7 +69,6 @@ def required_typed_params(data, *type_key_tuples):
             if data[key] == '':
                 VLE.utils.error_handling.VLEMissingRequiredKey(key)
             if isinstance(data[key], list):
-                print(data[key])
                 result.append([cast_value(elem, type) for elem in data[key]])
             else:
                 result.append(cast_value(data[key], type))
