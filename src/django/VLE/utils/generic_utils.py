@@ -69,10 +69,11 @@ def required_typed_params(data, *type_key_tuples):
             if data[key] == '':
                 VLE.utils.error_handling.VLEMissingRequiredKey(key)
             if isinstance(data[key], list):
+                print(data[key])
                 result.append([cast_value(elem, type) for elem in data[key]])
             else:
                 result.append(cast_value(data[key], type))
-        except ValueError as err:
+        except (ValueError, TypeError) as err:
             raise VLE.utils.error_handling.VLEParamWrongType(err)
         except KeyError:
             raise VLE.utils.error_handling.VLEMissingRequiredKey(key)
@@ -91,7 +92,7 @@ def optional_typed_params(data, *type_key_tuples):
                 result.append([cast_value(elem, type, optional=True) for elem in data[key]])
             else:
                 result.append(cast_value(data[key], type, optional=True))
-        except ValueError as err:
+        except (ValueError, TypeError) as err:
             raise VLE.utils.error_handling.VLEParamWrongType(err)
         except KeyError:
             result.append(None)
