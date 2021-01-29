@@ -28,8 +28,6 @@ class TemplateView(viewsets.ViewSet):
 
         return response.success({'templates': serializer.data})
 
-    # TODO Category: How do nested transaction atomic blocks interact?
-    # TODO Category: Establish file can be slow, how does this impact an atomic block?
     def create(self, request):
         assignment_id, = utils.required_typed_params(request.data, (int, 'assignment_id'))
         template_import, = utils.optional_typed_params(request.data, (bool, 'template_import'))

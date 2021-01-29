@@ -51,6 +51,7 @@ def generate_new_entry_notifications(entry_id, node_id):
     entry = VLE.models.Entry.objects.select_related(
         'node', 'node__journal', 'node__journal__assignment').get(pk=entry_id)
     if not hasattr(entry, 'node'):
+        # QUESTION: @Lars, I could not remove this, but the 'hack' has been removed? (at the cost of lengthier init)
         # NOTE: this query is needed because of the limitations in factory boy
         # see UnlimitedEntryFactory.fix_node
         entry.node = VLE.models.Node.objects.select_related('journal', 'journal__assignment').get(pk=node_id)

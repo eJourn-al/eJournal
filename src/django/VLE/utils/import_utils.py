@@ -243,7 +243,7 @@ def bulk_import_assignment_categories(source_assignment, target_assignment, auth
     Category.objects.bulk_create(new_categories)
 
     # RT Categories require their respective 'category' attribute to be set, which is why we first have to create
-    # the new cateogires before we can copy and replace the RT files.
+    # the new categories before we can copy and replace the RT files.
     categories_with_copied_rt_description = []
     for category in target_assignment.categories.all():
         category.description = copy_and_replace_rt_files(category.description, author, category=category)
