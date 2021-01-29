@@ -228,24 +228,16 @@ class CategoryAPITest(TestCase):
 
     def test_category_validate_category_data(self):
         # Name should be non empty
-        self.assertRaises(ValidationError, Category.validate_category_data, name='', color='#NEW',
-                          assignment=self.assignment)
+        self.assertRaises(ValidationError, Category.validate_category_data, name='', assignment=self.assignment)
 
-        # Name and color should be unique
-        self.assertRaises(ValidationError, Category.validate_category_data, name=self.category.name, color='#NEW',
-                          assignment=self.assignment)
-        self.assertRaises(ValidationError, Category.validate_category_data, name='NEW', color=self.category.color,
+        # Name should be unique
+        self.assertRaises(ValidationError, Category.validate_category_data, name=self.category.name,
                           assignment=self.assignment)
 
         # Unless we update ourselves
-        Category.validate_category_data(name='NEW', color=self.category.color, category=self.category,
-                                        assignment=self.assignment)
-        Category.validate_category_data(name=self.category.name, color='#NEW', category=self.category,
-                                        assignment=self.assignment)
+        Category.validate_category_data(name='NEW', category=self.category, assignment=self.assignment)
 
         # Except if another category holds those values
         cat2 = factory.Category(assignment=self.assignment)
         self.assertRaises(ValidationError, Category.validate_category_data, name=cat2.name,
-                          color=self.category.color, category=self.category, assignment=self.assignment)
-        self.assertRaises(ValidationError, Category.validate_category_data, name=self.category.name,
-                          color=cat2.color, category=self.category, assignment=self.assignment)
+                          category=self.category, assignment=self.assignment)

@@ -3285,7 +3285,6 @@ class Category(CreateUpdateModel):
         ]
         unique_together = (
             ('name', 'assignment'),
-            ('color', 'assignment'),
         )
 
     objects = models.Manager.from_queryset(CategoryQuerySet)()
@@ -3316,20 +3315,16 @@ class Category(CreateUpdateModel):
     )
 
     @staticmethod
-    def validate_category_data(name, color, assignment, category=None):
+    def validate_category_data(name, assignment, category=None):
         equal_name = Category.objects.filter(name=name, assignment=assignment)
-        equal_color = Category.objects.filter(color=color, assignment=assignment)
 
         if category:
             equal_name = equal_name.exclude(pk=category.pk)
-            equal_color = equal_color.exclude(pk=category.pk)
 
         if name == '':
             raise ValidationError('Please provide a non empty name.')
         if equal_name.exists():
             raise ValidationError('Please provide a unqiue category name.')
-        if equal_color.exists():
-            raise ValidationError('Please provide a unqiue category color.')
 
 
 class TemplateCategoryLink(CreateUpdateModel):
