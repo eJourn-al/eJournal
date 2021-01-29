@@ -161,10 +161,7 @@ export default {
             deleteTemplate: 'template/delete',
         }),
         finalizeTemplateChanges () {
-            if (this.nameInputState === false) {
-                this.$toasted.error(this.nameInvalidFeedback)
-                return
-            }
+            if (!this.validateData()) { return }
 
             if (this.create) {
                 this.createTemplate({ template: this.template, aID: this.$route.params.aID })

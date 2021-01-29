@@ -19,6 +19,7 @@
         </b-row>
 
         <assignment-details
+            ref="assignmentDetails"
             :assignmentDetails="assignmentDetailsDraft"
             :presetNodes="assignmentPresetNodes"
         />
@@ -27,11 +28,7 @@
 
         <b-button
             class="float-right green-button"
-            @click.stop="updateAssignment({ id: assignmentDetailsDraft.id, data: assignmentDetailsDraft}).then(() => {
-                clearAssignmentDetailsDraft()
-                selectAssignmentDetails({ originalAssignment })
-                setModeToRead()
-            })"
+            @click.stop="save()"
         >
             <icon name="save"/>
             Save
@@ -65,6 +62,19 @@ export default {
             selectAssignmentDetails: 'assignmentEditor/SELECT_ASSIGNMENT_DETAILS',
             setModeToRead: 'assignmentEditor/SET_ACTIVE_COMPONENT_MODE_TO_READ',
         }),
+        save () {
+            if (!this.$refs.assignmentDetails.validateData()
+                || !this.$refs.assignmentDetails.$refs.assignmentDetailsDates.validateData()) {
+                return
+            }
+
+            this.updateAssignment({ id: this.assignmentDetailsDraft.id, data: this.assignmentDetailsDraft })
+                .then(() => {
+                    this.clearAssignmentDetailsDraft()
+                    this.selectAssignmentDetails({ originalAssignment: this.originalAssignment })
+                    this.setModeToRead()
+                })
+        },
     },
 }
 </script>

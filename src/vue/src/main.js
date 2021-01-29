@@ -5,6 +5,7 @@ import Vue from 'vue'
 
 import '@/helpers/vue_awesome_icons.js'
 import initBootstrap from '@/helpers/bootstrap.js'
+import initGlobalHelpers from '@/helpers/global_mixins.js'
 import initSentry from '@/helpers/sentry.js'
 
 import Icon from 'vue-awesome/components/Icon.vue'
@@ -34,6 +35,7 @@ Vue.component('reset-wrapper', ResetWrapper)
 
 initSentry(Vue)
 initBootstrap(Vue)
+initGlobalHelpers(Vue)
 
 /* Checks the store for for permissions according to the current route cID or aID. */
 Vue.prototype.$hasPermission = store.getters['permissions/hasPermission']

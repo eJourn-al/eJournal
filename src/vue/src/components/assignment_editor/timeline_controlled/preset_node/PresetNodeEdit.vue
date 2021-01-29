@@ -84,7 +84,10 @@
                 />
             </b-form-group>
 
-            <preset-node-edit-dates :presetNode="presetNode"/>
+            <preset-node-edit-dates
+                ref="presetNodeDates"
+                :presetNode="presetNode"
+            />
 
             <b-form-group>
                 <template
@@ -221,6 +224,8 @@ export default {
             }
         },
         finalizePresetNodeChanges () {
+            if (!this.validateData() || !this.$refs.presetNodeDates.validateData()) { return }
+
             if (this.edit) {
                 this.update({ data: this.presetNode, aID: this.$route.params.aID })
                     .then(() => { this.presetNodeUpdated({ presetNode: this.presetNode }) })

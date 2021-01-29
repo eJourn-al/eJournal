@@ -92,6 +92,7 @@
             </template>
 
             <assignment-details-dates
+                ref="assignmentDetailsDates"
                 :assignment="assignmentDetails"
                 :presetNodes="presetNodes"
             />

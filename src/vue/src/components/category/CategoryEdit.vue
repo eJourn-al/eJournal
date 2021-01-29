@@ -73,11 +73,7 @@
                 />
             </b-form-group>
 
-            <b-form-group
-                label="Color"
-                :invalid-feedback="colorInvalidFeedback"
-                :state="colorInputState"
-            >
+            <b-form-group label="Color">
                 <b-input
                     v-model="category.color"
                     type="color"
@@ -128,7 +124,7 @@ export default {
     data () {
         return {
             nameInvalidFeedback: null,
-            colorInvalidFeedback: null,
+            nameInputState: null,
         }
     },
     computed: {
@@ -159,27 +155,20 @@ export default {
                 && this.colorInputState !== false
             )
         },
-        nameInputState () {
-            if (this.category.name === '') {
-                this.nameInvalidFeedback = 'Name cannot be empty' // eslint-disable-line
-                return false
-            }
-            if (this.categories.some(cat => cat.id !== this.category.id && cat.name === this.category.name)) {
-                this.nameInvalidFeedback = 'Name is not unique' // eslint-disable-line
-                return false
-            }
-
-            this.nameInvalidFeedback = null // eslint-disable-line
-            return null
-        },
-        colorInputState () {
-            if (this.categories.some(cat => cat.id !== this.category.id && cat.color === this.category.color)) {
-                this.colorInvalidFeedback = 'Color is not unique' // eslint-disable-line
-                return false
-            }
-
-            this.colorInvalidFeedback = null // eslint-disable-line
-            return null
+    },
+    watch: {
+        'category.name': {
+            handler (name) {
+                if (name === '') {
+                    this.nameInvalidFeedback = 'Name cannot be empty'
+                    this.nameInputState = false
+                } else if (this.categories.some(cat => cat.id !== this.category.id && cat.name === name)) {
+                    this.nameInvalidFeedback = 'Name is not unique'
+                    this.nameInputState = false
+                } else {
+                    this.nameInputState = null
+                }
+            },
         },
     },
     methods: {
@@ -207,6 +196,8 @@ export default {
             }
         },
         finalizeCategoryChanges () {
+            if (!this.validateData()) { return }
+
             if (this.create) {
                 this.categoryCreate({ category: this.category, aID: this.$route.params.aID })
                     .then((category) => { this.categoryCreated({ category }) })
