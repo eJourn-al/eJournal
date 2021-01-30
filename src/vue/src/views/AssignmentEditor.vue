@@ -167,12 +167,16 @@ respective template setting "<i>Fixed Categories / Custom Categories</i>".
         }),
     },
     beforeRouteLeave (to, from, next) {
-        this.$intro().exit()
-
-        if (this.confirmIfDirty()) {
-            this.reset()
-            next()
-        }
+        this.confirmIfDirty()
+            .then((confirmed) => {
+                if (confirmed) {
+                    this.$intro().exit()
+                    this.reset()
+                    next()
+                } else {
+                    next(false)
+                }
+            })
     },
 }
 </script>

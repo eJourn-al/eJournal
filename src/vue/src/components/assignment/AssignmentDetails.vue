@@ -103,7 +103,7 @@
                     || !assignmentDetails.id
                     || assignmentDetails.can_change_type
                 )"
-                class="no-hover"
+                class="no-hover mt-3"
             >
                 <radio-button
                     v-model="assignmentDetails.is_group_assignment"

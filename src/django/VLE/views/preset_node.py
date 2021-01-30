@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from django.db import transaction
 from rest_framework import viewsets
 
@@ -49,7 +51,7 @@ class PresetNodeView(viewsets.ViewSet):
             (str, 'display_name'),
             (str, 'type'),
             (str, 'description'),
-            (str, 'due_date'),
+            (datetime, 'due_date'),
         )
         attached_files, = utils.required_params(request.data, 'attached_files')
         attached_file_ids = [file['id'] for file in attached_files]
@@ -65,8 +67,8 @@ class PresetNodeView(viewsets.ViewSet):
             template = template['id']
             unlock_date, lock_date = utils.optional_typed_params(
                 request.data,
-                (str, 'unlock_date'),
-                (str, 'lock_date'),
+                (datetime, 'unlock_date'),
+                (datetime, 'lock_date'),
             )
 
         assignment = Assignment.objects.select_related('format').get(pk=assignment_id)
@@ -108,7 +110,7 @@ class PresetNodeView(viewsets.ViewSet):
             (str, 'display_name'),
             (str, 'type'),
             (str, 'description'),
-            (str, 'due_date'),
+            (datetime, 'due_date'),
         )
         attached_files, = utils.required_params(request.data, 'attached_files')
         attached_file_ids = [file['id'] for file in attached_files]

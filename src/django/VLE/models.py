@@ -2392,19 +2392,24 @@ class PresetNode(CreateUpdateModel):
             if display_name == '':
                 raise ValidationError('Display name cannot be empty.')
 
+        # TODO Category: Test were lacking
         def validate_attached_files():
             if FileContext.objects.filter(pk__in=attached_file_ids).count() != len(attached_files):
                 raise ValidationError('One or more attached files are not correctly uploaded, please try again.')
 
             if FileContext.objects.filter(
                 pk__in=attached_file_ids
-            ).exclude(is_temp=True, assignment=assignment).exists():
-                raise ValidationError('One ore more attached files are not part of the assignment.')
+            ).exclude(
+                is_temp=True,
+            ).exclude(
+                assignment=assignment,
+            ).exists():
+                raise ValidationError('One or more attached files are not part of the assignment.')
 
             if FileContext.objects.filter(
                 pk__in=attached_file_ids,
                 is_temp=True,
-            ).exclude(~Q(author=user)).exists():
+            ).exclude(author=user).exists():
                 raise ValidationError('One or more files recently uploaded are not owned by you.')
 
         def validate_progress_specific_fields():

@@ -369,7 +369,7 @@ const actions = {
             return window.confirm(`
 The following unsaved changes will be lost:
 
-${dirtyWarnings.map(warn => `- ${warn}\n`)}
+${dirtyWarnings.map(warn => `- ${warn}\n`).join('')}
 Are you sure you want to continue?
             `)
         }

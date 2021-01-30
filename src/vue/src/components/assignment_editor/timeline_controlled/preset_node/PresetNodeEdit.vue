@@ -91,7 +91,6 @@
 
             <b-form-group>
                 <template
-                    v-if="presetNode.attached_files.length > 0"
                     #label
                 >
                     Files
