@@ -308,7 +308,7 @@ class TemplateTest(TestCase):
 
             no_fields = deepcopy(valid_data)
             no_fields['field_set'] = []
-            self.assertRaises(ValidationError, Template.validate, oob_field_locations, self.assignment)
+            self.assertRaises(ValidationError, Template.validate, no_fields, self.assignment)
 
         test_concrete_fields_validation()
         test_category_validation()
@@ -371,6 +371,16 @@ class TemplateTest(TestCase):
 
         _validate_field_creation(template, params['field_set'])
         assert set(template.categories.all()) == {category}, 'The category is correctly linked to the template'
+
+        # When importing a template the author is required, as it is needed to set the author
+        # on any field description files which are copied over.
+        self.assertRaises(
+            VLEProgrammingError,
+            Template.objects.create_template_and_fields_from_data,
+            params,
+            self.assignment.format,
+            template_import=True,
+        )
 
         def test_creation_validation():
             with mock.patch('VLE.models.Template.validate', side_effect=ValidationError('msg')) as validate_mock:

@@ -135,6 +135,16 @@ class CategoryAPITest(TestCase):
         invalid_templates['assignment_id'] = factory.Assignment(author=self.assignment.author).pk
         api.create(self, 'categories', params=invalid_templates, user=self.assignment.author, status=400)
 
+        # Creating a category with update_template_chain=False should only link the category to template
+        # instance which is passed during creation, not the entire chain.
+        do_not_update_template_chain = deepcopy(self.valid_creation_data)
+        do_not_update_template_chain['name'] = 'Some new name'
+        cat = Category.objects.create(**do_not_update_template_chain, update_template_chain=False)
+        assert self.template.categories.filter(pk=cat.pk).exists(), \
+            'The created category should be linked to the passed template'
+        assert not template2_of_chain.categories.filter(pk=cat.pk).exists(), \
+            '''The template's chain should not be updated when update_template_chain is set to False'''
+
     def test_category_patch(self):
         category = factory.Category(assignment=self.assignment)
         template2_of_chain = factory.Template(chain=self.template.chain, archived=True, format=self.format)

@@ -129,6 +129,11 @@ class PresetNodeTest(TestCase):
                 validate_due_date.assert_called_with(deadline_data, self.assignment)
                 validate_lock_date.assert_called_with(deadline_data, self.assignment)
 
+            unknown_type = deepcopy(deadline_data)
+            unknown_type['type'] = 'unknown'
+            self.assertRaises(
+                ValidationError, PresetNode.validate, unknown_type, self.assignment, self.assignment.author)
+
             # An empty display name is not allowed
             empty_name = deepcopy(deadline_data)
             empty_name['display_name'] = ''
