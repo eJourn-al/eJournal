@@ -1,10 +1,11 @@
 import test.factory as factory
 from copy import deepcopy
-from datetime import timedelta
+from datetime import datetime, timedelta
 from test.utils import api
 from test.utils.generic_utils import equal_models
 from unittest import mock
 
+from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError
 from django.test import TestCase
@@ -38,6 +39,8 @@ def _validate_preset_based_on_params(data, params, assignment):
 
     preset = PresetNode.objects.select_related('forced_template').get(format__assignment=assignment, pk=data['id'])
 
+    for field in preset_base_fields:
+        assert data[field] == params[field]
     assert all(data[field] == params[field] for field in preset_base_fields), \
         'All base fields of the preset node are correctly updated according to the provided parameters'
 
@@ -75,6 +78,7 @@ class PresetNodeTest(TestCase):
         cls.journal = factory.Journal(assignment=cls.assignment, entries__n=0)
         cls.deadline = factory.DeadlinePresetNode(format=cls.format)
         cls.progress = factory.ProgressPresetNode(format=cls.format, forced_template=cls.template)
+        cls.unrelated_user = factory.Student()
 
     def test_preset_node_factory(self):
         journal = factory.Journal(entries__n=0)
@@ -379,6 +383,8 @@ class PresetNodeTest(TestCase):
                 self, 'preset_nodes', params={'assignment_id': self.assignment.pk}, user=self.assignment.author)
             can_view_mock.assert_called_with(self.assignment), \
                 'PresetNode list permission depends on can view assignment'
+        api.get(
+            self, 'preset_nodes', params={'assignment_id': self.assignment.pk}, user=self.unrelated_user, status=403)
 
         presets = self.assignment.format.presetnode_set.all()
         preset_set = set(presets.values_list('pk', flat=True))
@@ -454,6 +460,18 @@ class PresetNodeTest(TestCase):
         # Type does not update according to params, this should fail an assert
         self.assertRaises(
             AssertionError, _validate_preset_based_on_params, resp['preset'], update_type, self.assignment)
+
+        # Make some changes, this time updating a preset node of type progress
+        progress = factory.ProgressPresetNode(format=self.format)
+        params = PresetNodeSerializer(
+            PresetNodeSerializer.setup_eager_loading(
+                PresetNode.objects.filter(pk=progress.pk)
+            ).get()
+        ).data
+        params['display_name'] = 'New name'
+        params['lock_date'] = datetime.now().strftime(settings.ALLOWED_DATETIME_FORMAT)
+        resp = api.update(self, f'preset_nodes/{progress.pk}/', params=params, user=self.assignment.author)
+        _validate_preset_based_on_params(resp['preset'], params, self.assignment)
 
     def test_preset_node_delete(self):
         def test_unused_preset_node_delete():

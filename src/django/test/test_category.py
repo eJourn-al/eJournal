@@ -20,6 +20,7 @@ class CategoryAPITest(TestCase):
         cls.format = cls.assignment.format
         cls.template = factory.Template(format=cls.format, add_fields=[{'type': Field.TEXT}])
         cls.assignment2 = factory.Assignment(format__templates=False)
+        cls.unrelated_user = factory.Student()
 
         cls.category = factory.Category(assignment=cls.assignment, name='aaa', n_rt_files=1)
 
@@ -105,6 +106,8 @@ class CategoryAPITest(TestCase):
             api.get(self, 'categories', params={'assignment_id': self.assignment.pk}, user=self.assignment.author)
             api.get(self, 'categories', params={'assignment_id': self.assignment.pk}, user=ap.user)
             can_view_mock.assert_called_with(self.assignment)
+
+        api.get(self, 'categories', params={'assignment_id': self.assignment.pk}, user=self.unrelated_user, status=403)
 
     def test_category_create(self):
         template2_of_chain = factory.Template(chain=self.template.chain, archived=True, format=self.format)
@@ -212,6 +215,10 @@ class CategoryAPITest(TestCase):
             api.patch(self, 'categories/edit_entry', params={**params, 'add': False}, user=student)
             assert not entry.categories.filter(pk=self.category.pk).exists(), 'Category has been succesfully removed'
 
+            # A student cannot edit an entry's categories if the entry is graded.
+            factory.Grade(entry=entry)
+            api.patch(self, 'categories/edit_entry', params={**params}, user=student, status=403)
+
         def test_as_teacher():
             template.fixed_categories = True
             template.save()
@@ -226,6 +233,9 @@ class CategoryAPITest(TestCase):
             admin = factory.Admin()
             api.patch(self, 'categories/edit_entry', params={**params}, user=admin, status=200)
 
+        def test_as_unrelated_user():
+            api.patch(self, 'categories/edit_entry', params={**params}, user=self.unrelated_user, status=403)
+
         def test_category_linked_to_entry_assignment():
             category_assignment2 = factory.Category(assignment=self.assignment2)
             api.patch(self, 'categories/edit_entry', params={**params, 'pk': category_assignment2.pk},
@@ -234,6 +244,7 @@ class CategoryAPITest(TestCase):
         test_as_student()
         test_as_teacher()
         test_as_admin()
+        test_as_unrelated_user()
         test_category_linked_to_entry_assignment()
 
     def test_category_validate_category_data(self):

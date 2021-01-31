@@ -63,6 +63,7 @@ class TemplateTest(TestCase):
         cls.template = factory.Template(format=cls.format, name='Text', add_fields=[{'type': Field.TEXT}])
         cls.category = factory.Category(assignment=cls.assignment)
         cls.journal = factory.Journal(assignment=cls.assignment, entries__n=0)
+        cls.unrelated_user = factory.Student()
 
     def test_template_without_format(self):
         self.assertRaises(IntegrityError, factory.Template)
@@ -342,6 +343,7 @@ class TemplateTest(TestCase):
         with mock.patch('VLE.models.User.can_view') as can_view_mock:
             resp = api.get(self, 'templates', params={'assignment_id': self.assignment.pk}, user=self.assignment.author)
             can_view_mock.assert_called_with(self.assignment), 'Template list permission depends on can view assignment'
+        api.get(self, 'templates', params={'assignment_id': self.assignment.pk}, user=self.unrelated_user, status=403)
 
         assignment_template_set = set(self.assignment.format.template_set.filter(
             archived=False).values_list('pk', flat=True))
