@@ -159,8 +159,9 @@ class PresetNodeTest(TestCase):
             unrelated_user = factory.Teacher()
             fc = factory.TempFileContext(author=unrelated_user)
             someone_elses_temp_fc['attached_files'] = [{'id': fc.pk}]
-            self.assertRaises(
-                ValidationError, PresetNode.validate, unrelated_attached_file, self.assignment, self.assignment.author)
+            with self.assertRaises(ValidationError) as context:
+                PresetNode.validate(someone_elses_temp_fc, self.assignment, self.assignment.author)
+            assert 'One or more files recently uploaded are not owned by you.' in context.exception.message
 
             # An preset node's forced template has to be part of the assignment
             unrelated_template = factory.Template(format=unrelated_assignment.format)
