@@ -68,6 +68,11 @@ class TemplateTest(TestCase):
     def test_template_without_format(self):
         self.assertRaises(IntegrityError, factory.Template)
 
+    def test_delete_template_with_preset_nodes(self):
+        template = factory.Template(format=self.format)
+        factory.DeadlinePresetNode(format=self.format, forced_template=template)
+        self.assertRaises(IntegrityError, template.delete)
+
     def test_template_factory(self):
         t_c = Template.objects.count()
         a_c = Assignment.objects.count()
@@ -562,13 +567,13 @@ class TemplateTest(TestCase):
 
             # Test usage via a preset node
             template = factory.Template(format=self.format, add_fields=[{'type': Field.TEXT}])
-            factory.DeadlinePresetNode(format=self.format, forced_template=template)
-
-            api.delete(self, 'templates', params={'pk': template.pk}, user=self.assignment.author)
-            template.refresh_from_db()
-            assert template.archived, \
-                '''A used template (a deadline exists which makes use of the template)
-                should be archived instead of actually deleted'''
+            deadline = factory.DeadlinePresetNode(format=self.format, forced_template=template)
+            resp = api.delete(self, 'templates', params={'pk': template.pk}, user=self.assignment.author, status=400)
+            assert Template.objects.filter(pk=template.pk, archived=False).exists(), \
+                '''A used template (a deadline exists which makes use of the template) cannot be deleted, the user is
+                asked to changed the deadline first instead.'''
+            assert deadline.display_name in resp['description'], \
+                'The user is informed which deadlines depend on the template.'
 
         test_unused_template_delete()
         test_used_template_archive()
