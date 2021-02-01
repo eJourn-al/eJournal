@@ -63,9 +63,15 @@ class TemplateTest(TestCase):
         cls.template = factory.Template(format=cls.format, name='Text', add_fields=[{'type': Field.TEXT}])
         cls.category = factory.Category(assignment=cls.assignment)
         cls.journal = factory.Journal(assignment=cls.assignment, entries__n=0)
+        cls.unrelated_user = factory.Student()
 
     def test_template_without_format(self):
         self.assertRaises(IntegrityError, factory.Template)
+
+    def test_delete_template_with_preset_nodes(self):
+        template = factory.Template(format=self.format)
+        factory.DeadlinePresetNode(format=self.format, forced_template=template)
+        self.assertRaises(IntegrityError, template.delete)
 
     def test_template_factory(self):
         t_c = Template.objects.count()
@@ -308,7 +314,7 @@ class TemplateTest(TestCase):
 
             no_fields = deepcopy(valid_data)
             no_fields['field_set'] = []
-            self.assertRaises(ValidationError, Template.validate, oob_field_locations, self.assignment)
+            self.assertRaises(ValidationError, Template.validate, no_fields, self.assignment)
 
         test_concrete_fields_validation()
         test_category_validation()
@@ -342,6 +348,7 @@ class TemplateTest(TestCase):
         with mock.patch('VLE.models.User.can_view') as can_view_mock:
             resp = api.get(self, 'templates', params={'assignment_id': self.assignment.pk}, user=self.assignment.author)
             can_view_mock.assert_called_with(self.assignment), 'Template list permission depends on can view assignment'
+        api.get(self, 'templates', params={'assignment_id': self.assignment.pk}, user=self.unrelated_user, status=403)
 
         assignment_template_set = set(self.assignment.format.template_set.filter(
             archived=False).values_list('pk', flat=True))
@@ -371,6 +378,16 @@ class TemplateTest(TestCase):
 
         _validate_field_creation(template, params['field_set'])
         assert set(template.categories.all()) == {category}, 'The category is correctly linked to the template'
+
+        # When importing a template the author is required, as it is needed to set the author
+        # on any field description files which are copied over.
+        self.assertRaises(
+            VLEProgrammingError,
+            Template.objects.create_template_and_fields_from_data,
+            params,
+            self.assignment.format,
+            template_import=True,
+        )
 
         def test_creation_validation():
             with mock.patch('VLE.models.Template.validate', side_effect=ValidationError('msg')) as validate_mock:
@@ -550,13 +567,13 @@ class TemplateTest(TestCase):
 
             # Test usage via a preset node
             template = factory.Template(format=self.format, add_fields=[{'type': Field.TEXT}])
-            factory.DeadlinePresetNode(format=self.format, forced_template=template)
-
-            api.delete(self, 'templates', params={'pk': template.pk}, user=self.assignment.author)
-            template.refresh_from_db()
-            assert template.archived, \
-                '''A used template (a deadline exists which makes use of the template)
-                should be archived instead of actually deleted'''
+            deadline = factory.DeadlinePresetNode(format=self.format, forced_template=template)
+            resp = api.delete(self, 'templates', params={'pk': template.pk}, user=self.assignment.author, status=400)
+            assert Template.objects.filter(pk=template.pk, archived=False).exists(), \
+                '''A used template (a deadline exists which makes use of the template) cannot be deleted, the user is
+                asked to changed the deadline first instead.'''
+            assert deadline.display_name in resp['description'], \
+                'The user is informed which deadlines depend on the template.'
 
         test_unused_template_delete()
         test_used_template_archive()

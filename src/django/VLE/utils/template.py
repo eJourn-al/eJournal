@@ -11,6 +11,7 @@ def _template_concrete_fields_updated(template, data):
     return any(getattr(template, f) != data[f] for f in check_fields)
 
 
+# TODO Category: requires test, currently not hit
 def _field_concrete_fields_updated(field, data):
     check_fields = [
         'type',
@@ -24,6 +25,7 @@ def _field_concrete_fields_updated(field, data):
     return any(getattr(field, f) != data[f] for f in check_fields)
 
 
+# TODO Category: Requires test, currently not hit
 def _field_set_updated(template, data):
     data['field_set'].sort(key=lambda f: f['location'])
     field_set = template.field_set.order_by('location')
@@ -106,27 +108,3 @@ def handle_template_update(data, current_template):
     update_categories_of_template_chain(data, updated_template)
 
     return updated_template
-
-
-def update_templates(format, templates_data):
-    """Update or create templates for a format.
-
-    - format: the format that is being edited
-    - templates: the list of temlates that should be updated or created
-
-    Since existing entries that use a template should remain untouched a copy
-    of the current template is saved in an archived state before processing any
-    changes. The distinction between existing and new templates occurs based on
-    the id: newly created templates are assigned a negative id in the format
-    editor.
-    """
-    new_ids = {}
-
-    for data in templates_data:
-        if data['id'] >= 0:
-            handle_template_update(data, format, new_ids)
-        else:  # Unknown (newly created) template.
-            new_template = Template.objects.create_template_and_fields_from_data(data, format)
-            new_ids[data['id']] = new_template.pk
-
-    return new_ids

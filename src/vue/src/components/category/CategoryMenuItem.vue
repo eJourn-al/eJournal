@@ -9,6 +9,7 @@
             :removable="false"
             :showInfo="false"
         />
+        <span v-if="isCategoryDirty(category)"> *</span>
 
         <icon
             name="trash"
@@ -39,6 +40,7 @@ export default {
             activeComponent: 'assignmentEditor/activeComponent',
             selectedCategory: 'assignmentEditor/selectedCategory',
             activeComponentOptions: 'assignmentEditor/activeComponentOptions',
+            isCategoryDirty: 'assignmentEditor/isCategoryDirty',
         }),
         isActive () {
             return (
@@ -49,3 +51,8 @@ export default {
     },
 }
 </script>
+
+<style lang="sass" scoped>
+.category-tag
+    margin-right: 0px
+</style>

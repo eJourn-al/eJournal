@@ -19,6 +19,7 @@
                 class="mb-1 mr-1"
             />
             {{ nodeTitle }}
+            <span v-if="dirty"> *</span>
         </span>
 
         <span
@@ -32,9 +33,16 @@
 </template>
 
 <script>
+import { mapGetters } from 'vuex'
+
 export default {
     props: ['node', 'selected'],
     computed: {
+        ...mapGetters({
+            assignment: 'assignment/assignment',
+            isPresetNodeDirty: 'assignmentEditor/isPresetNodeDirty',
+            isAssignmentDetailsDirty: 'assignmentEditor/isAssignmentDetailsDirty',
+        }),
         nodeTitle () {
             if (this.node.deleted_preset) {
                 return this.node.entry.title
@@ -86,6 +94,17 @@ export default {
             }
 
             return ''
+        },
+        dirty () {
+            if (this.$route.name !== 'AssignmentEditor') { return false }
+
+            if (this.node.type === 's') {
+                return this.isAssignmentDetailsDirty(this.assignment)
+            } else if (this.node.type === 'd' || this.node.type === 'p') {
+                return this.isPresetNodeDirty(this.node)
+            }
+
+            return false
         },
     },
 }

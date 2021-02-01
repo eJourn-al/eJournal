@@ -2290,7 +2290,7 @@ class PresetNode(CreateUpdateModel):
 
     forced_template = models.ForeignKey(
         'Template',
-        on_delete=models.SET_NULL,
+        on_delete=models.PROTECT,
         null=True,
     )
     attached_files = models.ManyToManyField(
