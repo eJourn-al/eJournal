@@ -168,7 +168,9 @@ export default {
                     .then((template) => { this.templateCreated({ template }) })
             } else {
                 this.updateTemplate({ id: this.template.id, data: this.template, aID: this.$route.params.aID })
-                    .then(() => { this.templateUpdated({ template: this.template }) })
+                    .then((updatedTemplate) => {
+                        this.templateUpdated({ updatedTemplate, oldTemplateId: this.template.id })
+                    })
             }
         },
         confirmDeleteTemplate () {

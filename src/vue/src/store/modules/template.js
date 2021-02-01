@@ -10,6 +10,35 @@ function fromCache ({ state, commit }, cache, cacheKey, fn, force = false) {
     return state[cache][cacheKey]
 }
 
+function propogateCategoryTemplateUpdate (templates, updatedCategory) {
+    templates.forEach((template) => {
+        const templateCategoryIndex = template.categories.findIndex(category => category.id === updatedCategory.id)
+        const templateLinkedToCategory = templateCategoryIndex !== -1
+
+        if (templateLinkedToCategory) {
+            Vue.set(template.categories, templateCategoryIndex, updatedCategory)
+        }
+
+        const updatedCategoryLinkedToTemplate = updatedCategory.templates.find(elem => elem.id === template.id)
+
+        if (!templateLinkedToCategory && updatedCategoryLinkedToTemplate) {
+            template.categories.push(updatedCategory)
+        } else if (templateLinkedToCategory && !updatedCategoryLinkedToTemplate) {
+            Vue.delete(template.categories, templateCategoryIndex)
+        }
+    })
+}
+
+function propogateCategoryDelete (templates, deletedCategoryId) {
+    templates.forEach((template) => {
+        const templateCategoryIndex = template.categories.findIndex(category => category.id === deletedCategoryId)
+
+        if (templateCategoryIndex !== -1) {
+            Vue.delete(template.categories, templateCategoryIndex)
+        }
+    })
+}
+
 const getters = {
     assignmentTemplates: (state) => {
         const aID = router.currentRoute.params.aID
@@ -43,22 +72,10 @@ const mutations = {
         )
     },
     PROPOGATE_CATEGORY_TEMPLATE_UPDATE (state, { aID, updatedCategory }) {
-        state.assignmentsTemplates[aID].forEach((template) => {
-            const templateCategoryIndex = template.categories.findIndex(category => category.id === updatedCategory.id)
-            const templateLinkedToCategory = templateCategoryIndex !== -1
-
-            if (templateLinkedToCategory) {
-                Vue.set(template.categories, templateCategoryIndex, updatedCategory)
-            }
-
-            const updatedCategoryLinkedToTemplate = updatedCategory.templates.find(elem => elem.id === template.id)
-
-            if (!templateLinkedToCategory && updatedCategoryLinkedToTemplate) {
-                template.categories.push(updatedCategory)
-            } else if (templateLinkedToCategory && !updatedCategoryLinkedToTemplate) {
-                Vue.delete(template.categories, templateCategoryIndex)
-            }
-        })
+        propogateCategoryTemplateUpdate(state.assignmentsTemplates[aID], updatedCategory)
+    },
+    PROPOGATE_CATEGORY_DELETE (state, { aID, deletedCategoryId }) {
+        propogateCategoryDelete(state.assignmentsTemplates[aID], deletedCategoryId)
     },
 }
 
@@ -141,4 +158,6 @@ export default {
     getters,
     mutations,
     actions,
+    propogateCategoryTemplateUpdate,
+    propogateCategoryDelete,
 }

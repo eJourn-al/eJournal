@@ -24,9 +24,10 @@
             @click.native.stop="$emit('delete-template', template)"
         />
 
-        <b class="max-one-line">
-            {{ template.name }}
-        </b>
+        <span class="max-one-line">
+            <b>{{ template.name }}</b>
+            <span v-if="isTemplateDirty(template)"> *</span>
+        </span>
     </div>
 </template>
 
@@ -46,6 +47,7 @@ export default {
             activeComponent: 'assignmentEditor/activeComponent',
             selectedTemplate: 'assignmentEditor/selectedTemplate',
             activeComponentOptions: 'assignmentEditor/activeComponentOptions',
+            isTemplateDirty: 'assignmentEditor/isTemplateDirty',
         }),
         isActive () {
             return (

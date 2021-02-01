@@ -203,7 +203,7 @@ export default {
                     .then((category) => { this.categoryCreated({ category }) })
             } else {
                 this.categoryUpdate({ id: this.category.id, category: this.category, aID: this.$route.params.aID })
-                    .then(() => { this.categoryUpdated({ category: this.category }) })
+                    .then((category) => { this.categoryUpdated({ category }) })
             }
         },
         confirmDeleteCategory () {

@@ -10,6 +10,36 @@ function fromCache ({ state, commit }, cache, cacheKey, fn, force = false) {
     return state[cache][cacheKey]
 }
 
+function propogateTemplateCategoryUpdate (categories, updatedTemplate, oldTemplateId) {
+    categories.forEach((category) => {
+        const categoryTemplateIndex = category.templates.findIndex(
+            template => template.id === updatedTemplate.id || template.id === oldTemplateId)
+        const categoryLinkedToTemplate = categoryTemplateIndex !== -1
+
+        if (categoryLinkedToTemplate) {
+            Vue.set(category.templates, categoryTemplateIndex, updatedTemplate)
+        }
+
+        const updatedTemplateLinkedToCategory = updatedTemplate.categories.find(elem => elem.id === category.id)
+
+        if (!categoryLinkedToTemplate && updatedTemplateLinkedToCategory) {
+            category.templates.push(updatedTemplate)
+        } else if (categoryLinkedToTemplate && !updatedTemplateLinkedToCategory) {
+            Vue.delete(category.templates, categoryTemplateIndex)
+        }
+    })
+}
+
+function propogateTemplateDelete (categories, deletedTemplateId) {
+    categories.forEach((category) => {
+        const categoryTemplateIndex = category.templates.findIndex(template => template.id === deletedTemplateId)
+
+        if (categoryTemplateIndex !== -1) {
+            Vue.delete(category.templates, categoryTemplateIndex)
+        }
+    })
+}
+
 const getters = {
     assignmentCategories: (state) => {
         const aID = router.currentRoute.params.aID
@@ -65,32 +95,10 @@ const mutations = {
         state.timelineInstance = instance
     },
     PROPOGATE_TEMPLATE_CATEGORY_UPDATE (state, { aID, updatedTemplate, oldTemplateId }) {
-        state.assignmentsCategories[aID].forEach((category) => {
-            const categoryTemplateIndex = category.templates.findIndex(
-                template => template.id === updatedTemplate.id || template.id === oldTemplateId)
-            const categoryLinkedToTemplate = categoryTemplateIndex !== -1
-
-            if (categoryLinkedToTemplate) {
-                Vue.set(category.templates, categoryTemplateIndex, updatedTemplate)
-            }
-
-            const updatedTemplateLinkedToCategory = updatedTemplate.categories.find(elem => elem.id === category.id)
-
-            if (!categoryLinkedToTemplate && updatedTemplateLinkedToCategory) {
-                category.templates.push(updatedTemplate)
-            } else if (categoryLinkedToTemplate && !updatedTemplateLinkedToCategory) {
-                Vue.delete(category.templates, categoryTemplateIndex)
-            }
-        })
+        propogateTemplateCategoryUpdate(state.assignmentsCategories[aID], updatedTemplate, oldTemplateId)
     },
     PROPOGATE_TEMPLATE_DELETE (state, { aID, deletedTemplateId }) {
-        state.assignmentsCategories[aID].forEach((category) => {
-            const categoryTemplateIndex = category.templates.findIndex(template => template.id === deletedTemplateId)
-
-            if (categoryTemplateIndex !== -1) {
-                Vue.delete(category.templates, categoryTemplateIndex)
-            }
-        })
+        propogateTemplateDelete(state.assignmentsCategories[aID], deletedTemplateId)
     },
 }
 
@@ -167,13 +175,16 @@ const actions = {
         return fn()
     },
     delete (context, { id, force = false, connArgs = auth.DEFAULT_CONN_ARGS }) {
+        const aID = router.currentRoute.params.aID
+
         function fn () {
             return auth.delete(`categories/${id}`, null, connArgs)
                 .then((response) => {
                     const updatedFilteredCategories = context.getters.filteredCategories.filter(elem => elem.id !== id)
 
                     context.commit('SET_FILTERED_CATEGORIES', updatedFilteredCategories)
-                    context.commit('DELETE_ASSIGNMENT_CATEGORY', { aID: router.currentRoute.params.aID, id })
+                    context.commit('DELETE_ASSIGNMENT_CATEGORY', { aID, id })
+                    context.commit('template/PROPOGATE_CATEGORY_DELETE', { aID, deletedCategoryId: id }, { root: true })
 
                     return response.data
                 })
@@ -203,4 +214,6 @@ export default {
     getters,
     mutations,
     actions,
+    propogateTemplateCategoryUpdate,
+    propogateTemplateDelete,
 }
