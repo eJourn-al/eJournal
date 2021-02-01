@@ -12,10 +12,6 @@
             <slot name="edit-button"/>
         </b-row>
 
-        <h2 class="theme-h2 multi-form">
-            Target: {{ currentNode.target }} point<span v-if="currentNode.target > 1">s</span>
-        </h2>
-
         <p
             v-if="currentNode.description"
             class="mb-0"
@@ -30,6 +26,7 @@
             v-if="!accomplished && new Date() < new Date(currentNode.due_date)"
             class="text-grey"
         >
+            Target: <b>{{ currentNode.target }}</b> point<span v-if="currentNode.target > 1">s</span><br/>
             <b>{{ score }}</b> out of <b>{{ currentNode.target }}</b> points<br/>
 
             <b>{{ Math.round(left * 1000) / 1000 }}</b> more required before

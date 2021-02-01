@@ -1,51 +1,57 @@
 <template>
-    <load-wrapper :loading="loading">
-        <timeline-layout>
-            <template v-slot:left>
-                <assignment-editor-bread-crumb
-                    v-if="$root.lgMax"
-                    v-intro="welcomeIntroText"
-                    v-intro-step="1"
-                    @start-tutorial="$intro().start()"
-                />
+    <timeline-layout>
+        <template
+            v-if="!loading"
+            v-slot:left
+        >
+            <assignment-editor-bread-crumb
+                v-if="$root.lgMax"
+                v-intro="welcomeIntroText"
+                v-intro-step="1"
+                @start-tutorial="$intro().start()"
+            />
 
-                <timeline
-                    v-intro="timelineIntroText"
-                    v-intro-step="3"
-                    :selected="activeTimelineElementIndex"
-                    :nodes="presetNodes"
-                    :assignment="assignment"
-                    :edit="true"
-                    @select-node="(timelineElementIndex) => {
-                        timelineElementSelected({ timelineElementIndex, mode: activeComponentModeOptions.read }) }
-                    "
-                />
-            </template>
+            <timeline
+                v-intro="timelineIntroText"
+                v-intro-step="3"
+                :selected="activeTimelineElementIndex"
+                :nodes="presetNodes"
+                :assignment="assignment"
+                :edit="true"
+                @select-node="(timelineElementIndex) => {
+                    timelineElementSelected({ timelineElementIndex, mode: activeComponentModeOptions.read }) }
+                "
+            />
+        </template>
 
-            <template v-slot:center>
-                <assignment-editor-bread-crumb
-                    v-if="$root.xl"
-                    v-intro="welcomeIntroText"
-                    v-intro-step="1"
-                    @start-tutorial="$intro().start()"
-                />
+        <template v-slot:center>
+            <assignment-editor-bread-crumb
+                v-if="$root.xl"
+                v-intro="welcomeIntroText"
+                v-intro-step="1"
+                @start-tutorial="$intro().start()"
+            />
 
+            <load-wrapper :loading="loading">
                 <assignment-editor-active-component-switch/>
-            </template>
+            </load-wrapper>
+        </template>
 
-            <template v-slot:right>
-                <template-menu
-                    v-intro="templateIntroText"
-                    v-intro-step="2"
-                />
+        <template
+            v-if="!loading"
+            v-slot:right
+        >
+            <template-menu
+                v-intro="templateIntroText"
+                v-intro-step="2"
+            />
 
-                <category-menu
-                    v-intro="categoryIntroText"
-                    v-intro-step="4"
-                />
-            </template>
-        </timeline-layout>
-    </load-wrapper>
+            <category-menu
+                v-intro="categoryIntroText"
+                v-intro-step="4"
+            />
+        </template>
+    </timeline-layout>
 </template>
 
 <script>
@@ -200,12 +206,12 @@ respective template setting "<i>Fixed Categories / Custom Categories</i>".
         width: 0px
         visibility: hidden
     &:hover
-        background-color: $theme-dark-grey
+        background-color: $theme-medium-grey
         .max-one-line
             width: calc(100% - 5em)
         .edit-icon, .trash-icon
             visibility: visible
             width: auto
     &.active
-        background-color: $theme-dark-grey
+        background-color: $theme-light-grey
 </style>
