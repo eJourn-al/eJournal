@@ -133,7 +133,7 @@ const actions = {
 
         return fn()
     },
-    delete (context, { id, aID, force = false, connArgs = auth.DEFAULT_CONN_ARGS }) { // eslint-disable-line
+    delete (context, { id, aID, force = true, connArgs = auth.DEFAULT_CONN_ARGS }) { // eslint-disable-line
         function fn () {
             return auth.delete(`templates/${id}`, null, connArgs)
                 .then((response) => {

@@ -174,7 +174,7 @@ const actions = {
 
         return fn()
     },
-    delete (context, { id, force = false, connArgs = auth.DEFAULT_CONN_ARGS }) {
+    delete (context, { id, force = true, connArgs = auth.DEFAULT_CONN_ARGS }) {
         const aID = router.currentRoute.params.aID
 
         function fn () {
