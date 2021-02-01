@@ -26,7 +26,7 @@
         >
             <entry-preview
                 :presetNode="presetNode"
-                :template="presetNode.template"
+                :template="template"
             >
                 <template #edit-button>
                     <b-button
@@ -57,7 +57,12 @@ export default {
         ...mapGetters({
             presetNodes: 'presetNode/assignmentPresetNodes',
             presetNode: 'assignmentEditor/selectedPresetNode',
+            templates: 'template/assignmentTemplates',
         }),
+        /* Do not use the presetNode serialized template as it might be stale due to updates else where */
+        template () {
+            return this.templates.find(elem => elem.id === this.presetNode.template.id)
+        },
     },
     methods: {
         ...mapMutations({

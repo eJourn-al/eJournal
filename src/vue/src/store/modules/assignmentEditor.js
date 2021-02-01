@@ -21,7 +21,7 @@ function fromDraft (drafts, obj) {
     }
 
     const draft = { draft: JSON.parse(JSON.stringify(obj)), edited: false }
-    drafts[obj.id] = draft
+    Vue.set(drafts, obj.id, draft)
 
     return draft
 }
