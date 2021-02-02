@@ -38,7 +38,6 @@
                 </b-td>
             </b-tr>
 
-            <!-- Question: @ Lars, hide this as well or hide nothing? -->
             <b-tr v-if="assignmentHasCategories">
                 <b-td class="template-availability">
                     <b-button
