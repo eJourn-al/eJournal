@@ -90,12 +90,13 @@ class TemplateView(viewsets.ViewSet):
 
         request.user.check_permission('can_edit_assignment', template.format.assignment)
 
-        deadlines_with_forced_template = template.presetnode_set.values_list('display_name', flat=True)
+        deadlines_with_forced_template = template.presetnode_set.all()
         if deadlines_with_forced_template.exists():
-            formatted_deadlines = ", ".join(map(lambda x: f'\"{x}\"', deadlines_with_forced_template))
             return response.bad_request(
-                f'Deadline(s) {formatted_deadlines} make use of template {template.name}. '
-                'Please change the deadline(s) first.'
+                'Deadlines {} make use of template {}. Please change the deadlines first.'.format(
+                    utils.format_query_set_values_to_display(deadlines_with_forced_template, 'display_name'),
+                    template.name,
+                )
             )
 
         if template.can_be_deleted():

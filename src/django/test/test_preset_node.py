@@ -199,6 +199,9 @@ class PresetNodeTest(TestCase):
                 ValidationError, PresetNode.validate, missing_due_date, self.assignment, self.assignment.author)
 
         def test_validate_progress_preset_node():
+            self.assignment.due_date = self.assignment.due_date + timedelta(days=2)
+            self.assignment.save()
+
             progress_data = PresetNodeSerializer(
                 PresetNodeSerializer.setup_eager_loading(PresetNode.objects.filter(pk=self.progress.pk)).get(),
                 context={'user': self.assignment.author}
@@ -226,6 +229,7 @@ class PresetNodeTest(TestCase):
                 PresetNode.validate, target_exceeds_assignment_max, self.assignment, self.assignment.author
             )
 
+            # The following missing keys should raise a missing key error
             required_keys = [
                 'display_name',
                 'type',
@@ -238,10 +242,55 @@ class PresetNodeTest(TestCase):
                 self.assertRaises(
                     VLEMissingRequiredKey, PresetNode.validate, missing_key, self.assignment, self.assignment.author)
 
+            # Due date is required, but should yield validation error (more user friendly) as warning
             missing_due_date = deepcopy(progress_data)
             missing_due_date['due_date'] = ''
             self.assertRaises(
                 ValidationError, PresetNode.validate, missing_due_date, self.assignment, self.assignment.author)
+
+            # No deadline should exist with a higher points total, that comes before the provided due date
+            earlier_higher_target = deepcopy(progress_data)
+            earlier_higher_target_progress = factory.ProgressPresetNode(
+                target=self.progress.target + 1,
+                due_date=self.progress.due_date - timedelta(days=1),
+                format=self.format,
+            )
+            with self.assertRaises(ValidationError) as context:
+                PresetNode.validate(earlier_higher_target, self.assignment, self.assignment.author)
+            assert earlier_higher_target_progress.display_name in context.exception.message, (
+                'Progress goals are ordered by due date, and no higher target comes before the previous. If it does,'
+                ' the user is informed which deadlines do'
+            )
+            earlier_higher_target_progress.delete()
+            # Unless we update an existing preset
+            earlier_higher_target['due_date'] = (datetime.strptime(
+                earlier_higher_target['due_date'],
+                settings.ALLOWED_DATETIME_FORMAT,
+            ) - timedelta(days=1)).strftime(settings.ALLOWED_DATETIME_FORMAT)
+            earlier_higher_target['target'] = earlier_higher_target['target'] + 1
+            PresetNode.validate(earlier_higher_target, self.assignment, self.assignment.author, old=self.progress)
+
+            # No deadline should exist with a lower points total, that comes after the provided due date
+            later_lower_target = deepcopy(progress_data)
+            later_lower_target_progress = factory.ProgressPresetNode(
+                target=self.progress.target - 1,
+                due_date=self.progress.due_date + timedelta(days=1),
+                format=self.format,
+            )
+            with self.assertRaises(ValidationError) as context:
+                PresetNode.validate(later_lower_target, self.assignment, self.assignment.author)
+            assert later_lower_target_progress.display_name in context.exception.message, (
+                'Progress goals are ordered by due date, and no lower target comes after the previous. If it does,'
+                ' the user is informed which deadlines do'
+            )
+            later_lower_target_progress.delete()
+            # Unless we update an existing preset
+            later_lower_target['due_date'] = (datetime.strptime(
+                later_lower_target['due_date'],
+                settings.ALLOWED_DATETIME_FORMAT,
+            ) + timedelta(days=1)).strftime(settings.ALLOWED_DATETIME_FORMAT)
+            later_lower_target['target'] = later_lower_target['target'] - 1
+            PresetNode.validate(later_lower_target, self.assignment, self.assignment.author, old=self.progress)
 
         test_validate_deadline_preset_node()
         test_validate_progress_preset_node()
@@ -434,7 +483,7 @@ class PresetNodeTest(TestCase):
             resp = api.update(self, f'preset_nodes/{deadline.pk}/', params=update_params, user=self.assignment.author)
             check_permission_mock.assert_called_with('can_edit_assignment', self.assignment)
             validate_mock.assert_called_with(
-                update_params, assignment=self.assignment, user=self.assignment.author)
+                update_params, assignment=self.assignment, user=self.assignment.author, old=deadline)
 
         # Cast rest_framework.utils.serializer_helpers.ReturnDict to dict for equal models check
         update_params = dict(update_params)

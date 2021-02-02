@@ -2378,7 +2378,7 @@ class PresetNode(CreateUpdateModel):
                     raise ValidationError('Deadline locks before it unlocks.')
 
     @staticmethod
-    def validate(data, assignment, user):
+    def validate(data, assignment, user, old=None):
         display_name, type, description = generic_utils.required_typed_params(
             data,
             (str, 'display_name'),
@@ -2413,7 +2413,7 @@ class PresetNode(CreateUpdateModel):
                 raise ValidationError('One or more files recently uploaded are not owned by you.')
 
         def validate_progress_specific_fields():
-            target, = generic_utils.required_typed_params(data, (int, 'target'))
+            target, due_date = generic_utils.required_typed_params(data, (int, 'target'), (datetime, 'due_date'))
 
             if target < 0:
                 raise ValidationError('Number of points cannot be less than 0.')
@@ -2423,6 +2423,32 @@ class PresetNode(CreateUpdateModel):
                         target, assignment.points_possible
                     )
                 )
+
+            earlier_deadlines_with_higher_target = assignment.format.presetnode_set.filter(
+                type=Node.PROGRESS,
+                target__gt=target,
+                due_date__lt=due_date,
+            )
+            if old:
+                earlier_deadlines_with_higher_target = earlier_deadlines_with_higher_target.exclude(pk=old.pk)
+            if earlier_deadlines_with_higher_target.exists():
+                deadline_display = generic_utils.format_query_set_values_to_display(
+                    earlier_deadlines_with_higher_target, 'display_name')
+                raise ValidationError(
+                    f'Deadlines {deadline_display} are due earlier, with a higher number of required points.')
+
+            later_deadlines_with_lower_target = assignment.format.presetnode_set.filter(
+                type=Node.PROGRESS,
+                target__lt=target,
+                due_date__gt=due_date,
+            )
+            if old:
+                later_deadlines_with_lower_target = later_deadlines_with_lower_target.exclude(pk=old.pk)
+            if later_deadlines_with_lower_target.exists():
+                deadline_display = generic_utils.format_query_set_values_to_display(
+                    later_deadlines_with_lower_target, 'display_name')
+                raise ValidationError(
+                    f'Deadlines {deadline_display} are due later, with a lower number of required points.')
 
         def validate_deadline_specific_fields():
             template, = generic_utils.required_params(data, 'template')

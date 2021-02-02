@@ -119,7 +119,7 @@ class PresetNodeView(viewsets.ViewSet):
 
         request.user.check_permission('can_edit_assignment', assignment)
 
-        PresetNode.validate(request.data, assignment=assignment, user=request.user)
+        PresetNode.validate(request.data, assignment=assignment, user=request.user, old=preset)
 
         preset.display_name = display_name
         preset.description = description

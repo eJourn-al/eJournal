@@ -101,6 +101,11 @@ def optional_typed_params(data, *type_key_tuples):
     return result
 
 
+def format_query_set_values_to_display(qry, key):
+    qry_values = qry.values_list(key, flat=True)
+    return ", ".join(map(lambda x: f'\"{x}\"', qry_values))
+
+
 def base64ToContentFile(string, filename):
     matches = re.findall(r'data:(.*);base64,(.*)', string)[0]
     mimetype = matches[0]
