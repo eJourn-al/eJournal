@@ -482,7 +482,6 @@ class AssignmentSerializer(ExtendedModelSerializer, EagerLoadingMixin):
             'can_set_journal_name',
             'can_set_journal_image',
             'can_lock_journal',
-            'format',
             'categories',
             # Not used / missing: active_lti_id, lti_id_set, assigned_groups, format
         )
