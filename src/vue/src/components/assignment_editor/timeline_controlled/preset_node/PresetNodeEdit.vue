@@ -160,16 +160,21 @@ export default {
             targetInvalidFeedback: null,
             validDates: null,
             uploadingFiles: 0,
+            conflictingPreset: null,
         }
     },
     computed: {
         ...mapGetters({
-            templates: 'template/assignmentTemplates',
             assignment: 'assignment/assignment',
             presetNode: 'assignmentEditor/selectedPresetNode',
+            presetNodes: 'presetNode/assignmentPresetNodes',
+            templates: 'template/assignmentTemplates',
         }),
         edit () {
             return this.presetNode.id >= 0
+        },
+        targetAndDueDate () {
+            return this.presetNode.target, this.presetNode.due_date, Date.now() // eslint-disable-line
         },
     },
     watch: {
@@ -183,19 +188,31 @@ export default {
                 }
             },
         },
-        'presetNode.target': {
-            handler (target) {
-                if (target < 0) {
+        targetAndDueDate: {
+            handler () {
+                if (this.presetNode.target < 0) {
                     this.targetInputState = false
                     this.targetInvalidFeedback = 'Number of points should be a positive number.'
-                } else if (target > this.assignment.points_possible) {
+                } else if (this.presetNode.target > this.assignment.points_possible) {
                     this.targetInputState = false
                     this.targetInvalidFeedback = `
                         Number of points exceeds the maximum number of points of the assignment.
                     `
-                } else if (target === '') {
+                } else if (this.presetNode.target === '') {
                     this.targetInputState = false
                     this.targetInvalidFeedback = 'Number of points is required.'
+                } else if (this.earlier_progress_goal_with_higher_target()) {
+                    this.targetInputState = false
+                    this.targetInvalidFeedback = `
+                        Deadline "${this.conflictingPreset.display_name}" is due earlier with a higher number
+                        of points (${this.conflictingPreset.target}).
+                    `
+                } else if (this.later_progress_goal_with_lower_target()) {
+                    this.targetInputState = false
+                    this.targetInvalidFeedback = `
+                        Deadline "${this.conflictingPreset.display_name}" is due later with a lower number
+                        of points (${this.conflictingPreset.target}).
+                    `
                 } else {
                     this.targetInputState = null
                 }
@@ -215,6 +232,40 @@ export default {
         ...mapMutations({
             setModeToRead: 'assignmentEditor/SET_ACTIVE_COMPONENT_MODE_TO_READ',
         }),
+        earlier_progress_goal_with_higher_target () {
+            return (
+                this.presetNode.type === 'p'
+                && this.presetNode.due_date
+                && this.presetNode.target
+                && this.presetNodes.some((elem) => { // eslint-disable-line
+                    this.conflictingPreset = elem
+
+                    return (
+                        elem.id !== this.presetNode.id
+                        && elem.type === 'p'
+                        && elem.target > this.presetNode.target
+                        && Date.parse(elem.due_date) < Date.parse(this.presetNode.due_date)
+                    )
+                })
+            )
+        },
+        later_progress_goal_with_lower_target () {
+            return (
+                this.presetNode.type === 'p'
+                && this.presetNode.due_date
+                && this.presetNode.target
+                && this.presetNodes.some((elem) => { // eslint-disable-line
+                    this.conflictingPreset = elem
+
+                    return (
+                        elem.id !== this.presetNode.id
+                        && elem.type === 'p'
+                        && elem.target < this.presetNode.target
+                        && Date.parse(elem.due_date) > Date.parse(this.presetNode.due_date)
+                    )
+                })
+            )
+        },
         deletePresetNode () {
             if (window.confirm(
                 `Are you sure you want to remove '${this.presetNode.display_name}' from the assignment?`)) {
