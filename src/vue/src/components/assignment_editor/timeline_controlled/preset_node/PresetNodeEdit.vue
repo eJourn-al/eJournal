@@ -123,8 +123,7 @@
                     @click.stop="finalizePresetNodeChanges()"
                 >
                     <icon :name="(edit) ? 'save' : 'plus'"/>
-                    <!-- QUESTION: User facing it might make more sense to use 'deadline' over 'preset'? -->
-                    {{ (edit) ? 'Save' : 'Add Preset' }}
+                    {{ (edit) ? 'Save' : 'Add Deadline' }}
                 </b-button>
             </b-row>
         </b-card>
