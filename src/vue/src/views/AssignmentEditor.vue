@@ -212,6 +212,10 @@ This tutorial can be consulted again by clicking the <i>info</i> sign.
 </script>
 
 <style lang="sass">
+.dirty::after
+    content: " *"
+    color: $theme-orange
+
 .menu-list-header
     border-bottom: 2px solid $theme-dark-grey
 

@@ -11,6 +11,7 @@
         <span
             v-if="nodeTitle"
             class="node-title max-one-line"
+            :class="{ dirty: dirty }"
         >
             <icon
                 v-if="new Date(nodeDate) > new Date()"
@@ -19,7 +20,6 @@
                 class="mb-1 mr-1"
             />
             {{ nodeTitle }}
-            <span v-if="dirty"> *</span>
         </span>
 
         <span

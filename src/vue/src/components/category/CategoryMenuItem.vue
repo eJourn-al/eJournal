@@ -4,12 +4,13 @@
         :class="{ active: isActive }"
         @click="$emit('select-category', category)"
     >
-        <category-tag
-            :category="category"
-            :removable="false"
-            :showInfo="false"
-        />
-        <span v-if="isCategoryDirty(category)"> *</span>
+        <span :class="{ dirty: isCategoryDirty(category) }">
+            <category-tag
+                :category="category"
+                :removable="false"
+                :showInfo="false"
+            />
+        </span>
 
         <icon
             name="trash"

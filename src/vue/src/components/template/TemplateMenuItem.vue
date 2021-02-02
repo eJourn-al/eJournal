@@ -24,9 +24,11 @@
             @click.native.stop="$emit('delete-template', template)"
         />
 
-        <span class="max-one-line">
+        <span
+            class="max-one-line"
+            :class="{ dirty: isTemplateDirty(template) }"
+        >
             <b>{{ template.name }}</b>
-            <span v-if="isTemplateDirty(template)"> *</span>
         </span>
     </div>
 </template>
