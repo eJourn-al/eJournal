@@ -110,16 +110,16 @@ const mutations = {
         state.activeComponentMode = state.activeComponentModeOptions.edit
     },
     /* When a category is updated, it is possible its templates were changed.
-     * These changes need to be propogated to the the template drafts in order to keep state in sync. */
-    PROPOGATE_CATEGORY_TEMPLATE_UPDATE (state, { updatedCategory }) {
-        templateStore.propogateCategoryTemplateUpdate(
+     * These changes need to be propagated to the the template drafts in order to keep state in sync. */
+    PROPAGATE_CATEGORY_TEMPLATE_UPDATE (state, { updatedCategory }) {
+        templateStore.propagateCategoryTemplateUpdate(
             Object.values(state.templateDrafts).map(draft => draft.draft),
             updatedCategory,
         )
     },
     /* When a category is deleted, it also needs to be removed from all template drafts */
-    PROPOGATE_CATEGORY_DELETE (state, { deletedCategoryId }) {
-        templateStore.propogateCategoryDelete(
+    PROPAGATE_CATEGORY_DELETE (state, { deletedCategoryId }) {
+        templateStore.propagateCategoryDelete(
             Object.values(state.templateDrafts).map(draft => draft.draft),
             deletedCategoryId,
         )
@@ -168,17 +168,17 @@ const mutations = {
         state.activeComponentMode = state.activeComponentModeOptions.edit
     },
     /* When a template is updated, it is possible its categories were changed.
-     * These changes need to be propogated to the category drafts in order to keep state in sync. */
-    PROPOGATE_TEMPLATE_CATEGORY_UPDATE (state, { updatedTemplate, oldTemplateId }) {
-        categoryStore.propogateTemplateCategoryUpdate(
+     * These changes need to be propagated to the category drafts in order to keep state in sync. */
+    PROPAGATE_TEMPLATE_CATEGORY_UPDATE (state, { updatedTemplate, oldTemplateId }) {
+        categoryStore.propagateTemplateCategoryUpdate(
             Object.values(state.categoryDrafts).map(draft => draft.draft),
             updatedTemplate,
             oldTemplateId,
         )
     },
     /* When a template is deleted, it also needs to be removed from all category drafts */
-    PROPOGATE_TEMPLATE_DELETE (state, { deletedTemplateId }) {
-        categoryStore.propogateTemplateDelete(
+    PROPAGATE_TEMPLATE_DELETE (state, { deletedTemplateId }) {
+        categoryStore.propagateTemplateDelete(
             Object.values(state.categoryDrafts).map(draft => draft.draft),
             deletedTemplateId,
         )
@@ -269,17 +269,17 @@ const mutations = {
 const actions = {
     categoryCreated (context, { category }) {
         context.commit('CLEAR_NEW_CATEGORY_DRAFT')
-        context.commit('PROPOGATE_CATEGORY_TEMPLATE_UPDATE', { updatedCategory: category })
+        context.commit('PROPAGATE_CATEGORY_TEMPLATE_UPDATE', { updatedCategory: category })
         context.commit('SELECT_CATEGORY', { category })
     },
     templateCreated (context, { template }) {
         context.commit('CLEAR_NEW_TEMPLATE_DRAFT')
-        context.commit('PROPOGATE_TEMPLATE_CATEGORY_UPDATE', { updatedTemplate: template })
+        context.commit('PROPAGATE_TEMPLATE_CATEGORY_UPDATE', { updatedTemplate: template })
         context.commit('SELECT_TEMPLATE', { template })
     },
 
     categoryDeleted (context, { category }) {
-        context.commit('PROPOGATE_CATEGORY_DELETE', { deletedCategoryId: category.id })
+        context.commit('PROPAGATE_CATEGORY_DELETE', { deletedCategoryId: category.id })
 
         if (context.state.selectedCategory && context.state.selectedCategory.id === category.id) {
             context.commit('CLEAR_SELECTED_CATEGORY')
@@ -299,7 +299,7 @@ const actions = {
         }
     },
     templateDeleted (context, { template }) {
-        context.commit('PROPOGATE_TEMPLATE_DELETE', { deletedTemplateId: template.id })
+        context.commit('PROPAGATE_TEMPLATE_DELETE', { deletedTemplateId: template.id })
 
         if (context.state.selectedTemplate && context.state.selectedTemplate.id === template.id) {
             context.commit('CLEAR_SELECTED_TEMPLATE')
@@ -312,7 +312,7 @@ const actions = {
 
     categoryUpdated (context, { category }) {
         context.commit('CLEAR_DRAFT', { drafts: context.state.categoryDrafts, obj: category })
-        context.commit('PROPOGATE_CATEGORY_TEMPLATE_UPDATE', { updatedCategory: category })
+        context.commit('PROPAGATE_CATEGORY_TEMPLATE_UPDATE', { updatedCategory: category })
         context.commit('SELECT_CATEGORY', { category })
     },
     presetNodeUpdated (context, { presetNode }) {
@@ -321,7 +321,8 @@ const actions = {
     },
     templateUpdated (context, { updatedTemplate, oldTemplateId }) {
         context.commit('CLEAR_DRAFT', { drafts: context.state.templateDrafts, obj: { id: oldTemplateId } })
-        context.commit('PROPOGATE_TEMPLATE_CATEGORY_UPDATE', { updatedTemplate, oldTemplateId })
+        context.commit('PROPAGATE_TEMPLATE_CATEGORY_UPDATE', { updatedTemplate, oldTemplateId })
+        // TODO Update deadline templates
         context.commit('SELECT_TEMPLATE', { template: updatedTemplate })
     },
 

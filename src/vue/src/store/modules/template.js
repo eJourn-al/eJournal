@@ -10,7 +10,7 @@ function fromCache ({ state, commit }, cache, cacheKey, fn, force = false) {
     return state[cache][cacheKey]
 }
 
-function propogateCategoryTemplateUpdate (templates, updatedCategory) {
+function propagateCategoryTemplateUpdate (templates, updatedCategory) {
     templates.forEach((template) => {
         const templateCategoryIndex = template.categories.findIndex(category => category.id === updatedCategory.id)
         const templateLinkedToCategory = templateCategoryIndex !== -1
@@ -29,7 +29,7 @@ function propogateCategoryTemplateUpdate (templates, updatedCategory) {
     })
 }
 
-function propogateCategoryDelete (templates, deletedCategoryId) {
+function propagateCategoryDelete (templates, deletedCategoryId) {
     templates.forEach((template) => {
         const templateCategoryIndex = template.categories.findIndex(category => category.id === deletedCategoryId)
 
@@ -71,11 +71,11 @@ const mutations = {
             state.assignmentsTemplates[aID].findIndex(elem => elem.id === id),
         )
     },
-    PROPOGATE_CATEGORY_TEMPLATE_UPDATE (state, { aID, updatedCategory }) {
-        propogateCategoryTemplateUpdate(state.assignmentsTemplates[aID], updatedCategory)
+    PROPAGATE_CATEGORY_TEMPLATE_UPDATE (state, { aID, updatedCategory }) {
+        propagateCategoryTemplateUpdate(state.assignmentsTemplates[aID], updatedCategory)
     },
-    PROPOGATE_CATEGORY_DELETE (state, { aID, deletedCategoryId }) {
-        propogateCategoryDelete(state.assignmentsTemplates[aID], deletedCategoryId)
+    PROPAGATE_CATEGORY_DELETE (state, { aID, deletedCategoryId }) {
+        propagateCategoryDelete(state.assignmentsTemplates[aID], deletedCategoryId)
     },
 }
 
@@ -103,7 +103,7 @@ const actions = {
 
                     context.commit('ADD_ASSIGNMENT_TEMPLATE', { aID, template: createdTemplate })
                     context.commit(
-                        'category/PROPOGATE_TEMPLATE_CATEGORY_UPDATE',
+                        'category/PROPAGATE_TEMPLATE_CATEGORY_UPDATE',
                         { aID, updatedTemplate: createdTemplate },
                         { root: true },
                     )
@@ -122,7 +122,7 @@ const actions = {
 
                     context.commit('UPDATE_ASSIGNMENT_TEMPLATE', { aID, template: updatedTemplate, oldId: id })
                     context.commit(
-                        'category/PROPOGATE_TEMPLATE_CATEGORY_UPDATE',
+                        'category/PROPAGATE_TEMPLATE_CATEGORY_UPDATE',
                         { aID, updatedTemplate, oldTemplateId: id },
                         { root: true },
                     )
@@ -138,7 +138,7 @@ const actions = {
             return auth.delete(`templates/${id}`, null, connArgs)
                 .then((response) => {
                     context.commit('DELETE_ASSIGNMENT_TEMPLATE', { id, aID })
-                    context.commit('category/PROPOGATE_TEMPLATE_DELETE', { aID, deletedTemplateId: id }, { root: true })
+                    context.commit('category/PROPAGATE_TEMPLATE_DELETE', { aID, deletedTemplateId: id }, { root: true })
 
                     return response.data
                 })
@@ -158,6 +158,6 @@ export default {
     getters,
     mutations,
     actions,
-    propogateCategoryTemplateUpdate,
-    propogateCategoryDelete,
+    propagateCategoryTemplateUpdate,
+    propagateCategoryDelete,
 }
