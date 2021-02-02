@@ -95,18 +95,18 @@ There are two different types of templates:<br/><br/>
 
 You can preview and edit a template by clicking on it.
 `,
-            // QUESTION: Should we stop using 'nodes' when talking about the timeline (user facing)?
             timelineIntroText: `
 The timeline forms the basis for an assignment. The name, due date and other details
-of the assignment can also be changed here, by clicking the first node.<br/><br/>
+of the assignment can also be changed here, by clicking on <i>"Assignment details"</i>.<br/><br/>
 
-The timeline contains a node for every entry. You can add two different types of nodes to it:<br/><br/>
+The timeline presents an overview of all entries made by a student. In the assignment editor, it is possible to set
+specific deadlines, two types exist:<br/><br/>
 <ul>
     <li><b>Preset entries</b> are entries with a specific template which have to be completed before a set deadline</li>
     <li><b>Progress goals</b> are point targets that have to be met before a set deadline</li>
 </ul><br/>
 
-New nodes can be added via the '+' node. Click any node to view its contents.
+New deadlines can be added via the '+' button in the timeline. Click any deadline to view its contents.
 `,
             categoryIntroText: `
 <i>Categories</i> can be linked to entries and be used to filter the timeline.<br/><br/>
