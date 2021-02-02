@@ -1,6 +1,7 @@
 <template>
     <div>
         <b-form-file
+            ref="formFile"
             :accept="acceptedFiletype"
             :state="Boolean(file)"
             :placeholder="placeholderText"
@@ -68,7 +69,7 @@ export default {
         fileHandler (e) {
             const files = e.target.files
 
-            if (!files.length) { return }
+            if (!files || !files.length) { return }
             if (files[0].size > this.maxSizeBytes) {
                 this.$toasted.error(`The selected file exceeds the maximum file size of: ${this.maxSizeBytes} bytes.`)
                 return
@@ -83,7 +84,7 @@ export default {
         uploadFile () {
             const formData = new FormData()
             formData.append('file', this.file)
-            this.$emit('uploadingFile')
+            this.$emit('uploading-file')
             auth.uploadFile(this.endpoint, formData, { customSuccessToast: 'File upload success.' })
                 .then((resp) => {
                     this.$emit('fileUploadSuccess', resp.data)
@@ -92,6 +93,9 @@ export default {
                     this.$emit('fileUploadFailed', this.file.file_name)
                     this.file = null
                 })
+        },
+        openFileUpload () {
+            this.$refs.formFile.$el.click()
         },
     },
 }

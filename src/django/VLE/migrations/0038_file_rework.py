@@ -189,7 +189,7 @@ def convertBase64CommentsToFiles(apps, schema_editor):
 def convertBase64ContentsToFiles(apps, schema_editor):
     Content = apps.get_model('VLE', 'Content')
     FileContext = apps.get_model('VLE', 'FileContext')
-    Field = apps.get_model('VLE', 'Field')
+    apps.get_model('VLE', 'Field')
 
     for c in Content.objects.filter(field__type='rt'):
         def createEmbbededContentFiles(str_match):
@@ -256,7 +256,7 @@ def convertBase64AssignmentDescriptionsToFiles(apps, schema_editor):
 def convertBase64FieldDescriptionsToFiles(apps, schema_editor):
     Field = apps.get_model('VLE', 'Field')
     FileContext = apps.get_model('VLE', 'FileContext')
-    Assignment = apps.get_model('VLE', 'Assignment')
+    apps.get_model('VLE', 'Assignment')
     Node = apps.get_model('VLE', 'Node')
 
     for field in Field.objects.all():

@@ -54,7 +54,7 @@
                     >
                         <todo-card
                             :deadline="d"
-                            :course="d.course"
+                            :courses="d.courses"
                             :filterOwnGroups="filterOwnGroups"
                         />
                     </b-link>
@@ -62,15 +62,15 @@
             </div>
             <b-card
                 v-else
-                class="border-dark-grey no-hover"
+                class="no-hover"
             >
                 <div class="text-center multi-form">
                     <icon
                         name="check"
                         scale="4"
-                        class="fill-green mb-2 text-shadow"
+                        class="fill-green mb-2"
                     /><br/>
-                    <b class="field-heading">
+                    <b>
                         All done!
                     </b>
                 </div>
@@ -85,10 +85,11 @@
 
 <script>
 import assignmentAPI from '@/api/assignment.js'
+import comparison from '@/utils/comparison.js'
 
-import todoCard from '@/components/assets/TodoCard.vue'
-import loadWrapper from '@/components/loading/LoadWrapper.vue'
 import { mapGetters, mapMutations } from 'vuex'
+import loadWrapper from '@/components/loading/LoadWrapper.vue'
+import todoCard from '@/components/assets/TodoCard.vue'
 
 export default {
     components: {
@@ -123,22 +124,6 @@ export default {
             },
         },
         computedDeadlines () {
-            function compareDate (a, b) {
-                if (!a.deadline.date) { return 1 }
-                if (!b.deadline.date) { return -1 }
-                return new Date(a.deadline.date) - new Date(b.deadline.date)
-            }
-
-            const filterOwnGroupsCopy = this.filterOwnGroups
-            function compareMarkingNeeded (a, b) {
-                if (filterOwnGroupsCopy) {
-                    return (b.stats.needs_marking_own_groups + b.stats.unpublished_own_groups)
-                    - (a.stats.needs_marking_own_groups + a.stats.unpublished_own_groups)
-                } else {
-                    return (b.stats.needs_marking + b.stats.unpublished) - (a.stats.needs_marking + a.stats.unpublished)
-                }
-            }
-
             let deadlines = this.deadlines
             if (this.$root.canGradeForSomeCourse() && deadlines.length > 0) {
                 if (this.filterOwnGroups) {
@@ -157,15 +142,17 @@ export default {
             }
 
             if (this.sortBy === 'date') {
-                deadlines.sort(compareDate)
+                deadlines.sort(comparison.date)
             } else if (this.sortBy === 'markingNeeded') {
-                deadlines.sort(compareMarkingNeeded)
+                deadlines.sort(this.filterOwnGroups ? comparison.markingNeededOwnGroups : comparison.markingNeededAll)
             }
 
             return deadlines
         },
     },
     created () {
+        /* Providing a cID to upcoming will only yield upcoming for that specific course,
+         * If we are on the home page, we want all ToDos of an assignment (for all of its courses) */
         assignmentAPI.getUpcoming(this.$route.params.cID)
             .then((deadlines) => {
                 this.deadlines = deadlines

@@ -20,7 +20,7 @@
         <div v-if="selectedCourse !== null">
             <hr/>
             <b-button
-                class="change-button float-right"
+                class="orange-button float-right"
                 @click="linkCourse"
             >
                 <icon name="link"/>
@@ -32,6 +32,7 @@
 
 <script>
 import courseAPI from '@/api/course.js'
+import utils from '@/utils/generic_utils.js'
 
 export default {
     name: 'LinkCourse',
@@ -45,11 +46,7 @@ export default {
         coursesWithDates () {
             return this.courses.map((course) => {
                 const courseCopy = { ...course }
-                if (course.startdate || course.enddate) {
-                    courseCopy.name += ` (${course.startdate ? course.startdate.substring(0, 4) : ''} - ${
-                        course.enddate ? course.enddate.substring(0, 4) : ''})`
-                }
-
+                courseCopy.name = utils.courseWithDatesDisplay(courseCopy)
                 return courseCopy
             })
         },

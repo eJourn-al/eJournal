@@ -10,7 +10,7 @@ from django.test import TestCase
 from django.test.utils import override_settings
 from django.utils import timezone
 
-from VLE.models import Grade, Group, Node, Participation, PresetNode, Template, User
+from VLE.models import Group, Journal, Notification, Participation, Preferences, Template, User
 from VLE.tasks.beats import notifications
 
 
@@ -35,10 +35,10 @@ class EmailAPITest(TestCase):
         assert len(mail.outbox) == 1, 'An actual mail should be sent'
         assert mail.outbox[0].to == [self.student.email], 'Email should be sent to the mail adress of the student'
         assert self.student.full_name in mail.outbox[0].body, 'Full name is expected to be used to increase delivery'
-        assert '{}/PasswordRecovery/{}/'.format(settings.BASELINK, self.student.username) in \
+        assert '{}/SetPassword/{}/'.format(settings.BASELINK, self.student.username) in \
             mail.outbox[0].alternatives[0][0], 'Recovery token link should be in email'
 
-        token = re.search(r'PasswordRecovery\/(.*)\/([^"]*)', mail.outbox[0].alternatives[0][0]).group(0).split('/')[-1]
+        token = re.search(r'SetPassword\/(.*)\/([^"]*)', mail.outbox[0].alternatives[0][0]).group(0).split('/')[-1]
         assert PasswordResetTokenGenerator().check_token(self.student, token), 'Token should be valid'
 
         resp = api.post(self, 'forgot_password', params={'identifier': self.student.email})
@@ -58,7 +58,7 @@ class EmailAPITest(TestCase):
             self, 'recover_password',
             params={
                 'username': self.student.username,
-                'recovery_token': 'invalid_token',
+                'token': 'invalid_token',
                 'new_password': self.valid_pass},
             status=400)
         # Test invalid password
@@ -67,7 +67,7 @@ class EmailAPITest(TestCase):
             self, 'recover_password',
             params={
                 'username': self.student.username,
-                'recovery_token': token,
+                'token': token,
                 'new_password': 'new_invalid_pass'},
             status=400)
         # Test invalid username
@@ -75,7 +75,7 @@ class EmailAPITest(TestCase):
             self, 'recover_password',
             params={
                 'username': factory.Student().username,
-                'recovery_token': token,
+                'token': token,
                 'new_password': self.valid_pass},
             status=400)
 
@@ -84,8 +84,27 @@ class EmailAPITest(TestCase):
             self, 'recover_password',
             params={
                 'username': self.student.username,
-                'recovery_token': token,
+                'token': token,
                 'new_password': self.valid_pass})
+
+        self.student.is_active = False
+        self.student.verified_email = False
+        self.student.set_unusable_password()
+        self.student.save()
+
+        # Test whether password recovery makes user active (for invitations).
+        token = PasswordResetTokenGenerator().make_token(self.student)
+        api.post(
+            self, 'recover_password',
+            params={
+                'username': self.student.username,
+                'token': token,
+                'new_password': self.valid_pass})
+
+        self.student.refresh_from_db()
+        assert self.student.is_active
+        assert self.student.check_password(self.valid_pass)
+        assert self.student.verified_email
 
     def test_verify_email(self):
         api.post(self, 'verify_email', status=400)
@@ -105,6 +124,27 @@ class EmailAPITest(TestCase):
         resp = api.post(self, 'verify_email', params={'username': self.student.username, 'token': token})
         assert 'already verified' in resp['description']
 
+    @override_settings(EMAIL_BACKEND='anymail.backends.test.EmailBackend', CELERY_TASK_ALWAYS_EAGER=True)
+    def test_verify_email_from_create_user(self):
+        user_params = {
+            'username': 'test',
+            'password': 'TestPass!123',
+            'email': 'test@ejournal.app',
+            'full_name': 'Test User'
+        }
+        api.post(self, 'users', params=user_params, status=201)
+
+        assert len(mail.outbox) == 1, 'An actual mail should be sent'
+        assert mail.outbox[0].to == [user_params['email']], 'Email should be sent to the mail adress of the user'
+        assert '{}/EmailVerification/{}/'.format(settings.BASELINK, user_params['username']) in \
+            mail.outbox[0].alternatives[0][0], 'Recovery token link should be in email'
+
+        _, username, token = re.search(
+            r'EmailVerification\/(.*)\/([^"]*)', mail.outbox[0].alternatives[0][0]).group(0).split('/')
+
+        resp = api.post(self, 'verify_email', params={'username': username, 'token': token})
+        assert 'Success' in resp['description']
+
     def test_request_email_verification(self):
         api.post(self, 'request_email_verification', status=401)
 
@@ -121,151 +161,198 @@ class EmailAPITest(TestCase):
         resp = api.post(self, 'request_email_verification', user=self.is_test_student, status=200)
         assert 'email was sent' in resp['description']
 
+    @override_settings(EMAIL_BACKEND='anymail.backends.test.EmailBackend', CELERY_TASK_ALWAYS_EAGER=True)
     def test_send_feedback(self):
         # needs to be logged in
         api.post(self, 'send_feedback', status=401)
+        assert len(mail.outbox) == 0
         # cannot send without valid email
         api.post(self, 'send_feedback', user=self.not_verified, status=403)
+        assert len(mail.outbox) == 0
         # Require params
         api.post(self, 'send_feedback', user=self.student, status=400)
+        assert len(mail.outbox) == 0
         api.post(self, 'send_feedback',
                  params={
                      'topic': 'topic',
-                     'feedback': 'feedback',
+                     'feedback': 'actual_feedback_content_here',
                      'ftype': 'ftype',
-                     'user_agent': 'user_agent',
-                     'url': 'url'
+                     'user_agent': 'someBrowser',
+                     'url': 'current_user_url.com'
                  }, user=self.student)
 
-    def test_deadline_email(self):
+        assert len(mail.outbox) == 2, 'Two emails should be sent: one to user and another to developers'
+        assert len(mail.outbox[0].to) == 1 and mail.outbox[0].to[0] == self.student.email, \
+            'Confirmation email should be sent to user who gave the feedback'
+        assert len(mail.outbox[0].bcc) == 1 and mail.outbox[0].bcc[0] == f'support@{settings.EMAIL_SENDER_DOMAIN}', \
+            'Confirmation email should be also sent to developers via BCC'
+        assert mail.outbox[0].subject == 'Re: topic', 'Feedback topic should be in confirmation email title'
+        assert 'actual_feedback_content_here' in mail.outbox[0].body, \
+            'Feedback should be repeated in confirmation mail'
+
+        assert len(mail.outbox[1].to) == 1 and mail.outbox[1].to[0] == f'support@{settings.EMAIL_SENDER_DOMAIN}', \
+            'Additional support info should be sent to developers'
+        assert mail.outbox[1].subject == 'Additional support info: topic', \
+            'Feedback topic should be in developer support email title'
+        assert 'actual_feedback_content_here' in mail.outbox[1].body, \
+            'Feedback should be repeated in developer support email'
+        assert 'ftype' in mail.outbox[1].body, \
+            'Feedback type should be in developer support email'
+        assert 'someBrowser' in mail.outbox[1].body, \
+            'User agent should be in developer support email'
+        assert 'current_user_url.com' in mail.outbox[1].body, \
+            'Current URL should be in developer support email'
+
+        assert all(mail.outbox[i].from_email == settings.EMAILS.support.sender for i in range(len(mail.outbox))), \
+            'All emails should be sent with eJournal | Support as the sender'
+
+    def test_deadline_email_standalone(self):
         assignment = factory.Assignment()
 
-        # ENTRYDEADLINE inside deadline
-        PresetNode.objects.create(
-            description='Entrydeadline node description',
+        deadline_inside_notification_window = factory.DeadlinePresetNode(
             due_date=timezone.now().date() + datetime.timedelta(days=7, hours=2),
             lock_date=timezone.now().date() + datetime.timedelta(days=8),
-            type=Node.ENTRYDEADLINE,
-            forced_template=Template.objects.filter(format__assignment=assignment).first(),
+            forced_template=assignment.format.template_set.first(),
             format=assignment.format,
         )
-        # ENTRYDEADLINE outside deadline
-        PresetNode.objects.create(
-            description='Entrydeadline node description',
-            due_date=timezone.now().date() + datetime.timedelta(days=14, hours=2),
-            lock_date=timezone.now().date() + datetime.timedelta(days=15),
-            type=Node.ENTRYDEADLINE,
-            forced_template=Template.objects.filter(format__assignment=assignment).first(),
-            format=assignment.format,
-        )
-        # PROGRESS inside deadline
-        PresetNode.objects.create(
-            description='Progress node description',
+        progres_inside_notifcation_window = factory.ProgressPresetNode(
             due_date=timezone.now().date() + datetime.timedelta(days=1, hours=2),
             lock_date=timezone.now().date() + datetime.timedelta(days=2),
-            type=Node.PROGRESS,
-            target=5,
             format=assignment.format,
+            target=5,
         )
-        # PROGRESS outside deadline
-        PresetNode.objects.create(
-            description='Progress node description',
+        progres_inside_notifcation_window2 = factory.ProgressPresetNode(
+            due_date=timezone.now().date() + datetime.timedelta(days=1, hours=2),
+            lock_date=timezone.now().date() + datetime.timedelta(days=2),
+            format=assignment.format,
+            target=6,
+        )
+        deadlines_inside_notifaction_window = [
+            deadline_inside_notification_window,
+            progres_inside_notifcation_window,
+            progres_inside_notifcation_window2
+        ]
+        n_deadlines_in_notification_window = len(deadlines_inside_notifaction_window)
+        n_deadlines_in_day_window = 2
+        n_deadlines_in_week_window = 1
+
+        # Deadline outside notification window
+        factory.DeadlinePresetNode(
             due_date=timezone.now().date() + datetime.timedelta(days=14, hours=2),
             lock_date=timezone.now().date() + datetime.timedelta(days=15),
-            type=Node.PROGRESS,
-            target=5,
+            forced_template=assignment.format.template_set.first(),
             format=assignment.format,
         )
+        # Progress goal, outside notification window
+        factory.ProgressPresetNode(
+            due_date=timezone.now().date() + datetime.timedelta(days=14, hours=2),
+            lock_date=timezone.now().date() + datetime.timedelta(days=15),
+            format=assignment.format,
+            target=5,
+        )
 
-        journal_empty = factory.Journal(assignment=assignment)
-        journal_filled = factory.Journal(assignment=assignment)
-        journal_filled_and_graded_2 = factory.Journal(assignment=assignment)
+        # An empty journal should only receive notifcations within the notication window: (1 < x < 2 || 7 < x < 8 days)
+        journal_empty = factory.Journal(assignment=assignment, entries__n=0)
+        before_ns = list(Notification.objects.all().values_list('pk', flat=True))
+        generated_ns = notifications.generate_upcoming_deadline_notifications()
+        after_ns = Notification.objects.all().exclude(pk__in=before_ns)
+
+        # No additional notifactions are generated besides those generated by: generate_upcoming_deadline_notifications
+        assert all(gen in after_ns for gen in generated_ns)
+        assert all(gen in generated_ns for gen in after_ns)
+
+        # A notification is generated for each of the deadlines in side the window
+        assert after_ns.count() == n_deadlines_in_notification_window
+        assert after_ns.filter(node__preset=deadline_inside_notification_window).exists()
+        assert after_ns.filter(node__preset=progres_inside_notifcation_window).exists()
+        assert after_ns.filter(node__preset=progres_inside_notifcation_window2).exists()
+
+        # A notification is generated for each of the deadlines within the day preferences window
+        factory.Journal(
+            assignment=assignment, entries__n=0, ap__user__preferences__upcoming_deadline_reminder=Preferences.DAY)
+        before_ns = list(Notification.objects.all().values_list('pk', flat=True))
+        generated_ns = notifications.generate_upcoming_deadline_notifications()
+        after_ns = Notification.objects.all().exclude(pk__in=before_ns)
+        assert after_ns.count() == n_deadlines_in_day_window
+        assert after_ns.filter(node__preset=progres_inside_notifcation_window).exists()
+        assert after_ns.filter(node__preset=progres_inside_notifcation_window2).exists()
+
+        # A notification is generated for each of the deadlines within the WEEK preferences window
+        factory.Journal(
+            assignment=assignment, entries__n=0, ap__user__preferences__upcoming_deadline_reminder=Preferences.WEEK)
+        before_ns = list(Notification.objects.all().values_list('pk', flat=True))
+        generated_ns = notifications.generate_upcoming_deadline_notifications()
+        after_ns = Notification.objects.all().exclude(pk__in=before_ns)
+        assert after_ns.count() == n_deadlines_in_week_window
+        assert after_ns.filter(node__preset=deadline_inside_notification_window).exists()
+
+        # No notifaction is generated for the entry deadline, as it now has an entry
+        journal_filled = factory.Journal(assignment=assignment, entries__n=0)
+        factory.PresetEntry(node__journal=journal_filled, node__preset=deadline_inside_notification_window)
+        before_ns = list(Notification.objects.all().values_list('pk', flat=True))
+        generated_ns = notifications.generate_upcoming_deadline_notifications()
+        after_ns = Notification.objects.all().exclude(pk__in=before_ns)
+        assert after_ns.count() == 2, 'A Notifcation is generated for both the progress goals but not the entrydeadline'
+        assert after_ns.filter(node__preset=progres_inside_notifcation_window).exists()
+        assert after_ns.filter(node__preset=progres_inside_notifcation_window2).exists()
+
+        journal_filled_and_graded_5 = factory.Journal(assignment=assignment)
+        factory.PresetEntry(
+            node__journal=journal_filled_and_graded_5, grade__grade=5, node__preset=deadline_inside_notification_window)
+        before_ns = list(Notification.objects.all().values_list('pk', flat=True))
+        generated_ns = notifications.generate_upcoming_deadline_notifications()
+        after_ns = Notification.objects.all().exclude(pk__in=before_ns)
+        assert after_ns.count() == 1, 'A Notifcation is generated for the remaining unmatched progress goal'
+        assert after_ns.filter(node__preset=progres_inside_notifcation_window2).exists()
+
         journal_filled_and_graded_100 = factory.Journal(assignment=assignment)
-        journal_empty_but_no_notifications = factory.Journal(
-            assignment=assignment)
-        p = journal_empty_but_no_notifications.authors.first().user.preferences
-        p.upcoming_deadline_notifications = False
-        p.save()
-
-        factory.Entry(
-            node__journal=journal_filled,
-            node=Node.objects.filter(journal=journal_filled).first(),
-            author=journal_filled.authors.first().user)
-        e_100 = factory.Entry(
-            node__journal=journal_filled_and_graded_100,
-            template=Template.objects.filter(format__assignment=assignment).first(),
-            author=journal_filled_and_graded_100.authors.first().user)
-        e_100.grade = Grade.objects.create(grade=100, published=True, entry=e_100)
-        e_100.save()
-        e_2 = factory.Entry(
-            node__journal=journal_filled_and_graded_2,
-            template=Template.objects.filter(format__assignment=assignment).first(),
-            author=journal_filled_and_graded_2.authors.first().user)
-        e_2.grade = Grade.objects.create(grade=2, published=True, entry=e_2)
-        e_2.save()
-
-        mails = notifications.send_upcoming_deadlines()
-        assert mails.count(journal_empty.authors.first().user.email) == 2, \
-            'Journal without entries should get all deadlines'
-        assert mails.count(journal_filled.authors.first().user.email) == 1, \
-            'Journal without any grade should get notified of upcoming preset node'
-        assert mails.count(journal_filled_and_graded_2.authors.first().user.email) == 2, \
-            'Journal without proper grade should get notified of upcoming preset node'
-        assert mails.count(journal_filled_and_graded_100.authors.first().user.email) == 1, \
-            'Journal with proper grade should only get notified of unfilled entries'
-        assert mails.count(journal_empty_but_no_notifications.authors.first().user.email) == 0, \
-            'Without email notifications, one should never get notified'
-        assert mails.count(assignment.author.email) == 0, \
-            'Teacher should not get any notifications'
+        factory.PresetEntry(node__journal=journal_filled_and_graded_100, grade__grade=100,
+                            node__preset=deadline_inside_notification_window)
+        before_ns = list(Notification.objects.all().values_list('pk', flat=True))
+        generated_ns = notifications.generate_upcoming_deadline_notifications()
+        after_ns = Notification.objects.all().exclude(pk__in=before_ns)
+        assert after_ns.count() == 0, 'Both the deadline and both progress nodes are filled'
 
         # Test assigned to
         group = Group.objects.create(course=assignment.courses.first(), name='test')
         assignment.assigned_groups.add(group)
         group.participation_set.add(Participation.objects.get(user=journal_empty.authors.first().user))
 
-        mails = notifications.send_upcoming_deadlines()
-        assert mails.count(journal_empty.authors.first().user.email) == 2, \
-            'Authors in the assigned to groups, should get an email'
-        assert (mails.count(journal_filled.authors.first().user.email) == 0 and
-                mails.count(journal_filled_and_graded_2.authors.first().user.email) == 0 and
-                mails.count(journal_filled_and_graded_100.authors.first().user.email) == 0 and
-                mails.count(journal_empty_but_no_notifications.authors.first().user.email) == 0), \
-            'Authors not in the assigned to groups, should not get an email'
+        before_ns = list(Notification.objects.all().values_list('pk', flat=True))
+        generated_ns = notifications.generate_upcoming_deadline_notifications()
+        after_ns = Notification.objects.all().exclude(pk__in=before_ns)
 
-        assignment = factory.Assignment()
-        assignment.is_published = False
-        assignment.save()
-        # ENTRYDEADLINE inside deadline
-        PresetNode.objects.create(
-            description='Entrydeadline node description',
+        assert after_ns.filter(user=journal_empty.authors.first().user).count() == after_ns.count(), \
+            'The only notifications are those for the student assigned to the group'
+
+    def test_unpublished_assignment_generates_no_notifications(self):
+        journal_unpublished_assignment = factory.Journal(assignment__is_published=False)
+        # ENTRYDEADLINE inside weekly (default) notification window
+        factory.DeadlinePresetNode(
             due_date=timezone.now().date() + datetime.timedelta(days=7, hours=2),
             lock_date=timezone.now().date() + datetime.timedelta(days=8),
-            type=Node.ENTRYDEADLINE,
-            forced_template=Template.objects.filter(format__assignment=assignment).first(),
-            format=assignment.format,
+            format=journal_unpublished_assignment.assignment.format,
         )
-        journal_unpublished_assignment = factory.Journal(assignment=assignment)
-        mails = notifications.send_upcoming_deadlines()
-        assert mails.count(journal_unpublished_assignment.authors.first().user.email) == 0, \
-            'Unpublished assignment should get no emails'
+
+        before_ns = list(Notification.objects.all().values_list('pk', flat=True))
+        notifications.generate_upcoming_deadline_notifications()
+        after_ns = Notification.objects.all().exclude(pk__in=before_ns)
+
+        after_ns.count() == 0, 'An unpublished assignment should yield no notifications'
 
     def test_deadline_email_groups(self):
-        group_assignment = factory.GroupAssignment()
+        group_assignment = factory.Assignment(group_assignment=True)
         # ENTRYDEADLINE inside deadline
-        PresetNode.objects.create(
-            description='Entrydeadline node description',
+        factory.DeadlinePresetNode(
             due_date=timezone.now().date() + datetime.timedelta(days=7, hours=5),
             lock_date=timezone.now().date() + datetime.timedelta(days=8),
-            type=Node.ENTRYDEADLINE,
             forced_template=Template.objects.filter(format__assignment=group_assignment).first(),
             format=group_assignment.format,
         )
         # PROGRESS inside deadline
-        PresetNode.objects.create(
-            description='Progress node description',
+        factory.ProgressPresetNode(
             due_date=timezone.now().date() + datetime.timedelta(days=1, hours=5),
             lock_date=timezone.now().date() + datetime.timedelta(days=2),
-            type=Node.PROGRESS,
             target=5,
             format=group_assignment.format,
         )
@@ -277,7 +364,9 @@ class EmailAPITest(TestCase):
         group_journal.add_author(also_in_journal)
         not_in_journal = factory.AssignmentParticipation(assignment=group_assignment)
 
-        mails = notifications.send_upcoming_deadlines()
+        mails = [n.user.email for n in notifications.generate_upcoming_deadline_notifications()]
+        assert len(notifications.generate_upcoming_deadline_notifications()) == 0, \
+            'Generating the upcoming deadling notifications twice should give no new notifications'
         assert mails.count(in_journal.user.email) == 2, \
             'All students in journal should get a mail'
         assert mails.count(also_in_journal.user.email) == 2, \
@@ -285,19 +374,28 @@ class EmailAPITest(TestCase):
         assert mails.count(not_in_journal.user.email) == 0, \
             'If not in journal, one should also not get a mail'
 
-        also_in_journal.user.verified_email = False
-        also_in_journal.user.save()
-        mails = notifications.send_upcoming_deadlines()
-        assert mails.count(in_journal.user.email) == 2, \
-            'Only student with verified mail should get an email'
-        assert mails.count(also_in_journal.user.email) == 0, \
-            'Only student with verified mail should get an email'
+    def test_deadline_email_text(self):
+        assignment = factory.Assignment()
+        # ENTRYDEADLINE inside deadline
+        entry = factory.DeadlinePresetNode(
+            due_date=timezone.now().date() + datetime.timedelta(days=7, hours=5),
+            lock_date=timezone.now().date() + datetime.timedelta(days=8),
+            forced_template=Template.objects.filter(format__assignment=assignment).first(),
+            format=assignment.format,
+        )
+        # PROGRESS inside deadline
+        preset = factory.ProgressPresetNode(
+            due_date=timezone.now().date() + datetime.timedelta(days=1, hours=5),
+            lock_date=timezone.now().date() + datetime.timedelta(days=2),
+            target=5,
+            format=assignment.format,
+        )
+        journal = factory.Journal(assignment=assignment)
+        journal = Journal.objects.get(pk=journal.pk)
+        notifications.generate_upcoming_deadline_notifications()
 
-        also_in_journal.user.verified_email = True
-        also_in_journal.user.preferences.upcoming_deadline_notifications = False
-        also_in_journal.user.preferences.save()
-        mails = notifications.send_upcoming_deadlines()
-        assert mails.count(in_journal.user.email) == 2, \
-            'Only student with verified mail should get an email'
-        assert mails.count(also_in_journal.user.email) == 0, \
-            'Only student with verified mail should get an email'
+        assert f'{journal.grade}/' in Notification.objects.get(node__preset=preset).content
+        assert entry.forced_template.name not in Notification.objects.get(node__preset=preset).content
+
+        assert entry.forced_template.name in Notification.objects.get(node__preset=entry).content
+        assert f'{journal.grade}/' not in Notification.objects.get(node__preset=entry).content

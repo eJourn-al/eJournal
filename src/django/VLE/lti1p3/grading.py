@@ -1,7 +1,6 @@
 import json
 
 from django.conf import settings
-from django.urls import reverse
 from pylti1p3.assignments_grades import AssignmentsGradesService
 from pylti1p3.grade import Grade
 from pylti1p3.service_connector import ServiceConnector
@@ -65,7 +64,7 @@ class ActivityProgress(object):
 def send_grade(assignment_participation, ags=None, iss='https://canvas.instructure.com', client_id='10000000000001'):
     journal = assignment_participation.journal
     assignment = journal.assignment
-    course = assignment.get_active_course(assignment_participation.user)
+    assignment.get_active_course(assignment_participation.user)
     user = assignment_participation.user
     timestamp = journal.creation_date
     if journal.published_nodes:
@@ -90,8 +89,8 @@ def send_grade(assignment_participation, ags=None, iss='https://canvas.instructu
             {
                 'submission_type': 'basic_lti_launch',
                 'submission_data': 'http://127.0.0.1:8000/lti/launch/?submission={}'.format(journal.pk),
-                    # '{0}/Home/Course/{1}/Assignment/{2}/Journal'.format(
-                    #     settings.BASELINK, course.pk, assignment.pk, journal.pk),
+                # '{0}/Home/Course/{1}/Assignment/{2}/Journal'.format(
+                #     settings.BASELINK, course.pk, assignment.pk, journal.pk),
             }
     })
     print(grade.get_value())

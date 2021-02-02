@@ -2,16 +2,15 @@
     <div>
         <b-form-file
             ref="bonusInput"
-            :accept="acceptedFiletype"
+            accept="*/*.csv"
             :state="Boolean(file)"
             :placeholder="placeholderText"
-            class="fileinput"
+            class="fileinput mb-2"
             @change="fileHandler"
         />
-        <hr class="mt-2"/>
         <b-button
             v-if="!autoUpload"
-            class="add-button float-right"
+            class="green-button float-right"
             :class="{ 'input-disabled': !file }"
             @click="uploadFile"
         >
@@ -88,14 +87,6 @@ import auth from '@/api/auth.js'
 
 export default {
     props: {
-        acceptedFiletype: {
-            required: true,
-            String,
-        },
-        maxSizeBytes: {
-            required: true,
-            Number,
-        },
         aID: {
             required: true,
             String,
@@ -132,9 +123,10 @@ export default {
         fileHandler (e) {
             const files = e.target.files
 
-            if (!files.length) { return }
-            if (files[0].size > this.maxSizeBytes) {
-                this.$toasted.error(`The selected file exceeds the maximum file size of: ${this.maxSizeBytes} bytes.`)
+            if (!files || !files.length) { return }
+            if (files[0].size > this.$root.maxFileSizeBytes) {
+                this.$toasted.error(
+                    `The selected file exceeds the maximum file size of: ${this.$root.maxFileSizeBytes} bytes.`)
                 return
             }
 
@@ -156,7 +148,7 @@ export default {
                 customErrorToast: 'Something is wrong with the uploaded file.',
             })
                 .then(() => {
-                    this.$emit('bonusPointsSuccesfullyUpdated', this.file.name)
+                    this.$emit('bonusPointsSuccessfullyUpdated', this.file.name)
                     this.file = null
                     this.$refs.bonusInput.reset()
                 })

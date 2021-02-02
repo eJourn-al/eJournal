@@ -42,6 +42,9 @@
                     class="trash-icon"
                 />
             </div>
+            <b class="max-one-line">
+                {{ author.user.full_name }}
+            </b>
             <span
                 v-if="author.user.username"
                 class="max-one-line"
@@ -57,7 +60,7 @@
         </div>
         <div
             v-if="$hasPermission('can_manage_journals') && (journal.author_limit === 0 ||
-                journal.author_count < journal.author_limit)"
+                journal.author_count < journal.author_limit) && participantsWithoutJournal.length > 0"
             class="d-flex mt-3 full-width"
         >
             <theme-select
@@ -73,7 +76,7 @@
                 class="no-right-radius"
             />
             <b-button
-                class="add-button no-left-radius"
+                class="green-button no-left-radius"
                 @click="addMembers"
             >
                 <icon name="user-plus"/>
@@ -84,8 +87,8 @@
 </template>
 
 <script>
-import journalAPI from '@/api/journal.js'
 import assignmentAPI from '@/api/assignment.js'
+import journalAPI from '@/api/journal.js'
 
 import { mapGetters } from 'vuex'
 
@@ -193,8 +196,6 @@ export default {
 </script>
 
 <style lang="sass">
-@import '~sass/modules/colors.sass'
-
 .members
     .members-header
         border-bottom: 2px solid $theme-dark-grey

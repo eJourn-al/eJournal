@@ -57,7 +57,7 @@ class GradePassBackRequest(object):
 
         if self.timestamp is not None:
             submission_details = ET.SubElement(request, 'submissionDetails')
-            timestamp = ET.SubElement(submission_details, 'submittedAT')
+            timestamp = ET.SubElement(submission_details, 'submittedAt')
             timestamp.text = self.timestamp
 
         result_record = ET.SubElement(request, 'resultRecord')

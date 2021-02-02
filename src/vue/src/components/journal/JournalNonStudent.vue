@@ -35,7 +35,7 @@
                 <load-wrapper :loading="loadingNodes">
                     <div v-if="nodes.length > currentNode && currentNode !== -1">
                         <div v-if="nodes[currentNode].type == 'e' || nodes[currentNode].type == 'd'">
-                            <entry-non-student-preview
+                            <entry-non-student
                                 ref="entry-template-card"
                                 :journal="journal"
                                 :entryNode="nodes[currentNode]"
@@ -122,7 +122,7 @@
                     </h3>
                     <div
                         v-if="$hasPermission('can_grade')"
-                        class="bonus-section grade-section full-width"
+                        class="bonus-section grade-section mb-2 full-width"
                     >
                         <div>
                             <b-form-input
@@ -136,7 +136,7 @@
                             Bonus points
                         </div>
                         <b-button
-                            class="add-button"
+                            class="green-button"
                             @click="commitBonus"
                         >
                             <icon
@@ -148,12 +148,28 @@
                     </div>
                     <b-button
                         v-if="$hasPermission('can_publish_grades')"
-                        class="add-button full-width"
+                        class="green-button mb-2 full-width"
                         @click="publishGradesJournal"
                     >
                         <icon name="upload"/>
                         Publish all grades
                     </b-button>
+                    <div v-if="$hasPermission('can_manage_journal_import_requests') && !loadingNodes">
+                        <b-button
+                            v-if="journal.import_requests"
+                            v-b-modal="'journal-import-request-approval-modal'"
+                            class="multi-form orange-button mb-2 full-width"
+                        >
+                            <icon name="file-import"/>
+                            Manage Import Requests
+                        </b-button>
+
+                        <journal-import-request-approval-modal
+                            v-if="journal.import_requests"
+                            modalID="journal-import-request-approval-modal"
+                            @jir-processed="loadJournal(false)"
+                        />
+                    </div>
                 </b-col>
             </b-row>
         </b-col>
@@ -161,30 +177,32 @@
 </template>
 
 <script>
-import entryNonStudentPreview from '@/components/entry/EntryNonStudentPreview.vue'
-import timeline from '@/components/timeline/Timeline.vue'
-import journalDetails from '@/components/journal/JournalDetails.vue'
-import breadCrumb from '@/components/assets/BreadCrumb.vue'
-import loadWrapper from '@/components/loading/LoadWrapper.vue'
-import journalStartCard from '@/components/journal/JournalStartCard.vue'
-import journalEndCard from '@/components/journal/JournalEndCard.vue'
-import progressNode from '@/components/entry/ProgressNode.vue'
+import BreadCrumb from '@/components/assets/BreadCrumb.vue'
+import EntryNonStudent from '@/components/entry/EntryNonStudent.vue'
+import JournalDetails from '@/components/journal/JournalDetails.vue'
+import JournalEndCard from '@/components/journal/JournalEndCard.vue'
+import JournalImportRequestApprovalModal from '@/components/journal/JournalImportRequestApprovalModal.vue'
+import JournalStartCard from '@/components/journal/JournalStartCard.vue'
+import LoadWrapper from '@/components/loading/LoadWrapper.vue'
+import ProgressNode from '@/components/entry/ProgressNode.vue'
+import Timeline from '@/components/timeline/Timeline.vue'
 
-import store from '@/Store.vue'
-import journalAPI from '@/api/journal.js'
-import assignmentAPI from '@/api/assignment.js'
 import { mapGetters, mapMutations } from 'vuex'
+import assignmentAPI from '@/api/assignment.js'
+import journalAPI from '@/api/journal.js'
+import store from '@/Store.vue'
 
 export default {
     components: {
-        entryNonStudentPreview,
-        breadCrumb,
-        loadWrapper,
-        timeline,
-        journalDetails,
-        journalStartCard,
-        journalEndCard,
-        progressNode,
+        EntryNonStudent,
+        BreadCrumb,
+        LoadWrapper,
+        Timeline,
+        JournalDetails,
+        JournalStartCard,
+        JournalEndCard,
+        JournalImportRequestApprovalModal,
+        ProgressNode,
     },
     props: ['cID', 'aID', 'jID'],
     data () {
@@ -277,9 +295,9 @@ export default {
                 }
             }
 
-            if (min < this.nodes.length && this.$store.getters['preferences/autoSelectUngradedEntry']) {
+            if (min < this.nodes.length && this.$store.getters['preferences/saved'].auto_select_ungraded_entry) {
                 this.currentNode = min
-            } else if (min === this.nodes.length && this.$store.getters['preferences/autoProceedNextJournal']
+            } else if (min === this.nodes.length && this.$store.getters['preferences/saved'].auto_proceed_next_journal
                 && gradeUpdated && this.filteredJournals.length > 1) {
                 this.$router.push({
                     name: 'Journal',
@@ -290,22 +308,22 @@ export default {
         adaptData (editedData) {
             this.nodes[this.currentNode] = editedData
         },
-        selectNode ($event) {
+        selectNode (newNode) {
             /* Function that prevents you from instant leaving an EntryNode
              * or a DeadlineNode when clicking on a different node in the
              * timeline. */
-            if ($event === this.currentNode) {
+            if (newNode === this.currentNode) {
                 /* TODO fix mess */
-            } else if (!this.discardChanges()) {
+            } else if (!this.safeToLeave()) {
                 /* pass */
             } else if (this.currentNode === -1 || this.currentNode >= this.nodes.length
                 || this.nodes[this.currentNode].type !== 'e'
                 || this.nodes[this.currentNode].type !== 'd') {
-                this.currentNode = $event
+                this.currentNode = newNode
             } else if (this.$refs['entry-template-card'].saveEditMode === 'Save') {
                 window.confirm('Progress will not be saved if you leave. Do you wish to continue?')
             } else {
-                this.currentNode = $event
+                this.currentNode = newNode
             }
         },
         publishGradesJournal () {
@@ -342,16 +360,15 @@ export default {
 
             return false
         },
-        discardChanges () {
+        safeToLeave () {
             if (this.currentNode !== -1
                 && this.currentNode < this.nodes.length
                 && (this.nodes[this.currentNode].type === 'e'
                 || (this.nodes[this.currentNode].type === 'd' && this.nodes[this.currentNode].entry !== null))) {
                 if (this.nodes[this.currentNode].entry.grade === null) {
-                    if (this.$refs['entry-template-card'].grade.grade > 0) {
-                        if (!window.confirm('Progress will not be saved if you leave. Do you wish to continue?')) {
-                            return false
-                        }
+                    if (this.$refs['entry-template-card'].grade.grade > 0
+                        && !window.confirm('Progress will not be saved if you leave. Do you wish to continue?')) {
+                        return false
                     }
                 } else if (this.$refs['entry-template-card'].grade.grade
                            !== this.nodes[this.currentNode].entry.grade.grade
@@ -370,7 +387,7 @@ export default {
                 journalAPI.update(
                     this.journal.id,
                     { bonus_points: this.bonusPointsTemp },
-                    { customSuccessToast: 'Bonus succesfully added.' },
+                    { customSuccessToast: 'Bonus successfully added.' },
                 )
                     .then((journal) => { this.journal = journal })
             }
@@ -380,17 +397,18 @@ export default {
 </script>
 
 <style lang="sass">
-@import '~sass/modules/colors.sass'
+@import '~sass/partials/shadows.sass'
 
 .grade-section.bonus-section
+    @extend .theme-shadow
     .btn
         display: block
         width: 100%
         border-width: 1px 0px 0px 0px !important
         border-radius: 0px 0px 5px 5px !important
+        box-shadow: none
     .theme-input, .theme-input:hover, .theme-input:focus
         margin-left: 0px
-        font-size: 1.3em
         width: 3.5em
         display: inline-block
         padding-right: 0px !important

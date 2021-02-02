@@ -1,9 +1,9 @@
 import connection from '@/api/connection.js'
-import statuses from '@/utils/constants/status_codes.js'
-import router from '@/router'
-import store from '@/store'
-import sanitization from '@/utils/sanitization.js'
 import genericUtils from '@/utils/generic_utils.js'
+import router from '@/router/index.js'
+import sanitization from '@/utils/sanitization.js'
+import statuses from '@/utils/constants/status_codes.js'
+import store from '@/store/index.js'
 
 const ERRORS_TO_REDIRECT = new Set([
     statuses.FORBIDDEN,
@@ -152,7 +152,7 @@ export default {
             .then(response => response.data.user)
     },
 
-    /* Change password. */
+    /* Change password (old password is known by user). */
     changePassword (newPassword, oldPassword, connArgs = DEFAULT_CONN_ARGS) {
         return this.update('users/password', { new_password: newPassword, old_password: oldPassword }, connArgs)
     },
@@ -163,11 +163,11 @@ export default {
         return initRequest(connection.conn.post, improveUrl('forgot_password'), { identifier }, connArgs)
     },
 
-    /* Recover password */
-    recoverPassword (username, recoveryToken, newPassword, connArgs = DEFAULT_CONN_ARGS) {
+    /* Recover password (old password is not known by user, token is used). */
+    setPassword (username, token, newPassword, connArgs = DEFAULT_CONN_ARGS) {
         return initRequest(connection.conn.post, improveUrl('recover_password'), {
             username,
-            recovery_token: recoveryToken,
+            token,
             new_password: newPassword,
         }, connArgs)
     },

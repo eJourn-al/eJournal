@@ -1,14 +1,14 @@
 <template>
     <content-single-column>
         <div
-            v-if="$root.canGradeForSomeCourse"
+            v-if="$root.canGradeForSomeCourse()"
             class="text-grey float-right unselectable cursor-pointer"
         >
             <span
-                v-if="selectedFilterOwnGroups"
+                v-if="filterOwnGroups"
                 v-b-tooltip.hover
                 title="Only showing to do items for groups of which you are a member"
-                @click="selectedFilterOwnGroups = false"
+                @click="filterOwnGroups = false"
             >
                 Showing to do:
                 <b>own groups</b>
@@ -17,22 +17,25 @@
                 v-else
                 v-b-tooltip.hover
                 title="Showing to do items for all groups"
-                @click="selectedFilterOwnGroups = true"
+                @click="filterOwnGroups = true"
             >
                 Showing to do:
                 <b>all</b>
             </span>
         </div>
-        <bread-crumb :currentPage="'Assignments'"/>
+
+        <bread-crumb/>
+
         <input
             v-model="searchValue"
             class="theme-input full-width multi-form"
             type="text"
             placeholder="Search..."
         />
+
         <div class="d-flex">
             <b-form-select
-                v-model="selectedSortOption"
+                v-model="sortBy"
                 :selectSize="1"
                 class="theme-select multi-form mr-2"
             >
@@ -43,7 +46,7 @@
                     Sort by name
                 </option>
                 <option
-                    v-if="$root.canGradeForSomeCourse"
+                    v-if="$root.canGradeForSomeCourse()"
                     value="markingNeeded"
                 >
                     Sort by marking needed
@@ -68,53 +71,42 @@
                 Descending
             </b-button>
         </div>
+
         <load-wrapper :loading="loadingAssignments">
             <div
                 v-for="(d, i) in computedAssignments"
                 :key="i"
             >
                 <b-link
-                    v-if="d.course"
                     :to="$root.assignmentRoute(d)"
                     tag="b-button"
                 >
                     <todo-card
                         :deadline="d"
-                        :course="d.course"
-                        :filterOwnGroups="selectedFilterOwnGroups"
-                    />
-                </b-link>
-                <b-link
-                    v-for="(course, j) in d.courses"
-                    v-else
-                    :key="`${i}-${j}`"
-                    :to="$root.assignmentRoute(d, course)"
-                    tag="b-button"
-                >
-                    <todo-card
-                        :deadline="d"
-                        :course="course"
-                        :filterOwnGroups="selectedFilterOwnGroups"
+                        :courses="d.courses"
+                        :filterOwnGroups="filterOwnGroups"
                     />
                 </b-link>
             </div>
             <main-card
                 v-if="computedAssignments.length === 0"
-                line1="No assignments found"
-                line2="You currently do not participate in any assignments."
-                class="no-hover border-dark-grey"
-            />
+                text="No assignments found"
+                class="no-hover"
+            >
+                You currently do not participate in any assignments.
+            </main-card>
         </load-wrapper>
     </content-single-column>
 </template>
 
 <script>
-import contentSingleColumn from '@/components/columns/ContentSingleColumn.vue'
-import breadCrumb from '@/components/assets/BreadCrumb.vue'
-import loadWrapper from '@/components/loading/LoadWrapper.vue'
-import todoCard from '@/components/assets/TodoCard.vue'
-import mainCard from '@/components/assets/MainCard.vue'
 import assignmentAPI from '@/api/assignment.js'
+import breadCrumb from '@/components/assets/BreadCrumb.vue'
+import comparison from '@/utils/comparison.js'
+import contentSingleColumn from '@/components/columns/ContentSingleColumn.vue'
+import loadWrapper from '@/components/loading/LoadWrapper.vue'
+import mainCard from '@/components/assets/MainCard.vue'
+import todoCard from '@/components/assets/TodoCard.vue'
 
 import { mapGetters, mapMutations } from 'vuex'
 
@@ -129,7 +121,7 @@ export default {
     },
     data () {
         return {
-            deadlines: [],
+            assignments: [],
             loadingAssignments: true,
         }
     },
@@ -148,7 +140,7 @@ export default {
                 this.setAssignmentSearchValue(value)
             },
         },
-        selectedSortOption: {
+        sortBy: {
             get () {
                 return this.getAssignmentOverviewSortBy
             },
@@ -156,7 +148,7 @@ export default {
                 this.setAssignmentOverviewSortBy(value)
             },
         },
-        selectedFilterOwnGroups: {
+        filterOwnGroups: {
             get () {
                 return this.getAssignmentOverviewFilterOwnGroups
             },
@@ -171,27 +163,17 @@ export default {
                 return b.name < a.name
             }
 
-            function compareDate (a, b) {
-                if (!a.deadline.date) { return 1 }
-                if (!b.deadline.date) { return -1 }
-                return new Date(a.deadline.date) - new Date(b.deadline.date)
-            }
-
-            function compareMarkingNeeded (a, b) {
-                return (a.stats.needs_marking + a.stats.unpublished) - (b.stats.needs_marking + b.stats.unpublished)
-            }
-
             function searchFilter (assignment) {
                 return assignment.name.toLowerCase().includes(self.getAssignmentSearchValue.toLowerCase())
             }
 
-            const deadlines = this.deadlines.filter(searchFilter)
-            if (this.selectedSortOption === 'name') {
+            const deadlines = this.assignments.filter(searchFilter)
+            if (this.sortBy === 'name') {
                 deadlines.sort(compareName)
-            } else if (this.selectedSortOption === 'date') {
-                deadlines.sort(compareDate)
-            } else if (this.selectedSortOption === 'markingNeeded') {
-                deadlines.sort(compareMarkingNeeded)
+            } else if (this.sortBy === 'date') {
+                deadlines.sort(comparison.date)
+            } else if (this.sortBy === 'markingNeeded') {
+                deadlines.sort(this.filterOwnGroups ? comparison.markingNeededOwnGroups : comparison.markingNeededAll)
             }
 
             return this.order ? deadlines.reverse() : deadlines
@@ -199,10 +181,9 @@ export default {
     },
     created () {
         assignmentAPI.list()
-            .then((deadlines) => {
-                this.deadlines = deadlines
-                this.loadingAssignments = false
-            })
+            .then((assignments) => {
+                this.assignments = assignments
+            }).finally(() => { this.loadingAssignments = false })
     },
     methods: {
         ...mapMutations({
@@ -211,11 +192,6 @@ export default {
             setAssignmentOverviewSortBy: 'preferences/SET_ASSIGNMENT_OVERVIEW_SORT_BY',
             setAssignmentOverviewOwnGroups: 'preferences/SET_ASSIGNMENT_OVERVIEW_FILTER_OWN_GROUPS',
         }),
-        compare (a, b) {
-            if (a < b) { return this.order ? 1 : -1 }
-            if (a > b) { return this.order ? -1 : 1 }
-            return 0
-        },
     },
 }
 </script>

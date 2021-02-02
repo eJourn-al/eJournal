@@ -71,8 +71,8 @@
 <script>
 import contentSingleColumn from '@/components/columns/ContentSingleColumn.vue'
 import loadSpinner from '@/components/loading/LoadSpinner.vue'
-import registerUser from '@/components/account/RegisterUser.vue'
 import loginForm from '@/components/account/LoginForm.vue'
+import registerUser from '@/components/account/RegisterUser.vue'
 
 import userAPI from '@/api/user.js'
 

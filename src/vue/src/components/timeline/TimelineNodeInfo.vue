@@ -36,13 +36,15 @@ export default {
     props: ['node', 'selected'],
     computed: {
         nodeTitle () {
+            if (this.node.deleted_preset) {
+                return this.node.entry.title
+            }
             switch (this.node.type) {
             case 'e':
-                return this.node.entry.template.name
+                return this.node.entry.title
             case 'd':
-                return this.node.template.name
             case 'p':
-                return 'Progress goal'
+                return this.node.display_name
             case 'n':
                 return 'End of assignment'
             case 's':
@@ -90,8 +92,6 @@ export default {
 </script>
 
 <style lang="sass">
-@import '~sass/modules/colors.sass'
-
 .node-info
     text-align: right
     width: 100%
@@ -105,7 +105,6 @@ export default {
         font-weight: bold
         color: grey
     .node-date
-        font-family: 'Roboto Condensed'
         font-size: 0.9em
         color: grey
 </style>

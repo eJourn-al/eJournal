@@ -1,25 +1,14 @@
-import datetime
 import enum
-import pprint
 
 import jwt
-import oauth2
 from django.conf import settings
-from django.http import HttpResponse, QueryDict
-from django.shortcuts import redirect
-from django.urls import reverse
-from django.utils import timezone
 from pylti1p3.contrib.django import DjangoCacheDataStorage, DjangoMessageLaunch, DjangoOIDCLogin
-from pylti1p3.deep_link_resource import DeepLinkResource
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny
-from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
-import VLE.factory as factory
 import VLE.lti_launch as lti
 import VLE.utils.generic_utils as utils
 import VLE.utils.responses as response
-from VLE.lti1p3 import claims, scopes
 from VLE.models import User
 from VLE.utils.error_handling import VLEMissingRequiredKey
 
@@ -187,8 +176,7 @@ def update_lti_groups(request):
     if course:
         return response.success()
     else:
-        return response.bad_request('Course not found')
-
+        return response.bad_request('Course not found.')
 
     #
     # print(message_launch_data)
@@ -200,7 +188,7 @@ def update_lti_groups(request):
     #
     # if not message_launch.has_ags():
     #     raise LTIError(
-    #         'We do not have the required services for grading or retrieving assignment data. Please contact an admin.')
+    #      'We do not have the required services for grading or retrieving assignment data. Please contact an admin.')
     #
     # ags = message_launch.get_ags()
     # print('\n\n\nLINEITEMS\n\n', ags.find_lineitem_by_id(lineitem), '\n\n')
@@ -211,7 +199,6 @@ def update_lti_groups(request):
     # nrps = message_launch.get_nrps()
     # print(nrps.get_members())
     # return HttpResponse('<body>done</body>')
-
 
     # user = lti.get_user_lti(params)
     # user = handle_test_student(user, params)

@@ -22,14 +22,22 @@ class CourseView(viewsets.ViewSet):
 
         Arguments:
         request -- request data
+        get_all (query param) -- get all courses instead of only participations
 
         Returns:
         On failure:
             unauthorized -- when the user is not logged in
+            forbidden -- when the user requests all courses, but is not allowed to
         On success:
             success -- with the course data
         """
-        queryset = request.user.participations.all()
+        get_all, = utils.optional_typed_params(request.query_params, (bool, 'get_all'))
+        if get_all:
+            if not request.user.is_superuser:
+                return response.forbidden('You are not allowed to get all courses.')
+            queryset = Course.objects.all()
+        else:
+            queryset = request.user.participations.all()
         serializer = self.serializer_class(queryset, many=True)
         return response.success({'courses': serializer.data})
 
@@ -64,7 +72,7 @@ class CourseView(viewsets.ViewSet):
 
         course = factory.make_course(name, abbr, startdate, enddate, request.user)
 
-        serializer = self.serializer_class(course, many=False)
+        serializer = self.serializer_class(course, context={'user': request.user}, many=False)
         return response.created({'course': serializer.data})
 
     def retrieve(self, request, pk=None):
@@ -119,7 +127,7 @@ class CourseView(viewsets.ViewSet):
             return response.success({'course': self.serializer_class(course, many=False).data})
 
         request.data['startdate'], request.data['enddate'] = utils.optional_params(request.data, 'startdate', 'enddate')
-        serializer = self.serializer_class(course, data=request.data, partial=True)
+        serializer = self.serializer_class(course, data=request.data, context={'user': request.user}, partial=True)
         if not serializer.is_valid():
             return response.bad_request()
         serializer.save()

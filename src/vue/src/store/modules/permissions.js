@@ -1,19 +1,18 @@
-import Vue from 'vue'
-import router from '@/router'
-import store from '@/store'
-import connection from '@/api/connection.js'
-import * as types from '../constants/permission-types.js'
 import * as mutationTypes from '../constants/mutation-types.js'
+import * as types from '../constants/permission-types.js'
+import Vue from 'vue'
+import connection from '@/api/connection.js'
+import router from '@/router/index.js'
+import store from '@/store/index.js'
 
-/* If no update has been performed in the last five minutes, update permissions */
+/* If no update has been performed in the last thirty seconds, update permissions */
 function canRefreshPermissions () {
     if (!store.getters['user/storePopulated']) { return false }
 
     const thirtySecs = 30 * 1000
     const date = new Date()
-
     return (!store.getters['permissions/lastPermissionUpdate']
-            || ((date - store.getters['permissions/lastPermissionUpdate']) > thirtySecs))
+            || ((date - new Date(store.getters['permissions/lastPermissionUpdate'])) > thirtySecs))
 }
 
 /* Attempt to update the permissions, throw error if this cannot be done and is not underway. */

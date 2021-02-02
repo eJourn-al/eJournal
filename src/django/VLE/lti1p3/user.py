@@ -1,8 +1,5 @@
-from django.conf import settings
-from django.db.models import Q
 from django.utils import timezone
 
-import VLE.factory as factory
 import VLE.lti1p3 as lti
 from VLE.models import Course, Instance, Participation, Role, User
 
@@ -17,7 +14,6 @@ def _get_profile_picture(message_launch_data, user=None):
         return user.profile_picture if user else None
 
     return message_launch_data.get('picture')
-
 
 
 def create_with_launch_data(message_launch_data, password=None, course=None):

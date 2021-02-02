@@ -1,4 +1,5 @@
 import Vue from 'vue'
+import genericUtils from '@/utils/generic_utils.js'
 
 export default {
     validatePassword (password, password2) {
@@ -52,5 +53,9 @@ export default {
         }
 
         return validURL && validProtocol
+    },
+
+    validateYouTubeUrlWithVideoID (url) {
+        return Boolean(genericUtils.parseYouTubeVideoID(url))
     },
 }

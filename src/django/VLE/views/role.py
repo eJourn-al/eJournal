@@ -123,7 +123,7 @@ class RoleView(viewsets.ViewSet):
 
         role = factory.make_role_default_no_perms(name, course, **permissions)
 
-        serializer = RoleSerializer(role, many=False)
+        serializer = RoleSerializer(role, many=False, context={'user': request.user})
         return response.created({'role': serializer.data})
 
     def partial_update(self, request, pk):

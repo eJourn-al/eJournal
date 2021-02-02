@@ -11,25 +11,26 @@ from mimetypes import guess_extension
 from django.core.files.base import ContentFile
 from django.db.models import Case, When
 
-import VLE.factory as factory
-from VLE.models import Entry, Journal, Node, PresetNode, Template
-from VLE.utils.error_handling import VLEBadRequest, VLEMissingRequiredKey, VLEParamWrongType
+import VLE.factory
+import VLE.models
+import VLE.utils.error_handling
+from VLE.utils import file_handling
 
 
 # START: API-POST functions
 def required_params(post, *keys):
     """Get required post parameters, throwing KeyError if not present."""
     if keys and not post:
-        raise VLEMissingRequiredKey(keys)
+        raise VLE.utils.error_handling.VLEMissingRequiredKey(keys)
 
     result = []
     for key in keys:
         try:
             if post[key] == '':
-                VLEMissingRequiredKey(key)
+                VLE.utils.error_handling.VLEMissingRequiredKey(key)
             result.append(post[key])
         except KeyError:
-            raise VLEMissingRequiredKey(key)
+            raise VLE.utils.error_handling.VLEMissingRequiredKey(key)
 
     return result
 
@@ -50,23 +51,26 @@ def optional_params(post, *keys):
 
 def required_typed_params(post, *keys):
     if keys and not post:
-        raise VLEMissingRequiredKey([key[1] for key in keys])
+        raise VLE.utils.error_handling.VLEMissingRequiredKey([key[1] for key in keys])
 
     result = []
     for func, key in keys:
         try:
             if post[key] == '':
-                VLEMissingRequiredKey(key)
+                VLE.utils.error_handling.VLEMissingRequiredKey(key)
             if isinstance(post[key], list):
                 result.append([func(elem) for elem in post[key]])
             elif post[key] is not None:
-                result.append(func(post[key]))
+                if func == bool and post[key] == 'false':
+                    result.append(False)
+                else:
+                    result.append(func(post[key]))
             else:
                 result.append(None)
         except ValueError as err:
-            raise VLEParamWrongType(err)
+            raise VLE.utils.error_handling.VLEParamWrongType(err)
         except KeyError:
-            raise VLEMissingRequiredKey(key)
+            raise VLE.utils.error_handling.VLEMissingRequiredKey(key)
 
     return result
 
@@ -80,63 +84,19 @@ def optional_typed_params(post, *keys):
         if key and key in post and post[key] != '':
             try:
                 if post[key] is not None:
-                    result.append(func(post[key]))
+                    if func == bool and post[key] == 'false':
+                        result.append(False)
+                    else:
+                        result.append(func(post[key]))
                 else:
                     result.append(None)
             except ValueError as err:
-                raise VLEParamWrongType(err)
+                raise VLE.utils.error_handling.VLEParamWrongType(err)
         else:
             result.append(None)
 
     return result
 # END: API-POST functions
-
-
-# START: journal stat functions
-def get_journal_entries(journal):
-    """Get the journal entries from a journal.
-
-    - journal: the journal in question.
-
-    Returns a QuerySet of entries from a journal.
-    """
-    return Entry.objects.filter(node__journal=journal)
-
-
-def get_points_possible(journal):
-    """Get the maximum amount of points for an assignment."""
-    return journal.assignment.points_possible
-
-
-def get_submitted_count(entries):
-    """Count the number of submitted entries.
-
-    - entries: the entries to count with.
-
-    Returns the submitted entry count.
-    """
-    return entries.count()
-
-
-def get_graded_count(entries):
-    """Count the number of graded entries.
-
-    - entries: the entries to count with.
-
-    Returns the graded entry count.
-    """
-    return entries.exclude(grade=None).exclude(grade__grade=None).count()
-
-
-def get_published_count(entries):
-    """Count the number of published entries.
-
-    - entries: the entries to count with.
-
-    Returns the published entry count.
-    """
-    return entries.filter(published=True).count()
-# END journal stat functions
 
 
 def get_sorted_nodes(journal):
@@ -145,10 +105,12 @@ def get_sorted_nodes(journal):
     Get all the nodes of a journal in sorted order.
     Order is default by due_date.
     """
-    return journal.node_set.annotate(
-        sort_due_date=Case(
-            When(type=Node.ENTRY, then='entry__creation_date'),
-            default='preset__due_date')
+    return journal.node_set.select_related(
+        'entry',
+        'preset'
+    ).annotate(sort_due_date=Case(
+        When(preset__isnull=False, then='preset__due_date'),
+        default='entry__creation_date')
     ).order_by('sort_due_date')
 
 
@@ -167,7 +129,7 @@ def update_templates(format, templates):
     new_ids = {}
     for template in templates:
         if template['id'] > 0:  # Template already exists.
-            old_template = Template.objects.get(pk=template['id'])
+            old_template = VLE.models.Template.objects.get(pk=template['id'])
 
             # Archive the previous version of the template if changes were made.
             if (old_template.name != template['name'] or old_template.field_set.count() !=
@@ -189,12 +151,12 @@ def update_templates(format, templates):
                 new_ids[template['id']] = new_template.pk
 
                 # Update preset nodes to use the new template.
-                presets = PresetNode.objects.filter(forced_template=old_template).all()
+                presets = VLE.models.PresetNode.objects.filter(forced_template=old_template).all()
                 for preset in presets:
                     preset.forced_template = new_template
                     preset.save()
 
-                if len(presets) == 0 and not Entry.objects.filter(template=old_template).exists():
+                if len(presets) == 0 and not VLE.models.Entry.objects.filter(template=old_template).exists():
                     old_template.delete()
 
         else:  # Unknown (newly created) template.
@@ -210,7 +172,7 @@ def parse_template(template_dict, format):
     preset_only = template_dict['preset_only']
     fields = template_dict['field_set']
 
-    template = factory.make_entry_template(name, format, preset_only)
+    template = VLE.factory.make_entry_template(name, format, preset_only)
 
     for field in fields:
         type = field['type']
@@ -220,7 +182,7 @@ def parse_template(template_dict, format):
         description = field['description']
         options = field['options']
 
-        factory.make_field(template, title, location, type, required, description, options)
+        VLE.factory.make_field(template, title, location, type, required, description, options)
 
     template.save()
     return template
@@ -233,51 +195,74 @@ def update_journals(journals, preset):
     journals -- the journals to update.
     preset -- the preset node to add to the journals.
     """
-    for journal in journals:
-        factory.make_node(journal, None, preset.type, preset)
+    VLE.models.Node.objects.bulk_create([VLE.models.Node(
+        type=preset.type,
+        entry=None,
+        preset=preset,
+        journal=journal
+    ) for journal in journals])
 
 
-def update_presets(assignment, presets, new_ids):
+def update_presets(user, assignment, presets, new_ids):
     """Update preset nodes in the assignment according to the passed list.
 
     Arguments:
     assignment -- the assignment to update the presets in.
     presets -- a list of JSON-serialized presets.
+    new_ids -- dictionary that indicates to which template the preset node is now pointing towards
+        key: old template id
+        value: new template id
     """
     format = assignment.format
     for preset in presets:
-        id, template = required_typed_params(preset, (int, 'id'), (dict, 'template'))
+        id, template, display_name = required_typed_params(
+            preset, (int, 'id'), (dict, 'template'), (str, 'display_name'))
         target, unlock_date, lock_date = optional_typed_params(
             preset, (float, 'target'), (str, 'unlock_date'), (str, 'lock_date'))
-        type, description, due_date = required_params(
-            preset, 'type', 'description', 'due_date')
+        type, description, due_date, attached_files = required_params(
+            preset, 'type', 'description', 'due_date', 'attached_files')
 
         if id > 0:
-            preset_node = PresetNode.objects.get(pk=id)
+            preset_node = VLE.models.PresetNode.objects.get(pk=id)
         else:
-            preset_node = PresetNode(format=format)
-            preset_node.type = type
+            preset_node = VLE.models.PresetNode(format=format, type=type)
 
+        preset_node.display_name = display_name
         preset_node.description = description
         preset_node.unlock_date = unlock_date if unlock_date else None
         preset_node.due_date = due_date
         preset_node.lock_date = lock_date if lock_date else None
 
-        if preset_node.type == Node.PROGRESS:
+        if preset_node.is_progress:
             if target > 0 and target <= assignment.points_possible:
                 preset_node.target = target
             else:
-                raise VLEBadRequest(
+                raise VLE.utils.error_handling.VLEBadRequest(
                     'Progress goal needs to be between 0 and the maximum amount for the assignment: {}'
                     .format(assignment.points_possible))
-        elif preset_node.type == Node.ENTRYDEADLINE:
+        elif preset_node.is_deadline:
             if template['id'] in new_ids:
-                preset_node.forced_template = Template.objects.get(pk=new_ids[template['id']])
+                preset_node.forced_template = VLE.models.Template.objects.get(pk=new_ids[template['id']])
             else:
-                preset_node.forced_template = Template.objects.get(pk=template['id'])
+                preset_node.forced_template = VLE.models.Template.objects.get(pk=template['id'])
+
+        # New preset nodes need to be saved first before files can be established using that node
+        if id <= 0 and attached_files:
+            preset_node.save()
+
+        # Add new attached_files
+        for file_data in attached_files:
+            file = VLE.models.FileContext.objects.get(pk=file_data['id'])
+            if not preset_node.attached_files.filter(pk=file.pk).exists():
+                preset_node.attached_files.add(file)
+                file_handling.establish_file(author=user, identifier=file.access_id, preset_node=preset_node)
+        # Remove old attached attached_files, NOTE: new preset_nodes cannot have old attached_files
+        if id > 0:
+            preset_node.attached_files.exclude(pk__in=[file['id'] for file in attached_files]).delete()
+
         preset_node.save()
         if id < 0:
-            update_journals(Journal.all_objects.filter(assignment=assignment), preset_node)
+            update_journals(VLE.models.Journal.all_objects.filter(assignment=assignment), preset_node)
 
 
 def delete_presets(presets):
@@ -287,8 +272,8 @@ def delete_presets(presets):
         ids.append(preset['id'])
 
     for id in ids:
-        Node.objects.filter(preset=id, entry__isnull=True).delete()
-    PresetNode.objects.filter(pk__in=ids).delete()
+        VLE.models.Node.objects.filter(preset=id, entry__isnull=True).delete()
+    VLE.models.PresetNode.objects.filter(pk__in=ids).delete()
 
 
 def archive_templates(templates):
@@ -298,7 +283,7 @@ def archive_templates(templates):
     for template in templates:
         ids.append(template['id'])
 
-    Template.objects.filter(pk__in=ids).update(archived=True)
+    VLE.models.Template.objects.filter(pk__in=ids).update(archived=True)
 
 
 def base64ToContentFile(string, filename):
@@ -314,3 +299,21 @@ def build_url(baseurl, path, args_dict=None):
     if args_dict is not None:
         url_parts[4] = urllib.parse.urlencode(args_dict)
     return urllib.parse.urlunparse(url_parts)
+
+
+def remove_jirs_on_user_remove_from_jounal(user, journal):
+    """
+    Removes any pending JIRs if no other of the journal authors are also author in the JIR source.
+
+    Args:
+        journal (:model:`VLE.journal`): Journal where the user being remove from.
+        user (:model:`VLE.user`): User removed from the journal.
+    """
+    journal_authors_except_user = journal.authors.all().exclude(user=user)
+    pending_journal_jirs_authored_by_user = journal.import_request_targets.filter(
+        author=user, state=VLE.models.JournalImportRequest.PENDING)
+
+    jirs_with_no_shared_source_authors = pending_journal_jirs_authored_by_user.exclude(
+        source__authors__user__in=journal_authors_except_user.values('user'))
+
+    jirs_with_no_shared_source_authors.delete()

@@ -32,8 +32,8 @@
 <script>
 import contentSingleColumn from '@/components/columns/ContentSingleColumn.vue'
 import loadSpinner from '@/components/loading/LoadSpinner.vue'
-import ltiCreateLinkCourse from '@/components/lti/LtiCreateLinkCourse.vue'
 import ltiCreateLinkAssignment from '@/components/lti/LtiCreateLinkAssignment.vue'
+import ltiCreateLinkCourse from '@/components/lti/LtiCreateLinkCourse.vue'
 
 export default {
     name: 'LtiLaunch',

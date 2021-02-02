@@ -1,0 +1,6 @@
+[submodule "config"]
+	path = config
+	url = git@github.com:eJourn-al/eJournal-config.git
+[submodule "src/django/VLE/management/commands"]
+	path = src/django/VLE/management/commands
+	url = git@github.com:eJourn-al/eJournal-commands.git

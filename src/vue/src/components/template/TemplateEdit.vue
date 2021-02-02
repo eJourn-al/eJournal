@@ -1,9 +1,9 @@
 <template>
-    <b-card class="no-hover">
+    <b-card class="no-hover template-card">
         <div class="d-flex">
             <b-button
                 :class="{'active': mode === 'edit'}"
-                class="multi-form change-button flex-basis-100"
+                class="multi-form orange-button flex-basis-100"
                 @click="mode = 'edit'"
             >
                 <icon name="edit"/>
@@ -11,7 +11,7 @@
             </b-button>
             <b-button
                 :class="{'active': mode === 'preview'}"
-                class="multi-form add-button flex-basis-100"
+                class="multi-form green-button flex-basis-100"
                 @click="mode='preview'"
             >
                 <icon name="eye"/>
@@ -32,7 +32,7 @@
                 class="template-availability"
             >
                 <b-button
-                    class="delete-button"
+                    class="red-button"
                     @click.stop
                     @click="togglePresetOnly"
                 >
@@ -50,7 +50,7 @@
                 class="template-availability"
             >
                 <b-button
-                    class="add-button"
+                    class="green-button"
                     @click.stop
                     @click="togglePresetOnly"
                 >
@@ -70,7 +70,7 @@
                 @end="endDrag"
                 @update="onUpdate"
             >
-                <field
+                <template-field
                     v-for="field in template.field_set"
                     :key="field.location"
                     :field="field"
@@ -80,30 +80,34 @@
                 <div class="invisible"/>
             </draggable>
             <b-button
-                class="add-button full-width"
+                class="green-button full-width"
                 @click="addField"
             >
                 <icon name="plus"/>
                 Add field
             </b-button>
         </div>
-        <template-preview
+        <entry-fields
             v-if="mode !== 'edit'"
             :template="template"
+            :content="() => Object()"
+            :edit="true"
+            :readOnly="true"
         />
     </b-card>
 </template>
 
 <script>
-import templatePreview from '@/components/template/TemplatePreview.vue'
-import field from '@/components/template/Field.vue'
+import EntryFields from '@/components/entry/EntryFields.vue'
+// Try changing below import (and filename in tree) to TemplateField.vue: why is it specifically unresolved?
+import TemplateField from '@/components/template/Field.vue'
 import draggable from 'vuedraggable'
 
 export default {
     components: {
         draggable,
-        templatePreview,
-        field,
+        EntryFields,
+        TemplateField,
     },
     props: {
         template: {
@@ -165,64 +169,61 @@ export default {
 </script>
 
 <style lang="sass">
-@import '~sass/modules/colors.sass'
-@import '~sass/modules/breakpoints.sass'
+.template-card
+    .optional-field-template
+        background-color: white
+        color: $theme-dark-blue !important
+        svg
+            fill: $theme-medium-grey
 
-.optional-field-template
-    background-color: white
-    color: $theme-dark-blue !important
-    svg
-        fill: $theme-medium-grey
+    .required-field-template
+        background-color: $theme-dark-blue !important
+        color: white !important
+        svg, &:hover:not(.no-hover) svg
+            fill: $theme-red !important
 
-.required-field-template
-    background-color: $theme-dark-blue !important
-    color: white !important
-    svg, &:hover:not(.no-hover) svg
+    #template-name
+        font-weight: bold
+        font-size: 1.8em
+        color: $theme-dark-blue
+
+    .sortable-chosen .card
+        background-color: $theme-dark-grey
+
+    .sortable-ghost
+        visibility: hidden
+
+    .sortable-drag .card
+        visibility: visible
+
+    .icon-box
+        text-align: center
+
+    .handle
+        text-align: center
+        padding-bottom: 7px
+
+    .field-card:hover .move-icon, .field-card:hover .trash-icon
+        fill: $theme-dark-blue !important
+
+    .handle:hover .move-icon
+        cursor: grab
+        fill: $theme-blue !important
+
+    .field-card:hover .trash-icon:hover
         fill: $theme-red !important
 
-#template-name
-    font-weight: bold
-    font-size: 1.8em
-    font-family: 'Roboto', sans-serif
-    color: $theme-dark-blue
+    @include sm-max
+        .icon-box
+            margin-top: 10px
 
-.sortable-chosen .card
-    background-color: $theme-dark-grey
-
-.sortable-ghost
-    visibility: hidden
-
-.sortable-drag .card
-    visibility: visible
-
-.icon-box
-    text-align: center
-
-.handle
-    text-align: center
-    padding-bottom: 7px
-
-.field-card:hover .move-icon, .field-card:hover .trash-icon
-    fill: $theme-dark-blue !important
-
-.handle:hover .move-icon
-    cursor: grab
-    fill: $theme-blue !important
-
-.field-card:hover .trash-icon:hover
-    fill: $theme-red !important
-
-@include sm-max
-    .icon-box
-        margin-top: 10px
-
-.template-availability
-    font-weight: bold
-    color: grey
-    margin-bottom: 10px
-    .btn
-        margin-right: 20px
-        @include md-max
-            width: 100%
-            margin-bottom: 10px
+    .template-availability
+        font-weight: bold
+        color: grey
+        margin-bottom: 10px
+        .btn
+            margin-right: 20px
+            @include md-max
+                width: 100%
+                margin-bottom: 10px
 </style>

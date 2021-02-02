@@ -10,8 +10,3 @@
 # - app2/
 #     - tasks.py
 #     - models.py
-
-from .beats.backup import *
-from .beats.lti import *
-from .beats.notifications import *
-from .email import *

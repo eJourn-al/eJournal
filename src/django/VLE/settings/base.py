@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/2.0/ref/settings/
 """
 import os
 from collections import OrderedDict
+from dataclasses import dataclass
 from datetime import timedelta
 
 import pytz
@@ -19,8 +20,10 @@ from sentry_sdk.integrations.celery import CeleryIntegration
 from sentry_sdk.integrations.django import DjangoIntegration
 
 sentry_sdk.init(
-    dsn=None if 'TRAVIS' in os.environ else os.environ['SENTRY_DSN'],
-    integrations=[DjangoIntegration(), CeleryIntegration()]
+    # Setting DSN to an empty value or None will disable the SDK
+    dsn=os.environ.get('SENTRY_DSN', None),
+    integrations=[DjangoIntegration(), CeleryIntegration()],
+    release=os.environ['RELEASE_VERSION']
 )
 
 MiB = 2**20
@@ -29,11 +32,15 @@ USER_MAX_TOTAL_STORAGE_BYTES = 100 * MiB
 USER_MAX_EMAIL_ATTACHMENT_BYTES = USER_MAX_FILE_SIZE_BYTES
 DATA_UPLOAD_MAX_MEMORY_SIZE = USER_MAX_FILE_SIZE_BYTES
 
+ALLOWED_DATE_FORMAT = '%Y-%m-%d'
+ALLOWED_DATETIME_FORMAT = '%Y-%m-%dT%H:%M:%S'
+
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 BASELINK = os.environ['BASELINK']
 API_URL = os.environ['API_URL']
 LTI_LAUNCH_URL = API_URL + '/lti/launch/'
 LTI_LOGIN_URL = API_URL + '/lti/login/'
+CODE_VERSION = os.environ['CODE_VERSION']
 
 STATIC_URL = '/static/'
 DEFAULT_PROFILE_PICTURE = '/unknown-profile.png'
@@ -42,6 +49,7 @@ MEDIA_URL = 'media/'
 
 SECRET_KEY = os.environ['DJANGO_SECRET_KEY']
 
+EXPLICITLY_WITHOUT_CONTEXT = -1
 
 # Email settings
 EMAIL_BACKEND = 'anymail.backends.mailgun.EmailBackend'
@@ -53,11 +61,42 @@ ANYMAIL = {
 EMAIL_SENDER_DOMAIN = ANYMAIL['MAILGUN_SENDER_DOMAIN']
 
 
+@dataclass
+class EmailToSender:
+    label: str
+
+    @property
+    def email(self) -> str:
+        return f'{self.label}@{EMAIL_SENDER_DOMAIN}'
+
+    @property
+    def sender(self) -> str:
+        name = self.email.split('@')[0].capitalize()
+        return f'eJournal | {name}<{self.email}>'
+
+
+class Emails:
+    support = EmailToSender('support')
+    noreply = EmailToSender('noreply')
+    contact = EmailToSender('contact')
+
+EMAILS = Emails()
+
+
 # LTI settings
 LTI_SECRET = os.environ['LTI_SECRET']
 LTI_KEY = os.environ['LTI_KEY']
-ROLES = OrderedDict({'Teacher': 'instructor', 'TA': 'teachingassistant', 'Student': 'learner'})
-LTI_ROLES = OrderedDict({'instructor': 'Teacher', 'teachingassistant': 'TA', 'learner': 'Student'})
+ROLES = OrderedDict({
+    'Teacher': ['instructor', 'administrator'],
+    'TA': ['teachingassistant'],
+    'Student': ['learner']
+})
+LTI_ROLES = OrderedDict({
+    'instructor': 'Teacher',
+    'administrator': 'Teacher',
+    'teachingassistant': 'TA',
+    'learner': 'Student',
+})
 LTI_TEST_STUDENT_FULL_NAME = 'Test student'
 
 
@@ -104,7 +143,7 @@ INSTALLED_APPS = [
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
-        'rest_framework_simplejwt.authentication.JWTAuthentication',
+        'VLE.utils.authentication.SentryContextAwareJWTAuthentication',
     ),
     'DEFAULT_PERMISSION_CLASSES': (
         'rest_framework.permissions.IsAuthenticated',

@@ -1,6 +1,6 @@
-<!-- TODO Is this check really required if we redirect, or even better have correct flow anyway? -->
-<template v-if="$hasPermission('can_view_all_journals')">
-    <content-columns>
+<template>
+    <!-- This check helps prevent user seeing the teacher view of the assignment user is not allowed to -->
+    <content-columns v-if="$hasPermission('can_view_all_journals')">
         <bread-crumb
             slot="main-content-column"
             @edit-click="handleEdit()"
@@ -49,6 +49,13 @@
                     </option>
                     <option value="markingNeeded">
                         Sort by marking needed
+                    </option>
+                    <option
+                        v-if="$hasPermission('can_manage_journal_import_requests')
+                            && !loadingJournals && assignment.stats.import_requests"
+                        value="importRequests"
+                    >
+                        Sort by import requests
                     </option>
                     <option value="points">
                         Sort by points
@@ -101,26 +108,24 @@
 
                     <bonus-file-upload-input
                         ref="bounsPointsUpload"
-                        :acceptedFiletype="'*/*.csv'"
-                        :maxSizeBytes="$root.maxFileSizeBytes"
                         :endpoint="'assignments/' + $route.params.aID + '/add_bonus_points'"
                         :aID="$route.params.aID"
                         class="mt-2"
-                        @bonusPointsSuccesfullyUpdated="hideModal('bonusPointsModal'); init()"
+                        @bonusPointsSuccessfullyUpdated="hideModal('bonusPointsModal'); init()"
                     />
                 </b-card>
             </b-modal>
 
             <b-modal
                 ref="assignmentExportSpreadsheetModal"
-                title="Export to spreadsheet"
+                title="Export results"
                 size="lg"
                 hideFooter
                 noEnforceFocus
             >
                 <b-card class="no-hover">
                     <h2 class="theme-h2 multi-form">
-                        Export assignment results
+                        Export assignment results to spreadsheet
                     </h2>
                     Select which columns should be included in the exported file.
                     <hr/>
@@ -129,6 +134,49 @@
                         :filteredJournals="filteredJournals"
                         :assignmentJournals="assignmentJournals"
                         @spreadsheet-exported="hideModal('assignmentExportSpreadsheetModal')"
+                    />
+                </b-card>
+            </b-modal>
+
+            <b-modal
+                ref="postTeacherEntry"
+                title="Post teacher entries"
+                size="lg"
+                hideFooter
+                noEnforceFocus
+            >
+                <b-card class="no-hover">
+                    <h2 class="theme-h2 multi-form">
+                        Post teacher-initiated entries to student journals
+                    </h2>
+
+                    <hr/>
+                    <post-teacher-entry
+                        :aID="aID"
+                        :assignmentJournals="assignmentJournals"
+                        @teacher-entry-posted="hideModal('postTeacherEntry'); init()"
+                    />
+                </b-card>
+            </b-modal>
+
+            <b-modal
+                ref="manageTeacherEntries"
+                title="Manage teacher entries"
+                size="lg"
+                hideFooter
+                noEnforceFocus
+            >
+                <b-card class="no-hover">
+                    <h2 class="theme-h2 multi-form">
+                        Manage existing teacher entries
+                    </h2>
+                    <b>Note:</b> Changes will not be saved until you click 'save' at the bottom of this window!
+
+                    <hr/>
+                    <teacher-entries
+                        :aID="aID"
+                        :assignmentJournals="assignmentJournals"
+                        @teacher-entry-updated="hideModal('manageTeacherEntries'); init()"
                     />
                 </b-card>
             </b-modal>
@@ -170,7 +218,7 @@
                     on your LMS at least once.<br/>
                     <hr/>
                     <b-button
-                        class="add-button d-block float-right"
+                        class="green-button d-block float-right"
                         :class="{'input-disabled': assignment.active_lti_course.cID === newActiveLTICourse}"
                         @click="saveNewActiveLTICourse"
                     >
@@ -189,36 +237,41 @@
                 v-for="journal in filteredJournals"
                 :key="journal.id"
             >
-                <journal-card
-                    :journal="journal"
-                    :assignment="assignment"
-                    @click.native="$router.push({
+                <b-link
+                    :to="{
                         name: 'Journal',
                         params: {
                             cID: $route.params.cID,
                             aID: assignment.id,
                             jID: journal.id
                         }
-                    })"
-                    @journal-deleted="journalDeleted(journal)"
-                />
+                    }"
+                >
+                    <journal-card
+                        :journal="journal"
+                        :assignment="assignment"
+                        @journal-deleted="journalDeleted(journal)"
+                    />
+                </b-link>
             </div>
             <main-card
                 v-if="assignmentJournals.length === 0"
-                line1="No journals for this assignment"
-                :line2="assignment.is_group_assignment ? 'Create journals by using the button below.' :
-                    'No participants with a journal'"
-                class="no-hover border-dark-grey"
-            />
+                text="No journals for this assignment"
+                class="no-hover"
+            >
+                {{ assignment.is_group_assignment ? 'Create journals by using the button below.' :
+                    'No participants with a journal' }}
+            </main-card>
             <main-card
                 v-else-if="filteredJournals.length === 0"
-                line1="No journals found"
-                line2="There are no journals that match your search query."
-                class="no-hover border-dark-grey"
-            />
+                text="No journals found"
+                class="no-hover"
+            >
+                There are no journals that match your search query.
+            </main-card>
             <b-button
                 v-if="$hasPermission('can_manage_journals') && assignment.is_group_assignment"
-                class="multi-form add-button"
+                class="multi-form green-button"
                 @click="showModal('createJournalModal')"
             >
                 <icon name="plus"/>
@@ -284,7 +337,7 @@
                                 v-model="newJournalCount"
                                 type="number"
                                 min="2"
-                                class="theme-input"
+                                class="theme-input inline"
                                 required
                             />
                             times
@@ -292,7 +345,7 @@
 
                         <b-button
                             type="submit"
-                            class="add-button d-block float-right"
+                            class="green-button d-block float-right"
                             :class="{'input-disabled': newJournalRequestInFlight}"
                         >
                             <icon name="plus-square"/>
@@ -316,7 +369,7 @@
                 <statistics-card :stats="stats"/>
             </b-col>
             <b-col
-                v-if="canPerformActions"
+                v-if="canPerformActions && !loadingJournals"
                 slot="right-content-column"
                 md="6"
                 lg="12"
@@ -326,7 +379,7 @@
                 </h3>
                 <b-button
                     v-if="canPublishGradesAssignment"
-                    class="add-button multi-form full-width"
+                    class="green-button multi-form full-width"
                     @click="publishGradesAssignment"
                 >
                     <icon name="upload"/>
@@ -335,7 +388,7 @@
                 </b-button>
                 <b-button
                     v-if="canManageLTI"
-                    class="add-button multi-form full-width"
+                    class="green-button multi-form full-width"
                     @click="showModal('manageLTIModal')"
                 >
                     <icon name="graduation-cap"/>
@@ -343,7 +396,7 @@
                 </b-button>
                 <b-button
                     v-if="canImportBonusPoints"
-                    class="change-button multi-form full-width"
+                    class="orange-button multi-form full-width"
                     @click="showModal('bonusPointsModal')"
                 >
                     <icon name="star"/>
@@ -351,11 +404,27 @@
                 </b-button>
                 <b-button
                     v-if="canExportResults"
-                    class="add-button multi-form full-width"
+                    class="green-button multi-form full-width"
                     @click="showModal('assignmentExportSpreadsheetModal')"
                 >
                     <icon name="file-export"/>
                     Export results
+                </b-button>
+                <b-button
+                    v-if="$hasPermission('can_post_teacher_entries')"
+                    class="green-button multi-form full-width mb-2"
+                    @click="showModal('postTeacherEntry')"
+                >
+                    <icon name="plus"/>
+                    Post teacher entries
+                </b-button>
+                <b-button
+                    v-if="$hasPermission('can_post_teacher_entries') && assignment.has_teacher_entries"
+                    class="orange-button multi-form full-width"
+                    @click="showModal('manageTeacherEntries')"
+                >
+                    <icon name="edit"/>
+                    Manage teacher entries
                 </b-button>
             </b-col>
         </b-row>
@@ -363,34 +432,40 @@
 </template>
 
 <script>
-import assignmentSpreadsheetExport from '@/components/assignment/AssignmentSpreadsheetExport.vue'
-import bonusFileUploadInput from '@/components/assets/file_handling/BonusFileUploadInput.vue'
-import breadCrumb from '@/components/assets/BreadCrumb.vue'
-import contentColumns from '@/components/columns/ContentColumns.vue'
-import loadWrapper from '@/components/loading/LoadWrapper.vue'
-import mainCard from '@/components/assets/MainCard.vue'
-import statisticsCard from '@/components/assignment/StatisticsCard.vue'
-import journalCard from '@/components/assignment/JournalCard.vue'
+import BonusFileUploadInput from '@/components/assets/file_handling/BonusFileUploadInput.vue'
+import BreadCrumb from '@/components/assets/BreadCrumb.vue'
+import ContentColumns from '@/components/columns/ContentColumns.vue'
+import JournalCard from '@/components/assignment/JournalCard.vue'
+import LoadWrapper from '@/components/loading/LoadWrapper.vue'
+import MainCard from '@/components/assets/MainCard.vue'
+import PostTeacherEntry from '@/components/assignment/PostTeacherEntry.vue'
+import StatisticsCard from '@/components/assignment/StatisticsCard.vue'
+import TeacherEntries from '@/components/assignment/TeacherEntries.vue'
 
-import store from '@/Store.vue'
-import assignmentAPI from '@/api/assignment.js'
-import groupAPI from '@/api/group.js'
-import gradeAPI from '@/api/grade.js'
-import participationAPI from '@/api/participation.js'
-import journalAPI from '@/api/journal.js'
 import { mapGetters, mapMutations } from 'vuex'
+import assignmentAPI from '@/api/assignment.js'
+import gradeAPI from '@/api/grade.js'
+import groupAPI from '@/api/group.js'
+import journalAPI from '@/api/journal.js'
+import participationAPI from '@/api/participation.js'
+import store from '@/Store.vue'
+
+const AssignmentSpreadsheetExport = () => import(
+    /* webpackChunkName: 'assignment-spreadsheet-export' */ '@/components/assignment/AssignmentSpreadsheetExport.vue')
 
 export default {
     name: 'Assignment',
     components: {
-        assignmentSpreadsheetExport,
-        bonusFileUploadInput,
-        breadCrumb,
-        contentColumns,
-        loadWrapper,
-        mainCard,
-        statisticsCard,
-        journalCard,
+        AssignmentSpreadsheetExport,
+        BonusFileUploadInput,
+        BreadCrumb,
+        ContentColumns,
+        JournalCard,
+        LoadWrapper,
+        MainCard,
+        PostTeacherEntry,
+        StatisticsCard,
+        TeacherEntries,
     },
     props: {
         cID: {
@@ -459,7 +534,7 @@ export default {
         },
         canPerformActions () {
             return this.canPublishGradesAssignment || this.canManageLTI || this.canImportBonusPoints
-                || this.canExportResults
+                || this.canExportResults || this.$hasPermission('can_post_teacher_entries')
         },
         canPublishGradesAssignment  () {
             return this.$hasPermission('can_publish_grades') && this.assignmentJournals
@@ -478,15 +553,12 @@ export default {
         },
     },
     created () {
-        // TODO Should be moved to the breadcrumb, ensuring there is no more natural flow left that can get you to this
-        // page without manipulating the url manually. If someone does this, simply let the error be thrown
-        // (no checks required)
-        if (!this.$hasPermission('can_view_all_journals', 'assignment', String(this.aID))) {
-            if (this.$root.previousPage) {
-                this.$router.push({ name: this.$root.previousPage.name, params: this.$root.previousPage.params })
-            } else {
-                this.$router.push({ name: 'Home' })
-            }
+        // If a teacher manually links somewhere to an assignment
+        // students will now be directly navigated to their journal
+        if (!this.$hasPermission('can_view_all_journals', 'assignment', this.aID)) {
+            assignmentAPI.get(this.aID, this.cID).then((assignment) => {
+                this.$router.push(this.$root.assignmentRoute(assignment))
+            })
             return
         }
 
@@ -522,7 +594,6 @@ export default {
             }
 
             Promise.all(initialCalls).then((results) => {
-                this.loadingJournals = false
                 this.assignment = results[0]
                 this.assignmentJournals = results[0].journals
                 this.groups = results[1].sort((a, b) => b.name < a.name)
@@ -540,6 +611,7 @@ export default {
                 if (!this.groups || this.filteredJournals.length === 0) {
                     this.setJournalGroupFilter(null)
                 }
+                this.loadingJournals = false
             })
         },
         showModal (ref) {
@@ -605,15 +677,18 @@ export default {
             let needsMarking = 0
             let unpublished = 0
             let points = 0
+            let importRequests = 0
 
             for (let i = 0; i < filteredJournals.length; i++) {
                 needsMarking += filteredJournals[i].needs_marking
                 unpublished += filteredJournals[i].unpublished
                 points += filteredJournals[i].grade
+                importRequests += ((filteredJournals[i].import_requests) ? filteredJournals[i].import_requests : 0)
             }
             this.stats = {
                 needsMarking,
                 unpublished,
+                importRequests,
                 averagePoints: points / filteredJournals.length,
             }
         },
@@ -649,17 +724,3 @@ export default {
     },
 }
 </script>
-
-<style lang="sass">
-.create-journals-repeat
-    font-weight: bold
-    color: grey
-    margin-bottom: 10px
-    display: inline-block
-    .theme-input
-        display: inline-block
-        width: 4em
-    svg
-        margin-top: -5px
-        fill: grey
-</style>

@@ -6,90 +6,241 @@ Functions to convert certain data to other formats.
 import datetime
 
 from django.conf import settings
-from django.db.models import Avg, Count, Min, Q, Sum
-from django.utils import timezone
+from django.db.models import Avg, Count, Prefetch, QuerySet, Sum
 from rest_framework import serializers
+from sentry_sdk import capture_message
 
-import VLE.permissions as permissions
-from VLE.models import (Assignment, AssignmentParticipation, Comment, Content, Course, Entry, Field, FileContext,
-                        Format, Grade, Group, Instance, Journal, Node, Participation, Preferences, PresetNode, Role,
-                        Template, User)
-from VLE.utils import generic_utils as utils
-from VLE.utils.error_handling import VLEParticipationError, VLEProgrammingError
+import VLE.models
+import VLE.permissions
+import VLE.utils.generic_utils
+import VLE.utils.statistics
+from VLE.utils.error_handling import VLEProgrammingError
+
+
+def prefetched_objects(instance, name, default=None):
+    """
+    Use when Django does not make use of an queries instance cache (prefetch_related) when it should.
+
+    E.g. the queryset is modified but the prefetch is still valid.
+
+    Args:
+        instance (model instance)
+        name (str), key expected to be present in the instance cache
+        default, value to be returned if the key is not preset in the cache, None by default
+
+    Returns a tuple
+        0: values of the cache keyed by name, None by default (or the given default)
+        1: (bool), whether the name was found in the instance cache and it was populated sucesfully
+    """
+    if hasattr(instance, '_prefetched_objects_cache') and name in instance._prefetched_objects_cache:
+        return instance._prefetched_objects_cache[name], bool(instance._prefetched_objects_cache[name])
+
+    return default, False
+
+
+class EagerLoadingMixin:
+    """
+    Mixin Class that performs eager loading for serializers with O2O, O2M and M2M relationships.
+    """
+    @classmethod
+    def setup_eager_loading(cls, queryset):
+        """
+        Perform eager loading of model data for nested serializers.
+
+        Args:
+        queryset (Queryset): the model queryset
+
+        Returns: queryset containing a prefetch cache
+        """
+        if hasattr(cls, 'select_related'):
+            queryset = queryset.select_related(*cls.select_related)
+
+        if hasattr(cls, 'prefetch_related'):
+            queryset = queryset.prefetch_related(*cls.prefetch_related)
+
+        return queryset
+
+
+class ExtendedModelSerializer(serializers.ModelSerializer):
+    """
+    Enforces context to be set if defined as 'enforced_context' on the class
+
+    NOTE: Cannot be shifted to __init__ or __new__, nested serializer fields are initialized but receive context later.
+    """
+
+    def enforce_context(self):
+        if hasattr(self, 'enforced_context'):
+            for context in self.enforced_context:
+                if context not in self.context:
+                    raise VLEProgrammingError(f'Enforced context `{context}` not set')
+
+    def to_representation(self, instance):
+        """Read operations"""
+        self.enforce_context()
+        return super().to_representation(instance)
+
+    def to_internal_value(self, data):
+        """Write operations"""
+        self.enforce_context()
+        return super().to_internal_value(data)
 
 
 class InstanceSerializer(serializers.ModelSerializer):
     class Meta:
-        model = Instance
+        model = VLE.models.Instance
         fields = (
             # Platform settings
             'allow_standalone_registration', 'name',
             # LMS settings
             'lms_name', 'lms_url', 'api_client_id', 'api_client_secret', 'lti_client_id', 'lti_deployment_ids',
         )
+        read_only_fields = ()
 
 
-class UserSerializer(serializers.ModelSerializer):
+class RoleSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = VLE.models.Role
+        # Get name, course, and all permissions
+        fields = ('id', 'name', 'course',) + tuple(VLE.models.Role.PERMISSIONS)
+        read_only_fields = ('course',)
+
+
+class FieldSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = VLE.models.Field
+        fields = ('id', 'type', 'title', 'description', 'options', 'location', 'required',)
+        read_only_fields = fields
+
+
+class FileSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = VLE.models.FileContext
+        fields = ('download_url', 'file_name', 'id',)
+        read_only_fields = fields
+
+    download_url = serializers.SerializerMethodField()
+
+    def get_download_url(self, file):
+        # Get access_id if file is in rich text
+        return file.download_url(access_id=file.in_rich_text)
+
+
+class TemplateSerializer(serializers.ModelSerializer, EagerLoadingMixin):
+    class Meta:
+        model = VLE.models.Template
+        fields = ('id', 'name', 'preset_only', 'archived', 'field_set',)
+        read_only_fields = ()
+
+    prefetch_related = [
+        Prefetch('field_set', queryset=VLE.models.Field.objects.order_by('location')),
+    ]
+
+    field_set = FieldSerializer(many=True, read_only=True)
+
+
+class UserSerializer(ExtendedModelSerializer):
+    class Meta:
+        model = VLE.models.User
+
+        user_fields = (
+            'id',
+            'is_test_student',
+            'full_name',
+            'username',
+            'profile_picture',
+        )
+        course_specific_fields = (
+            'role',
+            'groups',
+        )
+        fields = (
+            *user_fields,
+            *course_specific_fields,
+        )
+        read_only_fields = ('is_test_student',)
+
+    enforced_context = [
+        'user',
+    ]
+
+    username = serializers.SerializerMethodField()
     role = serializers.SerializerMethodField()
     groups = serializers.SerializerMethodField()
-    username = serializers.SerializerMethodField()
-    profile_picture = serializers.SerializerMethodField()
 
-    class Meta:
-        model = User
-        fields = ('username', 'full_name', 'profile_picture', 'id',
-                  'role', 'groups', 'is_test_student')
-        read_only_fields = ('id', 'is_test_student')
+    def __init__(self, *args, **kwargs):
+        """
+        Addresses some issues (in conjunction with `many_init`) with using the same serializer for two types:
+            UserSerializer (generic user serializer, no course context specified)
+            CourseUserSerializer (serialize a user as part of a specific course)
+        """
+        super(UserSerializer, self).__init__(*args, **kwargs)
 
-    def get_role(self, user):
-        if 'course' not in self.context or not self.context['course']:
-            return None
-        try:
-            role = Participation.objects.get(user=user, course=self.context['course']).role
-        except Participation.DoesNotExist:
-            return None
-        if role:
-            return role.name
-        else:
-            return None
+        if 'course' not in self.context:
+            for field in self.Meta.course_specific_fields:
+                self.fields.pop(field)
+
+    @classmethod
+    def many_init(cls, *args, **kwargs):
+        """
+        Called when many=True, used to initialize a ListSerializer which will handle each of the elems in turn.
+        For read operations, it is important repeated information is added to the queryset before the ListSerializer
+        is initialized, otherwise each child will execute the same logic or queries.
+        """
+        if args and isinstance(args[0], QuerySet):
+            course = kwargs.get('context', {}).get('course')
+            if course:
+                qry, *rest = args
+                qry = qry.prefetch_course_groups(course)
+                qry = qry.annotate_course_role(course)
+                args = (qry, *rest)
+
+        return super().many_init(*args, **kwargs)
 
     def get_username(self, user):
-        if 'user' not in self.context or not self.context['user']:
-            return None
+        course = self.context.get('course')
+        request_user = self.context.get('user')
 
-        if not (self.context['user'].is_supervisor_of(user) or self.context['user'] == user):
+        if not (request_user == user or request_user.is_supervisor_of(user) or course
+                # Usernames are required to add users to a course (not supervisor yet)
+                and request_user.participation_set.filter(role__can_add_course_users=True, course=course).exists()):
             return None
 
         return user.username if user.username != user.lti_id else 'unknown'
 
-    def get_profile_picture(self, user):
-        if 'user' not in self.context or not self.context['user']:
-            return settings.DEFAULT_PROFILE_PICTURE
+    def get_role(self, user):
+        """Only serialized if course is set in context"""
+        if hasattr(user, 'role_name'):
+            return user.role_name
 
-        if not self.context['user'].can_view(user):
-            return settings.DEFAULT_PROFILE_PICTURE
-
-        return user.profile_picture
+        try:
+            role = VLE.models.Participation.objects.get(user=user, course=self.context['course']).role
+        except VLE.models.Participation.DoesNotExist:
+            return None
+        return role.name if role else None
 
     def get_groups(self, user):
-        if 'course' not in self.context or not self.context['course']:
-            return None
-        try:
-            groups = Participation.objects.get(user=user, course=self.context['course']).groups
-            return GroupSerializer(groups, many=True, context=self.context).data
-        except Participation.DoesNotExist:
-            return None
+        """Only serialized if course is set in context"""
+        values, prefetched = prefetched_objects(user, 'participation_set')
+        # The participation_set is prefetched filtered on the course so we can simply take the first element if found.
+        if prefetched:
+            participation = values[0]
+        else:
+            try:
+                participation = VLE.models.Participation.objects.get(user=user, course=self.context['course'])
+            except VLE.models.Participation.DoesNotExist:
+                return None
+
+        return GroupSerializer(participation.groups.all(), many=True, context=self.context, read_only=True).data
 
 
 class OwnUserSerializer(serializers.ModelSerializer):
-    permissions = serializers.SerializerMethodField()
-
     class Meta:
-        model = User
+        model = VLE.models.User
         fields = ('id', 'username', 'full_name', 'email', 'permissions', 'is_test_student',
                   'lti_id', 'profile_picture', 'is_teacher', 'verified_email', 'is_superuser')
-        read_only_fields = ('id', 'permissions', 'lti_id', 'is_teacher', 'is_superuser',
-                            'verified_email', 'username', 'is_test_student')
+        read_only_fields = ('lti_id', 'is_teacher', 'is_superuser', 'verified_email', 'username', 'is_test_student')
+
+    permissions = serializers.SerializerMethodField()
 
     def get_permissions(self, user):
         """Returns a dictionary with all user permissions.
@@ -105,88 +256,139 @@ class OwnUserSerializer(serializers.ModelSerializer):
         perms = {}
         courses = user.participations.all()
 
-        perms['general'] = permissions.serialize_general_permissions(user)
+        perms['general'] = VLE.permissions.serialize_general_permissions(user)
 
         for course in courses:
-            perms['course' + str(course.id)] = permissions.serialize_course_permissions(user, course)
+            if user.can_view(course):
+                perms[f'course{course.id}'] = VLE.permissions.serialize_course_permissions(user, course)
 
         assignments = set()
         for course in courses:
             for assignment in course.assignment_set.all():
-                if user.has_permission('can_grade', assignment) or user.has_permission('can_have_journal', assignment):
+                if user.can_view(assignment):
                     assignments.add(assignment)
 
         for assignment in assignments:
-            perms['assignment' + str(assignment.id)] = permissions.serialize_assignment_permissions(user, assignment)
+            perms[f'assignment{assignment.pk}'] = VLE.permissions.serialize_assignment_permissions(
+                user, assignment)
 
         return perms
 
 
 class PreferencesSerializer(serializers.ModelSerializer):
     class Meta:
-        model = Preferences
-        fields = ('user', 'grade_notifications', 'comment_notifications', 'upcoming_deadline_notifications',
-                  'show_format_tutorial', 'hide_version_alert', 'grade_button_setting', 'comment_button_setting',
-                  'auto_select_ungraded_entry', 'auto_proceed_next_journal')
-        read_only_fields = ('user', )
+        model = VLE.models.Preferences
+        fields = (
+            'user',
+            # Toggle preferences
+            'auto_select_ungraded_entry', 'auto_proceed_next_journal', 'group_only_notifications',
+            # Notification preferences
+            'new_grade_notifications', 'new_comment_notifications', 'new_entry_notifications',
+            'new_course_notifications', 'new_assignment_notifications', 'new_node_notifications',
+            'new_journal_import_request_notifications',
+            # Reminder preferences
+            'upcoming_deadline_reminder',
+            # Hidden preferences
+            'show_format_tutorial', 'hide_version_alert', 'grade_button_setting', 'comment_button_setting',
+        )
+        read_only_fields = ('user',)
 
 
 class CourseSerializer(serializers.ModelSerializer):
-    lti_linked = serializers.SerializerMethodField()
-
     class Meta:
-        model = Course
+        model = VLE.models.Course
         fields = ('id', 'name', 'abbreviation', 'startdate', 'enddate', 'lti_linked')
-        read_only_fields = ('id', )
+        read_only_fields = ()
 
-    def get_lti_linked(self, course):
-        return course.has_lti_link()
+    lti_linked = serializers.BooleanField(source='has_lti_link')
 
 
 class GroupSerializer(serializers.ModelSerializer):
     class Meta:
-        model = Group
-        fields = '__all__'
-        read_only_fields = ('id', 'course', 'lti_id')
+        model = VLE.models.Group
+        fields = ('id', 'name', 'course')
+        read_only_fields = ('course',)
 
 
-class AssignmentParticipationSerializer(serializers.ModelSerializer):
-    user = serializers.SerializerMethodField()
-
+class AssignmentParticipationSerializer(serializers.ModelSerializer, EagerLoadingMixin):
     class Meta:
-        model = AssignmentParticipation
+        model = VLE.models.AssignmentParticipation
         fields = ('id', 'journal', 'assignment', 'user')
-        read_only_fields = ('id', 'journal', 'assignment')
+        read_only_fields = ('journal', 'assignment',)
 
-    def get_user(self, participation):
-        return UserSerializer(participation.user, context=self.context).data
+    select_related = [
+        'assignment',
+        'user',
+    ]
+
+    user = UserSerializer(read_only=True)
 
 
-class ParticipationSerializer(serializers.ModelSerializer):
-    user = serializers.SerializerMethodField()
-    course = serializers.SerializerMethodField()
-    role = serializers.SerializerMethodField()
-    groups = serializers.SerializerMethodField()
-
+class ParticipationSerializer(serializers.ModelSerializer, EagerLoadingMixin):
     class Meta:
-        model = Participation
-        fields = '__all__'
-        read_only_fields = ('id', )
+        model = VLE.models.Participation
+        fields = ('id', 'user', 'course', 'role', 'groups',)
+        read_only_fields = ()
 
-    def get_user(self, participation):
-        return UserSerializer(participation.user, context=self.context).data
+    select_related = [
+        'user',
+        'course',
+        'role',
+    ]
 
-    def get_course(self, participation):
-        return CourseSerializer(participation.course, context=self.context).data
+    prefetch_related = [
+        'groups'
+    ]
 
-    def get_role(self, participation):
-        return RoleSerializer(participation.role, context=self.context).data
+    user = UserSerializer()
+    course = CourseSerializer()
+    role = RoleSerializer()
+    groups = GroupSerializer(many=True)
 
-    def get_groups(self, participation):
-        return GroupSerializer(participation.groups, many=True, context=self.context).data
 
+class AssignmentSerializer(ExtendedModelSerializer, EagerLoadingMixin):
+    class Meta:
+        model = VLE.models.Assignment
+        fields = (
+            # Method fields
+            'deadline',
+            'journal',
+            'stats',
+            'course',
+            'courses',
+            'course_count',
+            'journals',
+            'active_lti_course',
+            'lti_courses',
+            'has_teacher_entries',
+            # Model fields
+            'id',
+            'name',
+            'description',
+            'is_published',
+            'points_possible',
+            'unlock_date',
+            'due_date',
+            'lock_date',
+            'is_group_assignment',
+            'remove_grade_upon_leaving_group',
+            'can_set_journal_name',
+            'can_set_journal_image',
+            'can_lock_journal',
+            # Not used / missing: active_lti_id, lti_id_set, assigned_groups, format
+        )
+        read_only_fields = ()
 
-class AssignmentSerializer(serializers.ModelSerializer):
+    select_related = []
+
+    prefetch_related = [
+        'courses',
+    ]
+
+    enforced_context = [
+        'user',
+    ]
+
     deadline = serializers.SerializerMethodField()
     journal = serializers.SerializerMethodField()
     stats = serializers.SerializerMethodField()
@@ -196,208 +398,178 @@ class AssignmentSerializer(serializers.ModelSerializer):
     journals = serializers.SerializerMethodField()
     active_lti_course = serializers.SerializerMethodField()
     lti_courses = serializers.SerializerMethodField()
+    has_teacher_entries = serializers.SerializerMethodField()
 
-    class Meta:
-        model = Assignment
-        fields = (
-            # Method fields
-            'deadline', 'journal', 'stats', 'course', 'courses', 'course_count', 'journals', 'active_lti_course',
-            'lti_courses',
-            # Model fields
-            'id', 'name', 'description', 'is_published', 'points_possible', 'unlock_date', 'due_date', 'lock_date',
-            'is_group_assignment', 'remove_grade_upon_leaving_group', 'can_set_journal_name', 'can_set_journal_image',
-            'can_lock_journal',
-            # Not used / missing: active_lti_id, lti_id_set, assigned_groups, format
-        )
-        read_only_fields = ('id', )
+    def __init__(self, *args, **kwargs):
+        super(AssignmentSerializer, self).__init__(*args, **kwargs)
 
-    def get_is_group_assignment(self, assignment):
-        return assignment.is_group_assignment
+        user = self.context.get('user')
+        permissions = [
+            'can_have_journal',
+            'can_grade',
+            'can_view_all_journals',
+            'can_edit_assignment',
+            'can_post_teacher_entries',
+            'can_manage_journal_import_requests',
+        ]
+
+        if user and isinstance(self.instance, VLE.models.Assignment):
+            for permission in permissions:
+                if permission not in self.context:
+                    self.context[permission] = user.has_permission(permission, self.instance)
+
+    def permission_from_context(self, permission, assignment):
+        if permission in self.context:
+            return self.context[permission]
+        return self.context['user'].has_permission(permission, assignment)
 
     def get_deadline(self, assignment):
-        # Student deadlines
-        if 'user' in self.context and self.context['user'] and \
-           self.context['user'].has_permission('can_have_journal', assignment):
-            journal = Journal.objects.filter(assignment=assignment, authors__user=self.context['user']).first()
-            deadline, name = self._get_student_deadline(journal, assignment)
+        user = self.context.get('user')
 
-            return {
-                'date': deadline,
-                'name': name
-            }
+        # Student deadlines
+        if self.permission_from_context('can_have_journal', assignment):
+            journal = VLE.models.Journal.objects.filter(assignment=assignment, authors__user=user).first()
+            deadline, name = assignment.get_student_deadline(journal)
+
+            return {'date': deadline, 'name': name}
         # Teacher deadline
         else:
-            return {
-                'date': self._get_teacher_deadline(assignment),
-            }
-
-    def _get_teacher_deadline(self, assignment):
-        return Journal.objects.filter(assignment=assignment) \
-            .filter(
-                Q(node__entry__grade__grade__isnull=True) | Q(node__entry__grade__published=False),
-                node__entry__isnull=False) \
-            .values('node__entry__last_edited') \
-            .aggregate(Min('node__entry__last_edited'))['node__entry__last_edited__min']
-
-    def _get_student_deadline(self, journal, assignment):
-        """Get student deadline.
-
-        This function gets the first upcoming deadline.
-        It checks for the first entrydeadline that still need to submitted and still can be, or for the first
-        progressnode that is not yet fullfilled.
-        """
-        t_grade = 0
-        deadline = None
-        name = None
-
-        if journal is not None:
-            for node in utils.get_sorted_nodes(journal):
-                if node.entry:
-                    grade = node.entry.grade
-                else:
-                    grade = None
-
-                # Sum published grades to check if PROGRESS node is fullfiled
-                if node.type in [Node.ENTRY, Node.ENTRYDEADLINE] and grade and grade.grade:
-                    if grade.published:
-                        t_grade += grade.grade
-                # Set the deadline to the first unfilled ENTRYDEADLINE node date
-                elif node.type == Node.ENTRYDEADLINE and not node.entry and node.preset.due_date > timezone.now():
-                    deadline = node.preset.due_date
-                    name = node.preset.forced_template.name
-                    break
-                # Set the deadline to first not completed PROGRESS node date
-                elif node.type == Node.PROGRESS:
-                    if node.preset.target > t_grade and node.preset.due_date > timezone.now():
-                        deadline = node.preset.due_date
-                        name = "{:g}/{:g} points".format(t_grade, node.preset.target)
-                        break
-
-        # If no deadline is found, but the points possible has not been reached, make assignment due date the deadline
-        if deadline is None and t_grade < assignment.points_possible:
-            if assignment.due_date or \
-               assignment.lock_date and assignment.lock_date < timezone.now():
-                deadline = assignment.due_date
-                name = 'End of assignment'
-
-        return deadline, name
+            return {'date': assignment.get_teacher_deadline()}
 
     def get_journal(self, assignment):
-        if not ('user' in self.context and self.context['user']):
+        user = self.context.get('user')
+
+        if not self.permission_from_context('can_have_journal', assignment):
             return None
-        if not self.context['user'].has_permission('can_have_journal', assignment):
-            return None
+
         try:
-            journal = Journal.objects.get(assignment=assignment, authors__user=self.context['user'])
-            if not self.context['user'].can_view(journal):
+            journal = VLE.models.Journal.objects.get(assignment=assignment, authors__user=user)
+            if not user.can_view(journal):
                 return None
             return journal.pk
-        except Journal.DoesNotExist:
+        except VLE.models.Journal.DoesNotExist:
             return None
 
     def get_journals(self, assignment):
-        """Retrieves the journals of an assignment."""
-        if 'journals' in self.context and 'course' in self.context \
-           and self.context['journals'] and self.context['course']:
-            # Group assignment retrieves all journals
+        """
+        The assignment is serialized from the perspective of a specific course. This impacts which users and journals
+        should be used in queries.
+        """
+        journals = self.context.get('serialize_journals', False)
+        course = self.context.get('course')
+
+        if journals and course:
             if assignment.is_group_assignment:
-                # First select all journals with authors, then add journals without any author
-                journals = Journal.objects.filter(
-                    Q(assignment=assignment, authors__isnull=False) |
-                    Q(assignment=assignment, authors__isnull=True)
-                )
-            # Normal assignments should only get the journals of users that should have a journal
+                journals = VLE.models.Journal.objects.filter(assignment=assignment).order_by_authors_first()
             else:
-                journals = Journal.objects.filter(assignment=assignment)
-            course = self.context['course']
-            users = course.participation_set.filter(role__can_have_journal=True).values('user')
-            return JournalSerializer(
-                journals.filter(Q(authors__user__in=users) | Q(authors__isnull=True)).annotate(
-                    author_count=Count('authors', distinct=True)
-                ).distinct(), many=True,
-                context={
-                    **self.context,
-                    'can_view_usernames': self.context['user'].has_permission('can_view_all_journals', assignment)
-                }).data
+                journals = VLE.models.Journal.objects.filter(assignment=assignment)
+
+            journals = journals.for_course(course)
+            journals = journals.annotate(
+                author_count=Count('authors', distinct=True)
+            ).distinct()
+
+            return JournalSerializer(journals, many=True, context={**self.context, 'assignment': assignment}).data
         else:
             return None
 
     def get_stats(self, assignment):
-        if 'user' not in self.context or not self.context['user']:
-            return None
-
-        course = self.context.get('course', None)
-        if course is None:
-            # Get the stats from only the course that it's linked to, when no courses are supplied.
-            course = self._get_course(assignment)
-
-        all_users = User.objects.filter(
-            participation__course=course, participation__role__can_have_journal=True
-        )
-        own_group_users = all_users
-
-        own_participation = Participation.objects.filter(user=self.context['user'], course=course)
-        if own_participation.exists():
-            # Get all users that are in any of the request user's groups.
-            own_participation = own_participation.first()
-            own_group_users = all_users.filter(participation__groups__in=own_participation.groups.all())
-
+        user = self.context.get('user')
+        course = self.context.get('course', self._get_course(assignment))
         stats = {}
-        journal_set = Journal.objects.filter(assignment=assignment, authors__user__in=all_users)
+
+        # Upcoming specifically requests stats for all of the assignment's courses
+        if course == settings.EXPLICITLY_WITHOUT_CONTEXT:
+            relevant_stat_users = VLE.utils.statistics.get_user_lists_with_scopes(assignment, user)
+        else:
+            # We are not dealing explicitly without context, and we have no specific course, stats should not be needed.
+            if course is None:
+                return None
+            relevant_stat_users = VLE.utils.statistics.get_user_lists_with_scopes(assignment, user, course=course)
+
+        # Evaluation needs to be forced to play nice with ArrayAgg annotations (needs_lti_link, groups)
+        relevant_stat_users_all = list(relevant_stat_users['all'])
+        relevant_stat_users_own = list(relevant_stat_users['own'])
+
+        all_j = VLE.models.Journal.objects.filter(assignment=assignment, authors__user__in=relevant_stat_users_all)
+        own_j = VLE.models.Journal.objects.filter(assignment=assignment, authors__user__in=relevant_stat_users_own)
+
+        all_j_stats = all_j.aggregate(
+            average_points=Avg('grade'),
+            needs_marking_sum=Sum('needs_marking'),
+            unpublished_sum=Sum('unpublished'),
+            import_requests_sum=Sum('import_requests'),
+        )
+        own_j_stats = own_j.aggregate(
+            needs_marking_sum=Sum('needs_marking'),
+            unpublished_sum=Sum('unpublished'),
+            import_requests_sum=Sum('import_requests'),
+        )
 
         # Grader stats
-        if self.context['user'].has_permission('can_grade', assignment):
-            own_group = journal_set.filter(authors__user__in=own_group_users)
+        if self.permission_from_context('can_grade', assignment):
             stats.update({
-                'needs_marking': journal_set.aggregate(Sum('needs_marking'))['needs_marking__sum'] or 0,
-                'unpublished': journal_set.aggregate(Sum('unpublished'))['unpublished__sum'] or 0,
-                'needs_marking_own_groups': own_group.aggregate(Sum('needs_marking'))['needs_marking__sum'] or 0,
-                'unpublished_own_groups': own_group.aggregate(Sum('unpublished'))['unpublished__sum'] or 0,
+                'needs_marking': all_j_stats['needs_marking_sum'] or 0,
+                'unpublished': all_j_stats['unpublished_sum'] or 0,
+                'needs_marking_own_groups': own_j_stats['needs_marking_sum'] or 0,
+                'unpublished_own_groups': own_j_stats['unpublished_sum'] or 0,
+            })
+        if self.permission_from_context('can_manage_journal_import_requests', assignment):
+            stats.update({
+                'import_requests': all_j_stats['import_requests_sum'] or 0,
+                'import_requests_own_groups': own_j_stats['import_requests_sum'] or 0,
             })
         # Other stats
-        stats['average_points'] = journal_set.aggregate(Avg('grade'))['grade__avg']
+        stats['average_points'] = all_j_stats['average_points']
 
         return stats
 
     def get_course(self, assignment):
-        return CourseSerializer(self._get_course(assignment)).data
+        return CourseSerializer(self._get_course(assignment), read_only=True, context=self.context).data
 
     def _get_course(self, assignment):
-        if self.context.get('course', None) is None:
-            if self.context.get('user', None) is not None:
-                return assignment.get_active_course(self.context['user'])
+        course = self.context.get('course', None)
+        user = self.context.get('user', None)
+
+        if course is None or course == settings.EXPLICITLY_WITHOUT_CONTEXT:
+            if user is not None:
+                return assignment.get_active_course(user)
             else:
                 return None
-        elif not self.context['course'] in assignment.courses.all():
-            raise VLEProgrammingError('Wrong course is supplied')
-        elif not self.context['user'].can_view(self.context['course']):
-            raise VLEParticipationError(self.context['course'], self.context['user'])
+        elif course not in assignment.courses.all():
+            raise VLE.utils.error_handling.VLEProgrammingError('Wrong course is supplied.')
+        elif not user.can_view(course):
+            raise VLE.utils.error_handling.VLEParticipationError(course, user)
 
-        return self.context['course']
+        return course
 
     def get_courses(self, assignment):
-        if 'course' in self.context and self.context['course']:
+        course = self.context.get('course')
+
+        if course and not course == settings.EXPLICITLY_WITHOUT_CONTEXT:
             return None
-        return CourseSerializer(assignment.courses, many=True).data
+        return CourseSerializer(assignment.courses, many=True, read_only=True).data
 
     def get_active_lti_course(self, assignment):
-        if 'user' in self.context and self.context['user'] and \
-           self.context['user'].can_view(assignment):
-            c = assignment.get_active_lti_course()
-            if c:
-                return {'cID': c.pk, 'name': c.name}
-            return None
+        if self.context['user'].can_view(assignment):
+            course = assignment.get_active_lti_course()
+            if course:
+                return {'cID': course.pk, 'name': course.name}
         return None
 
     def get_lti_courses(self, assignment):
-        if 'user' in self.context and self.context['user'] and \
-           self.context['user'].has_permission('can_edit_assignment', assignment):
+        if self.permission_from_context('can_edit_assignment', assignment):
             courses = assignment.courses.filter(assignment_lti_id_set__overlap=assignment.lti_id_set)
             return {c.pk: c.name for c in courses}
         return None
 
     def get_course_count(self, assignment):
         return assignment.courses.count()
+
+    def get_has_teacher_entries(self, assignment):
+        if self.permission_from_context('can_post_teacher_entries', assignment):
+            return assignment.teacherentry_set.exists()
+        return False
 
 
 class AssignmentFormatSerializer(AssignmentSerializer):
@@ -408,12 +580,12 @@ class AssignmentFormatSerializer(AssignmentSerializer):
     templates = serializers.SerializerMethodField()
 
     class Meta:
-        model = Assignment
+        model = VLE.models.Assignment
         fields = ('id', 'name', 'description', 'points_possible', 'unlock_date', 'due_date', 'lock_date',
                   'is_published', 'course_count', 'lti_count', 'active_lti_course', 'is_group_assignment',
                   'can_set_journal_name', 'can_set_journal_image', 'can_lock_journal', 'can_change_type',
                   'remove_grade_upon_leaving_group', 'assigned_groups', 'all_groups', 'templates')
-        read_only_fields = ('id', )
+        read_only_fields = ()
 
     def get_assigned_groups(self, assignment):
         if self.context.get('course', None):
@@ -422,8 +594,8 @@ class AssignmentFormatSerializer(AssignmentSerializer):
 
     def get_all_groups(self, assignment):
         if self.context.get('course', None):
-            return GroupSerializer(Group.objects.filter(course=self.context['course']), many=True).data
-        return GroupSerializer(Group.objects.filter(course__in=assignment.courses.all()), many=True).data
+            return GroupSerializer(VLE.models.Group.objects.filter(course=self.context['course']), many=True).data
+        return GroupSerializer(VLE.models.Group.objects.filter(course__in=assignment.courses.all()), many=True).data
 
     def get_lti_count(self, assignment):
         if 'user' in self.context and self.context['user'] and \
@@ -440,35 +612,34 @@ class AssignmentFormatSerializer(AssignmentSerializer):
 
 class SmallAssignmentSerializer(AssignmentSerializer):
     class Meta:
-        model = Assignment
+        model = VLE.models.Assignment
         fields = (
             'id', 'name', 'is_group_assignment', 'is_published', 'points_possible', 'unlock_date', 'due_date',
-            'lock_date', 'deadline', 'journal', 'stats', 'course')
-        read_only_fields = ('id', )
+            'lock_date', 'deadline', 'journal', 'stats', 'course', 'courses', 'active_lti_course')
+        read_only_fields = fields
 
 
-class NodeSerializer(serializers.ModelSerializer):
+class CommentSerializer(serializers.ModelSerializer, EagerLoadingMixin):
     class Meta:
-        model = Node
-        fields = '__all__'
-        read_only_fields = ('id', )
+        model = VLE.models.Comment
+        fields = ('id', 'entry', 'author', 'text', 'published', 'creation_date', 'last_edited', 'last_edited_by',
+                  'can_edit', 'files')
+        read_only_fields = ('entry', 'author', 'creation_date', 'last_edited',)
 
+    select_related = [
+        'author',
+        'last_edited_by',
+    ]
 
-class CommentSerializer(serializers.ModelSerializer):
-    author = serializers.SerializerMethodField()
+    prefetch_related = [
+        'files',
+    ]
+
+    files = FileSerializer(many=True, read_only=True)
+    author = UserSerializer(read_only=True)
     last_edited_by = serializers.SerializerMethodField()
     last_edited = serializers.SerializerMethodField()
     can_edit = serializers.SerializerMethodField()
-    files = serializers.SerializerMethodField()
-
-    class Meta:
-        model = Comment
-        fields = ('id', 'entry', 'author', 'text', 'published', 'creation_date', 'last_edited', 'last_edited_by',
-                  'can_edit', 'files')
-        read_only_fields = ('id', 'entry', 'author', 'creation_date', 'last_edited')
-
-    def get_author(self, comment):
-        return UserSerializer(comment.author, context=self.context).data
 
     def get_last_edited_by(self, comment):
         if comment.last_edited > comment.creation_date + datetime.timedelta(minutes=3):
@@ -478,9 +649,6 @@ class CommentSerializer(serializers.ModelSerializer):
         if comment.last_edited > comment.creation_date + datetime.timedelta(minutes=3):
             return comment.last_edited
 
-    def get_files(self, comment):
-        return FileSerializer(comment.files, many=True).data
-
     def get_can_edit(self, comment):
         user = self.context.get('user', None)
         if not user:
@@ -489,208 +657,438 @@ class CommentSerializer(serializers.ModelSerializer):
         return comment.can_edit(user)
 
 
-class RoleSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Role
-        fields = '__all__'
-        read_only_fields = ('id', 'course')
-
-
 class JournalSerializer(serializers.ModelSerializer):
-    author_count = serializers.SerializerMethodField()
-    groups = serializers.SerializerMethodField()
-    usernames = serializers.SerializerMethodField()
-
     class Meta:
-        model = Journal
-        fields = ('id', 'bonus_points', 'grade', 'name', 'image', 'author_limit',
-                  'locked', 'author_count', 'full_names', 'groups',
-                  'grade', 'name', 'image', 'unpublished', 'needs_marking', 'usernames')
-        read_only_fields = ('id', 'assignment', 'authors', 'grade')
+        model = VLE.models.Journal
+        fields = (
+            # Normal fields
+            'id',
+            'bonus_points',
+            'author_limit',
+            'locked',
+            # Annotated fields
+            'full_names',
+            'usernames',
+            'name',
+            'author_count',  # NOTE: Will be fetched if missing
+            'import_requests',
+            'image',
+            'grade',
+            'unpublished',
+            'needs_marking',
+            'groups',
+        )
+        read_only_fields = (
+            'assignment',
+            'authors',
+            'import_requests',
+            'full_names',
+            'usernames',
+            'name',
+            'image',
+            'grade',
+            'unpublished',
+            'needs_marking',
+            'groups',
+        )
+
+    author_count = serializers.SerializerMethodField()
+    # Annotated fields need to be explicitly declared as they can't be derived from the Meta model
+    usernames = serializers.SerializerMethodField()
+    full_names = serializers.CharField()
+    name = serializers.CharField()
+    import_requests = serializers.SerializerMethodField()
+    image = serializers.CharField()
+    grade = serializers.FloatField()
+    unpublished = serializers.IntegerField()
+    needs_marking = serializers.IntegerField()
+    groups = serializers.SerializerMethodField()
+
+    def __init__(self, *args, **kwargs):
+        super(JournalSerializer, self).__init__(*args, **kwargs)
+
+        user = self.context.get('user')
+        assignment = self.context.get('assignment')
+
+        permissions = [
+            'can_view_all_journals',
+            'can_manage_journal_import_requests',
+        ]
+
+        if not assignment:
+            if isinstance(self.instance, VLE.models.Journal):
+                assignment = self.instance.assignment
+            elif isinstance(self.instance, VLE.models.JournalQuerySet) and self.instance.exists():
+                if VLE.models.Assignment.objects.filter(journal__in=self.instance).distinct().count() > 1:
+                    capture_message('Serializing journals from multiple assignments', level='warning')
+                assignment = self.instance[0].assignment
+
+        if user and assignment:
+            for permission in permissions:
+                if permission not in self.context:
+                    self.context[permission] = user.has_permission(permission, assignment)
 
     def get_author_count(self, journal):
-        # If annotated in the query, get that, else query here
-        return journal.__dict__.get('author_count', journal.authors.count())
+        """Make use of 'author_count' annotation if provided."""
+        if hasattr(journal, 'author_count'):
+            return journal.author_count
+        return journal.authors.count()
 
     def get_usernames(self, journal):
-        # If annotated that it is allowed, immediatly get it, else check for can_view_all_journals
-        if self.context.get('can_view_usernames', False) or \
-           'user' in self.context and self.context['user'].has_permission('can_view_all_journals', journal.assignment):
+        if self.context.get('can_view_all_journals', False):
             return journal.usernames
-
         return None
 
     def get_groups(self, journal):
         if 'course' not in self.context:
             return None
-        return list(Participation.objects.filter(
-            user__in=journal.authors.values('user'),
-            course=self.context['course']).values_list('groups__pk', flat=True).distinct())
+        return journal.groups
+
+    def get_import_requests(self, journal):
+        if self.context.get('can_manage_journal_import_requests', False):
+            return journal.import_requests
+        return None
 
 
-class FormatSerializer(serializers.ModelSerializer):
-    presets = serializers.SerializerMethodField()
-    templates = serializers.SerializerMethodField()
-
+class PresetNodeSerializer(serializers.ModelSerializer, EagerLoadingMixin):
     class Meta:
-        model = Format
-        fields = ('id', 'templates', 'presets', )
-        read_only_fields = ('id', )
+        model = VLE.models.PresetNode
+        fields = (
+            'id',
+            'description',
+            'display_name',
+            'type',
+            'unlock_date',
+            'due_date',
+            'lock_date',
+            'target',
+            'template',
+            'attached_files',
+        )
+        read_only_fields = ('type',)
 
-    def get_templates(self, format):
-        return TemplateSerializer(format.template_set.filter(archived=False).order_by('name'), many=True).data
+    select_related = [
+        'forced_template',
+    ]
 
-    def get_presets(self, format):
-        return PresetNodeSerializer(format.presetnode_set.all().order_by('due_date'), many=True).data
+    prefetch_related = [
+        Prefetch('forced_template__field_set', queryset=VLE.models.Field.objects.order_by('location')),
+        'attached_files',
+    ]
 
-
-class PresetNodeSerializer(serializers.ModelSerializer):
     unlock_date = serializers.SerializerMethodField()
     due_date = serializers.SerializerMethodField()
     lock_date = serializers.SerializerMethodField()
     target = serializers.SerializerMethodField()
     template = serializers.SerializerMethodField()
-
-    class Meta:
-        model = PresetNode
-        fields = ('id', 'description', 'type', 'unlock_date', 'due_date', 'lock_date', 'target', 'template')
-        read_only_fields = ('id', 'type')
+    attached_files = FileSerializer(many=True, read_only=True)
 
     def get_unlock_date(self, node):
-        if node.type == Node.ENTRYDEADLINE and node.unlock_date is not None:
-            return node.unlock_date.strftime('%Y-%m-%dT%H:%M')
+        if node.is_deadline and node.unlock_date is not None:
+            return node.unlock_date.strftime(settings.ALLOWED_DATETIME_FORMAT)
         return None
 
     def get_due_date(self, node):
-        return node.due_date.strftime('%Y-%m-%dT%H:%M:%S')
+        return node.due_date.strftime(settings.ALLOWED_DATETIME_FORMAT)
 
     def get_lock_date(self, node):
-        if node.type == Node.ENTRYDEADLINE and node.lock_date is not None:
-            return node.lock_date.strftime('%Y-%m-%dT%H:%M:%S')
+        if node.is_deadline and node.lock_date is not None:
+            return node.lock_date.strftime(settings.ALLOWED_DATETIME_FORMAT)
         return None
 
     def get_target(self, node):
-        if node.type == Node.PROGRESS:
+        if node.is_progress:
             return node.target
         return None
 
     def get_template(self, node):
-        if node.type == Node.ENTRYDEADLINE:
-            return TemplateSerializer(node.forced_template).data
+        if node.is_deadline:
+            return TemplateSerializer(node.forced_template, read_only=True, context=self.context).data
         return None
 
 
-class EntrySerializer(serializers.ModelSerializer):
-    template = serializers.SerializerMethodField()
+class FormatSerializer(serializers.ModelSerializer, EagerLoadingMixin):
+    class Meta:
+        model = VLE.models.Format
+        fields = ('id', 'templates', 'presets',)
+        read_only_fields = ()
+
+    presets = PresetNodeSerializer(many=True, source='presetnode_set', read_only=True)
+    templates = TemplateSerializer(many=True, source='template_set', read_only=True)
+
+    prefetch_related = [
+        Prefetch(
+            'presetnode_set',
+            queryset=PresetNodeSerializer.setup_eager_loading(
+                VLE.models.PresetNode.objects.order_by('due_date')
+            )
+        ),
+        Prefetch(
+            'template_set',
+            queryset=TemplateSerializer.setup_eager_loading(
+                VLE.models.Template.objects.filter(archived=False).order_by('name')
+            )
+        ),
+    ]
+
+
+# Would massively benefit from top down serialization (many=True)
+class EntrySerializer(serializers.ModelSerializer, EagerLoadingMixin):
+    class Meta:
+        model = VLE.models.Entry
+        fields = (
+            'id',
+            'creation_date',
+            'template',
+            'title',
+            'content',
+            'editable',
+            'grade',
+            'last_edited',
+            'comments',
+            'author',
+            'last_edited_by',
+            'jir',
+        )
+        read_only_fields = (
+            'creation_date',
+        )
+
+    select_related = [
+        'author',
+        'template',
+        'last_edited_by',
+        'teacher_entry',
+        'grade',
+        'node__journal__assignment',  # used in permission check can grade and locked check
+        'jir__source__assignment',
+        'jir__processor',
+        'node',
+        'node__preset',
+    ]
+
+    # NOTE: Comments (comment_set) are only serialized via GDPR, which prefetches the comment_set itself.
+    prefetch_related = [
+        'content_set',
+        'content_set__field',
+        'content_set__filecontext_set',
+        # NOTE: Too uncommon, not worth the additional prefetch.
+        # 'jir__source__assignment__courses',
+    ]
+
+    template = TemplateSerializer(read_only=True)
+    editable = serializers.BooleanField(read_only=True, source='is_editable')
+    author = serializers.CharField(source='author.full_name', default=VLE.models.User.UNKNOWN_STR)
+    last_edited_by = serializers.CharField(source='last_edited_by.full_name', default=VLE.models.User.UNKNOWN_STR)
+    title = serializers.SerializerMethodField()
     content = serializers.SerializerMethodField()
-    editable = serializers.SerializerMethodField()
     grade = serializers.SerializerMethodField()
     comments = serializers.SerializerMethodField()
-    author = serializers.SerializerMethodField()
-    last_edited_by = serializers.SerializerMethodField()
+    jir = serializers.SerializerMethodField()
 
-    class Meta:
-        model = Entry
-        fields = ('id', 'creation_date', 'template', 'content', 'editable',
-                  'grade', 'last_edited', 'comments', 'author', 'last_edited_by')
-        read_only_fields = ('id', 'template', 'creation_date', 'content', 'grade')
+    def get_title(self, entry):
+        if (entry.teacher_entry and entry.teacher_entry.show_title_in_timeline):
+            return entry.teacher_entry.title
 
-    def get_author(self, entry):
-        return entry.author.full_name
+        if entry.node.preset:
+            return entry.node.preset.display_name
 
-    def get_last_edited_by(self, entry):
-        return None if entry.last_edited_by is None else entry.last_edited_by.full_name
-
-    def get_template(self, entry):
-        return TemplateSerializer(entry.template).data
+        return entry.template.name
 
     def get_content(self, entry):
-        return ContentSerializer(entry.content_set.all(), many=True).data
+        def _get_content(entry):
+            content_dict = {}
 
-    def get_editable(self, entry):
-        return entry.is_editable()
+            for content in entry.content_set.all():
+                # Only include the actual content (so e.g. text).
+                if content.field.type == VLE.models.Field.FILE and content.data:
+                    try:
+                        values, prefetched = prefetched_objects(content, 'filecontext_set')
+                        # A file field only has a single FC associated, so we can directly access the first element
+                        # from the prefetch cache if available.
+                        fc = values[0] if prefetched else VLE.models.FileContext.objects.get(pk=content.data)
+                        content_dict[content.field.id] = FileSerializer(fc).data
+                    except VLE.models.FileContext.DoesNotExist:
+                        capture_message(
+                            f'FILE content {content.pk} refers to unknown file in data: {content.data}', level='error')
+                        return {}
+                else:
+                    content_dict[content.field.id] = content.data
+
+            return content_dict
+
+        content_dict = {}
+
+        # If it is a teacher entry, initialize the content with the content of the teacher entry
+        # Only when a user edits the content, set the new content
+        if entry.teacher_entry:
+            content_dict.update(_get_content(entry.teacher_entry))
+
+        content_dict.update(_get_content(entry))
+        return content_dict
 
     def get_grade(self, entry):
         # TODO: Add permission can_view_grade
         if 'user' not in self.context or not self.context['user']:
             return None
+
         grade = entry.grade
         if grade and (grade.published or
                       self.context['user'].has_permission('can_grade', entry.node.journal.assignment)):
             return GradeSerializer(grade).data
+
         return None
 
     def get_comments(self, entry):
         if 'comments' not in self.context or not self.context['comments']:
             return None
-        return CommentSerializer(Comment.objects.filter(entry=entry), many=True).data
+
+        return CommentSerializer(
+            CommentSerializer.setup_eager_loading(entry.comment_set.all()),
+            many=True,
+            context=self.context
+        ).data
+
+    def get_jir(self, entry):
+        if entry.jir:
+            jir_source_course = entry.jir.source.assignment.get_active_course(self.context['user'])
+            return {
+                'source': {
+                    'assignment': {
+                        'name': entry.jir.source.assignment.name,
+                        'course': {
+                            'abbreviation': jir_source_course.abbreviation if jir_source_course else ''
+                        },
+                    },
+                },
+                'processor': {
+                    'full_name': entry.jir.processor.full_name
+                }
+            }
+        return None
 
 
 class GradeSerializer(serializers.ModelSerializer):
     class Meta:
-        model = Grade
+        model = VLE.models.Grade
         fields = ('id', 'entry', 'grade', 'published')
-        read_only_fields = ('id', 'entry', 'grade', 'published')
+        read_only_fields = fields
 
 
-class GradeHistorySerializer(serializers.ModelSerializer):
-    author = serializers.SerializerMethodField()
-
+class TeacherEntryGradeSerializer(serializers.ModelSerializer, EagerLoadingMixin):
     class Meta:
-        model = Grade
+        model = VLE.models.Entry
+        fields = (
+            'journal_id',
+            'grade',
+            'published',
+            # Annotations
+            'usernames',
+            'name',
+        )
+        read_only_fields = fields
+
+    select_related = [
+        'grade',
+        'node__journal',
+    ]
+
+    journal_id = serializers.IntegerField(source='node.journal_id')
+    grade = serializers.FloatField(source='grade.grade', default=None)
+    published = serializers.BooleanField(source='grade.published', default=False)
+    # Annotated fields need to be explicitly declared as they can't be derived from the Meta model
+    usernames = serializers.CharField()
+    name = serializers.CharField()
+
+
+class GradeHistorySerializer(serializers.ModelSerializer, EagerLoadingMixin):
+    class Meta:
+        model = VLE.models.Grade
         fields = ('grade', 'published', 'creation_date', 'author')
-        read_only_fields = ('grade', 'published', 'creation_date', 'author')
+        read_only_fields = fields
 
-    def get_author(self, grade):
-        if grade.author is not None:
-            return grade.author.full_name
+    select_related = [
+        'author',
+    ]
 
-        return 'Unknown or deleted account'
+    author = serializers.CharField(source='author.full_name', default=VLE.models.User.UNKNOWN_STR)
 
 
-class TemplateSerializer(serializers.ModelSerializer):
-    field_set = serializers.SerializerMethodField()
-
+class TeacherEntrySerializer(EntrySerializer):
     class Meta:
-        model = Template
-        fields = '__all__'
-        read_only_fields = ('id', )
+        model = VLE.models.TeacherEntry
+        fields = ('id', 'title', 'template', 'content', 'journals')
+        read_only_fields = fields
 
-    def get_field_set(self, template):
-        return FieldSerializer(template.field_set.all().order_by('location'), many=True).data
+    journals = TeacherEntryGradeSerializer(many=True, read_only=True, source='entry_set')
+    # This is to overwrite the EntrySerializer serializedmethod title field, and use the db variable instead
+    title = None
+
+    @staticmethod
+    def setup_eager_loading(queryset):
+        queryset = EntrySerializer.setup_eager_loading(queryset)
+
+        # Fetch everything the TeacherEntryGradeSerializer requires
+        queryset = queryset.prefetch_related(
+            Prefetch(
+                'entry_set',
+                queryset=VLE.models.Entry.objects.select_related(
+                    *TeacherEntryGradeSerializer.select_related
+                )
+                .annotate_teacher_entry_grade_serializer_fields()
+                .order_by('name')
+            )
+        )
+
+        return queryset
 
 
-class ContentSerializer(serializers.ModelSerializer):
-    data = serializers.SerializerMethodField()
-
+class JournalImportRequestSerializer(serializers.ModelSerializer, EagerLoadingMixin):
     class Meta:
-        model = Content
-        fields = ('entry', 'field', 'data', )
-        read_only_fields = ('id', )
+        model = VLE.models.JournalImportRequest
+        fields = ('id', 'source', 'target', 'author', 'processor')
+        read_only_fields = fields
 
-    def get_data(self, content):
-        if content.field.type == Field.FILE:
-            try:
-                return FileSerializer(FileContext.objects.get(pk=content.data)).data
-            except FileContext.DoesNotExist:
-                return None
+    select_related = [
+        'author',
+        'processor',
+        'source',
+        'source__assignment',
+        'target',
+        'target__assignment',
+        *[f'source__assignment__{related}' for related in SmallAssignmentSerializer.select_related],
+        *[f'target__assignment__{related}' for related in SmallAssignmentSerializer.select_related],
+    ]
 
-        return content.data
+    prefetch_related = [
+        *[f'source__assignment__{related}' for related in SmallAssignmentSerializer.prefetch_related],
+        *[f'target__assignment__{related}' for related in SmallAssignmentSerializer.prefetch_related]
+    ]
 
+    author = UserSerializer(read_only=True)
+    processor = UserSerializer(read_only=True)
+    source = serializers.SerializerMethodField()
+    target = serializers.SerializerMethodField()
 
-class FileSerializer(serializers.ModelSerializer):
-    download_url = serializers.SerializerMethodField()
+    def get_source(self, jir):
+        if jir.source is None:
+            return 'Source journal no longer exists.'
 
-    class Meta:
-        model = FileContext
-        fields = ('download_url', 'file_name', 'id', )
+        source = jir.source
+        if source.missing_annotated_field:
+            source = VLE.models.Journal.objects.get(pk=source.pk)
 
-    def get_download_url(self, file):
-        # Get access_id if file is in rich text
-        return file.download_url(access_id=file.in_rich_text)
+        return {
+            'journal': JournalSerializer(source, context=self.context, read_only=True).data,
+            'assignment': SmallAssignmentSerializer(jir.source.assignment, context=self.context, read_only=True).data,
+        }
 
+    def get_target(self, jir):
+        target = jir.target
+        if target.missing_annotated_field:
+            target = VLE.models.Journal.objects.get(pk=target.pk)
 
-class FieldSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Field
-        fields = '__all__'
+        return {
+            'journal': JournalSerializer(target, context=self.context, read_only=True).data,
+            'assignment': SmallAssignmentSerializer(jir.target.assignment, context=self.context, read_only=True).data,
+        }

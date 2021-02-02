@@ -8,6 +8,7 @@ export const JOURNAL_SORT_OPTIONS = new Set([
     'username',
     'markingNeeded',
     'points',
+    'importRequests',
 ])
 
 export const COURSE_MEMBER_SORT_OPTIONS = new Set([

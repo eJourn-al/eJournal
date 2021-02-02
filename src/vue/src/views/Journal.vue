@@ -16,23 +16,22 @@
 </template>
 
 <script>
-import journalStudent from '@/components/journal/JournalStudent.vue'
-import journalNonStudent from '@/components/journal/JournalNonStudent.vue'
-
 export default {
     name: 'Journal',
     components: {
-        journalStudent,
-        journalNonStudent,
+        journalStudent: () => import(
+            /* webpackChunkName: 'journal-student' */ '@/components/journal/JournalStudent.vue'),
+        journalNonStudent: () => import(
+            /* webpackChunkName: 'journal-non-student' */ '@/components/journal/JournalNonStudent.vue'),
     },
     props: ['cID', 'aID', 'jID'],
     beforeRouteLeave (to, from, next) {
-        if (this.$hasPermission('can_have_journal') && !this.$refs['journal-student-ref'].discardChanges()) {
+        if (this.$hasPermission('can_have_journal') && !this.$refs['journal-student-ref'].safeToLeave()) {
             next(false)
             return
         }
 
-        if (this.$hasPermission('can_grade') && !this.$refs['journal-non-student-ref'].discardChanges()) {
+        if (this.$hasPermission('can_grade') && !this.$refs['journal-non-student-ref'].safeToLeave()) {
             next(false)
             return
         }

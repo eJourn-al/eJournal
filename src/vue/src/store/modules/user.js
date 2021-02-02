@@ -1,8 +1,8 @@
+import * as types from '../constants/mutation-types.js'
 import Vue from 'vue'
 import connection from '@/api/connection.js'
 import genericUtils from '@/utils/generic_utils.js'
 import sanitization from '@/utils/sanitization.js'
-import * as types from '../constants/mutation-types.js'
 
 const getters = {
     jwtAccess: state => state.jwtAccess,
@@ -15,11 +15,38 @@ const getters = {
     fullName: state => state.fullName,
     ltiID: state => state.ltiID,
     permissions: state => state.permissions,
-    isTestStudent: state => state.is_test_student,
+    isTestStudent: state => state.isTestStudent,
     isSuperuser: state => state.isSuperuser,
+    backendCodeVersion: state => state.backendCodeVersion,
+    refreshedForCodeVersion: state => state.refreshedForCodeVersion,
+    refreshTriggerDueToCodeVersion: state => state.refreshTriggerDueToCodeVersion,
     // We are not logged unless the store is populated as well
     loggedIn: state => state.jwtAccess !== null && state.uID !== null,
     storePopulated: state => state.uID !== null,
+    relevantUserSentryState (state) {
+        let relevantState = {
+            backendCodeVersion: state.backendCodeVersion,
+            refreshedForCodeVersion: state.refreshedForCodeVersion,
+            refreshTriggerDueToCodeVersion: state.refreshTriggerDueToCodeVersion,
+        }
+
+        if (state.uID !== null) {
+            relevantState = {
+                ...relevantState,
+                id: state.uID,
+                username: state.username,
+                email: state.email,
+                verifiedEmail: state.verifiedEmail,
+                fullName: state.fullName,
+                ltiID: state.ltiID,
+                permissions: state.permissions,
+                isTestStudent: state.isTestStudent,
+                isSuperuser: state.isSuperuser,
+            }
+        }
+
+        return relevantState
+    },
 }
 
 const mutations = {
@@ -45,6 +72,7 @@ const mutations = {
         state.fullName = userData.full_name
         state.ltiID = userData.lti_id
         state.isSuperuser = userData.is_superuser
+        state.isTestStudent = userData.is_test_student
         state.permissions = permissions
     },
     [types.LOGOUT] (state) {
@@ -72,6 +100,15 @@ const mutations = {
     [types.SET_PROFILE_PICTURE] (state, dataURL) {
         state.profilePicture = dataURL
     },
+    [types.SET_BACKEND_CODE_VERSION] (state, val) {
+        state.backendCodeVersion = val
+    },
+    [types.SET_REFRESHED_FOR_CODE_VERSION] (state, val) {
+        state.refreshedForCodeVersion = val
+    },
+    [types.SET_REFRESH_TRIGGERED_DUE_TO_CODE_VERSION] (state, val) {
+        state.refreshTriggerDueToCodeVersion = val
+    },
     [types.UPDATE_PERMISSIONS] (state, data) {
         const permissions = data.permissions
         const permissionKey = data.key
@@ -95,7 +132,7 @@ const actions = {
                 commit(types.SET_JWT, response.data)
 
                 dispatch('populateStore').then(() => {
-                    commit(`sentry/${types.SET_SENTRY_USER_SCOPE}`, { uID: state.uID }, { root: true })
+                    commit(`sentry/${types.SET_SENTRY_USER_SCOPE}`, state.relevantUserSentryState, { root: true })
                     resolve('JWT and store are set successfully.')
                 }, (error) => {
                     Vue.toasted.error(sanitization.escapeHtml(error.response.data.description))
@@ -153,15 +190,24 @@ const actions = {
             connection.conn.get('/users/0/').then((response) => {
                 commit(types.HYDRATE_USER, response.data)
                 connection.conn.get(`/preferences/${response.data.user.id}/`).then((preferencesResponse) => {
-                    commit(`preferences/${types.HYDRATE_PREFERENCES}`, preferencesResponse.data, { root: true })
+                    commit(`preferences/${types.HYDRATE_PREFERENCES}`, preferencesResponse.data.preferences,
+                        { root: true })
                     resolve('Store is populated successfully')
                 }, (error) => {
-                    Vue.toasted.error(
-                        `Error loading preferences: ${sanitization.escapeHtml(error.response.data.description)}`)
+                    if (error.response) {
+                        Vue.toasted.error(
+                            `Error loading preferences: ${sanitization.escapeHtml(error.response.data.description)}`)
+                    } else {
+                        Vue.toasted.error('Something went wrong when loading preferences')
+                    }
                     reject(error)
                 })
             }, (error) => {
-                Vue.toasted.error(`Error logging in: ${sanitization.escapeHtml(error.response.data.description)}`)
+                if (error.response) {
+                    Vue.toasted.error(`Error logging in: ${sanitization.escapeHtml(error.response.data.description)}`)
+                } else {
+                    Vue.toasted.error('Something went wrong when loggin in')
+                }
                 reject(error)
             })
         })
@@ -183,6 +229,9 @@ export default {
         ltiID: null,
         permissions: null,
         isSuperuser: false,
+        backendCodeVersion: null,
+        refreshedForCodeVersion: null,
+        refreshTriggerDueToCodeVersion: false,
     },
     getters,
     mutations,

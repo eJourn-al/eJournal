@@ -10,11 +10,13 @@ from VLE.views.grade import GradeView
 from VLE.views.group import GroupView
 from VLE.views.instance import InstanceView
 from VLE.views.journal import JournalView
+from VLE.views.journal_import_request import JournalImportRequestView
 from VLE.views.member import MemberView
 from VLE.views.node import NodeView
 from VLE.views.participation import ParticipationView
 from VLE.views.preferences import PreferencesView
 from VLE.views.role import RoleView
+from VLE.views.teacher_entry import TeacherEntryView
 from VLE.views.user import UserView
 
 router = routers.DefaultRouter()
@@ -34,5 +36,7 @@ router.register(r'entries', EntryView, basename='entry')
 router.register(r'grades', GradeView, basename='grades')
 router.register(r'formats', FormatView, basename='format')
 router.register(r'files', FileView, basename='file')
+router.register(r'teacher_entries', TeacherEntryView, basename='teacher_entry')
+router.register(r'journal_import_request', JournalImportRequestView, basename='journal_import_request')
 
 urlpatterns = router.urls

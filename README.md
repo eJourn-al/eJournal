@@ -1,8 +1,8 @@
 <p align="center">
     <img width="250" src="https://avatars1.githubusercontent.com/u/41028230"/>
-</p>  
+</p>
 
-[![Build Status](https://travis-ci.com/eJourn-al/eJournal.svg?branch=develop)](https://travis-ci.com/eJourn-al/eJournal) [![Coverage Status](https://codecov.io/gh/eJourn-al/eJournal/branch/develop/graph/badge.svg)](https://codecov.io/gh/eJourn-al/eJournal)
+![eJournal CI](https://github.com/eJourn-al/eJournal/workflows/eJournal%20CI/badge.svg) [![Coverage Status](https://codecov.io/gh/eJourn-al/eJournal/branch/develop/graph/badge.svg)](https://codecov.io/gh/eJourn-al/eJournal)
 
 eJournal is a platform for online journalling and long term assignments, especially developed for education. It can be easily connected to virtual learning environments through LTI.
 
@@ -85,7 +85,7 @@ Make sure to use a strong password, as these credentials will be able to manipul
 
 ## Troubleshooting
 
-The setup and deployment scripts have been built for ubuntu, and may not work on any other linux distributions. May the need for this arise, the scripts can be altered to support additional distributions. 
+The setup and deployment scripts have been built for ubuntu, and may not work on any other linux distributions. May the need for this arise, the scripts can be altered to support additional distributions.
 May the setup or deployment fail, feel free to contact us at support@ejournal.app.
 
 ## Contributors

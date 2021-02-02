@@ -16,11 +16,7 @@
                     v-if="comment.text"
                     :content="comment.text"
                 />
-                <file-download-button
-                    v-for="file in comment.files"
-                    :key="file.id"
-                    :file="file"
-                />
+                <files-list :files="comment.files"/>
                 <hr class="full-width"/>
                 <b>{{ comment.author.full_name }}</b>
                 <icon
@@ -73,50 +69,19 @@
                     @startedUploading="uploadingFiles ++"
                     @finishedUploading="uploadingFiles --"
                 />
-                <div
-                    v-if="comment.files.length > 0"
-                    class="comment-file-list multi-form round-border p-2"
-                >
-                    <div
-                        v-for="(file, i) in comment.files"
-                        :key="i"
-                    >
-                        <u>{{ file.file_name }}</u>
-                        <icon
-                            name="trash"
-                            class="ml-2 float-right mt-1 trash-icon"
-                            @click.native="comment.files.splice(i, 1)"
-                        />
-                        <icon
-                            name="download"
-                            class="ml-2 float-right mt-1 edit-icon"
-                            @click.native="fileDownload(file)"
-                        />
-                    </div>
-                </div>
-                <b-button
-                    class="btn change-button multi-form mr-2"
-                    @click="$refs['file-upload'].$el.click()"
-                >
-                    <icon name="paperclip"/>
-                    Attach file
-                    <file-upload-input
-                        ref="file-upload"
-                        :acceptedFiletype="'*/*'"
-                        :maxSizeBytes="$root.maxFileSizeBytes"
-                        :autoUpload="true"
-                        :plain="true"
-                        hidden
-                        @uploadingFile="uploadingFiles ++"
-                        @fileUploadSuccess="comment.files.push($event) && uploadingFiles --"
-                        @fileUploadFailed="uploadingFiles --"
-                    />
-                </b-button>
+                <files-list
+                    :attachNew="true"
+                    :files="comment.files"
+                    @uploading-file="uploadingFiles ++"
+                    @fileUploadSuccess="comment.files.push($event) && uploadingFiles --"
+                    @fileUploadFailed="uploadingFiles --"
+                    @fileRemoved="(i) => comment.files.splice(i, 1)"
+                />
                 <template v-if="createCard">
                     <dropdown-button
                         v-if="$hasPermission('can_grade')"
                         :up="true"
-                        :selectedOption="$store.getters['preferences/commentButtonSetting']"
+                        :selectedOption="$store.getters['preferences/saved'].comment_button_setting"
                         :options="{
                             p: {
                                 text: 'Send',
@@ -152,7 +117,7 @@
                 <template v-else>
                     <b-button
                         v-if="comment.can_edit"
-                        class="multi-form delete-button"
+                        class="red-button"
                         @click="resetComment()"
                     >
                         <icon name="ban"/>
@@ -161,7 +126,7 @@
                     <b-button
                         v-if="comment.can_edit"
                         :class="disableSend"
-                        class="ml-2 add-button float-right"
+                        class="ml-2 green-button float-right"
                         @click="editComment()"
                     >
                         <icon name="save"/>
@@ -175,22 +140,17 @@
 
 <script>
 import dropdownButton from '@/components/assets/DropdownButton.vue'
-import fileDownloadButton from '@/components/assets/file_handling/FileDownloadButton.vue'
-import fileUploadInput from '@/components/assets/file_handling/FileUploadInput.vue'
+import filesList from '@/components/assets/file_handling/FilesList.vue'
 import sandboxedIframe from '@/components/assets/SandboxedIframe.vue'
-import textEditor from '@/components/assets/TextEditor.vue'
 
 import commentAPI from '@/api/comment.js'
 
-import auth from '@/api/auth.js'
-
 export default {
     components: {
+        textEditor: () => import(/* webpackChunkName: 'text-editor' */ '@/components/assets/TextEditor.vue'),
         dropdownButton,
-        fileDownloadButton,
-        fileUploadInput,
         sandboxedIframe,
-        textEditor,
+        filesList,
     },
     props: {
         passedComment: {
@@ -226,6 +186,10 @@ export default {
         createComment (option) {
             if (this.comment.text !== '' || this.comment.files.length > 0) {
                 if (option === 'g') {
+                    if (this.$parent.$parent.grade.grade === '') {
+                        this.$toasted.error('A grade needs to be set before it can be published.')
+                        return
+                    }
                     this.$emit('publish-grade')
                 }
 
@@ -259,22 +223,6 @@ export default {
                     this.saveRequestInFlight = false
                 })
         },
-        fileDownload (file) {
-            auth.downloadFile(file.download_url)
-                .then((response) => {
-                    try {
-                        const blob = new Blob([response.data], { type: response.headers['content-type'] })
-                        const link = document.createElement('a')
-                        link.href = window.URL.createObjectURL(blob)
-                        link.download = file.file_name
-                        document.body.appendChild(link)
-                        link.click()
-                        link.remove()
-                    } catch (_) {
-                        this.$toasted.error('Error creating file.')
-                    }
-                })
-        },
         resetComment () {
             this.comment = JSON.parse(JSON.stringify(this.passedComment))
             this.editing = false
@@ -284,8 +232,6 @@ export default {
 </script>
 
 <style lang="sass">
-@import '~sass/modules/colors.sass'
-
 .comment-card
     display: flex
     .profile-picture-sm
@@ -302,7 +248,4 @@ export default {
             .trash-icon, .edit-icon
                 margin-top: 4px
                 margin-left: 4px
-    .comment-file-list
-        border: 2px solid $theme-dark-grey
-        font-weight: bold
 </style>

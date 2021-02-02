@@ -3,8 +3,8 @@
 coverage==5.0.3 # Tests
 Faker==2.0.2 # Tests
 flake8==3.7.8 # Tests
+flake8-functions==0.0.4 # Linter, max function length and argument number
 mccabe==0.6.1 # Tests, plugin for flake8
-pycodestyle==2.5.0 # Tests, flake8 tool
 isort==4.3.21 # Organization
 pyflakes==2.1.1 # Tests
 pytz==2019.2 # Preset db script and tests
@@ -16,4 +16,7 @@ py==1.8.0 # Pytest
 pytest==5.2.0 # Testing library
 pytest-cov==2.7.1 # Pytest
 pytest-django==3.5.1 # Pytest
+pytest-split==0.1.5 # Pytest with GitHub Actions speedup
 pytest-xdist==1.30.0 # Run Pytest in parallel
+deepdiff==5.0.2 # Testing deep difference of dictionary and list combinations
+django-test-migrations==0.3.0

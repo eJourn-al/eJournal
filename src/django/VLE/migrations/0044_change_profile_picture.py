@@ -6,9 +6,9 @@ from django.db import migrations, models
 
 def remove_canvas_default_image(apps, schema_editor):
     User = apps.get_model('VLE', 'User')
-    Instance = apps.get_model('VLE', 'Instance')
-    User.objects.filter(profile_picture=Instance.objects.get_or_create(pk=1)[0].default_lms_profile_picture).update(
-        profile_picture=settings.DEFAULT_PROFILE_PICTURE)
+    apps.get_model('VLE', 'Instance')
+    pf = 'https://canvas.instructure.com/images/messages/avatar-50.png'
+    User.objects.filter(profile_picture=pf).update(profile_picture=settings.DEFAULT_PROFILE_PICTURE)
 
 
 class Migration(migrations.Migration):

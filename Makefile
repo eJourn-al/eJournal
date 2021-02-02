@@ -1,3 +1,5 @@
+SHELL := /bin/bash
+
 ifdef test
 TOTEST=-k ${test}
 else
@@ -26,43 +28,67 @@ postgres_test_db = test_$(postgres_db)
 postgres_dev_user = ejournal
 postgres_dev_user_pass = password
 
+ifndef CI_CD
+venv_activate = source ./venv/bin/activate
+else
+venv_activate = echo "No venv needed fro CI_CD"
+endif
+
 ##### TEST COMMANDS #####
-
-test-back:
-	pep8 ./src/django --max-line-length=120 --exclude='./src/django/VLE/migrations','./src/django/VLE/settings*'
-	bash -c 'source ./venv/bin/activate && flake8 --max-line-length=120 src/django --exclude="src/django/VLE/migrations/*","src/django/VLE/settings/*","src/django/VLE/settings.py","src/django/VLE/tasks/__init__.py" && deactivate'
-	bash -c "source ./venv/bin/activate && pytest -n auto --cov=VLE -vvl --cov-report term-missing --cov-config .coveragerc src/django/test ${TOTEST} && deactivate"
-	bash -c 'source ./venv/bin/activate && isort -rc src/django/ && deactivate'
-
-test-front:
-	npm run lint --prefix ./src/vue
-
-display-coverage:
-	bash -c "source ./venv/bin/activate && cd src/django/ && coverage report -m && deactivate"
 
 test: test-front test-back
 
+test-back: isort check-linters-back
+	${venv_activate} \
+	&& pytest ${TOTEST} src/django/test/
+
+test-front: check-linters-front
+
+check-linters: check-linters-back check-linters-front
+
+check-linters-back:
+	${venv_activate} \
+	&& flake8 ./src/django \
+	&& ./src/django/manage.py check --fail-level=WARNING \
+	&& isort src/django -c \
+
+check-linters-front:
+	${venv_activate} \
+	&& npm run lint --prefix ./src/vue
+
+generate-test-durations:
+	${venv_activate} && pytest ${TOTEST} src/django/test/ --store-durations
+
+display-coverage-plain:
+	${venv_activate} && coverage report -m
+
+display-coverage-html:
+	${venv_activate} && coverage html
+
 run-test:
-	bash -c 'source ./venv/bin/activate && cd ./src/django && python manage.py test test.test_$(arg)'
+	${venv_activate} && cd ./src/django && python manage.py test test.test_$(arg)"
 
 ##### DEVELOP COMMANDS #####
 
 run-front:
-	bash -c "source ./venv/bin/activate && npm run serve --prefix ./src/vue && deactivate"
+	${venv_activate} && npm run serve --prefix ./src/vue
 
 run-back: isort
-	bash -c "source ./venv/bin/activate && python ./src/django/manage.py runserver && deactivate"
+	${venv_activate} && python ./src/django/manage.py runserver
 
 isort:
-	bash -c 'source ./venv/bin/activate && isort -rc src/django/ && deactivate'
-
+	${venv_activate} && isort -rc src/django/
 
 setup:
 	@echo "This operation will clean old files, press enter to continue (ctrl+c to cancel)"
 	@read -r a
 	make setup-no-input
+	make setup-sentry-cli
+	make run-preset-db
 setup-no-input:
 	@make clean
+
+	make setup-git
 
 	# Install apt dependencies and ppa's.
 	(sudo apt-cache show python3.6 | grep "Package: python3.6") || \
@@ -70,28 +96,28 @@ setup-no-input:
 
 	sudo apt install npm -y
 	sudo npm install npm@latest -g
-	sudo apt install nodejs python3 python3-pip pep8 libpq-dev python3-dev postgresql postgresql-contrib rabbitmq-server python3-setuptools sshpass -y
+	sudo apt install nodejs python3 python3-pip libpq-dev python3-dev postgresql postgresql-contrib rabbitmq-server python3-setuptools sshpass -y
 
 	make setup-venv requirements_file=local.txt
 
-	# Reinstall nodejs dependencies.
+	# Istall nodejs dependencies.
 	npm install --prefix ./src/vue
 
-	make preset-db-no-input
-	bash -c 'source ./venv/bin/activate && cd ./src/django && python manage.py migrate django_celery_results && deactivate'
+	make postgres-init
+	make migrate-back
+	${venv_activate} && cd ./src/django && python manage.py migrate django_celery_results
 
 	@echo "DONE!"
 
-setup-travis:
-	(sudo apt-cache show python3.6 | grep "Package: python3.6") || (sudo add-apt-repository ppa:deadsnakes/ppa -y; sudo apt update) || echo "0"
-	sudo apt install npm -y
-	sudo apt install nodejs python3 python3-pip pep8 python3-setuptools -y
-
+setup-ci:
+	git submodule update --remote --merge
 	sudo pip3 install virtualenv
 	virtualenv -p python3 venv
-	bash -c 'source ./venv/bin/activate && pip install -r requirements/ci.txt && deactivate'
 
-	# Reinstall nodejs dependencies.
+	# Istall python dependencies.
+	${venv_activate} && pip install -r requirements/ci.txt
+
+	# Istall nodejs dependencies.
 	npm install --prefix ./src/vue
 
 	@echo "DONE!"
@@ -99,46 +125,60 @@ setup-travis:
 setup-venv:
 	sudo pip3 install virtualenv
 	virtualenv -p python3 venv
-	bash -c '\
-		source ./venv/bin/activate && \
-		pip install -r requirements/$(requirements_file) && \
-		isort -rc src/django/ && \
-		ansible-playbook ./config/provision-local.yml --ask-vault-pass && \
-		deactivate'
+
+	${venv_activate} \
+	&& pip install -r requirements/$(requirements_file) --use-feature=2020-resolver \
+	&& ansible-playbook ./config/provision-local.yml --ask-vault-pass
+
+setup-sentry-cli:
+	@if ! [ $(shell which 'sentry-cli' > /dev/null 2>&1; echo $$?) -eq 0 ]; then \
+		${venv_activate} && curl -sL https://sentry.io/get-cli/ | bash; \
+	fi
+
+setup-git:
+	make git-update-submodules
+	make git-set-custom-hooks-path
+
+git-set-custom-hooks-path:
+	git config core.hooksPath .githooks
+
+git-update-submodules:
+	git submodule update --remote --merge
+
+output-webpack-config:
+	${venv_activate} && cd ./src/vue && vue inspect > webpack_config_output.js
+
+output-vue-build-report:
+	${venv_activate} && npm run build-report --prefix ./src/vue
 
 ##### DEPLOY COMMANDS ######
 
 ansible-test-connection:
-	bash -c 'source ./venv/bin/activate && \
-	ansible -m ping all ${become}'
+	${venv_activate} &&	ansible -m ping all ${become}
 
 run-ansible-provision:
-	bash -c 'source ./venv/bin/activate && \
-	ansible-playbook config/provision-servers.yml ${ansible_play_default_flags} ${become} ${vars}'
+	${venv_activate} && ansible-playbook config/provision-servers.yml ${ansible_play_default_flags} ${become} ${vars}
 
 run-ansible-deploy:
-	bash -c 'source ./venv/bin/activate && \
-	ansible-playbook config/provision-servers.yml ${ansible_play_default_flags} ${become} ${vars} --tags "deploy_front,deploy_back"'
+	${venv_activate} && ansible-playbook config/provision-servers.yml ${ansible_play_default_flags} ${become} ${vars} --tags "deploy_front,deploy_back"
 
 run-ansible-deploy-front:
-	bash -c 'source ./venv/bin/activate && \
-	ansible-playbook config/provision-servers.yml ${ansible_play_default_flags} ${become} ${vars} --tags "deploy_front"'
+	${venv_activate} && ansible-playbook config/provision-servers.yml ${ansible_play_default_flags} ${become} ${vars} --tags "deploy_front"
 
 run-ansible-deploy-back:
-	bash -c 'source ./venv/bin/activate && \
-	ansible-playbook config/provision-servers.yml ${ansible_play_default_flags} ${become} ${vars} --tags "deploy_back"'
+	${venv_activate} && ansible-playbook config/provision-servers.yml ${ansible_play_default_flags} ${become} ${vars} --tags "deploy_back"
 
 run-ansible-backup:
-	bash -c 'source ./venv/bin/activate && \
-	ansible-playbook config/provision-servers.yml ${ansible_play_default_flags} ${become} ${vars} --tags "backup"'
+	${venv_activate} && ansible-playbook config/provision-servers.yml ${ansible_play_default_flags} ${become} ${vars} --tags "backup"
 
 run-ansible-preset_db:
-	bash -c 'source ./venv/bin/activate && \
-	ansible-playbook config/provision-servers.yml ${ansible_play_default_flags} ${become} ${vars} --tags "run_preset_db"'
+	${venv_activate} && ansible-playbook config/provision-servers.yml ${ansible_play_default_flags} ${become} ${vars} --tags "run_preset_db"
 
 run-ansible-restore-latest:
-	bash -c 'source ./venv/bin/activate && \
-	ansible-playbook config/provision-servers.yml ${ansible_play_default_flags} ${become} ${vars} --tags "restore_latest"'
+	${venv_activate} && ansible-playbook config/provision-servers.yml ${ansible_play_default_flags} ${become} ${vars} --tags "restore_latest"
+
+run-ansible-release:
+	${venv_activate} && ansible-playbook config/release-local.yml ${ansible_play_default_flags} ${become} ${vars}
 
 ##### MAKEFILE COMMANDS #####
 
@@ -150,22 +190,19 @@ clean:
 	rm -rf ./venv
 	rm -rf ./src/vue/node_modules
 	@if [ $(shell id "postgres" > /dev/null 2>&1; echo $$?) -eq 0 ]; then \
-		make postgres-reset; \
+		make postgres-clean; \
 	fi
 
 ##### DATABSE COMMANDS #####
 
-postgres-reset:
+postgres-clean:
 	@sudo su -c "psql \
 	-c \"DROP DATABASE IF EXISTS $(postgres_db)\" \
 	-c \"DROP DATABASE IF EXISTS test_$(postgres_db)\" \
 	-c \"DROP USER IF EXISTS $(postgres_dev_user)\" \
 	" postgres
 
-postgres-drop-development-db:
-	@sudo su -c "psql -c \"DROP DATABASE IF EXISTS $(postgres_db)\"" postgres
-
-postgres-init-development:
+postgres-init:
 	@sudo su -c "psql \
 	-c \"CREATE DATABASE $(postgres_db)\" \
 	-c \"CREATE USER $(postgres_dev_user) WITH PASSWORD '$(postgres_dev_user_pass)'\" \
@@ -177,6 +214,10 @@ postgres-init-development:
 	-c \"alter role $(postgres_dev_user) superuser\" \
 	" postgres
 
+postgres-reset:
+	make postgres-clean
+	make postgres-init
+
 preset-db:
 	@echo "This operation will wipe the $(postgres_db) database, press enter to continue (ctrl+c to cancel)"
 	@read -r a
@@ -184,15 +225,20 @@ preset-db:
 preset-db-no-input:
 	rm -rf src/django/media/*
 	make postgres-reset
-	make postgres-init-development
 	make migrate-back
-	bash -c 'source ./venv/bin/activate && cd ./src/django && python manage.py preset_db && deactivate'
+	make run-preset-db
+
+run-preset-db:
+	${venv_activate} && cd ./src/django && python manage.py preset_db $(n_performance_students)
+
+run-add-performance-course:
+	${venv_activate} && cd ./src/django && python manage.py add_performance_course $(n_performance_students)
 
 migrate-back:
-	bash -c "source ./venv/bin/activate && cd ./src/django && python manage.py makemigrations VLE && python manage.py migrate && deactivate"
+	${venv_activate} && cd ./src/django && python manage.py makemigrations VLE && python manage.py migrate
 
 migrate-merge:
-	bash -c "source ./venv/bin/activate && cd ./src/django && python manage.py makemigrations --merge"
+	${venv_activate} && cd ./src/django && python manage.py makemigrations --merge
 
 db-dump:
 	@pg_dump --dbname=postgresql://$(postgres_dev_user):$(postgres_dev_user_pass)@127.0.0.1:5432/$(dbname) > db.dump
@@ -211,7 +257,7 @@ db-restore:
 ##### MISC COMMANDS #####
 
 superuser:
-	bash -c 'source ./venv/bin/activate && python src/django/manage.py createsuperuser && deactivate'
+	${venv_activate} && python src/django/manage.py createsuperuser
 
 update-dependencies:
 	npm update --dev --prefix ./src/vue
@@ -224,17 +270,17 @@ fix-npm:
 	npm config set strict-ssl true
 	sudo n stable
 
-fix-live-reload: SHELL:=/bin/bash
 fix-live-reload:
-	@bash -c '\
-		echo $$(( `sudo cat /proc/sys/fs/inotify/max_user_watches` * 2 )) | \
-		sudo tee /proc/sys/fs/inotify/max_user_watches'
+	echo $$(( `sudo cat /proc/sys/fs/inotify/max_user_watches` * 2 )) | sudo tee /proc/sys/fs/inotify/max_user_watches
 
 shell:
-	bash -c 'source ./venv/bin/activate && cd ./src/django && python manage.py shell'
+	${venv_activate} \
+	&& export PYTHONSTARTUP="./shell_startup.py" \
+	&& cd ./src/django \
+	&& python manage.py shell
 
 run-celery-worker-and-beat:
-	bash -c 'sudo rabbitmqctl purge_queue celery && source ./venv/bin/activate && cd  ./src/django && celery -A VLE worker -l info -B'
+	sudo rabbitmqctl purge_queue celery && ${venv_activate} && cd ./src/django && celery -A VLE worker -l info -B
 
 encrypt_vault_var:
-	bash -c 'source ./venv/bin/activate && ansible-vault encrypt_string "${inp}" --vault-password-file ./pass.txt'
+	${venv_activate} && ansible-vault encrypt_string "${inp}" --vault-password-file ./pass.txt

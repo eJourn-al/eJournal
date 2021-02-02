@@ -55,8 +55,8 @@
 </template>
 
 <script>
-import linkCourse from '@/components/lti/LinkCourse.vue'
 import courseAPI from '@/api/course.js'
+import linkCourse from '@/components/lti/LinkCourse.vue'
 import loadWrapper from '@/components/loading/LoadWrapper.vue'
 
 export default {

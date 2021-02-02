@@ -4,7 +4,7 @@ import logging
 
 import django.contrib.postgres.fields.citext
 from django.contrib.postgres.operations import CITextExtension
-from django.db import migrations, models
+from django.db import migrations
 
 
 def mail_username_to_lower(apps, schema_editor):

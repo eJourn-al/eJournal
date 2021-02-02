@@ -44,7 +44,7 @@
             />
             <b-button
                 type="submit"
-                class="add-button float-right"
+                class="green-button float-right"
             >
                 <icon name="save"/>
                 Save
@@ -56,8 +56,8 @@
 <script>
 import tooltip from '@/components/assets/Tooltip.vue'
 
-import validation from '@/utils/validation.js'
 import authAPI from '@/api/auth.js'
+import validation from '@/utils/validation.js'
 
 export default {
     components: {

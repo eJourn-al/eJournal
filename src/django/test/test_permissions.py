@@ -298,7 +298,6 @@ class PermissionTests(TestCase):
         low2 = factory.make_role_default_no_perms("LOW", self.course2)
         factory.make_participation(low_user, self.course1, low1)
         factory.make_participation(low_user, self.course2, low2)
-        factory.make_journal(self.assignment, author=low_user)
 
         assert permissions.is_user_supervisor_of(high_user, low_user)
         assert permissions.is_user_supervisor_of(high_user, middle_user)
@@ -320,3 +319,7 @@ class PermissionTests(TestCase):
         assert not permissions.is_user_supervisor_of(middle_user, low_user)
         assert not permissions.is_user_supervisor_of(low_user, high_user)
         assert not permissions.is_user_supervisor_of(low_user, middle_user)
+
+    def test_all_permissions_are_in_model(self):
+        assert set(p.name for p in Role._meta.get_fields(include_parents=False) if p.name.startswith('can_')) == \
+            set(Role.PERMISSIONS), 'All permission fields should be in Role.PERMISSIONS and the other way around'

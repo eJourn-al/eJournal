@@ -77,9 +77,9 @@
 </template>
 
 <script>
-import linkAssignment from '@/components/lti/LinkAssignment.vue'
-import assignmentImportModal from '@/components/assignment/AssignmentImportModal.vue'
 import assignmentAPI from '@/api/assignment.js'
+import assignmentImportModal from '@/components/assignment/AssignmentImportModal.vue'
+import linkAssignment from '@/components/lti/LinkAssignment.vue'
 import loadWrapper from '@/components/loading/LoadWrapper.vue'
 
 export default {

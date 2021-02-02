@@ -16,7 +16,7 @@ import VLE.utils.generic_utils as utils
 import VLE.utils.responses as response
 import VLE.validators as validators
 from VLE.models import User
-from VLE.tasks import send_email_feedback, send_email_verification_link, send_password_recovery_link
+from VLE.tasks.email import send_email_feedback, send_email_verification_link, send_password_recovery_link
 
 
 def index(request):
@@ -59,25 +59,29 @@ def recover_password(request):
 
     Arguments:
         username -- User claimed username.
-        recovery_token -- Django stateless token, invalidated after password change or after a set time
+        token -- Django stateless token, invalidated after password change or after a set time
             (by default three days).
         new_password -- The new user desired password.
 
-    Updates password if the recovery_token is valid.
+    Updates password if the token is valid.
     """
-    username, recovery_token, new_password = utils.required_params(
-        request.data, 'username', 'recovery_token', 'new_password')
+    username, token, new_password = utils.required_params(
+        request.data, 'username', 'token', 'new_password')
 
     user = User.objects.get(username=username)
 
-    recovery_token, = utils.required_params(request.data, 'recovery_token')
+    token, = utils.required_params(request.data, 'token')
     token_generator = PasswordResetTokenGenerator()
-    if not token_generator.check_token(user, recovery_token):
+    if not token_generator.check_token(user, token):
         return response.bad_request('Invalid recovery token.')
 
     validators.validate_password(new_password)
 
     user.set_password(new_password)
+    # Activate the account if not already (password recovery occurs after invitation).
+    user.is_active = True
+    # We also know that the user has access to the email address now.
+    user.verified_email = True
     user.save()
 
     return response.success(description='Successfully changed the password, you can now log in.')

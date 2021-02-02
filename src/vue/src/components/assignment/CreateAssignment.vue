@@ -6,7 +6,7 @@
         />
         <hr/>
         <b-button
-            class="float-left change-button"
+            class="float-left orange-button"
             type="reset"
             @click.prevent.stop="onReset"
         >
@@ -14,7 +14,7 @@
             Reset
         </b-button>
         <b-button
-            class="float-right add-button"
+            class="float-right green-button"
             type="submit"
             @click.prevent.stop="onSubmit"
         >

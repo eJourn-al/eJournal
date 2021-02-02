@@ -3,19 +3,48 @@ journal.py.
 
 In this file are all the journal api requests.
 """
-from django.db.models import Q
 from rest_framework import viewsets
 from rest_framework.decorators import action
 
+import VLE.factory
 import VLE.lti1p3 as lti
 import VLE.utils.generic_utils as utils
-import VLE.utils.grading as grading
 import VLE.utils.responses as response
-import VLE.validators as validators
 from VLE.lti1p3 import grading
-from VLE.models import Assignment, AssignmentParticipation, Course, FileContext, Journal, User
+from VLE.models import Assignment, AssignmentParticipation, Course, Journal, User
 from VLE.serializers import AssignmentParticipationSerializer, JournalSerializer
-from VLE.utils import file_handling
+
+
+def _get_sequence_of_available_names(base_name, n, assignment):
+    """
+    Returns a list of journal names following the pattern `{name} {counter}`
+    If a single name is desired and no name clash is found, the base name is used.
+
+    Args:
+        base_name (str): Base name used as prefix for the sequence counter.
+        n (int): Number of desired journal names part of the sequence.
+        assignment (:model:`VLE.assignment`): Assignment for which available journals names should be found.
+    """
+    similar_journal_names = set(Journal.objects.filter(
+        assignment=assignment,
+        name__regex=r"^({0} [\d]*)$|(^{0}$)".format(base_name),
+    ).values_list('name', flat=True))
+
+    if n == 1 and not similar_journal_names:
+        return [base_name]
+
+    sequence_counter = 1
+    names = []
+
+    for _ in range(n):
+        while True:
+            new_name = f'{base_name} {sequence_counter}'
+            if new_name not in similar_journal_names:
+                names.append(new_name)
+                break
+            sequence_counter += 1
+
+    return names
 
 
 class JournalView(viewsets.ViewSet):
@@ -56,10 +85,8 @@ class JournalView(viewsets.ViewSet):
             request.user.check_permission('can_view_all_journals', assignment)
         request.user.check_can_view(course)
 
-        users = course.participation_set.filter(role__can_have_journal=True).values('user')
         journals = JournalSerializer(
-            Journal.objects.filter(assignment=assignment).filter(
-                Q(authors__user__in=users) | Q(authors__isnull=True)).distinct().order_by('pk'),
+            Journal.objects.filter(assignment=assignment).for_course(course),
             many=True,
             context={
                 'user': request.user,
@@ -84,15 +111,7 @@ class JournalView(viewsets.ViewSet):
             success -- with journals and stats about the journals
 
         """
-        journal = Journal.all_objects.get(pk=pk)
-        if not Journal.objects.filter(pk=pk).exists():
-            if journal.authors.filter(user=request.user).exist():
-                return response.forbidden(
-                    'You do not have the correct rights to have a journal in this assignment')
-            else:
-                return response.forbidden(
-                    'This user currently does not have the correct rights to have a journal in this assignment')
-
+        journal = Journal.objects.get(pk=pk)
         request.user.check_can_view(journal)
 
         serializer = JournalSerializer(journal, context={
@@ -122,37 +141,17 @@ class JournalView(viewsets.ViewSet):
 
         request.user.check_permission('can_manage_journals', assignment)
 
-        journals = []
-        for i in range(amount):
-
-            journals.append(Journal.objects.create(
-                assignment=assignment,
-                author_limit=author_limit,
-                stored_name=self._get_name(name, amount, assignment)
-            ))
+        journal_name_sequence = _get_sequence_of_available_names(name, amount, assignment)
+        journals = [Journal(
+            assignment=assignment,
+            author_limit=author_limit,
+            stored_name=name,
+        ) for name in journal_name_sequence]
+        Journal.objects.bulk_create(journals)
 
         serializer = JournalSerializer(
             Journal.objects.filter(assignment=assignment), many=True, context={'user': request.user})
         return response.created({'journals': serializer.data})
-
-    def _get_name(self, name, amount, assignment):
-        # Get other journal names with the same name
-        journal_names = Journal.objects.filter(
-            assignment=assignment,
-            name__regex=r"^({0} [\d]*)$|(^{0}$)".format(name)
-        ).values_list('name', flat=True)
-
-        # If there are no other journals like it, just set the name as is
-        if amount == 1 and not journal_names:
-            return name
-
-        # If "Journal" exists, the second one needs to be "Journal 2", not "Journal 1"
-        extra = 2 if Journal.objects.filter(name=name).exists() else 1
-        # Find the first empty spot for the journal name
-        while True:
-            if '{} {}'.format(name, extra) not in journal_names:
-                return '{} {}'.format(name, extra)
-            extra += 1
 
     def partial_update(self, request, *args, **kwargs):
         """Update an existing journal.
@@ -191,7 +190,7 @@ class JournalView(viewsets.ViewSet):
             req_data.pop('bonus_points', None)
             journal.bonus_points = bonus_points
             journal.save()
-            lti.grading.send_grade(journal.authors.first())
+            lti.grading.send_grade(journal.authors)  # TODO LTI: check if this works
             # grading.task_journal_status_to_LMS.delay(journal.pk)
             return response.success({'journal': JournalSerializer(journal, context={'user': request.user}).data})
 
@@ -212,18 +211,7 @@ class JournalView(viewsets.ViewSet):
                         return response.forbidden('You are not allowed to change the journal image.')
 
                 content_file = utils.base64ToContentFile(image, 'profile_picture')
-                validators.validate_user_file(content_file, request.user)
-                file = FileContext.objects.create(
-                    file=content_file,
-                    file_name=content_file.name,
-                    author=request.user,
-                    journal=journal,
-                    is_temp=False,
-                    in_rich_text=True,
-                )
-                journal.stored_image = file.download_url(access_id=True)
-                journal.save()
-                file_handling.remove_unused_user_files(request.user)
+                VLE.factory.make_journal_image(content_file, journal, request.user)
             # Update author_limit if allowed
             if author_limit is not None:
                 if not request.user.has_permission('can_manage_journals', journal.assignment):
@@ -234,7 +222,10 @@ class JournalView(viewsets.ViewSet):
                     return response.bad_request('There are too many student in this journal.')
                 journal.author_limit = author_limit
                 journal.save()
-            return response.success({'journal': JournalSerializer(journal, context={'user': request.user}).data})
+
+            return response.success({
+                'journal': JournalSerializer(Journal.objects.get(pk=journal.pk), context={'user': request.user}).data
+            })
 
         if request.user.is_superuser:
             return self.admin_update(request, journal)
@@ -283,8 +274,9 @@ class JournalView(viewsets.ViewSet):
         journal.add_author(author)
         grading.task_author_status_to_LMS.delay(journal.pk, author.pk)
 
-        serializer = JournalSerializer(journal, context={'user': request.user})
-        return response.success({'journal': serializer.data})
+        return response.success({
+            'journal': JournalSerializer(Journal.objects.get(pk=journal.pk), context={'user': request.user}).data
+        })
 
     @action(['get'], detail=True)
     def get_members(self, request, pk):
@@ -295,7 +287,10 @@ class JournalView(viewsets.ViewSet):
 
         return response.success({
             'authors': AssignmentParticipationSerializer(
-                journal.authors, many=True, context={'user': request.user}).data
+                AssignmentParticipationSerializer.setup_eager_loading(journal.authors),
+                many=True,
+                context={'user': request.user}
+            ).data
         })
 
     @action(['patch'], detail=True)
@@ -339,7 +334,10 @@ class JournalView(viewsets.ViewSet):
 
         return response.success({
             'authors': AssignmentParticipationSerializer(
-                journal.authors, many=True, context={'user': request.user}).data
+                AssignmentParticipationSerializer.setup_eager_loading(journal.authors),
+                many=True,
+                context={'user': request.user}
+            ).data
         })
 
     @action(['patch'], detail=True)
@@ -359,6 +357,8 @@ class JournalView(viewsets.ViewSet):
 
         author = AssignmentParticipation.objects.get(user=request.user, journal=journal)
         journal.remove_author(author)
+
+        utils.remove_jirs_on_user_remove_from_jounal(author.user, journal)
         if journal.authors.count() == 0:
             journal.reset()
 
@@ -388,6 +388,8 @@ class JournalView(viewsets.ViewSet):
 
         author = AssignmentParticipation.objects.get(user=user, journal=journal)
         journal.remove_author(author)
+
+        utils.remove_jirs_on_user_remove_from_jounal(user, journal)
         if journal.authors.count() == 0:
             journal.reset()
 
@@ -424,11 +426,14 @@ class JournalView(viewsets.ViewSet):
             return response.bad_request()
         serializer.save()
 
-        return response.success({'journal': serializer.data})
+        return response.success({
+            'journal': JournalSerializer(Journal.objects.get(pk=journal.pk), context={'user': request.user}).data
+        })
 
     def publish(self, request, journal):
         grading.publish_all_journal_grades(journal, request.user)
         grading.task_journal_status_to_LMS.delay(journal.pk)
+
         return response.success({
-            'journal': JournalSerializer(journal, context={'user': request.user}).data
+            'journal': JournalSerializer(Journal.objects.get(pk=journal.pk), context={'user': request.user}).data
         })

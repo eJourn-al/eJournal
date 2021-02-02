@@ -29,7 +29,6 @@
 import commentCard from '@/components/entry/CommentCard.vue'
 
 import commentAPI from '@/api/comment.js'
-import preferencesAPI from '@/api/preferences.js'
 
 export default {
     components: {
@@ -80,11 +79,7 @@ export default {
                 .then((comments) => { this.comments = comments })
         },
         changeButtonOption (option) {
-            preferencesAPI.update(this.$store.getters['user/uID'], { comment_button_setting: option })
-                .then((preferences) => {
-                    this.$store.commit('preferences/SET_COMMENT_BUTTON_SETTING',
-                        preferences.comment_button_setting)
-                })
+            this.$store.commit('preferences/CHANGE_PREFERENCES', { comment_button_setting: option })
         },
         deleteComment (cID) {
             if (window.confirm('Are you sure you want to delete this comment?')) {

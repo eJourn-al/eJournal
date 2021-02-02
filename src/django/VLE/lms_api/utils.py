@@ -2,7 +2,7 @@ import requests
 from pylti1p3.exception import LtiException
 
 
-def api_request(url, access_token, data=None, is_post=False):
+def api_request(url, access_token, data=None, is_post=False, content_type='application/json'):
     headers = {
         'Authorization': 'Bearer ' + access_token,
     }

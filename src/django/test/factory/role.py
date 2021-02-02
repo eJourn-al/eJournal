@@ -5,7 +5,7 @@ class RoleFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = 'VLE.Role'
 
-    name = factory.Sequence(lambda x: 'Undifined' + str(x))
+    name = factory.Sequence(lambda x: 'Undefined role ' + str(x))
     course = factory.SubFactory('test.factory.course.CourseFactory')
 
 
@@ -48,3 +48,5 @@ class TeacherRoleFactory(TaRoleFactory):
     can_comment = True
     can_edit_staff_comment = True
     can_view_grade_history = True
+    can_post_teacher_entries = True
+    can_manage_journal_import_requests = True

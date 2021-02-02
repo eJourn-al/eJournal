@@ -54,5 +54,4 @@ def update_with_launch_data(course, message_launch_data):
     course.names_role_service = json.dumps(message_launch_data.get(lti.claims.NAMESROLES))
     course.save()
 
-
     return course

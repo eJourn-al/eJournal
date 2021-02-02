@@ -13,10 +13,7 @@
                 v-for="a in assignments"
                 :key="a.id"
             >
-                <b-link
-                    :to="$root.assignmentRoute(a)"
-                    tag="b-button"
-                >
+                <b-link :to="$root.assignmentRoute(a)">
                     <assignment-card
                         :assignment="a"
                         :uniqueName="!assignments.some(a2 =>
@@ -25,7 +22,7 @@
                     >
                         <b-button
                             v-if="$hasPermission('can_edit_assignment', 'assignment', a.id)"
-                            class="change-button float-right"
+                            class="orange-button float-right"
                             @click.prevent.stop="editAssignment(a)"
                         >
                             <icon name="edit"/>
@@ -36,13 +33,14 @@
             </div>
             <main-card
                 v-if="assignments !== null && assignments.length === 0"
-                line1="No assignments found"
-                line2="This course currently does not have any assignments."
-                class="no-hover border-dark-grey"
-            />
+                text="No assignments found"
+                class="no-hover"
+            >
+                This course currently does not have any assignments.
+            </main-card>
             <b-button
                 v-if="$hasPermission('can_add_assignment', 'course', cID)"
-                class="add-button mr-2 mb-2"
+                class="green-button mr-2 mb-2"
                 @click="showModal('createAssignmentRef')"
             >
                 <icon name="plus"/>
@@ -51,7 +49,7 @@
             <b-button
                 v-if="$hasPermission('can_add_assignment', 'course', cID)"
                 v-b-modal="'course-assignment-import-modal'"
-                class="change-button mb-2"
+                class="orange-button mb-2"
             >
                 <icon name="file-import"/>
                 Import Assignment
@@ -78,14 +76,14 @@
 </template>
 
 <script>
-import contentColumns from '@/components/columns/ContentColumns.vue'
-import breadCrumb from '@/components/assets/BreadCrumb.vue'
-import loadWrapper from '@/components/loading/LoadWrapper.vue'
 import assignmentCard from '@/components/assignment/AssignmentCard.vue'
-import mainCard from '@/components/assets/MainCard.vue'
+import assignmentImportModal from '@/components/assignment/AssignmentImportModal.vue'
+import breadCrumb from '@/components/assets/BreadCrumb.vue'
+import contentColumns from '@/components/columns/ContentColumns.vue'
 import createAssignment from '@/components/assignment/CreateAssignment.vue'
 import deadlineDeck from '@/components/assets/DeadlineDeck.vue'
-import assignmentImportModal from '@/components/assignment/AssignmentImportModal.vue'
+import loadWrapper from '@/components/loading/LoadWrapper.vue'
+import mainCard from '@/components/assets/MainCard.vue'
 
 import assignmentAPI from '@/api/assignment.js'
 

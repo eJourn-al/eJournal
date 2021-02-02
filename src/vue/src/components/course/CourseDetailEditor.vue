@@ -59,7 +59,7 @@
                 </b-row>
                 <b-button
                     v-if="$hasPermission('can_edit_course_details')"
-                    class="add-button float-right"
+                    class="green-button float-right"
                     type="submit"
                 >
                     <icon name="save"/>
@@ -71,8 +71,8 @@
 </template>
 
 <script>
-import tooltip from '@/components/assets/Tooltip.vue'
 import courseAPI from '@/api/course.js'
+import tooltip from '@/components/assets/Tooltip.vue'
 
 export default {
     name: 'CourseEdit',

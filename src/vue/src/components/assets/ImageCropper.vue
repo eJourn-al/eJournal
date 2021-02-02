@@ -31,7 +31,7 @@
             Upload
         </b-button>
         <b-button
-            class="change-button multi-form"
+            class="orange-button multi-form"
             @click="refreshPicture()"
         >
             <icon name="undo"/>
@@ -39,7 +39,7 @@
         </b-button>
         <b-button
             v-if="!hideSaveButton"
-            class="add-button float-right"
+            class="green-button float-right"
             @click="savePicture()"
         >
             <icon name="save"/>
@@ -93,8 +93,6 @@ export default {
 </script>
 
 <style lang="sass">
-@import '~sass/modules/colors.sass'
-
 .croppa-container
     background-color: $theme-dark-blue
     height: 100%

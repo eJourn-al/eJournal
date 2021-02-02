@@ -26,10 +26,9 @@ class InstanceView(viewsets.ViewSet):
 
     def partial_update(self, request, *args, **kwargs):
         """Update instance details.
-
         Arguments:
         request -- request data
-            data -- the new data for the journal
+            data -- the new data for the instance
 
         Returns:
         On failure:
@@ -44,8 +43,7 @@ class InstanceView(viewsets.ViewSet):
 
         instance = Instance.objects.get_or_create(pk=1)[0]
 
-        req_data = request.data
-        serializer = InstanceSerializer(instance, data=req_data, partial=True)
+        serializer = InstanceSerializer(instance, data=request.data, context={'user': request.user}, partial=True)
         if not serializer.is_valid():
             return response.bad_request()
         serializer.save()

@@ -1,63 +1,94 @@
 <template>
-    <span class="number-badge">
+    <div :class="{'absolute': absolute}">
         <b-badge
-            v-if="rightNum === null || leftNum > 0"
-            class="badge-part highlight"
-            :class="{
-                'info': leftNum > 0,
-                'border-grey': leftNum <= 0,
-                'left-number': rightNum !== null && rightNum > 0,
-            }"
+            v-for="(d, i) in displayedBadges"
+            :key="`${keyPrefix}-badge-${i}`"
+            v-b-tooltip.hover="('tooltip' in d.badge) ? tooltipToMsg(d.badge.tooltip, d.badge.value) : ''"
+            pill
+            :class="d.class"
         >
-            {{ leftNum ? Math.round(leftNum * 100) / 100 : 0 }}
+            {{ d.badge.value ? Math.round(d.badge.value * 100) / 100 : 0 }}
         </b-badge>
-        <b-badge
-            v-if="rightNum > 0"
-            class="badge-part"
-            :class="{
-                'right-number': leftNum > 0,
-            }"
-        >
-            {{ rightNum ? Math.round(rightNum * 100) / 100 : 0 }}
-        </b-badge>
-    </span>
+    </div>
 </template>
 
 <script>
 export default {
     props: {
-        leftNum: {
-            required: true,
-            Number,
+        absolute: {
+            default: true,
+            type: Boolean,
         },
-        rightNum: {
-            required: false,
-            default: null,
-            Number,
+        displayZeroValues: {
+            default: true,
+            type: Boolean,
+        },
+        keyPrefix: {
+            required: true,
+        },
+        badges: {
+            required: true,
+            type: Array,
+            default: () => [{
+                value: 0,
+                tooltip: 'Tooltip msg',
+            }],
+            validator: badges => badges.every(badge => 'value' in badge),
+        },
+    },
+    data () {
+        return {
+            colorsStyles: [
+                'background-blue',
+                'background-dark-blue',
+                'background-yellow',
+                'background-pink',
+                'background-purple',
+                'background-green',
+                'background-red',
+                'background-orange',
+            ],
+        }
+    },
+    computed: {
+        displayedBadges () {
+            const result = []
+
+            /* Create a mapping from badge to color, keeping the colors mapped in order despite reverse and
+             * zero not displayed value */
+            this.badges.forEach((badge, index) => {
+                if ((badge.value === 0 && this.displayZeroValues) || badge.value) {
+                    result.push({ badge, class: this.colorsStyles[index % this.colorsStyles.length] })
+                }
+            })
+
+            /* Reverse so we grow the list from right to left */
+            return result.reverse()
+        },
+    },
+    methods: {
+        tooltipToMsg (tooltip, n) {
+            if (tooltip === 'needsMarking') { return this.needsMarkingTooltip(n) }
+            if (tooltip === 'unpublished') { return this.unpublishedTooltip(n) }
+            if (tooltip === 'importRequests') { return this.importRequestTooltip(n) }
+            return tooltip
+        },
+        needsMarkingTooltip (n) {
+            return `${n} ${(n > 1) ? 'entries' : 'entry'} need${(n === 1) ? 's' : ''} marking`
+        },
+        unpublishedTooltip (n) {
+            return `${n} grade${(n > 1) ? 's' : ''} need${(n === 1) ? 's' : ''} to be published`
+        },
+        importRequestTooltip (n) {
+            return `${n} outstanding journal import request${(n > 1) ? 's' : ''}`
         },
     },
 }
 </script>
 
 <style lang="sass">
-@import '~sass/modules/colors.sass'
-.number-badge
-    .badge-part
-        background-color: white
-        color: $theme-dark-blue
-        font-family: 'Roboto Condensed', sans-serif
-        font-size: 1em
-        border-radius: 5px !important
-        border: 1px solid #CCCCCC
-        &.right-number
-            border-top-left-radius: 0 !important
-            border-bottom-left-radius: 0 !important
-            border-left: 0px !important
-        &.left-number
-            border-top-right-radius: 0 !important
-            border-bottom-right-radius: 0 !important
-            border-right: 0px !important
-    .highlight
-        background-color: $theme-dark-blue
-        color: white!important
+.absolute
+    position: absolute
+    right: 0px
+    top: 0px
 </style>

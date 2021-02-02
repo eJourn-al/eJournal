@@ -8,9 +8,9 @@ class UserFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = 'VLE.User'
 
-    username = factory.Sequence(lambda x: "user{}".format(x))
-    full_name = factory.Sequence(lambda x: "Normal user {}".format(x))
-    email = factory.Sequence(lambda x: 'email{}@example.com'.format(x))
+    username = factory.Sequence(lambda x: f"user{x + 1}")
+    full_name = factory.Sequence(lambda x: f"Normal user {x + 1}")
+    email = factory.Sequence(lambda x: f'email{x + 1}@example.com')
     password = factory.PostGenerationMethodCall('set_password', DEFAULT_PASSWORD)
     verified_email = True
 
@@ -19,6 +19,24 @@ class UserFactory(factory.django.DjangoModelFactory):
     first_name = factory.Faker('first_name')
     last_name = factory.Faker('last_name')
 
+    @factory.post_generation
+    def preferences(self, create, extracted, **kwargs):
+        """
+        Allows deep syntax for a users preferences
+
+        Preferences is OneToOne with User, where the user fk is its primary key. This results in Django
+        auto generating the preferences on creation of a user. Emulating this with a User SubFactory for
+        PreferencesFactory and a RelatedFactory for UserFactory caused a duplicate Preferences instance
+        to be generated.
+        """
+        if not create:
+            return
+
+        if isinstance(extracted, dict):
+            self.preferences.__dict__.update(extracted)
+        self.preferences.__dict__.update(kwargs)
+        self.preferences.save()
+
 
 class LtiStudentFactory(UserFactory):
     lti_id = factory.Sequence(lambda x: "id{}".format(x))
@@ -26,7 +44,7 @@ class LtiStudentFactory(UserFactory):
 
 class TestUserFactory(LtiStudentFactory):
     email = None
-    username = factory.Sequence(lambda x: "305c9b180a9ce9684ea62aeff2b2e97052cf2d4b{}".format(x))
+    username = factory.Sequence(lambda x: f"305c9b180a9ce9684ea62aeff2b2e97052cf2d4b{x + 1}")
     full_name = settings.LTI_TEST_STUDENT_FULL_NAME
     verified_email = False
     is_test_student = True
@@ -34,8 +52,8 @@ class TestUserFactory(LtiStudentFactory):
 
 
 class TeacherFactory(UserFactory):
-    username = factory.Sequence(lambda x: "teacher{}".format(x))
-    full_name = factory.Sequence(lambda x: "Teacher user {}".format(x))
+    username = factory.Sequence(lambda x: f"teacher{x + 1}")
+    full_name = factory.Sequence(lambda x: f"Teacher user {x + 1}")
     is_teacher = True
 
 
@@ -44,6 +62,6 @@ class LtiTeacherFactory(TeacherFactory):
 
 
 class AdminFactory(UserFactory):
-    username = factory.Sequence(lambda x: "admin{}".format(x))
-    full_name = factory.Sequence(lambda x: "Admin user {}".format(x))
+    username = factory.Sequence(lambda x: f"admin{x + 1}")
+    full_name = factory.Sequence(lambda x: f"Admin user {x + 1}")
     is_superuser = True

@@ -16,6 +16,8 @@ from VLE.settings.base import *
 
 ENVIRONMENT = 'PRODUCTION'
 
+INSTALLED_APPS += ['django_prometheus']
+
 MEDIA_ROOT = os.environ['MEDIA_ROOT']
 STATIC_ROOT = os.environ['STATIC_ROOT']
 BACKUP_DIR = os.environ['BACKUP_DIR']
@@ -25,7 +27,11 @@ CORS_ORIGIN_REGEX_WHITELIST = (
     r'^(https?://)?([a-zA-Z0-9_\-]+\.)?ejournal\.app$',
 )
 
-MIDDLEWARE = ['corsheaders.middleware.CorsMiddleware'] + MIDDLEWARE
+MIDDLEWARE = (
+    ['django_prometheus.middleware.PrometheusBeforeMiddleware', 'corsheaders.middleware.CorsMiddleware']
+    + MIDDLEWARE
+    + ['django_prometheus.middleware.PrometheusAfterMiddleware']
+)
 
 ALLOWED_HOSTS = ['.ejournal.app', '.canvas.uva.nl']
 

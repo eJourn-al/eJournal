@@ -6,7 +6,7 @@
             </span>
         </h1>
         <b-card
-            class="no-hover border-dark-grey max-width-600"
+            class="no-hover max-width-600"
         >
             <h2
                 v-if="description !== null"
@@ -20,9 +20,8 @@
             >
                 We are sorry, but an unknown error has brought you here.
             </span>
-            <!-- TODO: Enable once feedbacklink is fixed -->
             <sentry-feedback-form
-                v-if="sentryLastEventID !== null && false"
+                v-if="sentryLastEventID !== null"
                 class="sentry-feedback-form"
             />
             <b-button
@@ -37,9 +36,9 @@
 </template>
 
 <script>
+import { mapGetters } from 'vuex'
 import contentSingleColumn from '@/components/columns/ContentSingleColumn.vue'
 import sentryFeedbackForm from '@/components/sentry/SentryFeedbackForm.vue'
-import { mapGetters } from 'vuex'
 
 export default {
     name: 'ErrorPage',

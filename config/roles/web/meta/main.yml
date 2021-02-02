@@ -1,9 +1,0 @@
----
-
-dependencies:
-  - role: nginx
-  - role: certbot
-    vars:
-      certbot_certs:
-        - domain: "{{ ejournal_frontend_domain }}"
-        - domain: "{{ ejournal_backend_domain }}"

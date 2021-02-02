@@ -24,7 +24,7 @@ class FileFieldTest(TestCase):
         self.create_params = {
             'journal_id': self.journal.pk,
             'template_id': self.template.pk,
-            'content': []
+            'content': {}
         }
         self.image = SimpleUploadedFile('file.png', b'image_content', content_type='image/png')
         self.txt = SimpleUploadedFile('file.txt', b'text_content', content_type='text/plain')
@@ -40,17 +40,17 @@ class FileFieldTest(TestCase):
         entry_file = api.post(
             self, 'files', params={'file': self.image}, user=self.student, content_type=MULTIPART_CONTENT, status=201)
         post = self.create_params
-        post['content'] = [{'data': entry_file, 'id': txt_field.pk}]
+        post['content'] = {txt_field.pk: entry_file}
         resp = api.post(self, 'entries', params=post, user=self.student, status=400)
         assert 'is not allowed' in resp['description'], 'non txt file should not be able to be uploaded to txt field'
 
-        post['content'] = [{'data': entry_file, 'id': all_field.pk}]
+        post['content'] = {all_field.pk: entry_file}
         resp = api.post(self, 'entries', params=post, user=self.student, status=201)
         assert self.student.filecontext_set.filter(pk=entry_file['id']).exists(), 'File should exist after valid upload'
 
         entry_file = api.post(
             self, 'files', params={'file': self.txt}, user=self.student, content_type=MULTIPART_CONTENT, status=201)
-        post['content'] = [{'data': entry_file, 'id': txt_field.pk}]
+        post['content'] = {txt_field.pk: entry_file}
         resp = api.post(self, 'entries', params=post, user=self.student, status=201)
         assert self.student.filecontext_set.filter(pk=entry_file['id']).exists(), \
             'Txt file should be able to be uploaded to txt field'

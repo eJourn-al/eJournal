@@ -1,6 +1,5 @@
 #!/bin/bash
 
-echo ${1}
 if [[ -z ${1} ]]; then
     totest=
 else
@@ -12,9 +11,11 @@ source ./venv/bin/activate
 
 
 test () {
-    clear
-    echo -e '\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n'
-    pytest src/django/test $totest && flake8 --max-line-length=120 src/django --exclude="src/django/VLE/migrations/*","src/django/VLE/settings/*","src/django/VLE/settings.py","src/django/VLE/tasks/__init__.py" && isort -rc src/django/
+    stty size | perl -ale 'print "-"x$F[1]'
+    stty size | perl -ale 'print "#"x$F[1]'
+    stty size | perl -ale 'print "-"x$F[1]'
+    isort -rc src/django/
+    pytest -c /dev/null src/django/test $totest -x && make check-linters-back
     echo
     echo ">>> Press Enter to force update."
     previous_sha=`ls -lR src/django -I "media" | sha1sum`

@@ -6,7 +6,7 @@
             </span>
         </h1>
         <b-card
-            class="no-hover border-dark-grey max-width-600"
+            class="no-hove max-width-600"
         >
             <h2 class="theme-h2 mb-2">
                 This assignment is not ready yet
@@ -28,8 +28,8 @@
 </template>
 
 <script>
-import contentSingleColumn from '@/components/columns/ContentSingleColumn.vue'
 import * as Sentry from '@sentry/browser'
+import contentSingleColumn from '@/components/columns/ContentSingleColumn.vue'
 
 export default {
     name: 'NotSetup',

@@ -30,7 +30,7 @@
                         required
                     />
                     <b-button
-                        class="add-button float-right"
+                        class="green-button float-right"
                         type="submit"
                     >
                         <icon name="plus-square"/>
@@ -69,8 +69,8 @@
 </style>
 
 <script>
-import groupCard from '@/components/group/GroupCard.vue'
 import groupAPI from '@/api/group.js'
+import groupCard from '@/components/group/GroupCard.vue'
 import participationAPI from '@/api/participation.js'
 
 export default {

@@ -5,7 +5,6 @@ In this file are all the group api requests.
 """
 from django.conf import settings
 from django.db.models import Count
-from django.shortcuts import redirect
 from rest_framework import viewsets
 from rest_framework.decorators import action
 
@@ -52,11 +51,13 @@ class GroupView(viewsets.ViewSet):
 
         if assignment_id:
             assignment = Assignment.objects.get(pk=assignment_id)
-            journals = Journal.objects.filter(assignment=assignment)
+            journals = list(Journal.objects.filter(assignment=assignment).values_list('authors__user', flat=True))
+
             participations = Participation.objects.filter(
-                user__in=journals.values('authors__user'),
+                user__in=journals,
                 course=course
             ).exclude(user__is_test_student=True)
+
             groups = Group.objects.filter(
                 course=course, participation__in=participations
             ).annotate(
@@ -64,6 +65,7 @@ class GroupView(viewsets.ViewSet):
             ).exclude(
                 matched=len(participations)
             )
+
             queryset = groups.distinct()
         else:
             queryset = Group.objects.filter(course=course)
@@ -97,7 +99,7 @@ class GroupView(viewsets.ViewSet):
             return response.bad_request('Course group with the desired lti id already exists.')
 
         course_group = factory.make_course_group(name, course, lti_id)
-        serializer = GroupSerializer(course_group, many=False)
+        serializer = GroupSerializer(course_group, context={'user': request.user}, many=False)
         return response.created({'group': serializer.data})
 
     def partial_update(self, request, *args, **kwargs):
@@ -129,7 +131,7 @@ class GroupView(viewsets.ViewSet):
         if not name:
             return response.bad_request('Group name is not allowed to be empty.')
 
-        serializer = GroupSerializer(group, data={'name': name}, partial=True)
+        serializer = GroupSerializer(group, data={'name': name}, context={'user': request.user}, partial=True)
         if not serializer.is_valid():
             return response.bad_request()
 
@@ -160,7 +162,6 @@ class GroupView(viewsets.ViewSet):
 
     @action(['get'], detail=False)
     def datanose(self, request):
-        """"""
         course_id, = utils.required_typed_params(request.query_params, (int, 'course_id'))
         course = Course.objects.get(pk=course_id)
         check_can_view_groups(request.user, course)

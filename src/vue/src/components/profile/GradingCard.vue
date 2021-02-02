@@ -7,61 +7,70 @@
             :class="$root.getBorderClass($route.params.uID)"
             class="no-hover multi-form"
         >
-            <toggle-switch
-                :isActive="$store.getters['preferences/autoSelectUngradedEntry']"
-                class="float-right"
-                @parentActive="getAutoSelectUngradedEntry"
-            />
-            <h2 class="theme-h2 field-heading multi-form">
-                Auto-select first ungraded entry
-            </h2>
-            Upon viewing a journal or submitting a grade, automatically select the first ungraded entry
-            <hr/>
-            <toggle-switch
-                :isActive="$store.getters['preferences/autoProceedNextJournal']"
-                class="float-right"
-                @parentActive="getAutoProceedNextJournal"
-            />
-            <h2 class="theme-h2 field-heading">
-                Automatically proceed to next journal
-            </h2>
-            Automatically proceed to the next journal once all entries in a journal are graded
+            <div class="clearfix multi-form">
+                <radio-button
+                    v-model="$store.getters['preferences/saved'].auto_select_ungraded_entry"
+                    :options="[
+                        {
+                            value: true,
+                            icon: 'check',
+                            class: 'green-button',
+                        },
+                        {
+                            value: false,
+                            icon: 'times',
+                            class: 'red-button',
+                        },
+                    ]"
+                    class="float-right"
+                    @input="e => $store.commit('preferences/CHANGE_PREFERENCES', { auto_select_ungraded_entry: e })"
+                />
+                <h2 class="theme-h2 field-heading">
+                    Auto-select first ungraded entry
+                    <tooltip
+                        tip="Automatically select the first ungraded entry upon viewing a journal or submitting a grade"
+                    />
+                </h2>
+            </div>
+
+            <div class="clearfix">
+                <radio-button
+                    v-model="$store.getters['preferences/saved'].auto_proceed_next_journal"
+                    :options="[
+                        {
+                            value: true,
+                            icon: 'check',
+                            class: 'green-button',
+                        },
+                        {
+                            value: false,
+                            icon: 'times',
+                            class: 'red-button',
+                        },
+                    ]"
+                    class="float-right"
+                    @input="e => $store.commit('preferences/CHANGE_PREFERENCES', { auto_proceed_next_journal: e })"
+                />
+                <h2 class="theme-h2 field-heading">
+                    Automatically proceed to next journal
+                    <tooltip
+                        tip="Automatically proceed to the next journal once all entries in a journal are graded"
+                    />
+                </h2>
+            </div>
         </b-card>
     </div>
 </template>
 
 <script>
-import toggleSwitch from '@/components/assets/ToggleSwitch.vue'
-import preferencesAPI from '@/api/preferences.js'
+import RadioButton from '@/components/assets/RadioButton.vue'
+import tooltip from '@/components/assets/Tooltip.vue'
 
 export default {
     components: {
-        toggleSwitch,
+        RadioButton,
+        tooltip,
     },
     props: ['userData'],
-    methods: {
-        getAutoSelectUngradedEntry (isActive) {
-            preferencesAPI.update(
-                this.$store.getters['user/uID'],
-                { auto_select_ungraded_entry: isActive },
-                { customSuccessToast: 'Entry grading setting updated successfully.' },
-            )
-                .then((preferences) => {
-                    this.$store.commit(
-                        'preferences/SET_AUTO_SELECT_UNGRADED_ENTRY', preferences.auto_select_ungraded_entry)
-                })
-        },
-        getAutoProceedNextJournal (isActive) {
-            preferencesAPI.update(
-                this.$store.getters['user/uID'],
-                { auto_proceed_next_journal: isActive },
-                { customSuccessToast: 'Journal grading setting updated successfully.' },
-            )
-                .then((preferences) => {
-                    this.$store.commit(
-                        'preferences/SET_AUTO_PROCEED_NEXT_JOURNAL', preferences.auto_proceed_next_journal)
-                })
-        },
-    },
 }
 </script>

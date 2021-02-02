@@ -199,9 +199,9 @@
 </template>
 
 <script>
+import breadCrumb from '@/components/assets/BreadCrumb.vue'
 import contentSingleColumn from '@/components/columns/ContentSingleColumn.vue'
 import customFooter from '@/components/assets/Footer.vue'
-import breadCrumb from '@/components/assets/BreadCrumb.vue'
 import instanceAPI from '@/api/instance.js'
 
 export default {

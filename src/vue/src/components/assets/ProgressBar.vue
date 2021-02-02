@@ -124,15 +124,13 @@ export default {
     },
     methods: {
         zeroIfNull (val) {
-            return (val === null) ? 0 : val
+            return !val ? 0 : val
         },
     },
 }
 </script>
 
 <style lang="sass">
-@import '~sass/modules/colors.sass'
-
 .progress-percentage
     float: right
     color: $theme-blue

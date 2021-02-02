@@ -110,7 +110,10 @@ def json_response(payload={}, description='', status=None, reason=None, charset=
     charset      -- A string denoting the charset in which the response will be encodedself.
                     Default: django.conf settings.DEFAULT_CHARSET = utf-8
     """
-    return JsonResponse(data={**payload, 'description': description}, status=status, reason=reason, charset=charset)
+    return JsonResponse(
+        data={**payload, 'description': description, 'code_version': settings.CODE_VERSION},
+        status=status, reason=reason, charset=charset
+    )
 
 
 def key_error(keys, exception=None):
@@ -141,7 +144,7 @@ def file(file_path, filename):
     if isinstance(file_path, VLE.models.FileContext):
         file_path = file_path.file.path
 
-    if settings.ENVIRONMENT == 'LOCAL' or settings.ENVIRONMENT == 'TRAVIS':
+    if settings.ENVIRONMENT == 'LOCAL' or settings.ENVIRONMENT == 'CI_CD':
         try:
             response = FileResponse(open(file_path, 'rb'), as_attachment=True)
         except FileNotFoundError:

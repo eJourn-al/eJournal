@@ -65,8 +65,8 @@
 </template>
 
 <script>
-import connection from '@/api/connection.js'
 import { mapGetters } from 'vuex'
+import connection from '@/api/connection.js'
 
 export default {
     name: 'SentryFeedbackForm',
@@ -93,7 +93,7 @@ export default {
     },
     methods: {
         sendSentryFeedback () {
-            connection.connSentry.post('/user-feedback/', {
+            connection.connSentry.post('user-feedback/', {
                 comments: this.description,
                 email: this.email,
                 event_id: this.sentryLastEventID,

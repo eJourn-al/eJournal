@@ -25,6 +25,12 @@ def publish_all_journal_grades(journal, publisher):
 
 
 @shared_task
+def task_bulk_send_journal_status_to_LMS(journal_pks):
+    for journal_pk in journal_pks:
+        task_journal_status_to_LMS(journal_pk)
+
+
+@shared_task
 def task_journal_status_to_LMS(journal_pk):
     return send_journal_status_to_LMS(Journal.objects.get(pk=journal_pk))
 
@@ -75,13 +81,13 @@ def send_author_status_to_LMS(journal, author, left_journal=False):
             'successful': False,
         }
 
-    gr = Grade()
-    gr.set_score_given(journal.grade)\
-         .set_score_maximum(assignment.points_possible)\
-         .set_timestamp(journal.published_nodes.last().entry.last_edited.strftime('%Y-%m-%dT%H:%M:%S+0000'))\
-         .set_activity_progress('Completed')\
-         .set_grading_progress('PendingManual')\
-         .set_user_id(external_user_id)
+    # gr = Grade()
+    # gr.set_score_given(journal.grade)\
+    #      .set_score_maximum(assignment.points_possible)\
+    #      .set_timestamp(journal.published_nodes.last().entry.last_edited.strftime('%Y-%m-%dT%H:%M:%S+0000'))\
+    #      .set_activity_progress('Completed')\
+    #      .set_grading_progress('PendingManual')\
+    #      .set_user_id(external_user_id)
 
     # if author.sourcedid is None:
     #     return {

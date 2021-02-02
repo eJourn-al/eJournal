@@ -2,7 +2,7 @@
     <b-modal
         :id="modalID"
         size="lg"
-        title="Import existing assignment"
+        title="Import assignment"
         hideFooter
         noEnforceFocus
     >
@@ -41,9 +41,7 @@
             />
 
             <div v-if="!importableFormats">
-                <h4 class="theme-h4">
-                    No existing assignments available
-                </h4>
+                <b>No existing assignments available</b>
                 <hr class="m-0 mb-1"/>
                 Only assignments where you have permission to edit are available to import.
             </div>
@@ -84,13 +82,13 @@
                             id="months"
                             v-model="months"
                             type="number"
-                            class="theme-input"
+                            class="theme-input inline"
                         />
                         months
                     </div>
 
                     <b-button
-                        class="change-button float-right"
+                        class="orange-button float-right"
                         type="submit"
                     >
                         <icon name="file-import"/>
@@ -104,6 +102,7 @@
 
 <script>
 import assignmentAPI from '@/api/assignment.js'
+import utils from '@/utils/generic_utils.js'
 
 export default {
     props: {
@@ -129,17 +128,16 @@ export default {
         courses () {
             return this.importableFormats.map((importable) => {
                 const course = { ...importable.course }
-                if (course.startdate || course.enddate) {
-                    course.name += ` (${course.startdate ? course.startdate.substring(0, 4) : ''} - ${
-                        course.enddate ? course.enddate.substring(0, 4) : ''})`
-                }
-
+                course.name = utils.courseWithDatesDisplay(course)
                 return course
             })
         },
         assignments () {
             return this.importableFormats.find(importable => importable.course.id === this.selectedCourse.id)
-                .assignments
+                .assignments.map((assignment) => {
+                    assignment.name = utils.assignmentWithDatesDisplay(assignment)
+                    return assignment
+                })
         },
     },
     created () {
@@ -158,7 +156,7 @@ export default {
                     course_id: this.cID,
                     months_offset: (!this.shiftImportDates || this.months === '') ? 0 : this.months,
                     launch_id: this.$route.query.launch_id,
-                }, { customSuccessToast: 'Assignment succesfully imported.' }).then((assignment) => {
+                }, { customSuccessToast: 'Assignment successfully imported.' }).then((assignment) => {
                     this.assignmentImportInFlight = false
 
                     this.$store.commit('user/IMPORT_ASSIGNMENT_PERMISSIONS', {
@@ -193,9 +191,6 @@ export default {
     color: grey
     margin-bottom: 10px
     display: inline-block
-    .theme-input
-        display: inline-block
-        width: 4em
     svg
         margin-top: -5px
         fill: grey

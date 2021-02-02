@@ -6,7 +6,7 @@ All the permission functions.
 from django.db.models import Q
 
 import VLE.models
-from VLE.utils.error_handling import VLEProgrammingError
+import VLE.utils.error_handling
 
 
 def has_general_permission(user, permission):
@@ -19,7 +19,8 @@ def has_general_permission(user, permission):
     Raises VLEProgrammingError when the passed permission is not a "General Permission".
     """
     if permission not in VLE.models.Role.GENERAL_PERMISSIONS:
-        raise VLEProgrammingError("Permission " + permission + " is not a general level permission.")
+        raise VLE.utils.error_handling.VLEProgrammingError(
+            "Permission " + permission + " is not a general level permission.")
 
     if user.is_superuser:
         return True
@@ -43,7 +44,8 @@ def has_course_permission(user, permission, course):
     Raises VLEParticipationError when the user is not participating in the course.
     """
     if permission not in VLE.models.Role.COURSE_PERMISSIONS:
-        raise VLEProgrammingError("Permission " + permission + " is not a course level permission.")
+        raise VLE.utils.error_handling.VLEProgrammingError(
+            "Permission " + permission + " is not a course level permission.")
 
     if user.is_superuser:
         return True
@@ -66,7 +68,8 @@ def has_assignment_permission(user, permission, assignment):
     """
 
     if permission not in VLE.models.Role.ASSIGNMENT_PERMISSIONS:
-        raise VLEProgrammingError("Permission " + permission + " is not an assignment level permission.")
+        raise VLE.utils.error_handling.VLEProgrammingError(
+            "Permission " + permission + " is not an assignment level permission.")
 
     if user.is_superuser:
         if permission == 'can_have_journal':
@@ -92,6 +95,20 @@ def is_user_supervisor_of(supervisor, user):
         course__in=VLE.models.Participation.objects.filter(user=user).values('course')).exists()
 
 
+def get_supervisors_of(journal, with_permissions=[]):
+    """Get all the supervisors connected to a journal.
+
+    Args:
+    journal -- the journal to get the supervisors from
+    with_permissions -- the supervisors should have those permissions as well
+    """
+    return VLE.models.User.objects.filter(pk__in=VLE.models.Participation.objects.filter(
+        role__can_view_all_journals=True,
+        role__course__in=journal.assignment.courses.all(),
+        **{f'role__{permission}': True for permission in with_permissions},
+    ).values('user')).distinct()
+
+
 def can_edit(user, obj):
     if isinstance(obj, VLE.models.Entry):
         return _can_edit_entry(user, obj)
@@ -100,11 +117,12 @@ def can_edit(user, obj):
 
 
 def _can_edit_entry(user, entry):
-    user.check_permission('can_have_journal', entry.node.journal.assignment)
+    journal = VLE.models.Journal.objects.filter(node__entry=entry).select_related('assignment').get()
+    user.check_permission('can_have_journal', journal.assignment)
 
     if (
-        not entry.node.journal.authors.filter(user=user).exists() or
-        entry.node.journal.assignment.is_locked() or
+        not journal.authors.filter(user=user).exists() or
+        journal.assignment.is_locked() or
         entry.is_graded() or
         entry.is_locked()
     ):

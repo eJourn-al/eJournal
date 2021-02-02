@@ -14,11 +14,11 @@
                         :src="journal.image"
                     />
                     <number-badge
-                        v-if="$hasPermission('can_view_all_journals') &&
-                            journal.needs_marking + journal.unpublished > 0"
-                        :leftNum="journal.needs_marking"
-                        :rightNum="journal.unpublished"
-                        :title="squareInfo"
+                        v-if="$hasPermission('can_view_all_journals')
+                            && (journal.needs_marking || journal.unpublished || journal.import_requests)"
+                        :badges="badges"
+                        :displayZeroValues="false"
+                        :keyPrefix="journal.id"
                     />
                 </div>
                 <div class="student-details">
@@ -36,7 +36,8 @@
                             v-if="journal.author_limit > 1"
                             v-b-tooltip:hover="`This journal currently has ${ journal.author_count } of max `
                                 + `${ journal.author_limit } members`"
-                            class="text-white mr-1"
+                            pill
+                            class="background-medium-grey text-grey mr-1"
                         >
                             {{ journal.author_count }}/{{ journal.author_limit }}
                         </b-badge>
@@ -44,12 +45,14 @@
                             v-if="journal.author_limit === 0"
                             v-b-tooltip:hover="`This journal currently has ${ journal.author_count } members `
                                 + 'and no member limit'"
-                            class="text-white mr-1"
+                            pill
+                            class="background-medium-grey text-grey mr-1"
                         >
                             {{ journal.author_count }}
                         </b-badge>
                         <b-badge
                             v-if="journal.locked"
+                            pill
                             class="background-red"
                         >
                             <icon
@@ -103,15 +106,15 @@
 </template>
 
 <script>
-import progressBar from '@/components/assets/ProgressBar.vue'
-import numberBadge from '@/components/assets/NumberBadge.vue'
+import NumberBadge from '@/components/assets/NumberBadge.vue'
 import journalMembers from '@/components/journal/JournalMembers.vue'
+import progressBar from '@/components/assets/ProgressBar.vue'
 
 export default {
     components: {
         progressBar,
-        numberBadge,
         journalMembers,
+        NumberBadge,
     },
     props: {
         assignment: {
@@ -130,24 +133,21 @@ export default {
         groups () {
             return this.journal.groups.join(', ')
         },
-        squareInfo () {
-            const info = []
-            if (this.journal.needs_marking === 1) {
-                info.push('an entry needs marking')
-            } else if (this.journal.needs_marking > 1) {
-                info.push(`${this.journal.needs_marking} entries need marking`)
-            }
-            if (this.journal.unpublished === 1) {
-                info.push('a grade needs to be published')
-            } else if (this.journal.unpublished > 1) {
-                info.push(`${this.journal.unpublished} grades need to be published`)
-            }
-            const s = info.join(' and ')
-            return `${s.charAt(0).toUpperCase()}${s.slice(1)}`
-        },
         canManageJournal () {
             return this.assignment.is_group_assignment && (this.assignment.can_set_journal_name
                 || this.assignment.can_set_journal_image || this.$hasPermission('can_manage_journals'))
+        },
+        badges () {
+            const badges = [
+                { value: this.journal.needs_marking, tooltip: 'needsMarking' },
+                { value: this.journal.unpublished, tooltip: 'unpublished' },
+            ]
+
+            if (this.$hasPermission('can_manage_journal_import_requests')) {
+                badges.push({ value: this.journal.import_requests, tooltip: 'importRequests' })
+            }
+
+            return badges
         },
     },
     methods: {
@@ -160,8 +160,6 @@ export default {
 
 <style lang="sass">
 @import '~sass/partials/shadows.sass'
-@import '~sass/modules/breakpoints.sass'
-@import '~sass/modules/colors.sass'
 
 .journal-card
     .portrait-wrapper
@@ -173,10 +171,6 @@ export default {
             width: 70px
             height: 70px
             border-radius: 50% !important
-        .number-badge
-            position: absolute
-            right: 0px
-            top: 0px
     .student-details
         position: relative
         width: calc(100% - 80px)

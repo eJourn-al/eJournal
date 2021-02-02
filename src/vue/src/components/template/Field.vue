@@ -64,7 +64,7 @@
                         :options="fileExtensions"
                         placeholder="Custom"
                         class="theme-select multi-form mr-2"
-                        @change="selectedExtensionType === ' ' ?
+                        @change="selectedExtensionType === ' ' || selectedExtensionType === '*' ?
                             field.options = '' : field.options = selectedExtensionType"
                     />
                     <b-input
@@ -84,7 +84,7 @@
                             @keyup.enter.native="addSelectionOption($event.target, field)"
                         />
                         <b-button
-                            class="float-right multi-form add-button"
+                            class="float-right multi-form green-button"
                             @click.stop="addSelectionOption($event.target.previousElementSibling, field)"
                         >
                             <icon name="plus"/>
@@ -95,7 +95,7 @@
                         <b-button
                             v-for="(option, index) in JSON.parse(field.options)"
                             :key="index"
-                            class="delete-button mr-2 mb-2"
+                            class="red-button mr-2 mb-2"
                             @click.stop="removeSelectionOption(option, field)"
                         >
                             <icon name="trash"/>
@@ -136,11 +136,9 @@
 </template>
 
 <script>
-import textEditor from '@/components/assets/TextEditor.vue'
-
 export default {
     components: {
-        textEditor,
+        TextEditor: () => import(/* webpackChunkName: 'text-editor' */ '@/components/assets/TextEditor.vue'),
     },
     props: {
         field: {
@@ -151,7 +149,7 @@ export default {
         },
     },
     data () {
-        const fileExtensions = { '': 'Accept Any Extension' }
+        const fileExtensions = { '*': 'Accept Any Extension' }
         fileExtensions[this.$root.fileTypes.img] = 'Accept Images Only'
         fileExtensions[this.$root.fileTypes.pdf] = 'Accept PDF Only'
         fileExtensions[' '] = 'Accept Custom Extensions Only'
@@ -185,10 +183,10 @@ export default {
         setFieldExtensionType () {
             /* Set the field extension to the proper value */
             if (this.field.type === 'f') {
-                if (Object.keys(this.fileExtensions).includes(this.field.options)) {
+                if (!this.field.options) {
+                    this.selectedExtensionType = '*'
+                } else if (Object.keys(this.fileExtensions).includes(this.field.options)) {
                     this.selectedExtensionType = this.field.options
-                } else if (!this.field.options) {
-                    this.selectedExtensionType = ''
                 } else {
                     this.selectedExtensionType = ' '
                 }

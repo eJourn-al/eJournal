@@ -1,18 +1,15 @@
-import requests
 from django.conf import settings
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import redirect
 from django.urls import reverse
 from pylti1p3.contrib.django import DjangoCacheDataStorage
 from pylti1p3.deep_link_resource import DeepLinkResource
-from pylti1p3.service_connector import ServiceConnector
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
 import VLE.lti1p3 as lti
-from VLE.lti1p3 import assignment, course, groups, members, user, utils
-from VLE.models import Assignment, Course, Instance, Journal, User
+from VLE.models import Course, Instance, Journal, User
 from VLE.utils.error_handling import VLEBadRequest
 from VLE.utils.generic_utils import build_url
 
@@ -158,7 +155,7 @@ def launch_configuration(request):
             'oidc_initiation_url': settings.LTI_LOGIN_URL
         })
     else:
-        return responses.bad_request('No LMS was selected')
+        return None  # TODO LTI: responses.bad_request('No LMS was selected')
 
 
 @api_view(['POST'])
@@ -172,7 +169,8 @@ def launch(request):
 
     # Check if it is an initial assignment setup
     if message_launch.is_deep_link_launch():
-        # TODO LTI: find out how we can detect if we already are authorized to access these scopes, if not, request them, else go directly to HttpResponse
+        # TODO LTI: find out how we can detect if we already are authorized to access these scopes,
+        # if not, request them, else go directly to HttpResponse
 
         launch_url = request.build_absolute_uri(reverse('lti_launch'))
         resource = eDeepLinkResource()
