@@ -24,7 +24,7 @@
                 :node="node"
             >
                 <b-button
-                    v-if="node.entry.editable"
+                    v-if="!create && node.entry.editable"
                     class="ml-auto"
                     :class="(edit) ? 'red-button' : 'orange-button'"
                     @click="edit = !edit"
