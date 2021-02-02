@@ -4,12 +4,21 @@
             v-if="!loading"
             v-slot:left
         >
-            <assignment-editor-bread-crumb
+            <bread-crumb
                 v-if="$root.lgMax"
                 v-intro="welcomeIntroText"
                 v-intro-step="1"
-                @start-tutorial="$intro().start()"
-            />
+            >
+                <icon
+                    v-intro="finishedIntroText"
+                    v-intro-step="5"
+                    v-b-tooltip:hover="'Click to start a tutorial for this page'"
+                    name="info-circle"
+                    scale="1.75"
+                    class="info-icon shift-up-5 ml-1"
+                    @click.native.stop="$intro().start()"
+                />
+            </bread-crumb>
 
             <timeline
                 v-intro="timelineIntroText"
@@ -25,12 +34,21 @@
         </template>
 
         <template v-slot:center>
-            <assignment-editor-bread-crumb
+            <bread-crumb
                 v-if="$root.xl"
                 v-intro="welcomeIntroText"
                 v-intro-step="1"
-                @start-tutorial="$intro().start()"
-            />
+            >
+                <icon
+                    v-intro="finishedIntroText"
+                    v-intro-step="5"
+                    v-b-tooltip:hover="'Click to start a tutorial for this page'"
+                    name="info-circle"
+                    scale="1.75"
+                    class="info-icon shift-up-5 ml-1"
+                    @click.native.stop="$intro().start()"
+                />
+            </bread-crumb>
 
             <load-wrapper :loading="loading">
                 <assignment-editor-active-component-switch/>
@@ -57,7 +75,7 @@
 <script>
 import AssignmentEditorActiveComponentSwitch from
     '@/components/assignment_editor/AssignmentEditorActiveComponentSwitch.vue'
-import AssignmentEditorBreadCrumb from '@/components/assignment_editor/AssignmentEditorBreadCrumb.vue'
+import BreadCrumb from '@/components/assets/BreadCrumb.vue'
 import CategoryMenu from '@/components/category/CategoryMenu.vue'
 import LoadWrapper from '@/components/loading/LoadWrapper.vue'
 import TemplateMenu from '@/components/template/TemplateMenu.vue'
@@ -71,7 +89,7 @@ export default {
     components: {
         timeline,
         AssignmentEditorActiveComponentSwitch,
-        AssignmentEditorBreadCrumb,
+        BreadCrumb,
         CategoryMenu,
         LoadWrapper,
         TemplateMenu,
@@ -116,6 +134,12 @@ to create an entry, the category will be linked to the entry by default.<br/><br
 
 Whether the student can edit which categories belong to an entry themselves, can be configured via the
 respective template setting "<i>Fixed Categories / Custom Categories</i>".
+`,
+            finishedIntroText: `
+That's it! If you have any more questions, do not hesitate to contact us via the support button at the bottom of
+any page.<br/><br/>
+
+This tutorial can be consulted again by clicking the <i>info</i> sign.
 `,
             loading: true,
         }
