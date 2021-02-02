@@ -132,8 +132,8 @@ New deadlines can be added via the '+' button in the timeline. Click any deadlin
 You can choose to link specific templates to categories. When a student makes use of these templates
 to create an entry, the category will be linked to the entry by default.<br/><br/>
 
-Whether the student can edit which categories belong to an entry themselves, can be configured via the
-respective template setting "<i>Fixed Categories / Custom Categories</i>".
+It is possible to allow students to configure which categories belong to an entry. This can be enabled
+via the respective template setting "<i>Fixed Categories / Custom Categories</i>".
 `,
             finishedIntroText: `
 That's it! If you have any more questions, do not hesitate to contact us via the support button at the bottom of
