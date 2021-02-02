@@ -153,7 +153,7 @@ const mutations = {
                     location: 0,
                     required: true,
                 }],
-                name: 'Entry',
+                name: '',
                 id: -1,
                 preset_only: false,
                 fixed_categories: true,
