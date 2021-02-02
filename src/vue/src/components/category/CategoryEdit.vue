@@ -21,16 +21,10 @@
             </b-button>
         </b-row>
 
-        <template v-if="readMode">
-            <category-display
-
-                :id="`category-${category.id}-display`"
-                :editable="false"
-                :categories="[category]"
-            />
-
-            <i>{{ (category.name === '') ? 'No name to display' : '' }}</i>
-        </template>
+        <category-read-mode
+            v-if="readMode"
+            :category="category"
+        />
 
         <template v-else>
             <b-form-group
@@ -107,13 +101,13 @@
 <script>
 import { mapActions, mapGetters, mapMutations } from 'vuex'
 
-import CategoryDisplay from '@/components/category/CategoryDisplay.vue'
+import CategoryReadMode from '@/components/category/CategoryReadMode.vue'
 
 export default {
     name: 'CategoryEdit',
     components: {
         textEditor: () => import(/* webpackChunkName: 'text-editor' */ '@/components/assets/TextEditor.vue'),
-        CategoryDisplay,
+        CategoryReadMode,
     },
     props: {
         category: {
