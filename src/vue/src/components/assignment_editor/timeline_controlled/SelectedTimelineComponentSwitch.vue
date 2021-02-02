@@ -2,7 +2,7 @@
     <div>
         <template v-if="selectedTimelineElementIndex === -1">
             <assignment-start-read-mode v-if="readMode"/>
-            <assignment-edit v-else/>
+            <assignment-details-edit v-else/>
         </template>
 
         <template v-else-if="selectedTimelineElementIndex >= 0 && selectedTimelineElementIndex <= presetNodes.length">
@@ -15,13 +15,14 @@
 
         <template v-else-if="selectedTimelineElementIndex === presetNodes.length + 1">
             <assignment-end-read-mode v-if="readMode"/>
-            <assignment-edit v-else/>
+            <assignment-details-edit v-else/>
         </template>
     </div>
 </template>
 
 <script>
-import AssignmentEdit from '@/components/assignment_editor/timeline_controlled/assignment/AssignmentEdit.vue'
+import AssignmentDetailsEdit from
+    '@/components/assignment_editor/timeline_controlled/assignment/AssignmentDetailsEdit.vue'
 import AssignmentEndReadMode from
     '@/components/assignment_editor/timeline_controlled/assignment/AssignmentEndReadMode.vue'
 import AssignmentStartReadMode
@@ -34,7 +35,7 @@ import { mapGetters } from 'vuex'
 export default {
     name: 'SelectedTimelineComponentSwitch',
     components: {
-        AssignmentEdit,
+        AssignmentDetailsEdit,
         AssignmentEndReadMode,
         AssignmentStartReadMode,
         PresetNodeEdit,
