@@ -115,7 +115,8 @@ class Instance(CreateUpdateModel):
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)
         # TODO LTI: validate that lms_url is http://[url] without a slash at the end
-        settings.TOOL_CONF.update_config()
+        if self.iss:
+            settings.TOOL_CONF.update_config(instance=self)
 
     def to_string(self, user=None):
         return self.name
@@ -1470,7 +1471,7 @@ class Assignment(CreateUpdateModel):
                     return course
 
         courses_with_startdate = [course for course in courses if course.startdate]
-        now = timezone.now().date()
+        now = timezone.now()
 
         # Else get course that started the most recent
         comparison = [course for course in courses_with_startdate if course.startdate <= now]

@@ -66,4 +66,4 @@ DATABASES = {
 }
 
 DEBUG = True
-# TOOL_CONF = eToolConfJsonFile(os.path.join(BASE_DIR, '../..', 'config/lti', 'lti_keys.json'))
+TOOL_CONF = eToolConfJsonFile(os.path.join(BASE_DIR, '../..', 'config/lti', 'lti_keys.json'))

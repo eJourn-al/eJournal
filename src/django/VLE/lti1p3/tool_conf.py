@@ -4,9 +4,11 @@ from pylti1p3.tool_config import ToolConfJsonFile
 class eToolConfJsonFile(ToolConfJsonFile):
     _configs_dir = None
 
-    def update_config(self, iss=None):
-        from VLE.models import Instance
-        instance = Instance.objects.get_or_create(pk=1)[0]
+    def update_config(self, iss=None, instance=None):
+        if not instance:
+            from VLE.models import Instance
+            instance = Instance.objects.get_or_create(pk=1)[0]
+
         if not iss:
             iss = instance.iss
         print(self._config[instance.iss])

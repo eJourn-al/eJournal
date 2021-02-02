@@ -50,6 +50,16 @@
                     </template>
                     <invite-users/>
                 </b-tab>
+                <b-tab>
+                    <template slot="title">
+                        <icon
+                            name="cog"
+                            class="shift-up-3"
+                        />
+                        LTI Settings
+                    </template>
+                    <lti-settings/>
+                </b-tab>
             </b-tabs>
         </b-card>
     </wide-content>
@@ -60,6 +70,7 @@ import BreadCrumb from '@/components/assets/BreadCrumb.vue'
 import CourseOverview from '@/components/admin/CourseOverview.vue'
 import EditInstance from '@/components/admin/EditInstance.vue'
 import InviteUsers from '@/components/admin/InviteUsers.vue'
+import LtiSettings from '@/components/admin/LtiSettings.vue'
 import UserOverview from '@/components/admin/UserOverview.vue'
 import WideContent from '@/components/columns/WideContent.vue'
 
@@ -72,6 +83,7 @@ export default {
         CourseOverview,
         UserOverview,
         InviteUsers,
+        LtiSettings,
     },
     data () {
         return {
