@@ -96,6 +96,7 @@
                     Files
                 </template>
 
+                <!-- # TODO Category: Uploads dirty the draft despite save? -->
                 <files-list
                     :attachNew="true"
                     :files="presetNode.attached_files"

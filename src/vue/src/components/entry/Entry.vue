@@ -39,7 +39,7 @@
                 :content="node.description"
             />
             <files-list
-                v-if="node && node.description && (edit || create)"
+                v-if="node && (edit || create)"
                 :files="node.attached_files"
             />
             <entry-fields
