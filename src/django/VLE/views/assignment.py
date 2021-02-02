@@ -25,7 +25,7 @@ from VLE.serializers import (AssignmentSerializer, CourseSerializer, SmallAssign
                              TemplateSerializer)
 from VLE.utils import file_handling, grading
 from VLE.utils.error_handling import VLEMissingRequiredKey, VLEParamWrongType
-from VLE.utils.file_handling import copy_and_replace_rt_files
+from VLE.utils.file_handling import copy_assignment_related_rt_files
 
 
 def day_neutral_datetime_increment(date, months=0):
@@ -490,7 +490,8 @@ class AssignmentView(viewsets.ViewSet):
         assignment.courses.set([])
         assignment.add_course(course)
         # Requires assignment with accurate pk
-        assignment.description = copy_and_replace_rt_files(assignment.description, request.user, assignment=assignment)
+        assignment.description = copy_assignment_related_rt_files(
+            assignment.description, request.user, assignment=assignment)
         assignment.save()
 
         template_dict = {}
@@ -520,7 +521,8 @@ class AssignmentView(viewsets.ViewSet):
 
             preset.pk = None
             preset.format = format
-            preset.description = copy_and_replace_rt_files(preset.description, request.user, assignment=assignment)
+            preset.description = copy_assignment_related_rt_files(
+                preset.description, request.user, assignment=assignment)
             preset.due_date = day_neutral_datetime_increment(preset.due_date, months_offset)
             if preset.unlock_date:
                 preset.unlock_date = day_neutral_datetime_increment(preset.unlock_date, months_offset)

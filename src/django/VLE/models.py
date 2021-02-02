@@ -2850,7 +2850,7 @@ class TemplateQuerySet(models.QuerySet):
 
                 fields_with_copied_rt_description_files = []
                 for field in fields:
-                    field.description = file_handling.copy_and_replace_rt_files(
+                    field.description = file_handling.copy_assignment_related_rt_files(
                         field.description,
                         author,
                         assignment=format.assignment,

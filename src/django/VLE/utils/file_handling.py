@@ -178,7 +178,7 @@ def get_temp_files_from_rich_text(rich_text):
     return get_files_from_rich_text(rich_text).filter(is_temp=True)
 
 
-def copy_and_replace_rt_files(rich_text, user, assignment=None, category=None):
+def copy_assignment_related_rt_files(rich_text, user, assignment=None, category=None):
     """
     Creates a new copy for each of the rich text files, replacing old references with a new one.
 

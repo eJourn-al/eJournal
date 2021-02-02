@@ -6,7 +6,7 @@ from django.core.files.base import ContentFile
 
 from VLE.models import Category, Comment, Entry, Field, FileContext, Grade, JournalImportRequest, Node
 from VLE.utils.error_handling import VLEProgrammingError
-from VLE.utils.file_handling import copy_and_replace_rt_files
+from VLE.utils.file_handling import copy_assignment_related_rt_files
 
 
 def _copy_grade_based_on_jir_action(entry, grade, author, action=JournalImportRequest.APPROVED_WITH_GRADES_ZEROED):
@@ -217,7 +217,7 @@ def import_template(template, assignment, user, archived=None):
     for field in Field.objects.filter(template=source_template_id):
         field.pk = None
         field.template = template
-        field.description = copy_and_replace_rt_files(field.description, user, assignment=assignment)
+        field.description = copy_assignment_related_rt_files(field.description, user, assignment=assignment)
         field.save()
 
     return template
@@ -246,7 +246,7 @@ def bulk_import_assignment_categories(source_assignment, target_assignment, auth
     # the new categories before we can copy and replace the RT files.
     categories_with_copied_rt_description = []
     for category in target_assignment.categories.all():
-        category.description = copy_and_replace_rt_files(category.description, author, category=category)
+        category.description = copy_assignment_related_rt_files(category.description, author, category=category)
         categories_with_copied_rt_description.append(category)
     Category.objects.bulk_update(categories_with_copied_rt_description, ['description'])
 
