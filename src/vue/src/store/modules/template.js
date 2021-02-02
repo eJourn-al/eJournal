@@ -126,6 +126,11 @@ const actions = {
                         { aID, updatedTemplate, oldTemplateId: id },
                         { root: true },
                     )
+                    context.commit(
+                        'presetNode/PROPAGATE_TEMPLATE_PRESET_NODE_UPDATE',
+                        { aID, updatedTemplate, oldTemplateId: id },
+                        { root: true },
+                    )
 
                     return updatedTemplate
                 })

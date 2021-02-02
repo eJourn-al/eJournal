@@ -1,8 +1,8 @@
 import Vue from 'vue'
 import categoryStore from './category.js'
 import colorUtils from '@/utils/colors.js'
+import presetNodeStore from './presetNode.js'
 import templateStore from './template.js'
-
 
 const categorySymbol = Symbol('category')
 const timelineSymbol = Symbol('timeline')
@@ -230,6 +230,15 @@ const mutations = {
         state.activeComponentMode = (draft.edited)
             ? state.activeComponentModeOptions.edit : state.activeComponentModeOptions.read
     },
+    /* When a template is updated, it is possible preset deadlines' forced template becomes stale.
+     * These changes need to be propagated to the preset node drafts in order to keep state in sync. */
+    PROPAGATE_TEMPLATE_PRESET_NODE_UPDATE (state, { updatedTemplate, oldTemplateId }) {
+        presetNodeStore.propagateTemplatePresetNodeUpdate(
+            Object.values(state.presetNodeDrafts).map(draft => draft.draft),
+            updatedTemplate,
+            oldTemplateId,
+        )
+    },
     CLEAR_NEW_PRESET_NODE_DRAFT (state) {
         state.newPresetNodeDraft = null
     },
@@ -322,6 +331,7 @@ const actions = {
     templateUpdated (context, { updatedTemplate, oldTemplateId }) {
         context.commit('CLEAR_DRAFT', { drafts: context.state.templateDrafts, obj: { id: oldTemplateId } })
         context.commit('PROPAGATE_TEMPLATE_CATEGORY_UPDATE', { updatedTemplate, oldTemplateId })
+        context.commit('PROPAGATE_TEMPLATE_PRESET_NODE_UPDATE', { updatedTemplate, oldTemplateId })
         // TODO Update deadline templates
         context.commit('SELECT_TEMPLATE', { template: updatedTemplate })
     },

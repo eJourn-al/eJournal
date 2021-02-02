@@ -19,6 +19,16 @@ const getters = {
     assignmentsPresetNodes: state => state.assignmentsPresetNodes,
 }
 
+function propagateTemplatePresetNodeUpdate (presetNodes, updatedTemplate, oldTemplateId) {
+    presetNodes.forEach((presetNode) => {
+        if (presetNode.type !== 'd') { return }
+
+        if (presetNode.template && presetNode.template.id === oldTemplateId) {
+            presetNode.template = updatedTemplate
+        }
+    })
+}
+
 const mutations = {
     UPDATE_CACHE (state, { cache, cacheKey, data }) {
         Vue.set(state[cache], cacheKey, data)
@@ -41,6 +51,9 @@ const mutations = {
             state.assignmentsPresetNodes[aID],
             state.assignmentsPresetNodes[aID].findIndex(elem => elem.id === id),
         )
+    },
+    PROPAGATE_TEMPLATE_PRESET_NODE_UPDATE (state, { aID, updatedTemplate, oldTemplateId }) {
+        propagateTemplatePresetNodeUpdate(state.assignmentsPresetNodes[aID], updatedTemplate, oldTemplateId)
     },
 }
 
@@ -106,4 +119,5 @@ export default {
     getters,
     mutations,
     actions,
+    propagateTemplatePresetNodeUpdate,
 }
