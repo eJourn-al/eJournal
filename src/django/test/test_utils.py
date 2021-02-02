@@ -12,6 +12,7 @@ from django.test.utils import CaptureQueriesContext
 from django.utils import timezone
 
 import VLE.models
+import VLE.utils.generic_utils as utils
 import VLE.utils.responses
 from VLE.serializers import UserSerializer, prefetched_objects
 from VLE.utils.error_handling import VLEProgrammingError
@@ -19,6 +20,17 @@ from VLE.validators import validate_youtube_url_with_video_id
 
 
 class UtilsTest(TestCase):
+    def test_cast_value(self):
+        data = {'false': 'false', 'true': 'true'}
+        false, true = utils.required_typed_params(data, (bool, 'false'), (bool, 'true'))
+        assert false is False, '"false" should be cast to "False"'
+        assert true is True, '"true" should be cast to "True"'
+
+        falls, normal_cast = utils.required_typed_params(
+            {'falls': 'falss', 'normal_cast': '1'}, (bool, 'falls'), (bool, 'normal_cast'))
+        assert falls is True, 'Any cast bool other than "true" or "false" should follow default truthy conversion'
+        assert normal_cast is True, 'Any cast bool other than "true" or "false" should follow default truthy conversion'
+
     def test_code_version_in_utils_json_response(self):
         json_resp = VLE.utils.responses.json_response()
         assert json.loads(json_resp.content)['code_version'] == settings.CODE_VERSION

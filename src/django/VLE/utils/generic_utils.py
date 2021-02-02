@@ -51,6 +51,8 @@ def cast_value(value, type, optional=False):
 
     if type == bool and value == 'false':
         return False
+    elif type == bool and value == 'true':
+        return True
     elif type == datetime:
         if optional and value == '':
             return None
