@@ -220,9 +220,6 @@ class AssignmentView(viewsets.ViewSet):
         )
         return response.success({'assignment': serializer.data})
 
-    # QUESTION: There are a lot of step which change assignment data, wrap the method in an atomic decorator?
-    # This seems like it would be almost the desired default behaviour for most of our logic
-    # Worth spending some time looking into the advantages / disadvantages?
     @transaction.atomic
     def partial_update(self, request, pk):
         active_lti_course, lti_id = utils.optional_typed_params(
