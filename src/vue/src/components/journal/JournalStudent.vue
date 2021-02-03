@@ -79,7 +79,7 @@
                     <h2 class="theme-h2 mb-2">
                         {{ nodes[currentNode].template.name }}
                     </h2>
-                    <hr class="full-width"/>
+                    <hr/>
                     <b>This preset is locked. You cannot submit an entry at the moment.</b><br/>
                     {{ deadlineRange }}
                 </b-card>

@@ -75,7 +75,7 @@
             />
 
             <div class="full-width timestamp">
-                <hr class="full-width"/>
+                <hr/>
                 <template
                     v-if="(new Date(entryNode.entry.last_edited).getTime() - new Date(entryNode.entry.creation_date)
                         .getTime()) / 1000 < 3"
@@ -156,7 +156,7 @@
                 </b-table>
                 <div v-else>
                     <b>No grades available</b>
-                    <hr class="m-0 mb-1"/>
+                    <hr/>
                     This entry has not yet been graded.
                 </div>
             </b-card>

@@ -17,7 +17,7 @@
                     :content="comment.text"
                 />
                 <files-list :files="comment.files"/>
-                <hr class="full-width"/>
+                <hr/>
                 <b>{{ comment.author.full_name }}</b>
                 <icon
                     v-if="comment.can_edit"

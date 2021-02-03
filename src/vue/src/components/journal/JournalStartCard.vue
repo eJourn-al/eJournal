@@ -18,7 +18,7 @@
             v-if="assignment.description"
             :content="assignment.description"
         />
-        <hr class="full-width"/>
+        <hr/>
         <span
             v-if="assignment.unlock_date && new Date(assignment.unlock_date) > new Date()"
             class="text-grey"

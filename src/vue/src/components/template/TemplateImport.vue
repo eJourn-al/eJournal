@@ -104,7 +104,7 @@
 
             <div v-else>
                 <b>No existing templates available</b>
-                <hr class="m-0 mb-1"/>
+                <hr/>
                 Only templates in assignments where you have permission to edit are available to import.
             </div>
         </b-card>

@@ -96,7 +96,7 @@
             </b-button>
 
             <template v-else>
-                <hr class="full-width"/>
+                <hr/>
 
                 <div class="full-width timestamp">
                     <template

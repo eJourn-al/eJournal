@@ -42,7 +42,7 @@
 
             <div v-if="!importableFormats">
                 <b>No existing assignments available</b>
-                <hr class="m-0 mb-1"/>
+                <hr/>
                 Only assignments where you have permission to edit are available to import.
             </div>
 

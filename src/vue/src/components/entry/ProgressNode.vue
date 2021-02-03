@@ -21,7 +21,7 @@
             />
         </p>
         <files-list :files="currentNode.attached_files"/>
-        <hr class="full-width"/>
+        <hr/>
         <span
             v-if="!accomplished && new Date() < new Date(currentNode.due_date)"
             class="text-grey"

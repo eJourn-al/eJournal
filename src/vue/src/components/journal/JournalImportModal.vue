@@ -60,7 +60,7 @@
 
                 <div v-else>
                     <b>No importable journals available</b>
-                    <hr class="m-0 mb-1"/>
+                    <hr/>
                     You can only import journal your own journals, and you cannot import a journal from within the same
                     assignment.
                 </div>
