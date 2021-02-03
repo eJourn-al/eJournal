@@ -178,7 +178,7 @@ This tutorial can be consulted again by clicking the <i>info</i> sign.
 
             if (this.savedPreferences.show_format_tutorial) {
                 this.changePreference({ show_format_tutorial: false })
-                this.$intro().start()
+                this.$nextTick(() => { this.$intro().start() })
             }
         })
     },
