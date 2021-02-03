@@ -78,7 +78,6 @@
                     :id="`preset-description-${edit ? presetNode.id : presetNode.type}`"
                     :key="`preset-description-${edit ? presetNode.id : presetNode.type}`"
                     v-model="presetNode.description"
-                    class="multi-form"
                     placeholder="Description"
                     footer="false"
                 />
