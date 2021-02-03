@@ -8,6 +8,7 @@ import re
 from datetime import datetime
 from mimetypes import guess_extension
 
+import dateutil.parser
 from django.conf import settings
 from django.core.files.base import ContentFile
 
@@ -56,7 +57,11 @@ def cast_value(value, type, optional=False):
     elif type == datetime:
         if optional and value == '':
             return None
-        return datetime.strptime(value, settings.ALLOWED_DATETIME_FORMAT)
+        try:
+            return datetime.strptime(value, settings.ALLOWED_DATETIME_FORMAT)
+        except ValueError:
+            # Not all incoming datetimes are regulated by us, e.g. LMS datetimes format can vary.
+            return dateutil.parser.parse(value)
     else:
         return type(value)
 
