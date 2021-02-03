@@ -2,6 +2,7 @@ import 'flatpickr/dist/flatpickr.css' // eslint-disable-line import/no-extraneou
 import 'flatpickr/dist/themes/material_blue.css' // eslint-disable-line import/no-extraneous-dependencies
 import 'intro.js/introjs.css' // eslint-disable-line import/no-extraneous-dependencies
 import Vue from 'vue'
+import isEqual from 'lodash.isequal'
 
 import '@/helpers/vue_awesome_icons.js'
 import initBootstrap from '@/helpers/bootstrap.js'
@@ -39,6 +40,9 @@ initGlobalHelpers(Vue)
 
 /* Checks the store for for permissions according to the current route cID or aID. */
 Vue.prototype.$hasPermission = store.getters['permissions/hasPermission']
+
+Vue.prototype.$_isEqual = isEqual
+
 const toApi = new RegExp(`^${CustomEnv.API_URL}`)
 
 /* eslint-disable */

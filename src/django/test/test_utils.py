@@ -1,7 +1,7 @@
-import datetime
 import json
 import test.factory as factory
 import test.utils.performance
+from datetime import datetime, timedelta
 from test.utils import api
 
 from django.conf import settings
@@ -15,21 +15,52 @@ import VLE.models
 import VLE.utils.generic_utils as utils
 import VLE.utils.responses
 from VLE.serializers import UserSerializer, prefetched_objects
-from VLE.utils.error_handling import VLEProgrammingError
+from VLE.utils.error_handling import VLEParamWrongType, VLEProgrammingError
 from VLE.validators import validate_youtube_url_with_video_id
 
 
 class UtilsTest(TestCase):
     def test_cast_value(self):
-        data = {'false': 'false', 'true': 'true'}
-        false, true = utils.required_typed_params(data, (bool, 'false'), (bool, 'true'))
-        assert false is False, '"false" should be cast to "False"'
-        assert true is True, '"true" should be cast to "True"'
+        def test_cast_bool():
+            data = {'false': 'false', 'true': 'true'}
+            false, true = utils.required_typed_params(data, (bool, 'false'), (bool, 'true'))
+            assert false is False, '"false" should be cast to "False"'
+            assert true is True, '"true" should be cast to "True"'
 
-        falls, normal_cast = utils.required_typed_params(
-            {'falls': 'falss', 'normal_cast': '1'}, (bool, 'falls'), (bool, 'normal_cast'))
-        assert falls is True, 'Any cast bool other than "true" or "false" should follow default truthy conversion'
-        assert normal_cast is True, 'Any cast bool other than "true" or "false" should follow default truthy conversion'
+            falls, normal_cast = utils.required_typed_params(
+                {'falls': 'falss', 'normal_cast': '1'}, (bool, 'falls'), (bool, 'normal_cast'))
+            assert falls is True, 'Any cast bool other than "true" or "false" should follow default truthy conversion'
+            assert normal_cast is True, \
+                'Any cast bool other than "true" or "false" should follow default truthy conversion'
+
+        def test_cast_datetime():
+            # When possible, datetimes are parsed according to our desired frontend format
+            frontend_date_pickers_datetime_format = '2021-02-28T23:59:59'
+            date, = utils.required_typed_params({'date': frontend_date_pickers_datetime_format}, (datetime, 'date'))
+            assert date == datetime.strptime(frontend_date_pickers_datetime_format, settings.ALLOWED_DATETIME_FORMAT)
+
+            # Sometimes incoming datetime formats are out of our hands, e.g. via LTI, parse the date as best we can
+            uva_test_canvas_datetime_string = '2021-02-28 23:59'
+            uva_test_canvas_datetime_format = '%Y-%m-%d %H:%M'
+            date, = utils.required_typed_params({'date': uva_test_canvas_datetime_string}, (datetime, 'date'))
+            assert date == datetime.strptime(uva_test_canvas_datetime_string, uva_test_canvas_datetime_format)
+
+            # Raise wrong type on bogus date strings
+            bogus_date = '21a-02-tt 14:10'
+            self.assertRaises(VLEParamWrongType, utils.required_typed_params, {'date': bogus_date}, (datetime, 'date'))
+
+            # Raise wrong type on requried empty date strings
+            empty_required_date = ''
+            self.assertRaises(
+                VLEParamWrongType, utils.required_typed_params, {'date': empty_required_date}, (datetime, 'date'))
+
+            # An optional empty date string is cast to None
+            empty_optional_date = ''
+            date, = utils.optional_typed_params({'date': empty_optional_date}, (datetime, 'date'))
+            assert date is None
+
+        test_cast_bool()
+        test_cast_datetime()
 
     def test_code_version_in_utils_json_response(self):
         json_resp = VLE.utils.responses.json_response()
@@ -52,11 +83,11 @@ class UtilsTest(TestCase):
         journal = factory.Journal(entries__n=0)
         progress_points_preset = factory.ProgressPresetNode(
             format=journal.assignment.format,
-            due_date=timezone.now() + datetime.timedelta(weeks=1),
+            due_date=timezone.now() + timedelta(weeks=1),
         )
         unlimited_entry = factory.UnlimitedEntry(
             node__journal=journal,
-            creation_date=timezone.now() - datetime.timedelta(days=2),
+            creation_date=timezone.now() - timedelta(days=2),
         )
 
         template = journal.assignment.format.template_set.first()
@@ -64,9 +95,9 @@ class UtilsTest(TestCase):
         deadline_node = journal.node_set.get(preset=deadline)
         preset_entry = factory.PresetEntry(
             node=deadline_node,
-            creation_date=timezone.now() + datetime.timedelta(days=2),
+            creation_date=timezone.now() + timedelta(days=2),
         )
-        preset_entry.node.preset.due_date = timezone.now() - datetime.timedelta(days=1)
+        preset_entry.node.preset.due_date = timezone.now() - timedelta(days=1)
         preset_entry.node.preset.save()
 
         with self.assertNumQueries(1):

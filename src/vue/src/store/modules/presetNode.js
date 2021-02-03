@@ -24,6 +24,7 @@ function propagateTemplatePresetNodeUpdate (presetNodes, updatedTemplate, oldTem
         if (presetNode.type !== 'd') { return }
 
         if (presetNode.template && presetNode.template.id === oldTemplateId) {
+            // NOTE: Using reference here is safe, a presetNode cannot make changes to a template itself
             presetNode.template = updatedTemplate
         }
     })

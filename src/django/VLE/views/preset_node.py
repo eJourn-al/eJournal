@@ -133,8 +133,8 @@ class PresetNodeView(viewsets.ViewSet):
             template, = utils.required_params(request.data, 'template')
             unlock_date, lock_date = utils.optional_typed_params(
                 request.data,
-                (str, 'unlock_date'),
-                (str, 'lock_date'),
+                (datetime, 'unlock_date'),
+                (datetime, 'lock_date'),
             )
 
             preset.forced_template_id = template['id']

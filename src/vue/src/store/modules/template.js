@@ -11,18 +11,21 @@ function fromCache ({ state, commit }, cache, cacheKey, fn, force = false) {
 }
 
 function propagateCategoryTemplateUpdate (templates, updatedCategory) {
+    const categoryConcreteFields = JSON.parse(JSON.stringify(updatedCategory))
+    delete categoryConcreteFields.templates
+
     templates.forEach((template) => {
         const templateCategoryIndex = template.categories.findIndex(category => category.id === updatedCategory.id)
         const templateLinkedToCategory = templateCategoryIndex !== -1
 
         if (templateLinkedToCategory) {
-            Vue.set(template.categories, templateCategoryIndex, updatedCategory)
+            Vue.set(template.categories, templateCategoryIndex, categoryConcreteFields)
         }
 
         const updatedCategoryLinkedToTemplate = updatedCategory.templates.find(elem => elem.id === template.id)
 
         if (!templateLinkedToCategory && updatedCategoryLinkedToTemplate) {
-            template.categories.push(updatedCategory)
+            template.categories.push(categoryConcreteFields)
         } else if (templateLinkedToCategory && !updatedCategoryLinkedToTemplate) {
             Vue.delete(template.categories, templateCategoryIndex)
         }

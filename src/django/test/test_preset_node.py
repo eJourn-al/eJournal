@@ -343,7 +343,7 @@ class PresetNodeTest(TestCase):
             self.assertRaises(ValidationError, PresetNode.validate_due_date, empty_due_date, assignment)
 
             incorrect_format_due_date = PresetNodeSerializer(deadline).data
-            incorrect_format_due_date['due_date'] = '2000-10-10T'
+            incorrect_format_due_date['due_date'] = '2000a-10-10'
             self.assertRaises(VLEParamWrongType, PresetNode.validate_due_date, incorrect_format_due_date, assignment)
 
             # Deadline is due before assignment unlocks

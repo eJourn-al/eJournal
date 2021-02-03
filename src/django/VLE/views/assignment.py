@@ -4,6 +4,7 @@ assignment.py.
 In this file are all the assignment api requests.
 """
 import csv
+from datetime import datetime
 
 import chardet
 from dateutil.relativedelta import relativedelta
@@ -148,25 +149,48 @@ class AssignmentView(viewsets.ViewSet):
 
         """
         name, description, course_id = utils.required_typed_params(
-            request.data, (str, 'name'), (str, 'description'), (int, 'course_id'))
+            request.data,
+            (str, 'name'),
+            (str, 'description'),
+            (int, 'course_id'),
+        )
         unlock_date, due_date, lock_date, lti_id, is_published, points_possible, is_group_assignment, \
             can_set_journal_name, can_set_journal_image, can_lock_journal, remove_grade_upon_leaving_group = \
             utils.optional_typed_params(
-                request.data, (str, 'unlock_date'), (str, 'due_date'), (str, 'lock_date'), (str, 'lti_id'),
-                (bool, 'is_published'), (float, 'points_possible'), (bool, 'is_group_assignment'),
-                (bool, 'can_set_journal_name'), (bool, 'can_set_journal_image'), (bool, 'can_lock_journal'),
-                (bool, 'remove_grade_upon_leaving_group'))
+                request.data,
+                (datetime, 'unlock_date'),
+                (datetime, 'due_date'),
+                (datetime, 'lock_date'),
+                (str, 'lti_id'),
+                (bool, 'is_published'),
+                (float, 'points_possible'),
+                (bool, 'is_group_assignment'),
+                (bool, 'can_set_journal_name'),
+                (bool, 'can_set_journal_image'),
+                (bool, 'can_lock_journal'),
+                (bool, 'remove_grade_upon_leaving_group')
+            )
         course = Course.objects.get(pk=course_id)
 
         request.user.check_permission('can_add_assignment', course)
 
         assignment = factory.make_assignment(
-            name, description, courses=[course], author=request.user, active_lti_id=lti_id,
-            points_possible=points_possible, unlock_date=unlock_date, due_date=due_date,
-            lock_date=lock_date, is_published=is_published, is_group_assignment=is_group_assignment or False,
-            can_set_journal_name=can_set_journal_name or False, can_set_journal_image=can_set_journal_image or False,
+            name,
+            description,
+            courses=[course],
+            author=request.user,
+            active_lti_id=lti_id,
+            points_possible=points_possible,
+            unlock_date=unlock_date,
+            due_date=due_date,
+            lock_date=lock_date,
+            is_published=is_published or False,
+            is_group_assignment=is_group_assignment or False,
+            can_set_journal_name=can_set_journal_name or False,
+            can_set_journal_image=can_set_journal_image or False,
             can_lock_journal=can_lock_journal or False,
-            remove_grade_upon_leaving_group=remove_grade_upon_leaving_group or False)
+            remove_grade_upon_leaving_group=remove_grade_upon_leaving_group or False,
+        )
 
         # Add new lti id to assignment
         if lti_id is not None:
