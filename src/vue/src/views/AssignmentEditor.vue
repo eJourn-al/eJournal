@@ -213,8 +213,14 @@ This tutorial can be consulted again by clicking the <i>info</i> sign.
 
 <style lang="sass">
 .dirty::after
-    content: " *"
+    content: '\2022'
+    font-size: 2em
+    line-height: 10px
+    vertical-align: middle
+    margin-left: 4px
+    margin-right: 4px
     color: $theme-orange
+    text-shadow: 0 0 6px rgba(232,167,35,0.5), 0 0 6px rgba(232,167,35,0.8)
 
 .menu-list-header
     border-bottom: 2px solid $theme-dark-grey
