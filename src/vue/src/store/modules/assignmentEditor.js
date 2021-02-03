@@ -15,7 +15,7 @@ const editSymbol = Symbol('edit')
 function fromDraft (drafts, obj) {
     if (obj.id in drafts) {
         const draft = drafts[obj.id]
-        draft.edited = JSON.stringify(draft.draft) !== JSON.stringify(obj)
+        draft.edited = !Vue.prototype.$_isEqual(draft.draft, obj)
 
         return draft
     }
@@ -27,7 +27,7 @@ function fromDraft (drafts, obj) {
 }
 
 function isDraftDirty (drafts, obj) {
-    return (obj.id in drafts) ? JSON.stringify(drafts[obj.id].draft) !== JSON.stringify(obj) : false
+    return (obj.id in drafts) ? !Vue.prototype.$_isEqual(drafts[obj.id].draft, obj) : false
 }
 
 const getters = {
@@ -53,7 +53,7 @@ const getters = {
     selectedTimelineElementIndex: state => state.selectedTimelineElementIndex,
 
     isAssignmentDetailsDirty: state => original => (
-        state.assignmentDetailsDraft && JSON.stringify(state.assignmentDetailsDraft) !== JSON.stringify(original)
+        state.assignmentDetailsDraft && !Vue.prototype.$_isEqual(state.assignmentDetailsDraft, original)
     ),
     isCategoryDirty: state => originalCategory => isDraftDirty(state.categoryDrafts, originalCategory),
     isPresetNodeDirty: state => originalPresetNode => isDraftDirty(state.presetNodeDrafts, originalPresetNode),
@@ -70,7 +70,7 @@ const mutations = {
 
     SELECT_ASSIGNMENT_DETAILS (state, { originalAssignment }) {
         if (state.assignmentDetailsDraft) {
-            const edited = JSON.stringify(originalAssignment) !== JSON.stringify(state.assignmentDetailsDraft)
+            const edited = !Vue.prototype.$_isEqual(originalAssignment, state.assignmentDetailsDraft)
             state.activeComponentMode = (edited)
                 ? state.activeComponentModeOptions.edit : state.activeComponentModeOptions.read
         } else {
@@ -111,14 +111,14 @@ const mutations = {
     },
     /* When a category is updated, it is possible its templates were changed.
      * These changes need to be propagated to the the template drafts in order to keep state in sync. */
-    PROPAGATE_CATEGORY_TEMPLATE_UPDATE (state, { updatedCategory }) {
+    PROPAGATE_DRAFT_CATEGORY_TEMPLATE_UPDATE (state, { updatedCategory }) {
         templateStore.propagateCategoryTemplateUpdate(
             Object.values(state.templateDrafts).map(draft => draft.draft),
             updatedCategory,
         )
     },
     /* When a category is deleted, it also needs to be removed from all template drafts */
-    PROPAGATE_CATEGORY_DELETE (state, { deletedCategoryId }) {
+    PROPAGATE_DRAFT_CATEGORY_DELETE (state, { deletedCategoryId }) {
         templateStore.propagateCategoryDelete(
             Object.values(state.templateDrafts).map(draft => draft.draft),
             deletedCategoryId,
@@ -169,7 +169,7 @@ const mutations = {
     },
     /* When a template is updated, it is possible its categories were changed.
      * These changes need to be propagated to the category drafts in order to keep state in sync. */
-    PROPAGATE_TEMPLATE_CATEGORY_UPDATE (state, { updatedTemplate, oldTemplateId }) {
+    PROPAGATE_DRAFT_TEMPLATE_CATEGORY_UPDATE (state, { updatedTemplate, oldTemplateId }) {
         categoryStore.propagateTemplateCategoryUpdate(
             Object.values(state.categoryDrafts).map(draft => draft.draft),
             updatedTemplate,
@@ -232,7 +232,7 @@ const mutations = {
     },
     /* When a template is updated, it is possible preset deadlines' forced template becomes stale.
      * These changes need to be propagated to the preset node drafts in order to keep state in sync. */
-    PROPAGATE_TEMPLATE_PRESET_NODE_UPDATE (state, { updatedTemplate, oldTemplateId }) {
+    PROPAGATE_DRAFT_TEMPLATE_PRESET_NODE_UPDATE (state, { updatedTemplate, oldTemplateId }) {
         presetNodeStore.propagateTemplatePresetNodeUpdate(
             Object.values(state.presetNodeDrafts).map(draft => draft.draft),
             updatedTemplate,
@@ -278,17 +278,17 @@ const mutations = {
 const actions = {
     categoryCreated (context, { category }) {
         context.commit('CLEAR_NEW_CATEGORY_DRAFT')
-        context.commit('PROPAGATE_CATEGORY_TEMPLATE_UPDATE', { updatedCategory: category })
+        context.commit('PROPAGATE_DRAFT_CATEGORY_TEMPLATE_UPDATE', { updatedCategory: category })
         context.commit('SELECT_CATEGORY', { category })
     },
     templateCreated (context, { template }) {
         context.commit('CLEAR_NEW_TEMPLATE_DRAFT')
-        context.commit('PROPAGATE_TEMPLATE_CATEGORY_UPDATE', { updatedTemplate: template })
+        context.commit('PROPAGATE_DRAFT_TEMPLATE_CATEGORY_UPDATE', { updatedTemplate: template })
         context.commit('SELECT_TEMPLATE', { template })
     },
 
     categoryDeleted (context, { category }) {
-        context.commit('PROPAGATE_CATEGORY_DELETE', { deletedCategoryId: category.id })
+        context.commit('PROPAGATE_DRAFT_CATEGORY_DELETE', { deletedCategoryId: category.id })
 
         if (context.state.selectedCategory && context.state.selectedCategory.id === category.id) {
             context.commit('CLEAR_SELECTED_CATEGORY')
@@ -321,7 +321,7 @@ const actions = {
 
     categoryUpdated (context, { category }) {
         context.commit('CLEAR_DRAFT', { drafts: context.state.categoryDrafts, obj: category })
-        context.commit('PROPAGATE_CATEGORY_TEMPLATE_UPDATE', { updatedCategory: category })
+        context.commit('PROPAGATE_DRAFT_CATEGORY_TEMPLATE_UPDATE', { updatedCategory: category })
         context.commit('SELECT_CATEGORY', { category })
     },
     presetNodeUpdated (context, { presetNode }) {
@@ -330,8 +330,8 @@ const actions = {
     },
     templateUpdated (context, { updatedTemplate, oldTemplateId }) {
         context.commit('CLEAR_DRAFT', { drafts: context.state.templateDrafts, obj: { id: oldTemplateId } })
-        context.commit('PROPAGATE_TEMPLATE_CATEGORY_UPDATE', { updatedTemplate, oldTemplateId })
-        context.commit('PROPAGATE_TEMPLATE_PRESET_NODE_UPDATE', { updatedTemplate, oldTemplateId })
+        context.commit('PROPAGATE_DRAFT_TEMPLATE_CATEGORY_UPDATE', { updatedTemplate, oldTemplateId })
+        context.commit('PROPAGATE_DRAFT_TEMPLATE_PRESET_NODE_UPDATE', { updatedTemplate, oldTemplateId })
         // TODO Update deadline templates
         context.commit('SELECT_TEMPLATE', { template: updatedTemplate })
     },
@@ -395,7 +395,7 @@ const actions = {
         const templates = context.rootGetters['template/assignmentTemplates']
 
         if (context.state.assignmentDetailsDraft
-            && JSON.stringify(context.state.assignmentDetailsDraft) !== JSON.stringify(assignment)) {
+            && !Vue.prototype.$_isEqual(context.state.assignmentDetailsDraft, assignment)) {
             dirtyWarnings.push('Edit to assignment details.')
         }
 
@@ -417,7 +417,7 @@ const actions = {
             const categoryDraft = draft.draft
             const originalCategory = categories.find(elem => elem.id === categoryDraft.id)
 
-            if (JSON.stringify(originalCategory) !== JSON.stringify(categoryDraft)) {
+            if (!Vue.prototype.$_isEqual(originalCategory, categoryDraft)) {
                 dirtyWarnings.push(`Edit to category '${originalCategory.name}'.`)
             }
         })
@@ -425,7 +425,7 @@ const actions = {
             const presetNodeDraft = draft.draft
             const originalPresetNode = presetNodes.find(elem => elem.id === presetNodeDraft.id)
 
-            if (JSON.stringify(originalPresetNode) !== JSON.stringify(presetNodeDraft)) {
+            if (!Vue.prototype.$_isEqual(originalPresetNode, presetNodeDraft)) {
                 dirtyWarnings.push(`Edit to deadline '${originalPresetNode.display_name}'.`)
             }
         })
@@ -433,7 +433,7 @@ const actions = {
             const templateDraft = draft.draft
             const originalTemplate = templates.find(elem => elem.id === templateDraft.id)
 
-            if (JSON.stringify(originalTemplate) !== JSON.stringify(templateDraft)) {
+            if (!Vue.prototype.$_isEqual(originalTemplate, templateDraft)) {
                 dirtyWarnings.push(`Edit to template '${originalTemplate.name}'.`)
             }
         })
