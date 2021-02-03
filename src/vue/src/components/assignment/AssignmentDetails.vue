@@ -17,19 +17,17 @@
                         :state="nameInputState"
                     />
 
-                    <template #append>
-                        <b-button
-                            v-b-tooltip:hover="
-                                `This assignment is visible ${(assignmentDetails.is_published)? '' : 'not'} to students`
-                            "
-                            class="ml-2"
-                            :class="(assignmentDetails.is_published) ? 'green-button' : 'red-button'"
-                            @click="assignmentDetails.is_published = !assignmentDetails.is_published"
-                        >
-                            <icon :name="(assignmentDetails.is_published) ? 'check' : 'times'"/>
-                            {{ (assignmentDetails.is_published) ? 'Published' : 'Unpublished' }}
-                        </b-button>
-                    </template>
+                    <b-button
+                        v-b-tooltip:hover="
+                            `This assignment is visible ${(assignmentDetails.is_published)? '' : 'not'} to students`
+                        "
+                        class="ml-2"
+                        :class="(assignmentDetails.is_published) ? 'green-button' : 'red-button'"
+                        @click="assignmentDetails.is_published = !assignmentDetails.is_published"
+                    >
+                        <icon :name="(assignmentDetails.is_published) ? 'check' : 'times'"/>
+                        {{ (assignmentDetails.is_published) ? 'Published' : 'Unpublished' }}
+                    </b-button>
                 </b-input-group>
             </b-form-group>
 
@@ -40,7 +38,6 @@
                     ref="text-editor-assignment-edit-description"
                     v-model="assignmentDetails.description"
                     :footer="false"
-                    class="multi-form"
                     placeholder="Description of the assignment"
                 />
             </b-form-group>
@@ -60,7 +57,7 @@
 
                 <b-input
                     v-model="assignmentDetails.points_possible"
-                    class="multi-form theme-input"
+                    class="theme-input"
                     placeholder="Points"
                     type="number"
                     required
