@@ -258,11 +258,6 @@ export default {
     .field-card:hover .trash-icon:hover
         fill: $theme-red !important
 
-    .template-availability
-        font-weight: bold
-        color: grey
-        margin-bottom: 10px
-
     .icon-box
         text-align: center
 

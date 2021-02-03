@@ -1,75 +1,76 @@
 <template>
-    <b-table-simple>
-        <b-thead>
-            <b-tr>
-                <b-th>
-                    Options
-                </b-th>
-                <b-th class="template-availability">
-                    <icon
-                        name="info-circle"
-                        class="shift-up-3 mr-1"
-                    />
-                    Information
-                </b-th>
-            </b-tr>
-        </b-thead>
-
-        <b-tbody>
-            <b-tr>
-                <b-td class="template-availability">
-                    <b-button
-                        :class="(template.preset_only) ? 'red-button' : 'green-button'"
-                        @click.stop="template.preset_only = !template.preset_only"
-                    >
-                        <icon :name="(template.preset_only) ? 'lock' : 'unlock'"/>
-                        {{ (template.preset_only) ? 'Preset-only' : 'Unlimited' }}
-                    </b-button>
-                </b-td>
-                <b-td class="template-availability">
-                    <icon
-                        name="info-circle"
-                        class="shift-up-3 mr-1"
-                    />
-                    <span v-if="template.preset_only">
-                        This template can only be used for preset entries you add to the timeline
-                    </span>
-                    <span v-else>This template can be freely used by students as often as they want</span>
-                </b-td>
-            </b-tr>
-
-            <b-tr v-if="assignmentHasCategories">
-                <b-td class="template-availability">
-                    <b-button
-                        :class="(template.fixed_categories) ? 'red-button' : 'green-button'"
-                        @click.stop="template.fixed_categories = !template.fixed_categories"
-                    >
-                        <icon :name="(template.fixed_categories) ? 'lock' : 'unlock'"/>
-                        {{ (template.fixed_categories) ? 'Fixed categories' : 'Custom categories' }}
-                    </b-button>
-                </b-td>
-                <b-td class="template-availability">
-                    <icon
-                        name="info-circle"
-                        class="shift-up-3 mr-1"
-                    />
-                    <span v-if="template.fixed_categories">
-                        Students can not change the default categories for entries created with this template
-                    </span>
-                    <span v-else>
-                        Students can freely add or remove categories to entries created with this template
-                    </span>
-                </b-td>
-            </b-tr>
-        </b-tbody>
-    </b-table-simple>
+    <b-card class="no-hover">
+        <radio-button
+            v-model="template.preset_only"
+            :options="[
+                {
+                    value: true,
+                    icon: 'check',
+                    class: 'green-button',
+                },
+                {
+                    value: false,
+                    icon: 'times',
+                    class: 'red-button',
+                },
+            ]"
+            class="float-right mb-3 ml-3"
+        />
+        <h2 class="theme-h2 field-heading multi-form">
+            Unlimited use
+        </h2>
+        Allow students to use this template for new entries in their journal.
+        When disabled, this template can still be used for deadlines you add to the timeline.
+        <template v-if="assignmentHasCategories">
+            <hr/>
+            <!-- TODO CATEGORY: Invert the notion of 'fixed categories' in the back end? This seems more natural. -->
+            <radio-button
+                v-model="template.fixed_categories"
+                :options="[
+                    {
+                        value: false,
+                        icon: 'check',
+                        class: 'green-button',
+                    },
+                    {
+                        value: true,
+                        icon: 'times',
+                        class: 'red-button',
+                    },
+                ]"
+                class="float-right mb-3 ml-3"
+            />
+            <h2 class="theme-h2 field-heading multi-form">
+                Allow custom categories
+            </h2>
+            Allow students to choose which categories they add to their entry when using this template.
+            <hr/>
+            <h2 class="theme-h2 field-heading">
+                Default categories
+            </h2>
+            Select which categories are added to entries using this template by default.
+            <category-select
+                v-model="template.categories"
+                class="mt-2"
+                :options="assignmentCategories"
+                :openDirection="'top'"
+                placeholder="Set categories"
+            />
+        </template>
+    </b-card>
 </template>
 
 <script>
 import { mapGetters } from 'vuex'
+import CategorySelect from '@/components/category/CategorySelect.vue'
+import RadioButton from '@/components/assets/RadioButton.vue'
 
 export default {
     name: 'TemplateEditSettings',
+    components: {
+        CategorySelect,
+        RadioButton,
+    },
     props: {
         template: {
             required: true,
@@ -79,13 +80,8 @@ export default {
     computed: {
         ...mapGetters({
             assignmentHasCategories: 'category/assignmentHasCategories',
+            assignmentCategories: 'category/assignmentCategories',
         }),
     },
 }
 </script>
-
-<style lang="sass">
-.template-availability
-    font-weight: bold
-    color: grey
-</style>

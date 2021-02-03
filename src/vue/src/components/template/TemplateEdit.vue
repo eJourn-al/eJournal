@@ -52,26 +52,14 @@
                 />
             </b-form-group>
 
-            <template-edit-settings :template="template"/>
-
-            <hr/>
+            <template-edit-settings
+                class="mb-3"
+                :template="template"
+            />
 
             <template-edit-fields :template="template"/>
 
             <hr/>
-
-            <template v-if="assignmentHasCategories">
-                <b-form-group label="Categories">
-                    <category-select
-                        v-model="template.categories"
-                        :options="assignmentCategories"
-                        :openDirection="'top'"
-                        placeholder="Set categories"
-                    />
-                </b-form-group>
-
-                <hr/>
-            </template>
 
             <b-row no-gutters>
                 <b-button
@@ -96,7 +84,6 @@
 </template>
 
 <script>
-import CategorySelect from '@/components/category/CategorySelect.vue'
 import EntryPreview from '@/components/entry/EntryPreview.vue'
 import TemplateEditFields from '@/components/template/TemplateEditFields.vue'
 import TemplateEditSettings from '@/components/template/TemplateEditSettings.vue'
@@ -105,7 +92,6 @@ import { mapActions, mapGetters, mapMutations } from 'vuex'
 
 export default {
     components: {
-        CategorySelect,
         EntryPreview,
         TemplateEditFields,
         TemplateEditSettings,
