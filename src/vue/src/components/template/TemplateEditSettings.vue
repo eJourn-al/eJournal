@@ -4,12 +4,12 @@
             v-model="template.preset_only"
             :options="[
                 {
-                    value: true,
+                    value: false,
                     icon: 'check',
                     class: 'green-button',
                 },
                 {
-                    value: false,
+                    value: true,
                     icon: 'times',
                     class: 'red-button',
                 },
