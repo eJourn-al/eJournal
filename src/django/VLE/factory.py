@@ -105,65 +105,64 @@ def make_course_group(name, course, lti_id=None):
     return course_group
 
 
-def make_assignment(name, description, author=None, format=None, active_lti_id=None,
-                    points_possible=10, is_published=None, unlock_date=None, due_date=None,
-                    lock_date=None, courses=[], is_group_assignment=False,
-                    can_set_journal_name=False, can_set_journal_image=False, can_lock_journal=False,
-                    remove_grade_upon_leaving_group=False):
-    """Make a new assignment.
-
+@transaction.atomic
+def make_assignment(
+    name,
+    description,
+    author=None,
+    is_published=False,
+    points_possible=10,
+    unlock_date=None,
+    due_date=None,
+    lock_date=None,
+    courses=[],
+    active_lti_id=None,
+    is_group_assignment=False,
+    remove_grade_upon_leaving_group=False,
+    can_set_journal_name=False,
+    can_set_journal_image=False,
+    can_lock_journal=False,
+):
+    """
     Arguments:
     name -- name of assignment
     description -- description of the assignment
     author -- author of assignment
-    format -- format of assignment
     courseIDs -- ID of the courses the assignment belongs to
     courses -- courses it belongs to
     active_lti_id -- (optional) lti_id, this links an eJournal course to a VLE course, only the active id receives
         grade passback.
-
-    On success, returns a new assignment.
     """
-    setup_default_layout = format is None
+    format = VLE.models.Format.objects.create()
 
-    if format is None:
-        format = VLE.models.Format.objects.create()
-
-    assign = VLE.models.Assignment(
-        name=name, description=description, author=author, format=format,
-        is_group_assignment=is_group_assignment, active_lti_id=active_lti_id,
-        can_set_journal_name=can_set_journal_name, can_set_journal_image=can_set_journal_image,
+    assignment = VLE.models.Assignment.objects.create(
+        name=name,
+        description=description,
+        author=author,
+        is_published=is_published,
+        points_possible=points_possible,
+        unlock_date=unlock_date,
+        due_date=due_date,
+        lock_date=lock_date,
+        format=format,
+        active_lti_id=active_lti_id,
+        is_group_assignment=is_group_assignment,
+        remove_grade_upon_leaving_group=remove_grade_upon_leaving_group,
+        can_set_journal_name=can_set_journal_name,
+        can_set_journal_image=can_set_journal_image,
         can_lock_journal=can_lock_journal,
-        remove_grade_upon_leaving_group=remove_grade_upon_leaving_group
     )
-    if points_possible is not None:
-        assign.points_possible = points_possible
-    if is_published is not None:
-        assign.is_published = is_published
-    if unlock_date is not None:
-        if len(unlock_date.split(' ')) > 2:
-            unlock_date = unlock_date[:-1-len(unlock_date.split(' ')[2])]
-        assign.unlock_date = unlock_date
-    if due_date is not None:
-        if len(due_date.split(' ')) > 2:
-            due_date = due_date[:-1-len(due_date.split(' ')[2])]
-        assign.due_date = due_date
-    if lock_date is not None:
-        if len(lock_date.split(' ')) > 2:
-            lock_date = lock_date[:-1-len(lock_date.split(' ')[2])]
-        assign.lock_date = lock_date
-    assign.save()
 
-    if setup_default_layout:
-        if due_date:
-            setup_default_assignment_layout(assign, due_date, points_possible)
-        else:
-            setup_default_assignment_layout(assign, timezone.now() + timedelta(days=365), points_possible)
+    setup_default_assignment_layout(
+        assignment,
+        due_date if due_date else timezone.now() + timedelta(days=365),
+        points_possible,
+    )
 
     for course in courses:
-        assign.add_course(course)
+        assignment.add_course(course)
 
-    return assign
+    return assignment
 
 
 def get_lti_groups_with_name(course):
@@ -188,7 +187,7 @@ def make_lti_groups(course):
             VLE.models.Group.objects.filter(course=course, lti_id=lti_id).update(name=name)
 
 
-def setup_default_assignment_layout(assignment, due_date=None, points_possible=10):
+def setup_default_assignment_layout(assignment, due_date, points_possible):
     template = VLE.models.Template.objects.create(
         name='Entry',
         format=assignment.format,

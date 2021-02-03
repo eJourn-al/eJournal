@@ -184,7 +184,7 @@ class AssignmentView(viewsets.ViewSet):
             unlock_date=unlock_date,
             due_date=due_date,
             lock_date=lock_date,
-            is_published=is_published,
+            is_published=is_published or False,
             is_group_assignment=is_group_assignment or False,
             can_set_journal_name=can_set_journal_name or False,
             can_set_journal_image=can_set_journal_image or False,
