@@ -13,12 +13,21 @@
             <slot name="edit-button"/>
         </b-row>
 
+        <b-form-group label="Description">
+            <sandboxed-iframe
+                v-if="assignment.description"
+                :content="assignment.description"
+            />
+            <span
+                v-else
+                class="no-optional-content-value"
+            >
+                No description provided.
+            </span>
+        </b-form-group>
 
-        <sandboxed-iframe
-            v-if="assignment.description"
-            :content="assignment.description"
-        />
         <hr/>
+
         <span
             v-if="assignment.unlock_date && new Date(assignment.unlock_date) > new Date()"
             class="text-grey"
