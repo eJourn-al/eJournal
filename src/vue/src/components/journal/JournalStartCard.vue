@@ -13,7 +13,7 @@
             <slot name="edit-button"/>
         </b-row>
 
-        <b-form-group label="Description">
+        <b-form-group>
             <sandboxed-iframe
                 v-if="assignment.description"
                 :content="assignment.description"
