@@ -1,8 +1,8 @@
 <template>
     <journal-end-card :assignment="assignment">
-        <template v-slot:edit-button>
+        <template #edit-button>
             <b-button
-                class="ml-2 orange-button float-right"
+                class="ml-auto orange-button"
                 @click.stop="setModeToEdit()"
             >
                 <icon name="edit"/>
