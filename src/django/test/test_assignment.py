@@ -221,6 +221,10 @@ class AssignmentAPITest(TestCase):
         self.course.refresh_from_db()
         assert 'random_lti_id_salkdjfhas' in self.course.assignment_lti_id_set
 
+        params = {**self.create_params, **{'description': ''}}
+        resp = api.create(self, 'assignments', params=params, user=self.teacher)['assignment']
+        assert resp['description'] == '', 'It should be possible to create an assignment without a description.'
+
     def test_get_assignment_stats(self):
         unrelated_student = factory.Student()
         assignment = factory.Assignment(courses=[self.course])

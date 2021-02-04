@@ -1117,6 +1117,7 @@ class Assignment(CreateUpdateModel):
     """
     name = models.TextField()
     description = models.TextField(
+        blank=True,
         null=True,
     )
     author = models.ForeignKey(
