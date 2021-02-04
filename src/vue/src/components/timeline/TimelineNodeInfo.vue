@@ -22,7 +22,7 @@
         </span>
 
         <category-display
-            :id="`timeline-node-${node.id}-categories`"
+            :id="`timeline-node-${node.nID}-categories`"
             :categories="nodeCategories"
             :compact="true"
         />
