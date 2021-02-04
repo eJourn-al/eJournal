@@ -17,8 +17,15 @@
 
         <b-form-group label="Description">
             <sandboxed-iframe
+                v-if="category.description"
                 :content="category.description"
             />
+            <span
+                v-else
+                class="no-optional-content-value"
+            >
+                No description provided.
+            </span>
         </b-form-group>
 
         <b-form-group label="Templates">
@@ -30,7 +37,12 @@
             >
                 {{ template.name }}
             </b-badge>
-            <span v-if="!category.templates">Category is not linked to any templates.</span>
+            <span
+                v-if="!category.templates.length"
+                class="no-optional-content-value"
+            >
+                No templates have this category set as part of their (fixed) default categories.
+            </span>
         </b-form-group>
     </div>
 </template>
