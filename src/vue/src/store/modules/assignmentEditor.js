@@ -140,7 +140,7 @@ const mutations = {
         state.activeComponentMode = (draft.edited)
             ? state.activeComponentModeOptions.edit : state.activeComponentModeOptions.read
     },
-    CREATE_TEMPLATE (state) {
+    CREATE_TEMPLATE (state, { fromPresetNode }) {
         if (state.newTemplateDraft) {
             state.selectedTemplate = state.newTemplateDraft
         } else {
@@ -158,6 +158,7 @@ const mutations = {
                 preset_only: false,
                 fixed_categories: true,
                 categories: [],
+                fromPresetNode,
             }
 
             state.selectedTemplate = newTemplate
@@ -281,10 +282,35 @@ const actions = {
         context.commit('PROPAGATE_DRAFT_CATEGORY_TEMPLATE_UPDATE', { updatedCategory: category })
         context.commit('SELECT_CATEGORY', { category })
     },
-    templateCreated (context, { template }) {
+    templateCreated (context, { template, fromPresetNode }) {
         context.commit('CLEAR_NEW_TEMPLATE_DRAFT')
         context.commit('PROPAGATE_DRAFT_TEMPLATE_CATEGORY_UPDATE', { updatedTemplate: template })
-        context.commit('SELECT_TEMPLATE', { template })
+
+        if (fromPresetNode) {
+            const presetNodes = context.rootGetters['presetNode/assignmentPresetNodes']
+            let timelineElementIndex
+
+            if (fromPresetNode.id === -1) {
+                timelineElementIndex = presetNodes.length /* Add node should be selected */
+            } else {
+                timelineElementIndex = presetNodes.findIndex(elem => elem.id === fromPresetNode.id)
+            }
+
+            const presetNodeExists = timelineElementIndex !== -1
+
+            if (presetNodeExists) {
+                fromPresetNode.template = template
+
+                context.dispatch(
+                    'timelineElementSelected',
+                    { timelineElementIndex, mode: context.state.activeComponentModeOptions.edit },
+                )
+            } else {
+                context.commit('SELECT_TEMPLATE', { template })
+            }
+        } else {
+            context.commit('SELECT_TEMPLATE', { template })
+        }
     },
 
     categoryDeleted (context, { category }) {
@@ -332,7 +358,6 @@ const actions = {
         context.commit('CLEAR_DRAFT', { drafts: context.state.templateDrafts, obj: { id: oldTemplateId } })
         context.commit('PROPAGATE_DRAFT_TEMPLATE_CATEGORY_UPDATE', { updatedTemplate, oldTemplateId })
         context.commit('PROPAGATE_DRAFT_TEMPLATE_PRESET_NODE_UPDATE', { updatedTemplate, oldTemplateId })
-        // TODO Update deadline templates
         context.commit('SELECT_TEMPLATE', { template: updatedTemplate })
     },
 

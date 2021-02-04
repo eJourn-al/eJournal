@@ -47,7 +47,7 @@
         <div class="multi-form">
             <span
                 class="text-blue cursor-pointer"
-                @click.stop="createTemplate()"
+                @click.stop="createTemplate({ fromPresetNode: presetNode })"
             >
                 {{ (templates.length === 0) ? 'Create a new template' : 'Or create a new template' }}
             </span>

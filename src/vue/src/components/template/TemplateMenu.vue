@@ -37,7 +37,7 @@
                 <b-button
                     class="green-button full-width"
                     :class="{ 'mt-2': templates.length > 0 }"
-                    @click="createTemplate()"
+                    @click="createTemplate({ fromPresetNode: false })"
                 >
                     <icon name="plus"/>
                     Create New Template

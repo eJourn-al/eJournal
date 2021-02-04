@@ -152,7 +152,9 @@ export default {
 
             if (this.create) {
                 this.createTemplate({ template: this.template, aID: this.$route.params.aID })
-                    .then((template) => { this.templateCreated({ template }) })
+                    .then((template) => {
+                        this.templateCreated({ template, fromPresetNode: this.template.fromPresetNode })
+                    })
             } else {
                 this.updateTemplate({ id: this.template.id, data: this.template, aID: this.$route.params.aID })
                     .then((updatedTemplate) => {
