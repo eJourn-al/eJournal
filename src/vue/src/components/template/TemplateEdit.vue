@@ -118,19 +118,7 @@ export default {
         create () { return this.template.id < 0 },
     },
     watch: {
-        'template.name': {
-            handler (name) {
-                if (name === '') {
-                    this.nameInvalidFeedback = 'Name cannot be empty'
-                    this.nameInputState = false
-                } else if (this.templates.some(elem => elem.id !== this.template.id && elem.name === name)) {
-                    this.nameInvalidFeedback = 'Name is not unique'
-                    this.nameInputState = false
-                } else {
-                    this.nameInputState = null
-                }
-            },
-        },
+        'template.name': 'validateNameInput',
     },
     methods: {
         ...mapMutations({
@@ -146,6 +134,19 @@ export default {
             updateTemplate: 'template/update',
             deleteTemplate: 'template/delete',
         }),
+        validateNameInput () {
+            const name = this.template.name
+
+            if (name === '') {
+                this.nameInvalidFeedback = 'Name cannot be empty.'
+                this.nameInputState = false
+            } else if (this.templates.some(elem => elem.id !== this.template.id && elem.name === name)) {
+                this.nameInvalidFeedback = 'Name is not unique.'
+                this.nameInputState = false
+            } else {
+                this.nameInputState = null
+            }
+        },
         finalizeTemplateChanges () {
             if (!this.validateData()) { return }
 

@@ -183,69 +183,9 @@ export default {
         },
     },
     watch: {
-        'assignment.unlock_date': {
-            handler (unlockDate) {
-                if (this.firstAfterSecond(unlockDate, this.assignment.due_date)) {
-                    this.unlockDateInputState = false
-                    this.unlockDateInvalidFeedback = 'After due date.'
-                } else if (this.firstAfterSecond(unlockDate, this.assignment.lock_date)) {
-                    this.unlockDateInputState = false
-                    this.unlockDateInvalidFeedback = 'After lock date.'
-                } else if (this.presetNodes.some(preset => this.firstAfterSecond(unlockDate, preset.unlock_date))) {
-                    this.unlockDateInputState = false
-                    this.unlockDateInvalidFeedback = 'Unlocks after one or more deadlines unlock.'
-                } else if (this.presetNodes.some(preset => this.firstAfterSecond(unlockDate, preset.due_date))) {
-                    this.unlockDateInputState = false
-                    this.unlockDateInvalidFeedback = 'Unlocks after one or more deadlines are due.'
-                } else if (this.presetNodes.some(preset => this.firstAfterSecond(unlockDate, preset.lock_date))) {
-                    this.unlockDateInputState = false
-                    this.unlockDateInvalidFeedback = 'Unlocks after one or more deadlines are locked.'
-                } else {
-                    this.unlockDateInputState = null
-                }
-            },
-        },
-        'assignment.due_date': {
-            handler (dueDate) {
-                if (this.firstBeforeSecond(dueDate, this.assignment.unlock_date)) {
-                    this.dueDateInputState = false
-                    this.dueDateInvalidFeedback = 'Before unlock date.'
-                } else if (this.firstAfterSecond(dueDate, this.assignment.lock_date)) {
-                    this.dueDateInputState = false
-                    this.dueDateInvalidFeedback = 'After lock date.'
-                } else if (this.presetNodes.some(preset => this.firstBeforeSecond(dueDate, preset.unlock_date))) {
-                    this.unlockDateInputState = false
-                    this.unlockDateInvalidFeedback = 'Due before one or more deadlines unlock.'
-                } else if (this.presetNodes.some(preset => this.firstBeforeSecond(dueDate, preset.due_date))) {
-                    this.unlockDateInputState = false
-                    this.unlockDateInvalidFeedback = 'Due before one or more deadlines are due.'
-                } else {
-                    this.dueDateInputState = null
-                }
-            },
-        },
-        'assignment.lock_date': {
-            handler (lockDate) {
-                if (this.firstBeforeSecond(lockDate, this.assignment.unlock_date)) {
-                    this.lockDateInputState = false
-                    this.lockDateInvalidFeedback = 'Before unlock date.'
-                } else if (this.firstBeforeSecond(lockDate, this.assignment.due_date)) {
-                    this.lockDateInputState = false
-                    this.lockDateInvalidFeedback = 'Before due date.'
-                } else if (this.presetNodes.some(preset => this.firstBeforeSecond(lockDate, preset.unlock_date))) {
-                    this.unlockDateInputState = false
-                    this.unlockDateInvalidFeedback = 'Locks before one or more deadlines unlock.'
-                } else if (this.presetNodes.some(preset => this.firstBeforeSecond(lockDate, preset.due_date))) {
-                    this.unlockDateInputState = false
-                    this.unlockDateInvalidFeedback = 'Due before one or more deadlines are due.'
-                } else if (this.presetNodes.some(preset => this.firstBeforeSecond(lockDate, preset.lock_date))) {
-                    this.unlockDateInputState = false
-                    this.unlockDateInvalidFeedback = 'Locks before one or more deadlines lock.'
-                } else {
-                    this.lockDateInputState = null
-                }
-            },
-        },
+        'assignment.unlock_date': 'validateUnlockDateInput',
+        'assignment.due_date': 'validateDueDateInput',
+        'assignment.lock_date': 'validateLockDateInput',
     },
     methods: {
         firstAfterSecond (first, second) {
@@ -253,6 +193,69 @@ export default {
         },
         firstBeforeSecond (first, second) {
             return first && second && Date.parse(first) < Date.parse(second)
+        },
+        validateUnlockDateInput () {
+            const unlockDate = this.assignment.unlock_date
+
+            if (this.firstAfterSecond(unlockDate, this.assignment.due_date)) {
+                this.unlockDateInputState = false
+                this.unlockDateInvalidFeedback = 'After due date.'
+            } else if (this.firstAfterSecond(unlockDate, this.assignment.lock_date)) {
+                this.unlockDateInputState = false
+                this.unlockDateInvalidFeedback = 'After lock date.'
+            } else if (this.presetNodes.some(preset => this.firstAfterSecond(unlockDate, preset.unlock_date))) {
+                this.unlockDateInputState = false
+                this.unlockDateInvalidFeedback = 'Unlocks after one or more deadlines unlock.'
+            } else if (this.presetNodes.some(preset => this.firstAfterSecond(unlockDate, preset.due_date))) {
+                this.unlockDateInputState = false
+                this.unlockDateInvalidFeedback = 'Unlocks after one or more deadlines are due.'
+            } else if (this.presetNodes.some(preset => this.firstAfterSecond(unlockDate, preset.lock_date))) {
+                this.unlockDateInputState = false
+                this.unlockDateInvalidFeedback = 'Unlocks after one or more deadlines are locked.'
+            } else {
+                this.unlockDateInputState = null
+            }
+        },
+        validateDueDateInput () {
+            const dueDate = this.assignment.due_date
+
+            if (this.firstBeforeSecond(dueDate, this.assignment.unlock_date)) {
+                this.dueDateInputState = false
+                this.dueDateInvalidFeedback = 'Before unlock date.'
+            } else if (this.firstAfterSecond(dueDate, this.assignment.lock_date)) {
+                this.dueDateInputState = false
+                this.dueDateInvalidFeedback = 'After lock date.'
+            } else if (this.presetNodes.some(preset => this.firstBeforeSecond(dueDate, preset.unlock_date))) {
+                this.unlockDateInputState = false
+                this.unlockDateInvalidFeedback = 'Due before one or more deadlines unlock.'
+            } else if (this.presetNodes.some(preset => this.firstBeforeSecond(dueDate, preset.due_date))) {
+                this.unlockDateInputState = false
+                this.unlockDateInvalidFeedback = 'Due before one or more deadlines are due.'
+            } else {
+                this.dueDateInputState = null
+            }
+        },
+        validateLockDateInput () {
+            const lockDate = this.assignment.lock_date
+
+            if (this.firstBeforeSecond(lockDate, this.assignment.unlock_date)) {
+                this.lockDateInputState = false
+                this.lockDateInvalidFeedback = 'Before unlock date.'
+            } else if (this.firstBeforeSecond(lockDate, this.assignment.due_date)) {
+                this.lockDateInputState = false
+                this.lockDateInvalidFeedback = 'Before due date.'
+            } else if (this.presetNodes.some(preset => this.firstBeforeSecond(lockDate, preset.unlock_date))) {
+                this.unlockDateInputState = false
+                this.unlockDateInvalidFeedback = 'Locks before one or more deadlines unlock.'
+            } else if (this.presetNodes.some(preset => this.firstBeforeSecond(lockDate, preset.due_date))) {
+                this.unlockDateInputState = false
+                this.unlockDateInvalidFeedback = 'Due before one or more deadlines are due.'
+            } else if (this.presetNodes.some(preset => this.firstBeforeSecond(lockDate, preset.lock_date))) {
+                this.unlockDateInputState = false
+                this.unlockDateInvalidFeedback = 'Locks before one or more deadlines lock.'
+            } else {
+                this.lockDateInputState = null
+            }
         },
     },
 }

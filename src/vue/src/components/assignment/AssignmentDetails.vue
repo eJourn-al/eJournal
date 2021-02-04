@@ -246,6 +246,8 @@ export default {
             nameInvalidFeedback: null,
             pointsPossibleInputState: null,
             pointsPossibleInvalidFeedback: null,
+
+            validators: [],
         }
     },
     computed: {
@@ -262,33 +264,37 @@ export default {
         },
     },
     watch: {
-        'assignmentDetails.name': {
-            handler (name) {
-                if (name === '') {
-                    this.nameInputState = false
-                    this.nameInvalidFeedback = 'Name cannot be empty.'
-                } else {
-                    this.nameInputState = null
-                }
-            },
+        'assignmentDetails.name': 'validateNameInput',
+        'assignmentDetails.points_possible': 'validatePointsPossibleInput',
+    },
+    methods: {
+        validateNameInput () {
+            const name = this.assignmentDetails.name
+
+            if (name === '') {
+                this.nameInputState = false
+                this.nameInvalidFeedback = 'Name cannot be empty.'
+            } else {
+                this.nameInputState = null
+            }
         },
-        'assignmentDetails.points_possible': {
-            handler (points) {
-                if (points === '') {
-                    this.pointsPossibleInputState = false
-                    this.pointsPossibleInvalidFeedback = 'Points possible is required.'
-                } else if (points < 0) {
-                    this.pointsPossibleInputState = false
-                    this.pointsPossibleInvalidFeedback = 'Points possible should a be positive number.'
-                } else if (points < this.minimumPointsPossible) {
-                    this.pointsPossibleInputState = false
-                    this.pointsPossibleInvalidFeedback = `
-                        A progress goal exists which requires ${this.minimumPointsPossible} points.
-                    `
-                } else {
-                    this.pointsPossibleInputState = null
-                }
-            },
+        validatePointsPossibleInput () {
+            const points = this.assignmentDetails.points_possible
+
+            if (points === '') {
+                this.pointsPossibleInputState = false
+                this.pointsPossibleInvalidFeedback = 'Points possible is required.'
+            } else if (points < 0) {
+                this.pointsPossibleInputState = false
+                this.pointsPossibleInvalidFeedback = 'Points possible should a be positive number.'
+            } else if (points < this.minimumPointsPossible) {
+                this.pointsPossibleInputState = false
+                this.pointsPossibleInvalidFeedback = `
+                    A progress goal exists which requires ${this.minimumPointsPossible} points.
+                `
+            } else {
+                this.pointsPossibleInputState = null
+            }
         },
     },
 }

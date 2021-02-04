@@ -177,46 +177,8 @@ export default {
         },
     },
     watch: {
-        'presetNode.display_name': {
-            handler (displayName) {
-                if (displayName === '') {
-                    this.displayNameInputState = false
-                    this.displayNameInvalidFeedback = 'Display name cannot be empty.'
-                } else {
-                    this.displayNameInputState = null
-                }
-            },
-        },
-        targetAndDueDate: {
-            handler () {
-                if (this.presetNode.target < 0) {
-                    this.targetInputState = false
-                    this.targetInvalidFeedback = 'Number of points should be a positive number.'
-                } else if (this.presetNode.target > this.assignment.points_possible) {
-                    this.targetInputState = false
-                    this.targetInvalidFeedback = `
-                        Number of points exceeds the maximum number of points of the assignment.
-                    `
-                } else if (this.presetNode.target === '') {
-                    this.targetInputState = false
-                    this.targetInvalidFeedback = 'Number of points is required.'
-                } else if (this.earlier_progress_goal_with_higher_target()) {
-                    this.targetInputState = false
-                    this.targetInvalidFeedback = `
-                        Deadline "${this.conflictingPreset.display_name}" is due earlier with a higher number
-                        of points (${this.conflictingPreset.target}).
-                    `
-                } else if (this.later_progress_goal_with_lower_target()) {
-                    this.targetInputState = false
-                    this.targetInvalidFeedback = `
-                        Deadline "${this.conflictingPreset.display_name}" is due later with a lower number
-                        of points (${this.conflictingPreset.target}).
-                    `
-                } else {
-                    this.targetInputState = null
-                }
-            },
-        },
+        'presetNode.display_name': 'validateDisplayNameInput',
+        targetAndDueDate: 'validateTargetAndDueDateInput',
     },
     methods: {
         ...mapActions({
@@ -264,6 +226,44 @@ export default {
                     )
                 })
             )
+        },
+        validateDisplayNameInput () {
+            const displayName = this.presetNode.display_name
+
+            if (displayName === '') {
+                this.displayNameInputState = false
+                this.displayNameInvalidFeedback = 'Display name cannot be empty.'
+            } else {
+                this.displayNameInputState = null
+            }
+        },
+        validateTargetAndDueDateInput () {
+            if (this.presetNode.target < 0) {
+                this.targetInputState = false
+                this.targetInvalidFeedback = 'Number of points should be a positive number.'
+            } else if (this.presetNode.target > this.assignment.points_possible) {
+                this.targetInputState = false
+                this.targetInvalidFeedback = `
+                    Number of points exceeds the maximum number of points of the assignment.
+                `
+            } else if (this.presetNode.target === '') {
+                this.targetInputState = false
+                this.targetInvalidFeedback = 'Number of points is required.'
+            } else if (this.earlier_progress_goal_with_higher_target()) {
+                this.targetInputState = false
+                this.targetInvalidFeedback = `
+                    Deadline "${this.conflictingPreset.display_name}" is due earlier with a higher number
+                    of points (${this.conflictingPreset.target}).
+                `
+            } else if (this.later_progress_goal_with_lower_target()) {
+                this.targetInputState = false
+                this.targetInvalidFeedback = `
+                    Deadline "${this.conflictingPreset.display_name}" is due later with a lower number
+                    of points (${this.conflictingPreset.target}).
+                `
+            } else {
+                this.targetInputState = null
+            }
         },
         deletePresetNode () {
             if (window.confirm(

@@ -151,19 +151,7 @@ export default {
         },
     },
     watch: {
-        'category.name': {
-            handler (name) {
-                if (name === '') {
-                    this.nameInvalidFeedback = 'Name cannot be empty'
-                    this.nameInputState = false
-                } else if (this.categories.some(cat => cat.id !== this.category.id && cat.name === name)) {
-                    this.nameInvalidFeedback = 'Name is not unique'
-                    this.nameInputState = false
-                } else {
-                    this.nameInputState = null
-                }
-            },
-        },
+        'category.name': 'validateNameInput',
     },
     methods: {
         ...mapActions({
@@ -179,6 +167,19 @@ export default {
             setModeToEdit: 'assignmentEditor/SET_ACTIVE_COMPONENT_MODE_TO_EDIT',
             setModeToRead: 'assignmentEditor/SET_ACTIVE_COMPONENT_MODE_TO_READ',
         }),
+        validateNameInput () {
+            const name = this.category.name
+
+            if (name === '') {
+                this.nameInvalidFeedback = 'Name cannot be empty.'
+                this.nameInputState = false
+            } else if (this.categories.some(cat => cat.id !== this.category.id && cat.name === name)) {
+                this.nameInvalidFeedback = 'Name is not unique.'
+                this.nameInputState = false
+            } else {
+                this.nameInputState = null
+            }
+        },
         changeMode () {
             if (this.readMode) {
                 this.setModeToEdit()
