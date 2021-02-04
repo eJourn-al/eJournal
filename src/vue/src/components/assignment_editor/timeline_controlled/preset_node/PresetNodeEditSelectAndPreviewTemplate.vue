@@ -1,5 +1,5 @@
 <template>
-    <div>
+    <div class="mb-2">
         <b-form-group class="required">
             <template #label>
                 Template
@@ -44,25 +44,22 @@
             </b-input-group>
         </b-form-group>
 
-        <div class="multi-form">
-            <span
-                class="text-blue cursor-pointer"
-                @click.stop="createTemplate({ fromPresetNode: presetNode })"
-            >
-                {{ (templates.length === 0) ? 'Create a new template' : 'Or create a new template' }}
-            </span>
-        </div>
+        <span
+            class="text-blue cursor-pointer"
+            @click.stop="createTemplate({ fromPresetNode: presetNode })"
+        >
+            {{ (templates.length === 0) ? 'Create a new template' : 'Or create a new template' }}
+        </span>
 
-        <template v-if="showTemplatePreview && presetNode.template">
-            <hr/>
-
+        <div
+            v-if="showTemplatePreview && presetNode.template"
+            class="p-2"
+        >
             <entry-preview
                 :presetNode="presetNode"
                 :template="presetNode.template"
             />
-
-            <hr/>
-        </template>
+        </div>
     </div>
 </template>
 
