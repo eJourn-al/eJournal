@@ -426,16 +426,16 @@ const actions = {
 
         if (context.state.newCategoryDraft) {
             const category = context.state.newCategoryDraft
-            dirtyWarnings.push(`New category ${category.name ? `'${category.name}'` : ''} draft.`)
+            dirtyWarnings.push(`New category ${category.name ? `'${category.name}' ` : ''}draft.`)
         }
         if (context.state.newPresetNodeDraft) {
             const presetNode = context.state.newPresetNodeDraft
             dirtyWarnings.push(`New deadline ${presetNode.display_name
-                ? `'${presetNode.display_name.name}'` : ''} draft.`)
+                ? `'${presetNode.display_name}' ` : ''}draft.`)
         }
         if (context.state.newTemplateDraft) {
             const template = context.state.newTemplateDraft
-            dirtyWarnings.push(`New template ${template.name ? `'${template.name}'` : ''} draft.`)
+            dirtyWarnings.push(`New template ${template.name ? `'${template.name}' ` : ''}draft.`)
         }
 
         Object.values(context.state.categoryDrafts).forEach((draft) => {
