@@ -27,20 +27,37 @@
         />
 
         <template v-else>
-            <b-form-group
-                label="Name"
-                :invalid-feedback="nameInvalidFeedback"
-                :state="nameInputState"
-            >
-                <b-form-input
-                    v-model="category.name"
-                    autofocus
-                    placeholder="Name"
-                    class="theme-input"
-                    type="text"
-                    trim
-                />
-            </b-form-group>
+            <b-form-row class="mb-2">
+                <b-col>
+                    <b-form-group
+                        label="Name"
+                        class="required"
+                        :invalid-feedback="nameInvalidFeedback"
+                        :state="nameInputState"
+                    >
+                        <b-form-input
+                            v-model="category.name"
+                            autofocus
+                            placeholder="Name"
+                            class="theme-input"
+                            type="text"
+                            trim
+                        />
+                    </b-form-group>
+                </b-col>
+                <b-col cols="auto">
+                    <b-form-group
+                        label="Color"
+                        class="required"
+                    >
+                        <b-input
+                            v-model="category.color"
+                            class="category-color-picker"
+                            type="color"
+                        />
+                    </b-form-group>
+                </b-col>
+            </b-form-row>
 
             <b-form-group label="Description">
                 <text-editor
@@ -63,14 +80,7 @@
                     :multiple="true"
                     :searchable="true"
                     :multiSelectText="`template${category.templates.length > 1 ? 's' : ''}`"
-                    placeholder="Search and add or remove templates"
-                />
-            </b-form-group>
-
-            <b-form-group label="Color">
-                <b-input
-                    v-model="category.color"
-                    type="color"
+                    placeholder="Add or remove templates"
                 />
             </b-form-group>
 
@@ -213,3 +223,8 @@ This action will also remove the category from any associated entries. This acti
     },
 }
 </script>
+
+<style lang="sass">
+.category-color-picker
+    width: 3em
+</style>
