@@ -2884,7 +2884,7 @@ class Template(CreateUpdateModel):
         constraints = [
             CheckConstraint(check=~Q(name=''), name='non_empty_name'),
         ]
-        # NOTE: First requires solution for live data
+        # NOTE: First requires solution for live data Z#1489
         # unique_together = (
         #     ('name', 'format'),
         # )
