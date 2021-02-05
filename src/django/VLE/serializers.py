@@ -452,7 +452,6 @@ class PresetNodeSerializer(serializers.ModelSerializer, EagerLoadingMixin):
         return None
 
 
-# TODO Category: Make lighter, are templates / presets needed?
 class AssignmentSerializer(ExtendedModelSerializer, EagerLoadingMixin):
     class Meta:
         model = VLE.models.Assignment
