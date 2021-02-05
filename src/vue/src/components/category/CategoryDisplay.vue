@@ -1,5 +1,10 @@
 <template>
-    <div>
+    <div
+        class="category-display"
+        :class="{
+            'compact': compact,
+        }"
+    >
         <category-tag
             v-for="category in categories"
             :key="`${id}-category-${category.id}`"
@@ -45,6 +50,9 @@ export default {
         editable: {
             default: false,
         },
+        compact: {
+            default: false,
+        },
     },
     data () {
         return {
@@ -56,3 +64,20 @@ export default {
     },
 }
 </script>
+
+<style lang="sass">
+.category-display
+    &.compact
+        display: block
+        width: auto
+        max-width: 100%
+        overflow-x: auto
+        white-space: nowrap
+        scrollbar-width: none
+        &::-webkit-scrollbar
+            display: none
+        &:hover
+            white-space: normal
+        transition: height 0.3s cubic-bezier(.25,.8,.25,1) !important
+
+</style>

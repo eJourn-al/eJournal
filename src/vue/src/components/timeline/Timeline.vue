@@ -309,10 +309,10 @@ export default {
             &:hover, &:focus, &:active
                 border-color: inherit !important
     .dropdown-menu
-        @extend .theme-shadow
         width: 100%
         margin-top: 5px
-        padding: 10px
+        padding: 0px
+        border: none
         .multiselect--active .multiselect__content-wrapper
             box-shadow: none
             position: relative

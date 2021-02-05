@@ -72,14 +72,15 @@
                     :bonusPoints="journal.bonus_points"
                 />
                 <b-card
-                    v-else-if="nodes[currentNode].type == 'd' && !nodes[currentNode].entry && currentNodeIsLocked"
+                    v-else-if="nodes[currentNode].type == 'd' && !nodes[currentNode].entry
+                        && currentNodeIsLocked"
                     :class="$root.getBorderClass($route.params.cID)"
                     class="no-hover"
                 >
                     <h2 class="theme-h2 mb-2">
                         {{ nodes[currentNode].template.name }}
                     </h2>
-                    <hr/>
+                    <hr class="full-width"/>
                     <b>This preset is locked. You cannot submit an entry at the moment.</b><br/>
                     {{ deadlineRange }}
                 </b-card>
@@ -106,7 +107,7 @@
             </h3>
             <b-card
                 :class="$root.getBorderClass($route.params.cID)"
-                class="journal-details-card no-hover"
+                class="journal-details-card no-hover mb-3"
             >
                 <journal-details
                     v-if="!loadingNodes"

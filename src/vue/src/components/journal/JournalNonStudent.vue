@@ -18,8 +18,8 @@
                 show
             >
                 <span v-if="assignment.is_group_assignment">
-                    <b>Warning:</b> The following journal members have not visited the assignment in the active LMS
-                    (Canvas) course '{{ assignment.active_lti_course.name }}' yet:
+                    <b>Warning:</b> The following journal members have not visited the assignment in the active
+                    LMS (Canvas) course '{{ assignment.active_lti_course.name }}' yet:
                     <ul class="pt-1 pb-1 mb-0">
                         <li
                             v-for="name in journal.needs_lti_link"
@@ -32,9 +32,9 @@
                     assignment at least once.
                 </span>
                 <span v-else>
-                    <b>Warning:</b> This student has not visited the assignment in the active LMS (Canvas) course
-                    '{{ assignment.active_lti_course.name }}' yet. They cannot update this journal and grades cannot
-                    be passed back until they visit the assignment at least once.
+                    <b>Warning:</b> This student has not visited the assignment in the active LMS (Canvas)
+                    course '{{ assignment.active_lti_course.name }}' yet. They cannot update this journal and
+                    grades cannot be passed back until they visit the assignment at least once.
                 </span>
             </b-alert>
             <load-wrapper :loading="loadingNodes">
@@ -79,7 +79,7 @@
                     </h3>
                     <b-card
                         :class="$root.getBorderClass($route.params.cID)"
-                        class="journal-details-card no-hover"
+                        class="journal-details-card no-hover mb-3"
                     >
                         <journal-details
                             v-if="!loadingNodes"

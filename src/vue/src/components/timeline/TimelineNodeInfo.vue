@@ -22,6 +22,11 @@
             {{ nodeTitle }}
         </span>
 
+        <category-display
+            :id="`timeline-node-${node.id}-categories`"
+            :categories="nodeCategories"
+            :compact="true"
+        />
         <span
             v-if="nodeDate"
             v-b-tooltip:hover="deadlineRange"
@@ -33,9 +38,14 @@
 </template>
 
 <script>
+import CategoryDisplay from '@/components/category/CategoryDisplay.vue'
+
 import { mapGetters } from 'vuex'
 
 export default {
+    components: {
+        CategoryDisplay,
+    },
     props: ['node', 'selected'],
     computed: {
         ...mapGetters({
@@ -60,6 +70,15 @@ export default {
             default:
                 return null
             }
+        },
+        nodeCategories () {
+            if (this.node.entry) {
+                return this.node.entry.categories
+            } else if (this.node.type === 'd') {
+                return this.node.template.categories
+            }
+
+            return []
         },
         nodeDate () {
             if (this.node.entry && this.node.entry.creation_date) {
@@ -112,18 +131,12 @@ export default {
 
 <style lang="sass">
 .node-info
-    text-align: right
     width: 100%
     user-select: none
-    &.selected
-        cursor: auto
-        opacity: 1
     &:not(.selected)
-        opacity: 0.5
+        color: grey
     .node-title
         font-weight: bold
-        color: grey
     .node-date
         font-size: 0.9em
-        color: grey
 </style>
