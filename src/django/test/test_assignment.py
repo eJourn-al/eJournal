@@ -1509,27 +1509,6 @@ class AssignmentAPITest(TestCase):
         assert t1.user.pk not in ids, 'check if teacher is not in response'
         assert t2.pk not in ids, 'check if author of assignment is not in response'
 
-    def test_get_templates(self):
-        teacher = self.teacher
-        course = factory.Course(author=teacher)
-        assignment = factory.Assignment(courses=[course])
-
-        templates = api.get(self, 'assignments/{}/templates'.format(assignment.pk), user=teacher)['templates']
-        assert len(templates) == 2
-
-        # Users without the ability to post teacher entries or edit assignment can (and need) not retrieve templates
-        # this way.
-        r = Participation.objects.get(course=course, user=teacher).role
-        r.can_post_teacher_entries = False
-        r.save()
-        templates = api.get(self, 'assignments/{}/templates'.format(assignment.pk), user=teacher, status=200)
-        r.can_edit_assignment = False
-        r.save()
-        templates = api.get(self, 'assignments/{}/templates'.format(assignment.pk), user=teacher, status=403)
-        r.can_post_teacher_entries = True
-        r.save()
-        templates = api.get(self, 'assignments/{}/templates'.format(assignment.pk), user=teacher, status=200)
-
     # LMS should be called, however, as there is nothing in ejournal.app to catch it, it will crash
     # TODO: create a valid testing env to improve this testing, set CELERY_TASK_EAGER_PROPAGATES=True
     @override_settings(CELERY_TASK_ALWAYS_EAGER=True)

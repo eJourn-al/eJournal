@@ -188,8 +188,9 @@ import EntryCategories from '@/components/category/EntryCategories.vue'
 import EntryFields from '@/components/entry/EntryFields.vue'
 import Tooltip from '@/components/assets/Tooltip.vue'
 
-import assignmentAPI from '@/api/assignment.js'
 import teacherEntryAPI from '@/api/teacherEntry.js'
+
+import { mapGetters } from 'vuex'
 
 export default {
     components: {
@@ -210,7 +211,6 @@ export default {
             selectedJournals: [],
             selectableJournals: [],
             selectedTemplate: null,
-            templates: null,
             showUsernameInput: false,
             usernameInput: null,
             sameGradeForAllEntries: true,
@@ -223,11 +223,12 @@ export default {
             showTitleInTimeline: true,
         }
     },
+    computed: {
+        ...mapGetters({
+            templates: 'template/assignmentTemplates',
+        }),
+    },
     created () {
-        assignmentAPI.getTemplates(this.aID)
-            .then((templates) => {
-                this.templates = templates
-            })
         this.assignmentJournals.forEach((journal) => {
             this.selectableJournals.push({
                 journal_id: journal.id,

@@ -168,6 +168,7 @@ export default {
         }),
         ...mapActions({
             create: 'template/create',
+            list: 'template/list',
         }),
         importTemplate (template) {
             const payload = JSON.parse(JSON.stringify(template))
@@ -185,7 +186,7 @@ export default {
                 })
         },
         getTemplatesForSelectedAssignment () {
-            assignmentAPI.getTemplates(this.selectedAssignment.id)
+            this.list({ aID: this.selectedAssignment.id })
                 .then((templates) => {
                     this.templates = templates
                 })
