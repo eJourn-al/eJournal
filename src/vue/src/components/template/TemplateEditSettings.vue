@@ -23,7 +23,6 @@
         When disabled, this template can still be used for deadlines you add to the timeline.
         <template v-if="assignmentHasCategories">
             <hr/>
-            <!-- TODO CATEGORY: Invert the notion of 'fixed categories' in the back end? This seems more natural. -->
             <radio-button
                 v-model="template.fixed_categories"
                 :options="[

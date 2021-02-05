@@ -697,7 +697,6 @@ class AssignmentSerializer(ExtendedModelSerializer, EagerLoadingMixin):
         return False
 
 
-# TODO Category: Absorb and scrap: -> Assignment should just serialize what is needed
 class AssignmentFormatSerializer(AssignmentSerializer):
     lti_count = serializers.SerializerMethodField()
     can_change_type = serializers.SerializerMethodField()

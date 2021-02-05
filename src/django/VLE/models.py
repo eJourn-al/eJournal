@@ -2392,7 +2392,6 @@ class PresetNode(CreateUpdateModel):
             if display_name == '':
                 raise ValidationError('Display name cannot be empty.')
 
-        # TODO Category: Test were lacking
         def validate_attached_files():
             if FileContext.objects.filter(pk__in=attached_file_ids).count() != len(attached_files):
                 raise ValidationError('One or more attached files are not correctly uploaded, please try again.')
@@ -2883,10 +2882,6 @@ class Template(CreateUpdateModel):
         constraints = [
             CheckConstraint(check=~Q(name=''), name='non_empty_name'),
         ]
-        # NOTE: First requires solution for live data Z#1489
-        # unique_together = (
-        #     ('name', 'format'),
-        # )
         ordering = [
             'name',
         ]
@@ -2915,7 +2910,6 @@ class Template(CreateUpdateModel):
     chain = models.ForeignKey(
         'TemplateChain',
         on_delete=models.CASCADE,
-        # TODO Category: Remove blank and null after manually fixing all archived templates (after deploy?)
         blank=True,
         null=True,
     )

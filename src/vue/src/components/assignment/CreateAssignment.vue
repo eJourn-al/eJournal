@@ -108,7 +108,6 @@ export default {
                 return
             }
 
-            // TODO Category: move to module and update local state
             assignmentAPI.create(this.form)
                 .then((assignment) => {
                     this.$emit('handleAction', assignment.id)

@@ -18,7 +18,6 @@
             </template>
         </progress-node>
 
-        <!-- TODO Category: This does not display any attached files -->
         <b-card
             v-else-if="presetNode && presetNode.type === 'd'"
             :class="$root.getBorderClass($route.params.cID)"

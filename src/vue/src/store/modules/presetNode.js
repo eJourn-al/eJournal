@@ -77,7 +77,6 @@ const actions = {
             return auth.create('preset_nodes', data, connArgs)
                 .then((response) => {
                     context.commit('ADD_ASSIGNMENT_PRESET_NODE', { aID, presetNode: response.data.preset })
-                    // TODO Category: does the timeline reactively filter after adding a preset node?
                     return response.data.preset
                 })
         }
@@ -89,7 +88,6 @@ const actions = {
             return auth.update(`preset_nodes/${data.id}`, data, connArgs)
                 .then((response) => {
                     context.commit('UPDATE_ASSIGNMENT_PRESET_NODE', { aID, presetNode: response.data.preset })
-                    // TODO Category: does the timeline reactively filter after updating a preset node?
                     return response.data.preset
                 })
         }

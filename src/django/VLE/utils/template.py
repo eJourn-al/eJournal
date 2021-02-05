@@ -11,7 +11,6 @@ def _template_concrete_fields_updated(template, data):
     return any(getattr(template, f) != data[f] for f in check_fields)
 
 
-# TODO Category: requires test, currently not hit
 def _field_concrete_fields_updated(field, data):
     check_fields = [
         'type',
@@ -25,7 +24,6 @@ def _field_concrete_fields_updated(field, data):
     return any(getattr(field, f) != data[f] for f in check_fields)
 
 
-# TODO Category: Requires test, currently not hit
 def _field_set_updated(template, data):
     data['field_set'].sort(key=lambda f: f['location'])
     field_set = template.field_set.order_by('location')
