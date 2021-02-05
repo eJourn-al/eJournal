@@ -12,7 +12,12 @@
                 :editable="false"
                 :categories="[category]"
             />
-            <i v-else>{{ (category.name === '') ? 'No name to display' : '' }}</i>
+            <span
+                v-else
+                class="no-optional-content-value"
+            >
+                No name provided.
+            </span>
         </b-form-group>
 
         <b-form-group label="Description">
