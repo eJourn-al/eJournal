@@ -1253,7 +1253,6 @@ class Assignment(CreateUpdateModel):
         }
 
     def validate_unlock_date(self):
-        # QUESTION: Would we prefer DB level constrains for concrete field comparisons?
         if self.due_date and self.unlock_date > self.due_date:
             raise ValidationError('Unlocks after due date.')
 
