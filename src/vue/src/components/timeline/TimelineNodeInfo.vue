@@ -11,6 +11,7 @@
         <span
             v-if="nodeTitle"
             class="node-title max-one-line"
+            :class="{ dirty: dirty }"
         >
             <icon
                 v-if="new Date(nodeDate) > new Date()"
@@ -37,7 +38,9 @@
 </template>
 
 <script>
-import CategoryDisplay from '../category/CategoryDisplay.vue'
+import CategoryDisplay from '@/components/category/CategoryDisplay.vue'
+
+import { mapGetters } from 'vuex'
 
 export default {
     components: {
@@ -45,6 +48,11 @@ export default {
     },
     props: ['node', 'selected'],
     computed: {
+        ...mapGetters({
+            assignment: 'assignment/assignment',
+            isPresetNodeDirty: 'assignmentEditor/isPresetNodeDirty',
+            isAssignmentDetailsDirty: 'assignmentEditor/isAssignmentDetailsDirty',
+        }),
         nodeTitle () {
             if (this.node.deleted_preset) {
                 return this.node.entry.title
@@ -105,6 +113,17 @@ export default {
             }
 
             return ''
+        },
+        dirty () {
+            if (this.$route.name !== 'AssignmentEditor') { return false }
+
+            if (this.node.type === 's') {
+                return this.isAssignmentDetailsDirty(this.assignment)
+            } else if (this.node.type === 'd' || this.node.type === 'p') {
+                return this.isPresetNodeDirty(this.node)
+            }
+
+            return false
         },
     },
 }

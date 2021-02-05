@@ -16,6 +16,8 @@ copies or substantial portions of the Software.
 
 /* eslint-disable import/extensions */
 import 'vue-awesome/icons/align-left'
+import 'vue-awesome/icons/angle-down'
+import 'vue-awesome/icons/angle-up'
 import 'vue-awesome/icons/arrow-left'
 import 'vue-awesome/icons/arrow-right'
 import 'vue-awesome/icons/arrows-alt'

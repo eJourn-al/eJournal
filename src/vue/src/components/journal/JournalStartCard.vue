@@ -1,16 +1,33 @@
 <template>
     <b-card
+        v-if="assignment !== null"
         class="no-hover"
         :class="$root.getBorderClass($route.params.cID)"
     >
-        <h2 class="theme-h2 multi-form">
-            {{ assignment.name }}
-        </h2>
-        <sandboxed-iframe
-            v-if="assignment.description"
-            :content="assignment.description"
-        />
-        <hr class="full-width"/>
+        <b-row
+            no-gutters
+            class="multi-form"
+        >
+            <span class="theme-h2">{{ assignment.name }}</span>
+
+            <slot name="edit-button"/>
+        </b-row>
+
+        <b-form-group>
+            <sandboxed-iframe
+                v-if="assignment.description"
+                :content="assignment.description"
+            />
+            <span
+                v-else
+                class="no-optional-content-value"
+            >
+                No description provided.
+            </span>
+        </b-form-group>
+
+        <hr/>
+
         <span
             v-if="assignment.unlock_date && new Date(assignment.unlock_date) > new Date()"
             class="text-grey"

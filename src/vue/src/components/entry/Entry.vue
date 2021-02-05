@@ -17,33 +17,29 @@
                 >
                     <icon name="hourglass-half"/>
                 </div>
-                <div v-else-if="node.entry.editable">
-                    <b-button
-                        class="ml-2 red-button float-right multi-form"
-                        @click="deleteEntry"
-                    >
-                        <icon name="trash"/>
-                        Delete
-                    </b-button>
-                    <b-button
-                        class="ml-2 orange-button float-right multi-form"
-                        @click="edit = true"
-                    >
-                        <icon name="edit"/>
-                        Edit
-                    </b-button>
-                </div>
             </template>
 
-            <h2 class="theme-h2 mb-2">
-                {{ template.name }}
-            </h2>
+            <entry-title
+                :template="template"
+                :node="node"
+            >
+                <b-button
+                    v-if="!create && node.entry.editable"
+                    class="ml-auto"
+                    :class="(edit) ? 'red-button' : 'orange-button'"
+                    @click="edit = !edit"
+                >
+                    <icon :name="(edit) ? 'ban' : 'edit'"/>
+                    {{ (edit) ? 'Cancel' : 'Edit' }}
+                </b-button>
+            </entry-title>
+
             <sandboxed-iframe
                 v-if="node && node.description && (edit || create)"
                 :content="node.description"
             />
             <files-list
-                v-if="node && node.description && (edit || create)"
+                v-if="node && (edit || create)"
                 :files="node.attached_files"
             />
             <entry-fields
@@ -64,22 +60,31 @@
             />
 
             <template v-if="edit">
-                <b-button
-                    class="green-button float-right mt-2"
-                    :class="{ 'input-disabled': requestInFlight || uploadingFiles > 0 }"
-                    @click="saveChanges"
+                <hr/>
+
+                <b-row
+                    no-gutters
+                    class="mt-2"
                 >
-                    <icon name="save"/>
-                    Save
-                </b-button>
-                <b-button
-                    class="red-button mt-2"
-                    @click="edit = false"
-                >
-                    <icon name="ban"/>
-                    Cancel
-                </b-button>
+                    <b-button
+                        class="red-button"
+                        @click="deleteEntry"
+                    >
+                        <icon name="trash"/>
+                        Delete
+                    </b-button>
+
+                    <b-button
+                        class="green-button ml-auto"
+                        :class="{ 'input-disabled': requestInFlight || uploadingFiles > 0 }"
+                        @click="saveChanges"
+                    >
+                        <icon name="save"/>
+                        Save
+                    </b-button>
+                </b-row>
             </template>
+
             <b-button
                 v-else-if="create"
                 class="green-button float-right"
@@ -91,7 +96,7 @@
             </b-button>
 
             <template v-else>
-                <hr class="full-width"/>
+                <hr/>
 
                 <div class="full-width timestamp">
                     <template
@@ -139,6 +144,7 @@
 import Comments from '@/components/entry/Comments.vue'
 import EntryCategories from '@/components/category/EntryCategories.vue'
 import EntryFields from '@/components/entry/EntryFields.vue'
+import EntryTitle from '@/components/entry/EntryTitle.vue'
 import SandboxedIframe from '@/components/assets/SandboxedIframe.vue'
 import filesList from '@/components/assets/file_handling/FilesList.vue'
 
@@ -147,6 +153,7 @@ import entryAPI from '@/api/entry.js'
 export default {
     components: {
         EntryFields,
+        EntryTitle,
         SandboxedIframe,
         Comments,
         filesList,

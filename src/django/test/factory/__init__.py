@@ -42,6 +42,7 @@ def rel_factory(instance, create, extracted, key, model, factory=None, size=1, n
 
 
 from test.factory.assignment import AssignmentFactory as Assignment  # noqa: F401
+from test.factory.assignment import AssignmentUpdateParamsFactory as AssignmentUpdateParams  # noqa: F401
 from test.factory.assignment import LtiAssignmentFactory as LtiAssignment  # noqa: F401
 from test.factory.category import CategoryFactory as Category  # noqa: F401
 from test.factory.comment import StudentCommentFactory as StudentComment  # noqa: F401
@@ -62,6 +63,7 @@ from test.factory.field import TextFieldFactory as TextField  # noqa: F401
 from test.factory.field import UrlFieldFactory as UrlField  # noqa: F401
 from test.factory.field import VideoFieldFactory as VideoField  # noqa: F401
 from test.factory.file_context import AttachedCommentFileContextFactory as AttachedCommentFileContext  # noqa: F401
+from test.factory.file_context import AttachedPresetNodeFileContextFactory as AttachedPresetNodeFileContext  # noqa: F401, E501
 from test.factory.file_context import FileContentFileContextFactory as FileContentFileContext  # noqa: F401
 from test.factory.file_context import FileContextFactory as FileContext  # noqa: F401
 from test.factory.file_context import JournalFileContextFactory as JournalFileContext  # noqa: F401
@@ -87,16 +89,18 @@ from test.factory.journal import JournalImportRequestFactory as JournalImportReq
 from test.factory.journal import LtiGroupJournalFactory as LtiGroupJournal  # noqa: F401
 from test.factory.journal import LtiJournalFactory as LtiJournal  # noqa: F401
 from test.factory.node import NodeFactory as Node  # noqa: F401
-from test.factory.params import AssignmentFormatUpdateParamsFactory as AssignmentFormatUpdateParams  # noqa: F401
 from test.factory.params import EntryContentCreationParamsFactory as EntryContentCreationParams  # noqa: F401
 from test.factory.params import JWTParamsFactory as JWTParams  # noqa: F401
 from test.factory.params import JWTTestUserParamsFactory as JWTTestUserParams  # noqa: F401
+from test.factory.params import PresetEntryCreationParamsFactory as PresetEntryCreationParams  # noqa: F401
 from test.factory.params import TeacherEntryCreationParamsFactory as TeacherEntryCreationParams  # noqa: F401
 from test.factory.params import UnlimitedEntryCreationParamsFactory as UnlimitedEntryCreationParams  # noqa: F401
 from test.factory.params import UserParamsFactory as UserParams  # noqa: F401
 from test.factory.participation import AssignmentParticipationFactory as AssignmentParticipation  # noqa: F401
 from test.factory.participation import ParticipationFactory as Participation  # noqa: F401
+from test.factory.presetnode import DeadlinePresetNodeCreationParamsFactory as DeadlinePresetNodeCreationParams  # noqa: F401, E501
 from test.factory.presetnode import DeadlinePresetNodeFactory as DeadlinePresetNode  # noqa: F401
+from test.factory.presetnode import ProgressPresetNodeCreationParamsFactory as ProgressPresetNodeCreationParams  # noqa: F401, E501
 from test.factory.presetnode import ProgressPresetNodeFactory as ProgressPresetNode  # noqa: F401
 from test.factory.role import RoleFactory as Role  # noqa: F401
 from test.factory.role import StudentRoleFactory as StudentRole  # noqa: F401
@@ -104,6 +108,7 @@ from test.factory.template import ColloquiumTemplateFactory as ColloquiumTemplat
 from test.factory.template import FilesTemplateFactory as FilesTemplate  # noqa: F401
 from test.factory.template import MentorgesprekTemplateFactory as MentorgesprekTemplate  # noqa: F401
 from test.factory.template import TemplateAllTypesFactory as TemplateAllTypes  # noqa: F401
+from test.factory.template import TemplateCreationParamsFactory as TemplateCreationParams  # noqa: F401
 from test.factory.template import TemplateFactory as Template  # noqa: F401
 from test.factory.template import TextTemplateFactory as TextTemplate  # noqa: F401
 from test.factory.user import AdminFactory as Admin  # noqa: F401

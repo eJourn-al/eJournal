@@ -9,7 +9,7 @@ class TemplateFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = 'VLE.Template'
 
-    name = 'Empty Template'
+    name = factory.Sequence(lambda x: "Template {}".format(x))
 
     # Forces format specification
     format = None
@@ -86,3 +86,41 @@ class TemplateAllTypesFactory(TemplateFactory):
         [test.factory.Field(type=t, template=self, required=False) for t, _ in Field.TYPES]
         # Create an additional file field which only allows images
         test.factory.Field(type=Field.FILE, template=self, required=False, options='png, jpg, svg')
+
+
+class TemplateCreationParamsFactory(factory.Factory):
+    class Meta:
+        model = dict
+
+    name = factory.Sequence(lambda x: f"Template {x + 1}".format(x))
+    fixed_categories = True
+    preset_only = True
+
+    @classmethod
+    def _adjust_kwargs(cls, **kwargs):
+        assert kwargs['assignment_id'], 'assignment_id is a required parameter key for template creation'
+
+        n_fields = kwargs.pop('n_fields', 1)
+        n_fields_with_file_in_description = kwargs.pop('n_fields_with_file_in_description', 0)
+        author = kwargs.pop('author', None)
+
+        kwargs['field_set'] = []
+        for i in range(n_fields):
+            description = ''
+
+            if i < n_fields_with_file_in_description:
+                assert author, 'author is a required kwarg in order to generate temporary files.'
+
+                fc = test.factory.TempFileContext(author=author)
+                description = f'<img src="{fc.download_url(access_id=fc.access_id)}"/>'
+
+            kwargs['field_set'].append({
+                'type': Field.TEXT,
+                'title': 'Title',
+                'description': description,
+                'options': '',
+                'location': i,
+                'required': True,
+            })
+
+        return kwargs

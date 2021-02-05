@@ -1,13 +1,58 @@
+import datetime
 import test.factory as factory
+from copy import deepcopy
+from test.utils import api
+from test.utils.generic_utils import check_equality_of_imported_file_context, equal_models
 from test.utils.performance import QueryContext
+from unittest import mock
 
+from django.core.exceptions import ValidationError
 from django.db.utils import IntegrityError
 from django.test import TestCase
 
+import VLE.tasks.beats.cleanup as cleanup
+import VLE.utils.file_handling as file_handling
 import VLE.utils.template as template_utils
-from VLE.models import Assignment, Course, Field, Format, Journal, Template, TemplateChain
+from VLE.models import Assignment, Course, Field, FileContext, Format, Journal, Template, TemplateChain
 from VLE.serializers import TemplateSerializer
 from VLE.utils.error_handling import VLEProgrammingError
+from VLE.utils.file_handling import get_files_from_rich_text
+
+
+def _validate_field_creation(template, field_set_params, template_import=False):
+    keys_to_check = [
+        'type',
+        'title',
+        'description',
+        'options',
+        'location',
+        'required',
+    ]
+
+    assert len(field_set_params) == template.field_set.count(), \
+        '''The number of actual fields created is equal to the number of fields provided in the request data'''
+
+    location_set = set()
+    for field_data in field_set_params:
+        assert field_data['location'] not in location_set, 'Field location should be unique'
+        location_set.add(field_data['location'])
+
+        field = template.field_set.get(location=field_data['location'])
+        if template_import:
+            keys_to_check.remove('description')
+        for key in keys_to_check:
+            assert getattr(field, key) == field_data[key], f'Field {key} is correctly updated'
+
+        for access_id in file_handling.get_access_ids_from_rich_text(field.description):
+            assert FileContext.objects.filter(
+                in_rich_text=True,
+                assignment=template.format.assignment,
+                access_id=access_id,
+                is_temp=False,
+            ).exists(), (
+                '''The files part of the field's description are succesfully copied or no longer reflect their '''
+                'initial temporary status'
+            )
 
 
 class TemplateTest(TestCase):
@@ -16,10 +61,17 @@ class TemplateTest(TestCase):
         cls.assignment = factory.Assignment(format__templates=False)
         cls.format = cls.assignment.format
         cls.template = factory.Template(format=cls.format, name='Text', add_fields=[{'type': Field.TEXT}])
+        cls.category = factory.Category(assignment=cls.assignment)
         cls.journal = factory.Journal(assignment=cls.assignment, entries__n=0)
+        cls.unrelated_user = factory.Student()
 
     def test_template_without_format(self):
         self.assertRaises(IntegrityError, factory.Template)
+
+    def test_delete_template_with_preset_nodes(self):
+        template = factory.Template(format=self.format)
+        factory.DeadlinePresetNode(format=self.format, forced_template=template)
+        self.assertRaises(IntegrityError, template.delete)
 
     def test_template_factory(self):
         t_c = Template.objects.count()
@@ -38,13 +90,13 @@ class TemplateTest(TestCase):
         assert t_c + 1 == Template.objects.count(), 'One template should be generated'
 
     def test_full_chain(self):
-        template1_of_chain1 = Template.objects.create(format=self.format)
-        template1_of_chain2 = Template.objects.create(format=self.format)
+        template1_of_chain1 = Template.objects.create(format=self.format, name='A')
+        template1_of_chain2 = Template.objects.create(format=self.format, name='B')
 
         assert Template.objects.full_chain(template1_of_chain1).get() == template1_of_chain1, \
             'The full chain of a single template is the template itself'
 
-        template2_of_chain1 = Template.objects.create(format=self.format, chain=template1_of_chain1.chain)
+        template2_of_chain1 = Template.objects.create(format=self.format, chain=template1_of_chain1.chain, name='C')
         assert template2_of_chain1.chain == template1_of_chain1.chain
         full_chain1 = set([template1_of_chain1, template2_of_chain1])
         # Full chain yields all templates part of the chain regardless which template we start with.
@@ -53,13 +105,13 @@ class TemplateTest(TestCase):
 
         # Full chain also works for templates part of different chains, all templates part their respective chains
         # should be queried.
-        template2_of_chain2 = Template.objects.create(format=self.format, chain=template1_of_chain2.chain)
+        template2_of_chain2 = Template.objects.create(format=self.format, chain=template1_of_chain2.chain, name='D')
         full_chain2 = set([template1_of_chain2, template2_of_chain2])
         assert set(Template.objects.full_chain([template1_of_chain1, template1_of_chain2])) \
             == full_chain1.union(full_chain2)
 
-    def test_template_create(self):
-        template = Template.objects.create(format=self.format)
+    def test_template_manager_create(self):
+        template = Template.objects.create(format=self.format, name='A')
         assert TemplateChain.objects.filter(template=template).count() == 1, \
             'A template chain is created alongside the new template'
 
@@ -100,48 +152,46 @@ class TemplateTest(TestCase):
         preset.delete()
         assert self.template.can_be_deleted(), 'No entry or preset remaining, entry can be deleted'
 
-    def test_delete_or_archive_templates_and_test_template_unused(self):
-        template = self.template
-        data = [{'id': template.pk}]
+    def test_delete_or_archive_template(self):
+        template = factory.Template(format=self.format, add_fields=[{'type': Field.TEXT}])
 
         assert Template.objects.unused().filter(pk=template.pk).exists()
-        template_utils.delete_or_archive_templates(data)
-        assert not Template.objects.filter(pk=template.pk).exists(), \
+        assert template.can_be_deleted(), \
             'Without preset nodes or entries associated with the template, it can safely be deleted'
 
         template = factory.Template(format=self.format, add_fields=[{'type': Field.TEXT}])
-        data = [{'id': template.pk}]
         preset = factory.DeadlinePresetNode(forced_template=template, format=self.format)
         entry = factory.UnlimitedEntry(template=template, node__journal=self.journal)
-        template_utils.delete_or_archive_templates(data)
+
+        assert not template.can_be_deleted(), 'Cannot delete due to dependant preset and entry'
+        update_params = TemplateSerializer(template).data
+        update_params['name'] = 'New name, should archive'
+        api.patch(self, 'templates', params={'pk': template.pk, **update_params}, user=self.assignment.author)
         template.refresh_from_db()
-        assert not Template.objects.unused().filter(pk=template.pk).exists()
-        assert template.archived, 'Cannot delete due to dependant preset and entry'
+        assert template.archived, 'Template is archived since it could not be deleted,'
         template.archived = False
         template.save()
 
         preset.delete()
-        template_utils.delete_or_archive_templates(data)
-        template.refresh_from_db()
+        update_params['name'] = 'New name2, should archive due to remaining entry'
         assert not Template.objects.unused().filter(pk=template.pk).exists()
-        assert template.archived, 'Cannot delete due to dependant entry'
+        api.patch(self, 'templates', params={'pk': template.pk, **update_params}, user=self.assignment.author)
+        template.refresh_from_db()
+        assert template.archived, \
+            'Template is archived since it could not be deleted as there is still an entry depending on it'
         template.archived = False
         template.save()
 
-        preset = factory.DeadlinePresetNode(forced_template=template, format=self.format)
         entry.delete()
-        template_utils.delete_or_archive_templates(data)
-        template.refresh_from_db()
-        assert not Template.objects.unused().filter(pk=template.pk).exists()
-        assert template.archived, 'Cannot delete due to dependant preset'
-        template.archived = False
-        template.save()
-
-        preset.delete()
+        update_params['name'] = 'New name3, should be deleted without any presets or entries'
         assert Template.objects.unused().filter(pk=template.pk).exists()
-        template_utils.delete_or_archive_templates(data)
+        api.patch(self, 'templates', params={'pk': template.pk, **update_params}, user=self.assignment.author)
         assert not Template.objects.filter(pk=template.pk).exists(), \
-            'Without preset nodes or entries associated with the template, it can safely be deleted'
+            'Template can be deleted without any attached entries or presets'
+
+    def test_template_constraints(self):
+        with self.assertRaises(IntegrityError):
+            Template.objects.create(name='', format=self.format)
 
     def test_template_serializer(self):
         format = self.format
@@ -204,3 +254,326 @@ class TemplateTest(TestCase):
 
         test_template_list_serializer()
         test_template_instance_serializer()
+
+    def test_template_validate(self):
+        template = factory.Template(format=self.format, add_fields=[{'type': Field.TEXT}])
+        valid_data = TemplateSerializer(template).data
+        valid_data['name'] = 'Unique name'
+
+        def test_concrete_fields_validation():
+            # White space in the name should be trimmmed
+            name_with_white_space = deepcopy(valid_data)
+            name = 'Name'
+            name_with_white_space['name'] = name + '  '
+            Template.validate(name_with_white_space, assignment=self.assignment)
+            assert name_with_white_space['name'] == name, 'White space should be trimmed'
+
+            # An empty template name is not allowed (used for identification in selects)
+            empty_name = deepcopy(valid_data)
+            empty_name['name'] = ''
+            self.assertRaises(ValidationError, Template.validate, empty_name, self.assignment)
+
+            # There should be no duplicate names among the active (non archived) templates
+            duplicate_name = 'Duplicate'
+            factory.Template(format=self.format, name=duplicate_name)
+            non_unique_name = deepcopy(valid_data)
+            non_unique_name['name'] = duplicate_name
+            self.assertRaises(ValidationError, Template.validate, non_unique_name, self.assignment)
+
+            # It should be possible for a duplicate name to exist, provided it belongs to an archived template
+            archived_duplicate_name = 'Archived duplicate name'
+            factory.Template(format=self.format, name=archived_duplicate_name, archived=True)
+            archived_non_unique_name = deepcopy(valid_data)
+            archived_non_unique_name['name'] = archived_duplicate_name
+            Template.validate(archived_non_unique_name, assignment=self.assignment)
+
+        def test_category_validation():
+            category = factory.Category(assignment=self.assignment)
+            unrelated_category = factory.Category()
+
+            duplicate_category = deepcopy(valid_data)
+            duplicate_category['categories'] = [{'id': category.pk}, {'id': category.pk}]
+            self.assertRaises(ValidationError, Template.validate, duplicate_category, self.assignment)
+
+            category_from_different_assignment = deepcopy(valid_data)
+            category_from_different_assignment['categories'] = [{'id': category.pk}, {'id': unrelated_category.pk}]
+            self.assertRaises(ValidationError, Template.validate, category_from_different_assignment, self.assignment)
+
+        def test_field_set_validation():
+            duplicate_field_locations = deepcopy(valid_data)
+            duplicate_field_locations['field_set'] = [{'location': 0}, {'location': 0}]
+            self.assertRaises(ValidationError, Template.validate, duplicate_field_locations, self.assignment)
+
+            oob_field_locations = deepcopy(valid_data)
+            oob_field_locations['field_set'] = [{'location': 0}, {'location': -1}]
+            self.assertRaises(ValidationError, Template.validate, oob_field_locations, self.assignment)
+
+            oob_field_locations = deepcopy(valid_data)
+            oob_field_locations['field_set'] = [{'location': 0}, {'location': 2}]
+            self.assertRaises(ValidationError, Template.validate, oob_field_locations, self.assignment)
+
+            no_fields = deepcopy(valid_data)
+            no_fields['field_set'] = []
+            self.assertRaises(ValidationError, Template.validate, no_fields, self.assignment)
+
+        test_concrete_fields_validation()
+        test_category_validation()
+        test_field_set_validation()
+
+    def test_update_categories_of_template_chain(self):
+        template1 = Template.objects.create(format=self.format, archived=True, name='A')
+        template2 = Template.objects.create(format=self.format, chain=template1.chain, name='B')
+        template_different_chain_with_category = factory.Template(format=self.format, categories=1)
+        template_different_chain_without_category = factory.Template(format=self.format)
+
+        category1 = factory.Category(assignment=self.assignment)
+        category2 = factory.Category(assignment=self.assignment)
+        categories = {category1, category2}
+
+        data = {'categories': [{'id': category.pk} for category in categories]}
+        template_utils.update_categories_of_template_chain(data, template2)
+
+        for template in [template1, template2]:
+            assert set(template.categories.all()) == categories, \
+                'Categories are set correctly, for each template part of the chain'
+
+        assert not template_different_chain_with_category.categories.filter(
+            pk__in=[category1.pk, category2.pk]).exists(), 'Templates of a different chain are unaffected.'
+        assert not template_different_chain_without_category.categories.filter(
+            pk__in=[category1.pk, category2.pk]).exists(), 'Templates of a different chain are unaffected.'
+
+    def test_template_list(self):
+        factory.Template(format=self.format, archived=True)
+
+        with mock.patch('VLE.models.User.can_view') as can_view_mock:
+            resp = api.get(self, 'templates', params={'assignment_id': self.assignment.pk}, user=self.assignment.author)
+            can_view_mock.assert_called_with(self.assignment), 'Template list permission depends on can view assignment'
+        api.get(self, 'templates', params={'assignment_id': self.assignment.pk}, user=self.unrelated_user, status=403)
+
+        assignment_template_set = set(self.assignment.format.template_set.filter(
+            archived=False).values_list('pk', flat=True))
+        assert all(template['id'] in assignment_template_set for template in resp['templates']), \
+            'All serialized templates belong to the provided assignment id and archived templates are not serialized'
+
+    def test_template_create(self):
+        category = factory.Category(assignment=self.assignment)
+
+        params = factory.TemplateCreationParams(
+            assignment_id=self.assignment.pk,
+            n_fields_with_file_in_description=1,
+            author=self.assignment.author,
+        )
+        params['categories'] = [{'id': category.pk}]
+
+        resp = api.create(self, 'templates', params=params, user=self.assignment.author)
+        assert resp['template'], 'A created template is returned'
+        assert self.assignment.format.template_set.filter(pk=resp['template']['id']).exists(), \
+            'The created template is linked to the correct assignment'
+
+        # Check if the template itself is created according to the provided data
+        template = Template.objects.get(pk=resp['template']['id'])
+        assert template.name == params['name']
+        assert template.fixed_categories == params['fixed_categories']
+        assert template.preset_only == params['preset_only']
+
+        _validate_field_creation(template, params['field_set'])
+        assert set(template.categories.all()) == {category}, 'The category is correctly linked to the template'
+
+        # When importing a template the author is required, as it is needed to set the author
+        # on any field description files which are copied over.
+        self.assertRaises(
+            VLEProgrammingError,
+            Template.objects.create_template_and_fields_from_data,
+            params,
+            self.assignment.format,
+            template_import=True,
+        )
+
+        def test_creation_validation():
+            with mock.patch('VLE.models.Template.validate', side_effect=ValidationError('msg')) as validate_mock:
+                api.create(self, 'templates', params=params, user=self.assignment.author, status=400)
+                validate_mock.assert_called
+
+        def test_import_template_via_creation():
+            '''
+            Templates are imported into an assigment via creation based on the serialized template of another
+            assignment.
+
+            Any files need to be copied.
+            '''
+            other_assignment = factory.Assignment(author=self.assignment.author)
+            other_template = factory.Template(
+                format=other_assignment.format, name='To import', add_fields=[{'type': Field.TEXT}])
+            other_template_field = other_template.field_set.first()
+            other_template_field_fc = factory.RichTextFieldDescriptionFileContext(
+                assignment=other_assignment, field=other_template_field)
+
+            # We will import the template via the creation of the other templates serialized data
+            import_params = TemplateSerializer(other_template).data
+            import_params['assignment_id'] = self.assignment.pk
+            import_params['template_import'] = True
+            resp = api.create(self, 'templates', params=import_params, user=self.assignment.author)
+
+            imported_template = Template.objects.get(pk=resp['template']['id'])
+
+            # Check if the template itself is created according to the provided data
+            assert imported_template.name == import_params['name']
+            assert imported_template.fixed_categories == import_params['fixed_categories']
+            assert imported_template.preset_only == import_params['preset_only']
+            _validate_field_creation(imported_template, import_params['field_set'], template_import=True)
+            assert not imported_template.categories.all().exists(), \
+                'Importing a template does not also import all of its categories'
+
+            # Check if the RT field descriptions file copy was succesfull
+            fc_ignore_keys = ['last_edited', 'creation_date', 'update_date', 'id', 'access_id', 'assignment']
+
+            imported_template_field = imported_template.field_set.get(location=other_template_field.location)
+            imported_template_field_fc = get_files_from_rich_text(imported_template_field.description).first()
+
+            # File is copied succesfully
+            check_equality_of_imported_file_context(other_template_field_fc, imported_template_field_fc, fc_ignore_keys)
+
+            # Remove the file from the other template's field description
+            other_template_field.description = ''
+            other_template_field.save()
+            cleanup.remove_unused_files(datetime.datetime.now())
+            assert not FileContext.objects.filter(pk=other_template_field_fc.pk).exists(), \
+                'Removing a reference to the source file should have no impact on the copied file.'
+
+            other_assignment.delete()
+            cleanup.remove_unused_files(datetime.datetime.now())
+            assert FileContext.objects.filter(pk=imported_template_field_fc.pk).exists(), \
+                'Deleting the source assignment should have no impact on the copied file.'
+
+            # When no longer referenced the file SHOULD be removed by cleanup
+            imported_template_field.description = ''
+            imported_template_field.save()
+            cleanup.remove_unused_files(datetime.datetime.now())
+            assert not FileContext.objects.filter(pk=other_template_field_fc.pk).exists(), \
+                'When a RT field description file is no longer referenced in the RT, cleanup should remove the file.'
+
+        test_creation_validation()
+        test_import_template_via_creation()
+
+    def test_template_patch(self):
+        def test_used_template_patch():
+            template = factory.Template(format=self.format, add_fields=[{'type': Field.TEXT}])
+            factory.UnlimitedEntry(node__journal=self.journal, template=template)
+            temp_fc = factory.TempFileContext(author=self.assignment.author)
+            field_description_with_temp_file = f'<img src="{temp_fc.download_url(access_id=temp_fc.access_id)}"/>'
+
+            valid_patch_data = TemplateSerializer(template).data
+            valid_patch_data['name'] = 'New'
+            valid_patch_data['fixed_categories'] = False
+            valid_patch_data['archived'] = True
+            valid_patch_data['pk'] = template.pk
+            new_field_data = deepcopy(valid_patch_data['field_set'][0])
+            new_field_data['location'] = valid_patch_data['field_set'][0]['location'] + 1
+            new_field_data['description'] = field_description_with_temp_file
+            valid_patch_data['field_set'].append(new_field_data)
+
+            with mock.patch('VLE.models.User.check_permission') as check_permission_mock:
+                resp = api.patch(self, 'templates', params=valid_patch_data, user=self.assignment.author)
+                check_permission_mock.assert_called_with('can_edit_assignment', template.format.assignment)
+
+            archived_template = Template.objects.get(pk=template.pk)
+            new_template = Template.objects.get(pk=resp['template']['id'])
+
+            assert valid_patch_data['name'] == new_template.name
+            assert valid_patch_data['fixed_categories'] == new_template.fixed_categories
+            assert not new_template.archived, 'Archived should be ignored as request data'
+            _validate_field_creation(new_template, valid_patch_data['field_set'])
+
+            assert equal_models(template, archived_template, ignore_keys=['update_date', 'archived']), \
+                'The archived template should not be modified'
+
+        def test_unused_template_patch():
+            template = factory.Template(format=self.format, add_fields=[{'type': Field.TEXT}])
+
+            valid_patch_data = TemplateSerializer(template).data
+            valid_patch_data['name'] = 'New 2'
+            valid_patch_data['pk'] = template.pk
+
+            resp = api.patch(self, 'templates', params=valid_patch_data, user=self.assignment.author)
+
+            assert not Template.objects.filter(pk=template.pk).exists(), \
+                'An unused template should simply be removed instead of archived when updated.'
+
+            new_template = Template.objects.get(pk=resp['template']['id'])
+            assert valid_patch_data['name'] == new_template.name
+            _validate_field_creation(new_template, valid_patch_data['field_set'])
+
+        def test_patch_validation():
+            template = factory.Template(format=self.format)
+
+            patch_data = TemplateSerializer(template).data
+            patch_data['pk'] = template.pk
+
+            with mock.patch('VLE.models.Template.validate', side_effect=ValidationError('msg')) as validate_mock:
+                api.patch(self, 'templates', params=patch_data, user=self.assignment.author, status=400)
+                validate_mock.assert_called
+
+        def test_update_fixed_categories_flag():
+            template = factory.Template(format=self.format, add_fields=[{'type': Field.TEXT}], fixed_categories=False)
+            # Ensure the original template is not deleted, but instead is archived, by linking it to an entry
+            factory.UnlimitedEntry(node__journal__assignment=self.assignment, template=template)
+
+            patch_data = TemplateSerializer(template).data
+            patch_data['pk'] = template.pk
+            patch_data['fixed_categories'] = True
+
+            resp = api.patch(self, 'templates', params=patch_data, user=self.assignment.author)
+
+            template.refresh_from_db()
+            assert template.archived, 'Changing the fixed categories flag archives the template.'
+            # QUESTION: Should fixed_categories changes be updated for the entire template chain or not?
+            assert not template.fixed_categories, 'Fixed categories is unchanged on the archived template.'
+            new_template = Template.objects.get(pk=resp['template']['id'])
+            assert not new_template.archived, 'The new template is unarchived.'
+            assert new_template.fixed_categories, 'The newly generated template does have fixed_categories'
+
+        test_used_template_patch()
+        test_unused_template_patch()
+        test_patch_validation()
+        test_update_fixed_categories_flag()
+
+    def test_template_delete(self):
+        def test_unused_template_delete():
+            template = factory.Template(format=self.format, add_fields=[{'type': Field.TEXT}])
+            self.category.templates.add(template)
+
+            with mock.patch('VLE.models.User.check_permission') as check_permission_mock:
+                resp = api.delete(self, 'templates', params={'pk': template.pk}, user=self.assignment.author)
+                check_permission_mock.assert_called_with('can_edit_assignment', template.format.assignment)
+
+            assert template.name in resp['description'], 'The deleted templates name is part of the success message'
+            assert not Template.objects.filter(pk=template.pk).exists(), \
+                'The template is successfully removed from the DB'
+            assert not Field.objects.filter(template=template).exists(), \
+                '''The template's field set is deleted alongside the template'''
+            assert not self.category.templates.filter(pk=template.pk).exists(), \
+                '''Any category template links are deleted alongside the template'''
+
+        def test_used_template_archive():
+            # Test usage via an unlimited entry
+            template = factory.Template(format=self.format, add_fields=[{'type': Field.TEXT}])
+            factory.UnlimitedEntry(node__journal=self.journal, template=template)
+
+            api.delete(self, 'templates', params={'pk': template.pk}, user=self.assignment.author)
+            template.refresh_from_db()
+            assert template.archived, \
+                '''A used template (an entry exists which relies on the template) should be archived
+                instead of actually deleted'''
+
+            # Test usage via a preset node
+            template = factory.Template(format=self.format, add_fields=[{'type': Field.TEXT}])
+            deadline = factory.DeadlinePresetNode(format=self.format, forced_template=template)
+            resp = api.delete(self, 'templates', params={'pk': template.pk}, user=self.assignment.author, status=400)
+            assert Template.objects.filter(pk=template.pk, archived=False).exists(), \
+                '''A used template (a deadline exists which makes use of the template) cannot be deleted, the user is
+                asked to changed the deadline first instead.'''
+            assert deadline.display_name in resp['description'], \
+                'The user is informed which deadlines depend on the template.'
+
+        test_unused_template_delete()
+        test_used_template_archive()

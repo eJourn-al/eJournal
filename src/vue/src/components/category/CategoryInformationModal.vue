@@ -10,23 +10,34 @@
         <b-card
             class="no-hover no-left-border"
         >
-            <h2 class="theme-h2 multi-form">
-                {{ category.name }}
-            </h2>
+            <b-form-group label="Category">
+                <category-tag :category="category"/>
+            </b-form-group>
 
-            <sandboxed-iframe
-                :content="category.description"
-            />
+            <b-form-group label="Description">
+                <sandboxed-iframe
+                    v-if="category.description"
+                    :content="category.description"
+                />
+                <span
+                    v-else
+                    class="no-optional-content-value"
+                >
+                    No description provided.
+                </span>
+            </b-form-group>
         </b-card>
     </b-modal>
 </template>
 
 <script>
+import CategoryTag from '@/components/category/CategoryTag.vue'
 import SandboxedIframe from '@/components/assets/SandboxedIframe.vue'
 
 export default {
     name: 'CategoryInformationModal',
     components: {
+        CategoryTag,
         SandboxedIframe,
     },
     props: {

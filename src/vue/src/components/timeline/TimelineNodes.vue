@@ -62,9 +62,8 @@ export default {
             required: true,
             type: Array,
         },
-        selected: {
-            required: true,
-            type: Number,
+        selectedIndex: {
+            required: true, /* Can be null, indicating nothing should be selected */
         },
         assignment: {
             required: true,
@@ -73,7 +72,7 @@ export default {
     },
     methods: {
         isSelected (index) {
-            return index === this.selected
+            return index === this.selectedIndex
         },
     },
 }

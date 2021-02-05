@@ -107,9 +107,9 @@ const router = new Router({
             aID: Number.parseInt(route.params.aID, 10),
         }),
     }, {
-        path: '/Home/Course/:cID/Assignment/:aID/Format',
-        name: 'FormatEdit',
-        component: () => import(/* webpackChunkName: 'format-edit' */ '@/views/FormatEdit.vue'),
+        path: '/Home/Course/:cID/Assignment/:aID/AssignmentEditor',
+        name: 'AssignmentEditor',
+        component: () => import(/* webpackChunkName: 'format-edit' */ '@/views/AssignmentEditor.vue'),
         props: route => ({
             cID: Number.parseInt(route.params.cID, 10),
             aID: Number.parseInt(route.params.aID, 10),
@@ -211,10 +211,14 @@ router.beforeEach((to, from, next) => {
 
 router.afterEach((to, from) => {
     if ('aID' in to.params) {
+        store.dispatch('assignment/retrieve', { id: to.params.aID })
+        store.dispatch('presetNode/list', { aID: to.params.aID })
         store.dispatch('category/list', { aID: to.params.aID })
+        store.dispatch('template/list', { aID: to.params.aID })
 
         if ('aID' in from.params && parseInt(to.params.aID, 10) !== parseInt(from.params.aID, 10)) {
-            store.commit('category/clearFilteredCategories')
+            store.commit('category/CLEAR_FILTERED_CATEGORIES')
+            store.commit('assignmentEditor/RESET')
         }
     }
 })

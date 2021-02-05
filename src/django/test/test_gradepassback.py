@@ -185,3 +185,21 @@ class GradePassBackRequestXMLTest(TestCase):
             author.save()
 
         assert not grading.send_journal_status_to_LMS(self.lti_journal)['successful']
+
+    def test_grading_background_task(self):
+        journal = factory.Journal()
+        author = journal.authors.first()
+        other_journal = factory.Journal()
+        journal = Journal.objects.get(pk=journal.pk)
+        resp = grading.send_author_status_to_LMS(journal, other_journal.authors.first())
+        assert 'not in journal' in resp['description'], \
+            'When author is not member of journal, it should say so'
+
+        resp = grading.send_author_status_to_LMS(journal, author)
+        assert 'has no sourcedid' in resp['description'], \
+            'When author has no sourcedid url, it should say so'
+        author.sourcedid = 'asdf'
+        author.save()
+        resp = grading.send_author_status_to_LMS(journal, author)
+        assert 'has no grade_url' in resp['description'], \
+            'When author has no grade url, it should say so'

@@ -1,11 +1,13 @@
 import datetime
 import test.factory as factory
+import test.utils.generic_utils
+from copy import deepcopy
 from test.utils import api
-from test.utils.generic_utils import equal_models
+from test.utils.generic_utils import check_equality_of_imported_file_context, equal_models
 from test.utils.performance import QueryContext
+from unittest import mock
 
 import pytest
-from dateutil import parser
 from dateutil.relativedelta import relativedelta
 from django.core.exceptions import ValidationError
 from django.core.files.uploadedfile import SimpleUploadedFile
@@ -15,11 +17,13 @@ from django.test import TestCase
 from django.test.utils import override_settings
 from django.utils import timezone
 
+import VLE.tasks.beats.cleanup as cleanup
 import VLE.utils.statistics as stats_utils
-from VLE.models import (Assignment, AssignmentParticipation, Category, Course, Entry, Field, Format, Journal,
-                        JournalImportRequest, Node, Participation, PresetNode, Role, Template)
-from VLE.serializers import AssignmentSerializer, SmallAssignmentSerializer
+from VLE.models import (Assignment, AssignmentParticipation, Category, Course, Entry, Field, FileContext, Format, Group,
+                        Journal, JournalImportRequest, Node, Participation, PresetNode, Role, Template)
+from VLE.serializers import AssignmentFormatSerializer, AssignmentSerializer, SmallAssignmentSerializer
 from VLE.utils.error_handling import VLEParticipationError, VLEProgrammingError
+from VLE.utils.file_handling import get_files_from_rich_text
 from VLE.views.assignment import day_neutral_datetime_increment, set_assignment_dates
 
 
@@ -145,6 +149,25 @@ class AssignmentAPITest(TestCase):
         assert ap.journal.authors.count() == 1 and ap.journal.authors.first().user.pk == g_assignment.author.pk, \
             'The created journal is linked to the assignment teacher'
 
+    def test_assignment_update_params_factory(self):
+        assignment = factory.Assignment()
+
+        pre_update_assignment = AssignmentFormatSerializer(
+            AssignmentFormatSerializer.setup_eager_loading(Assignment.objects.filter(pk=assignment.pk)).get(),
+            context={'user': assignment.author},
+        ).data
+
+        format_update_dict = factory.AssignmentUpdateParams(assignment=assignment)
+        api.update(self, 'assignments', params=format_update_dict, user=assignment.author)
+
+        post_update_format = AssignmentFormatSerializer(
+            AssignmentFormatSerializer.setup_eager_loading(Assignment.objects.filter(pk=assignment.pk)).get(),
+            context={'user': assignment.author},
+        ).data
+
+        assert test.utils.generic_utils.equal_models(pre_update_assignment, post_update_format), \
+            'Unmodified update paramaters should be able to succesfully update the format without making any changes'
+
     def test_create_assignment(self):
         lti_params = {**self.create_params, **{'lti_id': 'new_lti_id'}}
         resp = api.create(self, 'assignments', params=lti_params, user=self.teacher)['assignment']
@@ -197,6 +220,10 @@ class AssignmentAPITest(TestCase):
         api.create(self, 'assignments', params=params, user=self.teacher)
         self.course.refresh_from_db()
         assert 'random_lti_id_salkdjfhas' in self.course.assignment_lti_id_set
+
+        params = {**self.create_params, **{'description': ''}}
+        resp = api.create(self, 'assignments', params=params, user=self.teacher)['assignment']
+        assert resp['description'] == '', 'It should be possible to create an assignment without a description.'
 
     def test_get_assignment_stats(self):
         unrelated_student = factory.Student()
@@ -341,23 +368,125 @@ class AssignmentAPITest(TestCase):
         assert len(resp) == 3, 'Without a course supplied, it should return all assignments connected to user'
 
     def test_update_assignment(self):
-        assignment = api.create(self, 'assignments', params=self.create_params, user=self.teacher)['assignment']
+        assignment = factory.Assignment(is_published=True)
+        teacher = assignment.author
+        journal = factory.Journal(entries__n=0, assignment=assignment)
+        student = journal.author
 
-        # Try to publish the assignment
-        api.update(self, 'assignments', params={'pk': assignment['id'], 'is_published': True},
-                   user=factory.Student(), status=403)
-        api.update(self, 'assignments', params={'pk': assignment['id'], 'is_published': True},
-                   user=self.teacher)
-        api.update(self, 'assignments', params={'pk': assignment['id'], 'is_published': True},
-                   user=self.admin)
+        update_params = factory.AssignmentUpdateParams(assignment=assignment)
 
-        # Test script sanitation
-        params = {
-            'pk': assignment['id'],
-            'description': '<script>alert("asdf")</script>Rest'
-        }
-        resp = api.update(self, 'assignments', params=params, user=self.teacher)['assignment']
-        assert resp['description'] != params['description']
+        def test_update_permission():
+            # Assignment update is locked behind 'can_edit_assignment'
+            with mock.patch('VLE.models.User.check_permission') as check_permission_mock:
+                api.update(self, 'assignments', params=update_params, user=teacher)
+                check_permission_mock.assert_called_with('can_edit_assignment', assignment)
+            api.update(self, 'assignments', params=update_params, user=student, status=403)
+
+        def test_update_is_published():
+            unpublished = deepcopy(update_params)
+            unpublished['is_published'] = False
+            resp = api.update(self, 'assignments', params=unpublished, user=teacher)['assignment']
+            assert not resp['is_published'], 'It is possible to unpublish an assignment without any entries.'
+
+            # So we add an entry and check if it is no longer possible to unpublish
+            assignment.is_published = True
+            assignment.save()
+            entry = factory.UnlimitedEntry(node__journal__assignment=assignment)
+            api.update(self, 'assignments', params=unpublished, user=teacher, status=400)
+            entry.delete()  # Cleanup
+
+        def test_update_assignment_type():
+            group_assignment = deepcopy(update_params)
+            group_assignment['is_group_assignment'] = True
+            resp = api.update(self, 'assignments', params=group_assignment, user=teacher)['assignment']
+            assert resp['is_group_assignment'], \
+                '''It is possible to switch an assignment's type if there are no entries created yet.'''
+            assert not Journal.objects.filter(node__journal__assignment=assignment).exists(), \
+                'All journals should be deleted after type change'
+
+            # Afte adding an entry it should no longer be possible to change the assignment's type
+            entry = factory.UnlimitedEntry(node__journal__assignment=assignment)
+            individual_assignment = deepcopy(update_params)
+            api.update(self, 'assignments', params=individual_assignment, user=teacher, status=400)
+            entry.delete()  # Cleanup
+
+        def test_script_sanitization():
+            script_in_description = deepcopy(update_params)
+            script_in_description['description'] = '<script>alert("asdf")</script>Rest'
+
+            resp = api.update(self, 'assignments', params=script_in_description, user=teacher)['assignment']
+            assert resp['description'] != script_in_description['description']
+
+        test_update_permission()
+        test_update_is_published()
+        test_update_assignment_type()
+        test_script_sanitization()
+
+    def test_update_assignment_assign_to(self):
+        assignment = factory.Assignment()
+        course = assignment.courses.first()
+        teacher = assignment.author
+        update_params = factory.AssignmentUpdateParams(assignment=assignment)
+
+        def check_groups(groups, status=200):
+            api.update(self, 'assignments', params=update_params, user=teacher, status=status)
+
+            if status == 200:
+                assignment.refresh_from_db()
+
+                assert assignment.assigned_groups.count() == len(groups), 'Assigned group amount should be correct'
+
+                for group in Group.objects.all():
+                    if group in groups:
+                        assert assignment.assigned_groups.filter(pk=group.pk).exists(), \
+                            'Group should be in assigned groups'
+                    else:
+                        assert not assignment.assigned_groups.filter(pk=group.pk).exists(), \
+                            'Group should not be in assigned groups'
+
+        group = factory.Group(course=course)
+        update_params['assigned_groups'] = [
+            {'id': group.pk},
+        ]
+        update_params['course_id'] = course.pk
+        check_groups([group])
+
+        # Test groups from other courses are not added when course_id is wrong
+        course2 = factory.Course()
+        assignment.add_course(course2)
+        group2 = factory.Group(course=course2)
+        update_params['assigned_groups'] = [
+            {'id': group.pk},
+            {'id': group2.pk},
+        ]
+        update_params['course_id'] = course.pk
+        check_groups([group])
+
+        # Course id has to be related to the provided assignment
+        unrelated_course = factory.Course()
+        update_params['course_id'] = unrelated_course.pk
+        api.update(self, 'assignments', params={'pk': assignment.pk, **update_params}, user=teacher, status=400)
+        update_params['course_id'] = course.pk
+
+        # Unrelated groups cannot be assigned to
+        unrelated_group = factory.Group(course=unrelated_course)
+        update_params['assigned_groups'] = [
+            {'id': group.pk},
+            {'id': unrelated_group.pk}
+        ]
+        check_groups([group])
+
+        # Test group gets added when other course is supplied, also check if other group does not get removed
+        update_params['assigned_groups'] = [
+            {'id': group2.pk},
+        ]
+        update_params['course_id'] = course2.pk
+        check_groups([group, group2])
+
+        # Test if only groups from supplied course get removed
+        update_params['assigned_groups'] = []
+        update_params['course_id'] = course2.pk
+        check_groups([group])
 
     def test_delete_assignment(self):
         teach_course = factory.Course(author=self.teacher)
@@ -493,7 +622,7 @@ class AssignmentAPITest(TestCase):
         before_source_preset_nodes = PresetNode.objects.filter(format=source_assignment.format)
         assert source_progress_node in before_source_preset_nodes, 'We are working with the correct node and format'
         before_source_templates = Template.objects.filter(format=source_assignment.format)
-        before_source_format_resp = api.get(self, 'formats', params={'pk': source_assignment.pk}, user=teacher)
+        before_source_ass_resp = api.get(self, 'assignments', params={'pk': source_assignment.pk}, user=teacher)
 
         pre_import_format_count = Format.objects.count()
         pre_import_journal_count = Journal.all_objects.count()
@@ -544,11 +673,17 @@ class AssignmentAPITest(TestCase):
 
         after_source_preset_nodes = PresetNode.objects.filter(format=source_assignment.format)
         after_source_templates = Template.objects.filter(format=source_assignment.format)
-        after_source_format_resp = api.get(self, 'formats', params={'pk': source_assignment.pk}, user=teacher)
-        created_format_resp = api.get(self, 'formats', params={'pk': created_assignment.pk}, user=teacher)
+        after_source_ass_resp = api.get(self, 'assignments', params={'pk': source_assignment.pk}, user=teacher)
+        created_ass_resp = api.get(self, 'assignments', params={'pk': created_assignment.pk}, user=teacher)
 
         # Validate that the entire imported response format is unchanged
-        assert before_source_format_resp == after_source_format_resp, 'Source format should remain unchanged'
+        before_source_ass_resp['assignment']['courses'] = before_source_ass_resp['assignment']['courses'].sort(
+            key=lambda c: c['id'])
+        after_source_ass_resp['assignment']['courses'] = after_source_ass_resp['assignment']['courses'].sort(
+            key=lambda c: c['id'])
+        assert equal_models(before_source_ass_resp, after_source_ass_resp), \
+            'Source format should remain unchanged'
+
         # The check above is extensive, but limited by the serializer, so let us check the db fully.
         assert before_source_preset_nodes.count() == after_source_preset_nodes.count() \
             and before_source_templates.count() == after_source_templates.count(), \
@@ -560,25 +695,17 @@ class AssignmentAPITest(TestCase):
         assert len(Entry.objects.filter(node__journal=source_student_journal)) == \
             number_of_source_student_journal_entries, 'Old entries should not be removed'
 
-        assert created_format.pk == created_format_resp['format']['id'], \
-            'The most recently created (fresh import) format, should be returned.'
-
-        # Validate import response results
-        o = before_source_format_resp['format']  # original
-        a = after_source_format_resp['format']
-        c = created_format_resp['format']
-        assert o['id'] != c['id'], 'Created format should be a new format'
-        assert o['id'] == a['id'], 'Original format should be the same'
-        # Validate template import results
-        for o_t, a_t, c_t in zip(o['templates'], a['templates'], c['templates']):
-            assert c_t['id'] != a_t['id'], 'Should be a new template'
-        # Validate preset import results
-        for o_p, a_p, c_p in zip(o['presets'], a['presets'], c['presets']):
-            assert c_p['id'] != a_p['id'], 'Should be a new preset'
+        assert created_assignment.pk == created_ass_resp['assignment']['id'], \
+            'The most recently created assignment should be returned.'
 
         # Validate the import result values without the meddling of the serializer
         created_preset_nodes = PresetNode.objects.filter(format=created_format)
         created_templates = Template.objects.filter(format=created_format)
+        assert not source_format.presetnode_set.filter(pk__in=created_preset_nodes).exists(), \
+            'No overlap exists between the preset nodes of source and target assignment'
+        assert not source_format.template_set.filter(pk__in=created_templates).exists(), \
+            'No overlap exists between the templates of source and target assignment'
+
         assert before_source_preset_nodes.count() == created_preset_nodes.count() \
             and before_source_templates.count() == created_templates.count(), \
             'Format of the import should be equal to the import target'
@@ -595,17 +722,7 @@ class AssignmentAPITest(TestCase):
             }, user=teacher)
         created_assignment = Assignment.objects.get(pk=resp['assignment_id'])
         created_format = created_assignment.format
-        created_format_resp = api.get(self, 'formats', params={'pk': created_assignment.pk}, user=teacher)
-
-        # Validate again, this time dates should be different
-        c = created_format_resp['format']
-        for o_p, c_p in zip(o['presets'], c['presets']):
-            for key, value in c_p.items():
-                if key in ['unlock_date', 'due_date', 'lock_date']:
-                    if o_p[key] is None:
-                        assert value is None, 'Don\'t shift deadlines that were not there to begin with.'
-                    else:
-                        assert relativedelta(parser.parse(value), parser.parse(o_p[key])).years == 1
+        created_ass_resp = api.get(self, 'assignments', params={'pk': created_assignment.pk}, user=teacher)
 
         # The import result values should still be equal apart from the dates
         created_preset_nodes = PresetNode.objects.filter(format=created_format)
@@ -695,6 +812,133 @@ class AssignmentAPITest(TestCase):
                         ignore_keys=['id', 'template', 'creation_date', 'update_date']
                     ), 'Of the linked templates the fields are equal'
 
+    def test_assignment_copy_files(self):
+        fc_ignore_keys = ['last_edited', 'creation_date', 'update_date', 'id', 'access_id', 'assignment']
+
+        target_course = factory.Course(author=self.teacher)
+
+        # Setup a source assignment with files for all 'assignment level' FileContexts
+        # (field description, assignment description, preset node description, preset node attachment,
+        # category description)
+        source_course = self.course
+        source_assignment = factory.Assignment(courses=[source_course], format__templates=False)
+        source_format = source_assignment.format
+
+        source_assignment_description_fc = factory.RichTextAssignmentDescriptionFileContext(
+            assignment=source_assignment)
+
+        source_template = factory.Template(format=source_format, add_fields=[{'type': Field.TEXT}])
+        source_template_field = source_template.field_set.first()
+        source_template_field_fc = factory.RichTextFieldDescriptionFileContext(
+            assignment=source_assignment, field=source_template_field)
+
+        source_category = factory.Category(assignment=source_assignment)
+        source_category_description_fc = factory.RichTextCategoryDescriptionFileContext(category=source_category)
+
+        source_deadline = factory.DeadlinePresetNode(format=source_format, n_rt_files=1, n_att_files=1)
+        source_deadline_att_fc = source_deadline.attached_files.first()
+        assert source_deadline_att_fc
+        source_deadline_description_fc = get_files_from_rich_text(source_deadline.description).first()
+        assert source_deadline_description_fc
+
+        # Import the assignment (hopefull sucesfully copying all FileContexts as well)
+        resp = api.post(self, 'assignments/{}/copy'.format(source_assignment.pk), params={
+            'course_id': target_course.pk,
+            'months_offset': 0,
+        }, user=self.teacher)
+
+        target_assignment = Assignment.objects.get(pk=resp['assignment_id'])
+
+        # First confirm all files are new copies (instead of just references to fcs of the old assignment)
+
+        # Assignment RT description file is a new (equal) copy
+        target_assignment_description_fc = get_files_from_rich_text(target_assignment.description).first()
+        check_equality_of_imported_file_context(
+            source_assignment_description_fc, target_assignment_description_fc, fc_ignore_keys)
+
+        # Template RT field description file is a new (equal) copy
+        target_template = target_assignment.format.template_set.get(name=source_template.name)
+        target_template_field = target_template.field_set.first()
+        target_template_field_fc = get_files_from_rich_text(target_template_field.description).first()
+        check_equality_of_imported_file_context(source_template_field_fc, target_template_field_fc, fc_ignore_keys)
+
+        # Category RT description file is a new (equal) copy
+        category_ignore_keys = ['last_edited', 'creation_date', 'update_date', 'id', 'access_id', 'category']
+        target_category = target_assignment.categories.get(name=source_category.name)
+        target_category_description_fc = get_files_from_rich_text(target_category.description).first()
+        check_equality_of_imported_file_context(
+            source_category_description_fc, target_category_description_fc, category_ignore_keys)
+
+        # Deadline attached file is a new (equal) copy
+        target_deadline = target_assignment.format.presetnode_set.get(display_name=source_deadline.display_name)
+        target_deadline_att_fc = target_deadline.attached_files.first()
+        check_equality_of_imported_file_context(source_deadline_att_fc, target_deadline_att_fc, fc_ignore_keys)
+        # Deadline RT description file is a new (equal) copy
+        target_deadline_description_fc = get_files_from_rich_text(target_deadline.description).first()
+        check_equality_of_imported_file_context(
+            source_deadline_description_fc, target_deadline_description_fc, fc_ignore_keys)
+
+        # Now we remove the files from the source assignment, this should not change anything for the target assignment
+        source_assignment.description = ''
+        source_assignment.save()
+
+        source_template_field.description = ''
+        source_template_field.save()
+
+        source_category.description = ''
+        source_category.save()
+
+        source_deadline.attached_files.remove(source_deadline_att_fc)
+        source_deadline.description = ''
+        source_deadline.save()
+
+        # Cleanup should not remove any of the underlying FC's as they are still referenced in the target assignment
+        cleanup.remove_unused_files(datetime.datetime.now())
+
+        # Source files should be cleaned
+        assert not FileContext.objects.filter(pk=source_assignment_description_fc.pk).exists()
+        assert not FileContext.objects.filter(pk=source_template_field_fc.pk).exists()
+        assert not FileContext.objects.filter(pk=source_category_description_fc.pk).exists()
+        assert not FileContext.objects.filter(pk=source_deadline_att_fc.pk).exists()
+        assert not FileContext.objects.filter(pk=source_deadline_description_fc.pk).exists()
+
+        # Target files should remain
+        assert FileContext.objects.filter(pk=target_assignment_description_fc.pk).exists()
+        assert FileContext.objects.filter(pk=target_template_field_fc.pk).exists()
+        assert FileContext.objects.filter(pk=target_category_description_fc.pk).exists()
+        assert FileContext.objects.filter(pk=target_deadline_att_fc.pk).exists()
+        assert FileContext.objects.filter(pk=target_deadline_description_fc.pk).exists()
+
+        # Deleting the source assignment should not remove any of the copied FC's
+        source_assignment.delete()
+        assert FileContext.objects.filter(pk=target_assignment_description_fc.pk).exists()
+        assert FileContext.objects.filter(pk=target_template_field_fc.pk).exists()
+        assert FileContext.objects.filter(pk=target_category_description_fc.pk).exists()
+        assert FileContext.objects.filter(pk=target_deadline_att_fc.pk).exists()
+        assert FileContext.objects.filter(pk=target_deadline_description_fc.pk).exists()
+
+        # Removing the references to the FCs in the target assignment SHOULD delete the FCs after cleanup
+        target_assignment.description = ''
+        target_assignment.save()
+
+        target_template_field.description = ''
+        target_template_field.save()
+
+        target_category.description = ''
+        target_category.save()
+
+        target_deadline.attached_files.remove(target_deadline_att_fc)
+        target_deadline.description = ''
+        target_deadline.save()
+
+        # With the references removed, cleanup should actually remove all files
+        cleanup.remove_unused_files(datetime.datetime.now())
+        assert not FileContext.objects.filter(pk=target_assignment_description_fc.pk).exists()
+        assert not FileContext.objects.filter(pk=target_template_field_fc.pk).exists()
+        assert not FileContext.objects.filter(pk=target_category_description_fc.pk).exists()
+        assert not FileContext.objects.filter(pk=target_deadline_att_fc.pk).exists()
+        assert not FileContext.objects.filter(pk=target_deadline_description_fc.pk).exists()
+
     def test_upcoming_basic(self):
         course = factory.Course()
         teacher = course.author
@@ -719,7 +963,8 @@ class AssignmentAPITest(TestCase):
             assert all([len(r['courses']) == 1 for r in resp]), 'Each assignment is linked to a single course'
 
         def test_locked_assignments_should_not_be_serialized(self):
-            assignment3 = factory.Assignment(courses=[course], author=teacher, lock_date=timezone.now())
+            assignment3 = factory.Assignment(
+                courses=[course], author=teacher, due_date=timezone.now(), lock_date=timezone.now())
             resp = api.get(self, 'assignments/upcoming', user=teacher)['upcoming']
             assert len(resp) == 2 and not any([ass['course']['name'] == assignment3.name for ass in resp]), \
                 'The locked assignment should not be serialized'
@@ -1044,7 +1289,7 @@ class AssignmentAPITest(TestCase):
         assert resp[0]['deadline']['name'] == assignment.format.template_set.first().name, \
             'When not having completed an entry deadline, that should be shown'
 
-        entry = factory.PresetEntry(node__journal=journal, node__preset=entrydeadline)
+        entry = factory.PresetEntry(node=journal.node_set.get(preset=entrydeadline))
 
         resp = api.get(self, 'assignments/upcoming', user=teacher)['upcoming']
         assert resp[0]['deadline']['date'] is not None, \
@@ -1523,3 +1768,102 @@ class AssignmentAPITest(TestCase):
         for ap in aps:
             assert ap.journal, 'journals should be created'
             assert Node.objects.filter(journal=ap.journal).exists(), 'nodes should be created inside journal'
+
+    def test_assignment_validate_dates(self):
+        assignment = factory.Assignment()
+        one_day = datetime.timedelta(days=1)
+
+        default_unlock_date = assignment.unlock_date
+        default_due_date = assignment.due_date
+        default_lock_date = assignment.lock_date
+
+        # Unmodified assignment and deadline should not break assignment validation
+        deadline = factory.DeadlinePresetNode(format=assignment.format)
+        assignment.validate_unlock_date()
+        assignment.validate_due_date()
+        assignment.validate_lock_date()
+        deadline.delete()
+
+        def reset_assignment():
+            assignment.unlock_date = default_unlock_date
+            assignment.due_date = default_due_date
+            assignment.lock_date = default_lock_date
+
+            assignment.format.presetnode_set.all().delete()
+
+        def test_validate_unlock_date():
+            # Unlock date cannot exceed due date
+            assignment.unlock_date = assignment.due_date + one_day
+            self.assertRaises(ValidationError, assignment.validate_unlock_date)
+            reset_assignment()
+
+            # Unlock date cannot exceed lock date
+            assignment.unlock_date = assignment.lock_date + one_day
+            self.assertRaises(ValidationError, assignment.validate_unlock_date)
+            reset_assignment()
+
+            # A deadline cannot unlock before the assignment unlocks
+            factory.DeadlinePresetNode(format=assignment.format, unlock_date=assignment.unlock_date - one_day)
+            self.assertRaises(ValidationError, assignment.validate_unlock_date)
+            reset_assignment()
+
+            # A deadline cannot be due before the assignment unlocks
+            factory.DeadlinePresetNode(format=assignment.format, due_date=assignment.unlock_date - one_day)
+            self.assertRaises(ValidationError, assignment.validate_unlock_date)
+            reset_assignment()
+
+            # A deadline cannot lock before the assignment unlocks
+            factory.DeadlinePresetNode(format=assignment.format, lock_date=assignment.unlock_date - one_day)
+            self.assertRaises(ValidationError, assignment.validate_unlock_date)
+            reset_assignment()
+
+        def test_validate_due_date():
+            # Due date cannot occur before unlock date
+            assignment.due_date = assignment.unlock_date - one_day
+            self.assertRaises(ValidationError, assignment.validate_due_date)
+            reset_assignment()
+
+            # Due date cannot exceed lock date
+            assignment.due_date = assignment.lock_date + one_day
+            self.assertRaises(ValidationError, assignment.validate_due_date)
+            reset_assignment()
+
+            # A deadline cannot unlock after the assignment is due
+            factory.DeadlinePresetNode(format=assignment.format, unlock_date=assignment.due_date + one_day)
+            self.assertRaises(ValidationError, assignment.validate_due_date)
+            reset_assignment()
+
+            # A deadline cannot be due after the assignment is due
+            factory.DeadlinePresetNode(format=assignment.format, due_date=assignment.due_date + one_day)
+            self.assertRaises(ValidationError, assignment.validate_due_date)
+            reset_assignment()
+
+        def test_validate_lock_date():
+            # Lock date cannot occur before unlock date
+            assignment.lock_date = assignment.unlock_date - one_day
+            self.assertRaises(ValidationError, assignment.validate_lock_date)
+            reset_assignment()
+
+            # Lock date cannot occur before due date
+            assignment.lock_date = assignment.due_date - one_day
+            self.assertRaises(ValidationError, assignment.validate_lock_date)
+            reset_assignment()
+
+            # A deadline cannot unlock after the assignment locks
+            factory.DeadlinePresetNode(format=assignment.format, unlock_date=assignment.lock_date + one_day)
+            self.assertRaises(ValidationError, assignment.validate_lock_date)
+            reset_assignment()
+
+            # A deadline cannot be due after the assignment locks
+            factory.DeadlinePresetNode(format=assignment.format, due_date=assignment.lock_date + one_day)
+            self.assertRaises(ValidationError, assignment.validate_lock_date)
+            reset_assignment()
+
+            # A deadline cannot be locked after the assignment locks
+            factory.DeadlinePresetNode(format=assignment.format, lock_date=assignment.lock_date + one_day)
+            self.assertRaises(ValidationError, assignment.validate_lock_date)
+            reset_assignment()
+
+        test_validate_unlock_date()
+        test_validate_due_date()
+        test_validate_lock_date()

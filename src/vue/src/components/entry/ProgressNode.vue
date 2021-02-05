@@ -3,9 +3,15 @@
         :class="borderColor"
         class="no-hover"
     >
-        <h2 class="theme-h2 mb-2">
-            Target: {{ currentNode.target }} point<span v-if="currentNode.target > 1">s</span>
-        </h2>
+        <b-row
+            no-gutters
+            class="multi-form"
+        >
+            <span class="theme-h2">{{ currentNode.display_name }}</span>
+
+            <slot name="edit-button"/>
+        </b-row>
+
         <p
             v-if="currentNode.description"
             class="mb-0"
@@ -15,11 +21,12 @@
             />
         </p>
         <files-list :files="currentNode.attached_files"/>
-        <hr class="full-width"/>
+        <hr/>
         <span
             v-if="!accomplished && new Date() < new Date(currentNode.due_date)"
             class="text-grey"
         >
+            Target: <b>{{ currentNode.target }}</b> point<span v-if="currentNode.target > 1">s</span><br/>
             <b>{{ score }}</b> out of <b>{{ currentNode.target }}</b> points<br/>
 
             <b>{{ Math.round(left * 1000) / 1000 }}</b> more required before

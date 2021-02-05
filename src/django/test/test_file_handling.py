@@ -8,7 +8,7 @@ from django.test import TestCase
 from django.utils import timezone
 
 import VLE.tasks.beats.cleanup
-from VLE.models import Content, Entry, Field, FileContext, PresetNode, Template, User
+from VLE.models import Content, Entry, Field, FileContext, User
 from VLE.utils import file_handling
 from VLE.utils.error_handling import VLEBadRequest, VLEPermissionError
 
@@ -105,11 +105,12 @@ class FileHandlingTest(TestCase):
 
     def test_file_retrieve(self):
         file = FileContext.objects.create(file=self.video, author=self.student, file_name=self.video.name)
+        other_teacher = factory.Teacher()
 
         # Test get unestablished files
         api.get(self, 'files', params={'pk': file.pk}, user=self.student, status=200)
         api.get(self, 'files', params={'pk': file.pk}, user=self.teacher, status=403)
-        api.get(self, 'files', params={'pk': file.pk}, user=factory.Teacher(), status=403)
+        api.get(self, 'files', params={'pk': file.pk}, user=other_teacher, status=403)
 
         # Test teacher can see after establishing in journal
         file_handling.establish_file(author=self.student, file_context=file, journal=self.journal)
@@ -120,7 +121,7 @@ class FileHandlingTest(TestCase):
         hidden_comment = factory.TeacherComment(
             author=self.teacher, entry=factory.UnlimitedEntry(node__journal=self.journal), published=False)
         file_handling.establish_file(author=self.teacher, file_context=file, comment=hidden_comment)
-        api.get(self, 'files', params={'pk': file.pk}, user=factory.Teacher(), status=403)
+        api.get(self, 'files', params={'pk': file.pk}, user=other_teacher, status=403)
         api.get(self, 'files', params={'pk': file.pk}, user=self.student, status=403)
         api.get(self, 'files', params={'pk': file.pk}, user=self.teacher, status=200)
 
@@ -132,7 +133,18 @@ class FileHandlingTest(TestCase):
         file = FileContext.objects.create(file=self.video, author=self.teacher, file_name=self.video.name)
         file_handling.establish_file(author=self.teacher, file_context=file, assignment=self.assignment)
         api.get(self, 'files', params={'pk': file.pk}, user=self.student, status=200)
-        api.get(self, 'files', params={'pk': file.pk}, user=factory.Teacher(), status=403)
+        api.get(self, 'files', params={'pk': file.pk}, user=other_teacher, status=403)
+
+        # Test non related user on file without context (e.g. profile picture)
+        file = FileContext.objects.create(file=self.video, author=self.student, file_name=self.video.name)
+        # Student should be able to get its own file
+        api.get(self, 'files', params={'pk': file.pk}, user=self.student)
+        # Unrelated teacher should not be able to get students file
+        api.get(self, 'files', params={'pk': file.pk}, user=other_teacher, status=403)
+        # Unrelated teacher should be able to get students file with the use of access_id
+        api.get(self, 'files', params={'pk': file.pk, 'access_id': file.access_id}, user=other_teacher)
+        # Unrelated teacher should be able to get students file using the dedicated access endpoint
+        api.get(self, 'files/access_id', params={'pk': file.access_id}, user=other_teacher)
 
     def test_file_context_model(self):
         # Dedicated file due to possible race conditions across tests
@@ -299,87 +311,6 @@ class FileHandlingTest(TestCase):
         assert not FileContext.objects.filter(access_id=deleted).exists(), 'old journal image should be deleted'
         assert FileContext.objects.filter(access_id=new).exists(), 'new journal image should not be deleted'
 
-    def test_remove_unused_files_assignment(self):
-        def update_and_check(description, field_description, preset_node_description):
-            template = Template.objects.filter(format__assignment=self.assignment).order_by('pk').last()
-            presetnode = PresetNode.objects.filter(format__assignment=self.assignment).first()
-            update_params = {
-                'pk': self.assignment.pk,
-                'assignment_details': {
-                    'description': '<p> <img src="{}" /> </p>'.format(description['download_url']),
-                },
-                'templates': [{
-                    'field_set': [{
-                        'type': 'rt',
-                        'title': '',
-                        'description': '<p><img src="{}" /></p>'.format(field_description['download_url']),
-                        'options': None,
-                        'location': 0,
-                        'template': template.pk,
-                        'id': template.field_set.first().pk,
-                        'required': True
-                    }],
-                    'name': 'Entry',
-                    'id': template.pk,
-                    'format': self.assignment.format.pk,
-                    'preset_only': False,
-                    'fixed_categories': True,
-                    'archived': False
-                }],
-                'presets': [{
-                    'description': '<p><img src="{}" /></p>'.format(preset_node_description['download_url']),
-                    'due_date': str(self.assignment.due_date),
-                    'id': presetnode.pk if presetnode else -1,
-                    'target': self.assignment.points_possible,
-                    'type': 'p',
-                    'display_name': 'Progress goal',
-                    'template': None,
-                    'lock_date': None,
-                    'unlock_date': None,
-                    'attached_files': [],
-                }], 'removed_presets': [], 'removed_templates': [],
-            }
-            api.update(self, 'formats', params=update_params, user=self.teacher)
-            VLE.tasks.beats.cleanup.remove_unused_files(older_lte=timezone.now())
-            assert FileContext.objects.filter(pk=description['id']).exists(), 'new file should exist'
-            assert FileContext.objects.filter(pk=field_description['id']).exists(), 'new file should exist'
-            assert FileContext.objects.filter(pk=preset_node_description['id']).exists(), \
-                'new file should exist'
-
-        # Remove non established images
-        needs_removal = api.post(
-            self, 'files', params={'file': self.image, 'in_rich_text': True},
-            user=self.teacher, content_type=MULTIPART_CONTENT, status=201)
-        description = api.post(
-            self, 'files', params={'file': self.image, 'in_rich_text': True},
-            user=self.teacher, content_type=MULTIPART_CONTENT, status=201)
-        field_description = api.post(
-            self, 'files', params={'file': self.image, 'in_rich_text': True},
-            user=self.teacher, content_type=MULTIPART_CONTENT, status=201)
-        preset_node_description = api.post(
-            self, 'files', params={'file': self.image, 'in_rich_text': True},
-            user=self.teacher, content_type=MULTIPART_CONTENT, status=201)
-        update_and_check(description, field_description, preset_node_description)
-        assert not self.teacher.filecontext_set.filter(pk=needs_removal['id']).exists(), 'old file should be removed'
-
-        # Remove old images in rich rext
-        new_description = api.post(
-            self, 'files', params={'file': self.image, 'in_rich_text': True},
-            user=self.teacher, content_type=MULTIPART_CONTENT, status=201)
-        new_field_description = api.post(
-            self, 'files', params={'file': self.image, 'in_rich_text': True},
-            user=self.teacher, content_type=MULTIPART_CONTENT, status=201)
-        new_preset_node_description = api.post(
-            self, 'files', params={'file': self.image, 'in_rich_text': True},
-            user=self.teacher, content_type=MULTIPART_CONTENT, status=201)
-        update_and_check(new_description, new_field_description, new_preset_node_description)
-        assert not FileContext.objects.filter(pk=description['id']).exists(), \
-            'old file should be removed'
-        assert not FileContext.objects.filter(pk=field_description['id']).exists(), \
-            'old file should be removed'
-        assert not FileContext.objects.filter(pk=preset_node_description['id']).exists(), \
-            'old file should be removed'
-
     def test_file_upload(self):
         api.post(
             self, 'files', params={'file': self.image}, user=self.teacher, content_type=MULTIPART_CONTENT, status=201)
@@ -412,9 +343,10 @@ class FileHandlingTest(TestCase):
         assert 'No accompanying file found in the request.' in response['description']
 
     def test_long_file_name(self):
-        assignment = factory.Assignment()
-        template = assignment.format.template_set.first()
-        entry = factory.PresetEntry(template=template)
+        template = factory.Template(format=self.format, add_fields=[{'type': Field.TEXT}])
+        deadline = factory.DeadlinePresetNode(format=self.format, forced_template=template)
+        deadline_node = self.journal.node_set.get(preset=deadline)
+        entry = factory.PresetEntry(node=deadline_node)
 
         node = entry.node
         author = entry.author
