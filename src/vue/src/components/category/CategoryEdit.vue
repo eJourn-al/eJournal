@@ -27,7 +27,7 @@
         />
 
         <template v-else>
-            <b-form-row class="mb-2">
+            <b-form-row>
                 <b-col>
                     <b-form-group
                         label="Name"
@@ -45,6 +45,7 @@
                         />
                     </b-form-group>
                 </b-col>
+
                 <b-col cols="auto">
                     <b-form-group
                         label="Color"
