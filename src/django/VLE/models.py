@@ -2950,7 +2950,6 @@ class Template(CreateUpdateModel):
             if assignment.categories.filter(pk__in=category_ids).count() != len(category_ids):
                 raise ValidationError('One or more categories are not part of the assignment.')
 
-        # QUESTION: What else would we like to validate regarding the field set?
         def validate_field_set():
             field_set_data, = generic_utils.required_params(data, 'field_set')
             locations = set()
