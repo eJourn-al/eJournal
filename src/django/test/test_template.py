@@ -526,7 +526,6 @@ class TemplateTest(TestCase):
 
             template.refresh_from_db()
             assert template.archived, 'Changing the fixed categories flag archives the template.'
-            # QUESTION: Should fixed_categories changes be updated for the entire template chain or not?
             assert not template.fixed_categories, 'Fixed categories is unchanged on the archived template.'
             new_template = Template.objects.get(pk=resp['template']['id'])
             assert not new_template.archived, 'The new template is unarchived.'
