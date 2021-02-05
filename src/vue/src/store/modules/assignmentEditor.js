@@ -112,17 +112,17 @@ const mutations = {
     /* When a category is updated, it is possible its templates were changed.
      * These changes need to be propagated to the the template drafts in order to keep state in sync. */
     PROPAGATE_DRAFT_CATEGORY_TEMPLATE_UPDATE (state, { updatedCategory }) {
-        templateStore.propagateCategoryTemplateUpdate(
-            Object.values(state.templateDrafts).map(draft => draft.draft),
-            updatedCategory,
-        )
+        const drafts = Object.values(state.templateDrafts).map(draft => draft.draft)
+        if (state.newTemplateDraft) { drafts.push(state.newTemplateDraft) }
+
+        templateStore.propagateCategoryTemplateUpdate(drafts, updatedCategory)
     },
     /* When a category is deleted, it also needs to be removed from all template drafts */
     PROPAGATE_DRAFT_CATEGORY_DELETE (state, { deletedCategoryId }) {
-        templateStore.propagateCategoryDelete(
-            Object.values(state.templateDrafts).map(draft => draft.draft),
-            deletedCategoryId,
-        )
+        const drafts = Object.values(state.templateDrafts).map(draft => draft.draft)
+        if (state.newTemplateDraft) { drafts.push(state.newTemplateDraft) }
+
+        templateStore.propagateCategoryDelete(drafts, deletedCategoryId)
     },
     CLEAR_NEW_CATEGORY_DRAFT (state) {
         state.newCategoryDraft = null
@@ -171,11 +171,10 @@ const mutations = {
     /* When a template is updated, it is possible its categories were changed.
      * These changes need to be propagated to the category drafts in order to keep state in sync. */
     PROPAGATE_DRAFT_TEMPLATE_CATEGORY_UPDATE (state, { updatedTemplate, oldTemplateId }) {
-        categoryStore.propagateTemplateCategoryUpdate(
-            Object.values(state.categoryDrafts).map(draft => draft.draft),
-            updatedTemplate,
-            oldTemplateId,
-        )
+        const drafts = Object.values(state.categoryDrafts).map(draft => draft.draft)
+        if (state.newCategoryDraft) { drafts.push(state.newCategoryDraft) }
+
+        categoryStore.propagateTemplateCategoryUpdate(drafts, updatedTemplate, oldTemplateId)
     },
     /* When a template is deleted, it also needs to be removed from all category drafts */
     PROPAGATE_TEMPLATE_DELETE (state, { deletedTemplateId }) {
@@ -234,11 +233,10 @@ const mutations = {
     /* When a template is updated, it is possible preset deadlines' forced template becomes stale.
      * These changes need to be propagated to the preset node drafts in order to keep state in sync. */
     PROPAGATE_DRAFT_TEMPLATE_PRESET_NODE_UPDATE (state, { updatedTemplate, oldTemplateId }) {
-        presetNodeStore.propagateTemplatePresetNodeUpdate(
-            Object.values(state.presetNodeDrafts).map(draft => draft.draft),
-            updatedTemplate,
-            oldTemplateId,
-        )
+        const drafts = Object.values(state.presetNodeDrafts).map(draft => draft.draft)
+        if (state.newPresetNodeDraft) { drafts.push(state.newPresetNodeDraft) }
+
+        presetNodeStore.propagateTemplatePresetNodeUpdate(drafts, updatedTemplate, oldTemplateId)
     },
     CLEAR_NEW_PRESET_NODE_DRAFT (state) {
         state.newPresetNodeDraft = null
