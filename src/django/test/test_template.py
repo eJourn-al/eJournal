@@ -513,6 +513,61 @@ class TemplateTest(TestCase):
                 api.patch(self, 'templates', params=patch_data, user=self.assignment.author, status=400)
                 validate_mock.assert_called
 
+        def test_should_be_archived():
+            # Archive a template via updating a fields title
+            template = factory.Template(format=self.format, add_fields=[{'type': Field.TEXT}, {'type': Field.URL}])
+            field_loc_0 = template.field_set.get(location=0)
+            factory.UnlimitedEntry(node__journal=self.journal, template=template)
+            field_name_modified = TemplateSerializer(template).data
+            field_name_modified['pk'] = template.pk
+            field_name_modified['field_set'][0]['title'] = 'New title'
+            assert template_utils._field_concrete_fields_updated(field_loc_0, field_name_modified['field_set'][0]), \
+                '''Updating a field's title should mark it as updated'''
+            resp = api.patch(self, 'templates', params=field_name_modified, user=self.assignment.author)
+            template.refresh_from_db()
+            assert template.archived, 'Template is archived as its field set was updated'
+            assert resp['template']['field_set'][0]['title'] == 'New title'
+
+            # Archive a template via updating a fields location
+            template = factory.Template(format=self.format, add_fields=[{'type': Field.TEXT}, {'type': Field.URL}])
+            field_loc_0 = template.field_set.get(location=0)
+            factory.UnlimitedEntry(node__journal=self.journal, template=template)
+            field_location_modified = TemplateSerializer(template).data
+            field_location_modified['pk'] = template.pk
+            assert field_location_modified['field_set'][0]['location'] != 1
+            field_location_modified['field_set'][0]['location'] = 1
+            field_location_modified['field_set'][1]['location'] = 0
+            assert template_utils._field_concrete_fields_updated(field_loc_0, field_location_modified['field_set'][0]),\
+                '''Updating a field's location should mark it as updated'''
+            resp = api.patch(self, 'templates', params=field_location_modified, user=self.assignment.author)
+            template.refresh_from_db()
+            assert template.archived, 'Template is archived as its field set was updated'
+            assert resp['template']['field_set'][0]['type'] == Field.URL, 'Field locations are correctly swapped'
+
+            # Deleting a field from the field set should mark a template to be archived
+            template = factory.Template(format=self.format, add_fields=[{'type': Field.TEXT}, {'type': Field.URL}])
+            factory.UnlimitedEntry(node__journal=self.journal, template=template)
+            field_deleted = TemplateSerializer(template).data
+            field_deleted['pk'] = template.pk
+            del field_deleted['field_set'][1]
+            assert template_utils._field_set_updated(template, field_deleted), \
+                '''Removing a field from a templates field set should mark it as updated'''
+            resp = api.patch(self, 'templates', params=field_deleted, user=self.assignment.author)
+            template.refresh_from_db()
+            assert template.archived, 'Template is archived as its field set was updated'
+            assert Template.objects.get(pk=resp['template']['id']).field_set.count() == 1, \
+                'Field set is indeed reduced by one'
+
+            # Changing nothing should not archive the template
+            template = factory.Template(format=self.format, add_fields=[{'type': Field.TEXT}])
+            factory.UnlimitedEntry(node__journal=self.journal, template=template)
+            unchanged = TemplateSerializer(template).data
+            unchanged['pk'] = template.pk
+            assert not template_utils._should_be_archived(template, unchanged)
+            api.patch(self, 'templates', params=unchanged, user=self.assignment.author)
+            template.refresh_from_db()
+            assert not template.archived
+
         def test_update_fixed_categories_flag():
             template = factory.Template(format=self.format, add_fields=[{'type': Field.TEXT}], fixed_categories=False)
             # Ensure the original template is not deleted, but instead is archived, by linking it to an entry
@@ -534,6 +589,7 @@ class TemplateTest(TestCase):
         test_used_template_patch()
         test_unused_template_patch()
         test_patch_validation()
+        test_should_be_archived()
         test_update_fixed_categories_flag()
 
     def test_template_delete(self):
