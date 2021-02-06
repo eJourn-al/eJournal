@@ -1118,7 +1118,6 @@ class Assignment(CreateUpdateModel):
     name = models.TextField()
     description = models.TextField(
         blank=True,
-        null=True,
     )
     author = models.ForeignKey(
         'User',
@@ -2266,7 +2265,7 @@ class PresetNode(CreateUpdateModel):
     display_name = models.TextField()
 
     description = models.TextField(
-        null=True,
+        blank=True,
     )
 
     type = models.TextField(
@@ -3031,7 +3030,7 @@ class Field(CreateUpdateModel):
     )
     title = models.TextField()
     description = models.TextField(
-        null=True
+        blank=True
     )
     options = models.TextField(
         null=True
@@ -3315,7 +3314,7 @@ class Category(CreateUpdateModel):
 
     name = models.TextField()
     description = models.TextField(
-        null=True,
+        blank=True,
     )
     color = models.CharField(
         max_length=9

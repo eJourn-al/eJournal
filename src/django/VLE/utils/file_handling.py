@@ -184,6 +184,9 @@ def copy_assignment_related_rt_files(rich_text, user, assignment=None, category=
 
     Returns modified rich_text containing references to the newly copied files.
     """
+    if rich_text is None:
+        return None
+
     for old_access_id in get_access_ids_from_rich_text(rich_text):
         old_fc = VLE.models.FileContext.objects.get(access_id=old_access_id)
 
