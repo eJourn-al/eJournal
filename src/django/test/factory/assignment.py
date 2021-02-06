@@ -4,7 +4,7 @@ import test.factory
 import factory
 
 from VLE.models import Assignment, AssignmentParticipation, Participation, Role, User
-from VLE.serializers import AssignmentFormatSerializer
+from VLE.serializers import AssignmentSerializer
 
 
 def _add_courses(self, create, extracted, **kwargs):
@@ -117,8 +117,8 @@ class AssignmentUpdateParamsFactory(factory.Factory):
 
         kwargs = {
             **kwargs,
-            **AssignmentFormatSerializer(
-                AssignmentFormatSerializer.setup_eager_loading(
+            **AssignmentSerializer(
+                AssignmentSerializer.setup_eager_loading(
                     Assignment.objects.filter(pk=assignment.pk)
                 ).get(),
                 context={'user': assignment.author},

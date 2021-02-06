@@ -238,8 +238,11 @@ class AssignmentView(viewsets.ViewSet):
 
         serializer = AssignmentSerializer(
             AssignmentSerializer.setup_eager_loading(Assignment.objects.filter(pk=assignment.pk)).get(),
-            context={'user': request.user, 'course': course,
-                     'serialize_journals': request.user.has_permission('can_grade', assignment)}
+            context={
+                'user': request.user,
+                'course': course,
+                'serialize_journals': request.user.has_permission('can_grade', assignment),
+            },
         )
         return response.success({'assignment': serializer.data})
 

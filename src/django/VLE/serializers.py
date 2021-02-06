@@ -467,6 +467,7 @@ class AssignmentSerializer(ExtendedModelSerializer, EagerLoadingMixin):
             'active_lti_course',
             'lti_courses',
             'has_teacher_entries',
+            'can_change_type',
             # Model fields
             'id',
             'name',
@@ -523,6 +524,7 @@ class AssignmentSerializer(ExtendedModelSerializer, EagerLoadingMixin):
     active_lti_course = serializers.SerializerMethodField()
     lti_courses = serializers.SerializerMethodField()
     has_teacher_entries = serializers.SerializerMethodField()
+    can_change_type = serializers.SerializerMethodField()
 
     def __init__(self, *args, **kwargs):
         super(AssignmentSerializer, self).__init__(*args, **kwargs)
@@ -695,43 +697,8 @@ class AssignmentSerializer(ExtendedModelSerializer, EagerLoadingMixin):
             return assignment.teacherentry_set.exists()
         return False
 
-
-class AssignmentFormatSerializer(AssignmentSerializer):
-    lti_count = serializers.SerializerMethodField()
-    can_change_type = serializers.SerializerMethodField()
-    assigned_groups = serializers.SerializerMethodField()
-    all_groups = serializers.SerializerMethodField()
-    templates = serializers.SerializerMethodField()
-
-    class Meta:
-        model = VLE.models.Assignment
-        fields = ('id', 'name', 'description', 'points_possible', 'unlock_date', 'due_date', 'lock_date',
-                  'is_published', 'course_count', 'lti_count', 'active_lti_course', 'is_group_assignment',
-                  'can_set_journal_name', 'can_set_journal_image', 'can_lock_journal', 'can_change_type',
-                  'remove_grade_upon_leaving_group', 'assigned_groups', 'all_groups', 'templates')
-        read_only_fields = ()
-
-    def get_assigned_groups(self, assignment):
-        if self.context.get('course', None):
-            return GroupSerializer(assignment.assigned_groups.filter(course=self.context['course']), many=True).data
-        return GroupSerializer(assignment.assigned_groups, many=True).data
-
-    def get_all_groups(self, assignment):
-        if self.context.get('course', None):
-            return GroupSerializer(VLE.models.Group.objects.filter(course=self.context['course']), many=True).data
-        return GroupSerializer(VLE.models.Group.objects.filter(course__in=assignment.courses.all()), many=True).data
-
-    def get_lti_count(self, assignment):
-        if 'user' in self.context and self.context['user'] and \
-           self.context['user'].has_permission('can_edit_assignment', assignment):
-            return len(assignment.lti_id_set)
-        return None
-
     def get_can_change_type(self, assignment):
         return not assignment.has_entries()
-
-    def get_templates(self, assignment):
-        return list(assignment.format.template_set.values('id', 'name'))
 
 
 class SmallAssignmentSerializer(AssignmentSerializer):

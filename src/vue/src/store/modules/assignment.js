@@ -39,9 +39,9 @@ const actions = {
 
         return fromCache(context, 'retrieveCache', id, fn.bind(null), force)
     },
-    update (context, { id, data, connArgs = auth.DEFAULT_CONN_ARGS }) { // eslint-disable-line
+    update (context, { id, data, cID = null, connArgs = auth.DEFAULT_CONN_ARGS }) { // eslint-disable-line
         function fn () {
-            return auth.update(`assignments/${id}`, data, connArgs)
+            return auth.update(`assignments/${id}`, { course_id: cID, ...data }, connArgs)
                 .then((response) => {
                     context.commit('SET_ASSIGNMENT', { assignment: response.data.assignment })
 

@@ -21,7 +21,7 @@ import VLE.tasks.beats.cleanup as cleanup
 import VLE.utils.statistics as stats_utils
 from VLE.models import (Assignment, AssignmentParticipation, Category, Course, Entry, Field, FileContext, Format, Group,
                         Journal, JournalImportRequest, Node, Participation, PresetNode, Role, Template)
-from VLE.serializers import AssignmentFormatSerializer, AssignmentSerializer, SmallAssignmentSerializer
+from VLE.serializers import AssignmentSerializer, SmallAssignmentSerializer
 from VLE.utils.error_handling import VLEParticipationError, VLEProgrammingError
 from VLE.utils.file_handling import get_files_from_rich_text
 from VLE.views.assignment import day_neutral_datetime_increment, set_assignment_dates
@@ -152,16 +152,16 @@ class AssignmentAPITest(TestCase):
     def test_assignment_update_params_factory(self):
         assignment = factory.Assignment()
 
-        pre_update_assignment = AssignmentFormatSerializer(
-            AssignmentFormatSerializer.setup_eager_loading(Assignment.objects.filter(pk=assignment.pk)).get(),
+        pre_update_assignment = AssignmentSerializer(
+            AssignmentSerializer.setup_eager_loading(Assignment.objects.filter(pk=assignment.pk)).get(),
             context={'user': assignment.author},
         ).data
 
         format_update_dict = factory.AssignmentUpdateParams(assignment=assignment)
         api.update(self, 'assignments', params=format_update_dict, user=assignment.author)
 
-        post_update_format = AssignmentFormatSerializer(
-            AssignmentFormatSerializer.setup_eager_loading(Assignment.objects.filter(pk=assignment.pk)).get(),
+        post_update_format = AssignmentSerializer(
+            AssignmentSerializer.setup_eager_loading(Assignment.objects.filter(pk=assignment.pk)).get(),
             context={'user': assignment.author},
         ).data
 
@@ -1724,7 +1724,7 @@ class AssignmentAPITest(TestCase):
                 AssignmentSerializer.setup_eager_loading(Assignment.objects.filter(pk=assignment.pk)).get(),
                 context={'user': assignment.author, 'course': course, 'serialize_journals': True}
             ).data
-        assert len(context_pre) == len(context_post) and len(context_pre) <= 30
+        assert len(context_pre) == len(context_post) and len(context_pre) <= 31
 
     def test_small_assignment_serializer(self):
         assignment = factory.Assignment(format__templates=False)
