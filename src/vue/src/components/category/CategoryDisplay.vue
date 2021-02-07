@@ -6,7 +6,6 @@
         :class="{
             'compact': compact,
         }"
-        class="category-display"
     >
         <icon
             v-if="categories.length > 0"
