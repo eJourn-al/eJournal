@@ -196,6 +196,15 @@ export default {
                 this.edit = false
             },
         },
+        template: {
+            immediate: true,
+            handler () {
+                // Add node should empty filled in entry content when switching template
+                if (this.node.type === 'a') {
+                    this.newEntryContent = Object()
+                }
+            },
+        },
     },
     methods: {
         saveChanges () {
@@ -228,8 +237,11 @@ export default {
             if (this.checkRequiredFields()) {
                 this.requestInFlight = true
 
-                const categoryIds = this.newEntryContent.categories.map(category => category.id)
-                delete this.newEntryContent.categories
+                let categoryIds = []
+                if (this.newEntryContent.categories) {
+                    categoryIds = this.newEntryContent.categories.map(category => category.id)
+                    delete this.newEntryContent.categories
+                }
 
                 entryAPI.create({
                     journal_id: this.$route.params.jID,
