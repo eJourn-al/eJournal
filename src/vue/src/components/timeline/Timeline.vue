@@ -102,7 +102,7 @@ import CategoryDisplay from '../category/CategoryDisplay.vue'
 import CategorySelect from '@/components/category/CategorySelect.vue'
 import TimelineNodes from '@/components/timeline/TimelineNodes.vue'
 
-import { mapGetters } from 'vuex'
+import { mapGetters, mapMutations } from 'vuex'
 
 export default {
     components: {
@@ -145,8 +145,8 @@ export default {
             assignmentHasCategories: 'category/assignmentHasCategories',
         }),
         filteredCategories: {
-            set (value) { this.$store.commit('category/SET_FILTERED_CATEGORIES', value) },
-            get () { return this.$store.getters['category/filteredCategories'] },
+            set (value) { this.$store.commit('timeline/SET_FILTERED_CATEGORIES', value) },
+            get () { return this.$store.getters['timeline/filteredCategories'] },
         },
         /* Selected node is actually part of the node array property, see virtual nodes in header */
         selectedNodeIsActualObject () {
@@ -181,9 +181,12 @@ export default {
     created () {
         this.filteredNodes = this.nodes
         this.mappedSelected = this.selected
-        this.$store.commit('category/SET_TIMELINE_INSTANCE', this)
+        this.setTimelineInstance(this)
     },
     methods: {
+        ...mapMutations({
+            setTimelineInstance: 'timeline/SET_TIMELINE_INSTANCE',
+        }),
         mapAndEmitSelectedNode (index) {
             this.$emit('select-node', this.mappedNodesIndex(index))
         },

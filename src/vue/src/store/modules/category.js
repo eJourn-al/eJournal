@@ -60,7 +60,6 @@ const getters = {
         return false
     },
     assignmentsCategories: state => state.assignmentCategories,
-    filteredCategories: state => state.filteredCategories,
     timelineInstance: state => state.timelineInstance,
 }
 
@@ -88,15 +87,6 @@ const mutations = {
     },
     SET_ID_OF_CREATED_CATEGORY (state, { category, id }) {
         category.id = id
-    },
-    SET_FILTERED_CATEGORIES (state, filteredCategories) {
-        state.filteredCategories = filteredCategories
-    },
-    CLEAR_FILTERED_CATEGORIES (state) {
-        state.filteredCategories = []
-    },
-    SET_TIMELINE_INSTANCE (state, instance) {
-        state.timelineInstance = instance
     },
     PROPAGATE_TEMPLATE_CATEGORY_UPDATE (state, { aID, updatedTemplate, oldTemplateId }) {
         propagateTemplateCategoryUpdate(state.assignmentsCategories[aID], updatedTemplate, oldTemplateId)
@@ -145,7 +135,7 @@ const actions = {
                         { root: true },
                     )
 
-                    context.state.timelineInstance.syncNodes()
+                    context.rootGetters['timeline/timelineInstance'].syncNodes()
 
                     return createdCategory
                 })
@@ -170,7 +160,7 @@ const actions = {
                         { aID, updatedCategory },
                         { root: true },
                     )
-                    context.state.timelineInstance.syncNodes()
+                    context.rootGetters['timeline/timelineInstance'].syncNodes()
 
                     return updatedCategory
                 })
@@ -184,11 +174,11 @@ const actions = {
         function fn () {
             return auth.delete(`categories/${id}`, null, connArgs)
                 .then((response) => {
-                    const updatedFilteredCategories = context.getters.filteredCategories.filter(elem => elem.id !== id)
-
-                    context.commit('SET_FILTERED_CATEGORIES', updatedFilteredCategories)
+                    context.commit('timeline/REMOVE_CATEGORY_FROM_FILTER', { id }, { root: true })
                     context.commit('DELETE_ASSIGNMENT_CATEGORY', { aID, id })
                     context.commit('template/PROPAGATE_CATEGORY_DELETE', { aID, deletedCategoryId: id }, { root: true })
+
+                    context.rootGetters['timeline/timelineInstance'].syncNodes()
 
                     return response.data
                 })
@@ -212,8 +202,6 @@ export default {
         assignmentsCategories: {},
         listCache: {},
         deleteCache: {},
-        filteredCategories: [], /* Filter used for the timeline */
-        timelineInstance: null,
     },
     getters,
     mutations,

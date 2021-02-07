@@ -12,6 +12,7 @@ import preferences from './modules/preferences.js'
 import presetNode from './modules/presetNode.js'
 import sentry from './modules/sentry.js'
 import template from './modules/template.js'
+import timeline from './modules/timeline.js'
 import user from './modules/user.js'
 
 Vue.use(Vuex)
@@ -32,6 +33,7 @@ export default new Vuex.Store({
         presetNode,
         sentry,
         template,
+        timeline,
         user,
     },
     strict: false,

@@ -218,7 +218,6 @@ router.afterEach((to, from) => {
 
         if ('aID' in from.params && parseInt(to.params.aID, 10) !== parseInt(from.params.aID, 10)) {
             store.commit('category/CLEAR_FILTERED_CATEGORIES')
-            store.commit('assignmentEditor/RESET')
         }
     }
 })

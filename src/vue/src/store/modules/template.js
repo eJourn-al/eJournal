@@ -111,6 +111,8 @@ const actions = {
                         { root: true },
                     )
 
+                    context.rootGetters['timeline/timelineInstance'].syncNodes()
+
                     return createdTemplate
                 })
         }
@@ -135,6 +137,8 @@ const actions = {
                         { root: true },
                     )
 
+                    context.rootGetters['timeline/timelineInstance'].syncNodes()
+
                     return updatedTemplate
                 })
         }
@@ -147,6 +151,8 @@ const actions = {
                 .then((response) => {
                     context.commit('DELETE_ASSIGNMENT_TEMPLATE', { id, aID })
                     context.commit('category/PROPAGATE_TEMPLATE_DELETE', { aID, deletedTemplateId: id }, { root: true })
+
+                    context.rootGetters['timeline/timelineInstance'].syncNodes()
 
                     return response.data
                 })
