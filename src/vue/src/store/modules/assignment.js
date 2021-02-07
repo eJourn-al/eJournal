@@ -20,7 +20,7 @@ const getters = {
 
 const mutations = {
     UPDATE_CACHE (state, { cache, cacheKey, data }) {
-        state[cache][cacheKey] = data
+        Vue.set(state[cache], cacheKey, data)
     },
     SET_ASSIGNMENT (state, { assignment }) {
         Vue.set(state.assignments, assignment.id, assignment)
