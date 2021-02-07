@@ -3,7 +3,7 @@ import json
 import os
 import test.factory as factory
 from copy import deepcopy
-from datetime import date, timedelta
+from datetime import datetime, timedelta
 from test.utils import api
 from test.utils.generic_utils import equal_models
 from test.utils.performance import QueryContext, assert_num_queries_less_than
@@ -17,9 +17,8 @@ from django.utils import timezone
 from faker import Faker
 
 from VLE.models import (Assignment, Category, Comment, Content, Course, Entry, Field, FileContext, Format, Grade,
-                        Journal, JournalImportRequest, Node, PresetNode, Template, User)
+                        Journal, JournalImportRequest, Node, PresetNode, TeacherEntry, Template, User)
 from VLE.serializers import EntrySerializer, TemplateSerializer
-from VLE.utils import generic_utils as utils
 from VLE.utils.error_handling import VLEMissingRequiredField, VLEPermissionError
 from VLE.validators import validate_entry_content
 
@@ -240,7 +239,8 @@ class EntryAPITest(TestCase):
         template = assignment.format.template_set.first()
         journal = factory.Journal(assignment=assignment, entries__n=0)
         n_c = Node.objects.filter(journal=journal).count()
-        entry = factory.PresetEntry(node__journal=journal)
+        deadline = factory.DeadlinePresetNode(format=assignment.format, forced_template=template)
+        entry = factory.PresetEntry(node=journal.node_set.get(preset=deadline))
 
         assert course_c + 1 == Course.objects.count(), 'A single course is created'
         assert a_c + 1 == Assignment.objects.count(), 'A single course and assignment is created'
@@ -269,9 +269,9 @@ class EntryAPITest(TestCase):
         assignment = factory.Assignment(format__templates=[{'type': Field.TEXT}])
         template = assignment.format.template_set.first()
 
-        deadline_preset_node = factory.DeadlinePresetNode(forced_template=template, format=assignment.format)
         journal = factory.Journal(assignment=assignment, entries__n=0)
-        entry = factory.PresetEntry(node__journal=journal, node__preset=deadline_preset_node)
+        deadline_preset_node = factory.DeadlinePresetNode(forced_template=template, format=assignment.format)
+        entry = factory.PresetEntry(node=journal.node_set.get(preset=deadline_preset_node))
         journal = entry.node.journal
         assert journal.node_set.count() == 1, 'Only a single node should be added to the journal'
         assert Node.objects.get(
@@ -279,10 +279,10 @@ class EntryAPITest(TestCase):
             'Correct node type is created, attached to the journal, whose PresetNode links to the correct template'
 
         # Again creating a preset deadline in advance, but now we only specify the format
+        journal = factory.Journal(assignment=assignment, entries__n=0)
         deadline_preset_node = factory.DeadlinePresetNode(format=assignment.format)
         template = deadline_preset_node.forced_template
-        entry = factory.PresetEntry(
-            node__journal__assignment=assignment, node__journal__entries__n=0, node__preset=deadline_preset_node)
+        entry = factory.PresetEntry(node=journal.node_set.get(preset=deadline_preset_node))
 
         assert Node.objects.get(type=Node.ENTRYDEADLINE, journal=journal, preset__forced_template=template), \
             'Correct node type is created, attached to the journal, whose PresetNode links to the correct template'
@@ -436,7 +436,8 @@ class EntryAPITest(TestCase):
         api.create(self, 'entries', params=create_params, user=self.student, status=400)
 
         # Check for assignment locked
-        self.group_journal.assignment.lock_date = date.today() - timedelta(1)
+        self.group_journal.assignment.due_date = datetime.now()
+        self.group_journal.assignment.lock_date = datetime.now()
         self.group_journal.assignment.save()
         self.assertRaises(
             VLEPermissionError,
@@ -444,7 +445,7 @@ class EntryAPITest(TestCase):
             Entry.objects.filter(node__journal=self.group_journal).first(),
         )
         api.create(self, 'entries', params=create_params, user=self.student, status=403)
-        self.group_journal.assignment.lock_date = date.today() + timedelta(1)
+        self.group_journal.assignment.lock_date = datetime.today() + timedelta(1)
         self.group_journal.assignment.save()
 
         # Check if template for other assignment wont work
@@ -483,6 +484,51 @@ class EntryAPITest(TestCase):
         # TODO: Test for entry bound to entrydeadline
         # TODO: Test with file upload
         # TODO: Test added index
+
+    def test_create_invalid_preset_entry(self):
+        # Entries cannot be created after lockdate
+        create_params = factory.PresetEntryCreationParams(
+            journal=self.group_journal
+        )
+        node = Node.objects.get(pk=create_params['node_id'])
+        node.preset.due_date = timezone.now() - timedelta(weeks=1)
+        node.preset.lock_date = timezone.now() - timedelta(weeks=1)
+        node.preset.save()
+        resp = api.create(self, 'entries', params=create_params, user=self.student, status=400)['description']
+        assert 'lock date' in resp, 'Node should be locked, and not available for new entry'
+        node.preset.due_date = timezone.now() + timedelta(weeks=1)
+        node.preset.lock_date = timezone.now() + timedelta(weeks=1)
+        node.preset.save()
+
+        # It should not be possible to create a deadline entry using a template other than the preset's template
+        invalid_params = create_params.copy()
+        invalid_params['template_id'] = factory.Template(format=self.g_assignment.format).pk
+        resp = api.create(self, 'entries', params=invalid_params, user=self.student, status=400)['description']
+        assert 'Invalid template' in resp, \
+            'It should not be possible to create a deadline entry using a template other than the preset\'s template'
+
+        # Node must be progress node if 'node_id' is supplied
+        node.type = Node.PROGRESS
+        node.save()
+        resp = api.create(self, 'entries', params=create_params, user=self.student, status=400)['description']
+        assert 'EntryDeadline' in resp, 'You should not be able to create an entry in a PROGRESS node'
+        node.type = Node.ENTRYDEADLINE
+        node.save()
+
+        # Passed node already contains an entry, this should also be indicated correctly
+        api.create(self, 'entries', params=create_params, user=self.student)['description']
+        resp = api.create(self, 'entries', params=create_params, user=self.student, status=400)['description']
+        assert 'already contains an entry' in resp, \
+            'Passed node already contains an entry, this should also be indicated correctly'
+
+        # Passed fields should be from template
+        invalid_params = create_params.copy()
+        other_template = factory.Template(format=self.g_assignment.format)
+        other_field_pk = Field.objects.exclude(template=other_template).first().pk
+        invalid_params['content'][other_field_pk] = 'OTHER FIELD CONTENT'
+        resp = api.create(self, 'entries', params=create_params, user=self.student, status=400)['description']
+        assert 'Passed field is not from template.' in resp, \
+            'Passed fields should be from template, if not, it should respond with a bad request'
 
     def test_entry_in_teacher_journal(self):
         assignment = factory.Assignment()
@@ -627,10 +673,14 @@ class EntryAPITest(TestCase):
         api.update(self, 'entries', params=params.copy(), user=self.teacher, status=403)
 
         # Check for assignment locked
-        self.group_journal.assignment.lock_date = date.today() - timedelta(1)
+        self.group_journal.assignment.unlock_date = datetime.today() - timedelta(3)
+        self.group_journal.assignment.due_date = datetime.today() - timedelta(2)
+        self.group_journal.assignment.lock_date = datetime.today() - timedelta(1)
         self.group_journal.assignment.save()
         api.update(self, 'entries', params=params.copy(), user=self.student, status=403)
-        self.group_journal.assignment.lock_date = date.today() + timedelta(1)
+        self.group_journal.assignment.unlock_date = datetime.now()
+        self.group_journal.assignment.due_date = datetime.now() + timedelta(weeks=1)
+        self.group_journal.assignment.lock_date = datetime.now() + timedelta(weeks=2)
         self.group_journal.assignment.save()
 
         # Entries can no longer be edited if the LTI link is outdated (new active uplink)
@@ -703,7 +753,9 @@ class EntryAPITest(TestCase):
 
         # Only superusers should be allowed to delete locked entries
         entry = api.create(self, 'entries', params=self.valid_create_params, user=self.student)['entry']
-        self.group_journal.assignment.lock_date = date.today() - timedelta(1)
+        self.group_journal.assignment.unlock_date = datetime.today() - timedelta(3)
+        self.group_journal.assignment.due_date = datetime.today() - timedelta(2)
+        self.group_journal.assignment.lock_date = datetime.today() - timedelta(1)
         self.group_journal.assignment.save()
         api.delete(self, 'entries', params={'pk': entry['id']}, user=self.student, status=403)
         api.delete(self, 'entries', params={'pk': entry['id']}, user=factory.Admin())
@@ -762,7 +814,7 @@ class EntryAPITest(TestCase):
         assert Node.objects.filter(pk=node_student2.pk).exists(), \
             'Node student 2 exist before deletion of preset'
 
-        utils.delete_presets([{'id': entrydeadline.pk}])
+        entrydeadline.delete()
 
         assert Entry.objects.filter(pk=entry['id']).exists(), \
             'Entry should also exist after deletion of preset'
@@ -800,7 +852,7 @@ class EntryAPITest(TestCase):
             'All fcs should cascade (comment rt, comment attached files, content rt, content files)'
 
         deadline = factory.DeadlinePresetNode(format=assignment.format)
-        deadline_entry = factory.PresetEntry(node__journal=journal, node__preset=deadline)
+        deadline_entry = factory.PresetEntry(node=journal.node_set.get(preset=deadline))
         deadline_node = journal.node_set.get(type=Node.ENTRYDEADLINE)
         factory.StudentComment(entry=deadline_entry, n_att_files=1, n_rt_files=1)
 
@@ -834,6 +886,7 @@ class EntryAPITest(TestCase):
             categories=2,
         )
         journal = entry.node.journal
+        assignment = journal.assignment
         student = journal.author
         teacher = journal.assignment.author
 
@@ -879,8 +932,6 @@ class EntryAPITest(TestCase):
         assert len(context_pre) == len(context_post) and len(context_pre) <= expected_queries
 
         def check_is_editable():
-            assignment = journal.assignment
-
             entry_without_grade = factory.UnlimitedEntry(node__journal=journal, grade=None)
 
             data = EntrySerializer(
@@ -889,6 +940,7 @@ class EntryAPITest(TestCase):
             ).data
             assert data['editable']
 
+            assignment.due_date = timezone.now()
             assignment.lock_date = timezone.now()
             assignment.save()
 
@@ -898,6 +950,8 @@ class EntryAPITest(TestCase):
             ).data
             assert not data['editable']
 
+            assignment.unlock_date = timezone.now() - timedelta(2)
+            assignment.due_date = timezone.now() - timedelta(1)
             assignment.lock_date = timezone.now() - timedelta(1)
             assignment.save()
             graded_entry = factory.UnlimitedEntry(node__journal=journal, grade__grade=1)
@@ -917,12 +971,63 @@ class EntryAPITest(TestCase):
             ).data
             assert not data['editable']
 
+        def check_entry_title():
+            entry = factory.UnlimitedEntry(node__journal=journal)
+            data = EntrySerializer(
+                EntrySerializer.setup_eager_loading(Entry.objects.filter(pk=entry.pk)).get(),
+                context={'user': teacher}
+            ).data
+            assert data['title'] == entry.template.name, \
+                '''An unlimited entry's title should be the template name.'''
+
+            deadline = factory.DeadlinePresetNode(format=journal.assignment.format)
+            preset_entry = factory.PresetEntry(node=journal.node_set.get(preset=deadline))
+            preset_node_display_name = 'Display Name'
+            preset_entry.node.preset.display_name = preset_node_display_name
+            preset_entry.node.preset.save()
+            data = EntrySerializer(
+                EntrySerializer.setup_eager_loading(Entry.objects.filter(pk=preset_entry.pk)).get(),
+                context={'user': teacher}
+            ).data
+            assert data['title'] == preset_node_display_name, \
+                '''A preset entry's title should be the display name of the preset node.'''
+
+            preset_entry.node.preset.delete()
+            data = EntrySerializer(
+                EntrySerializer.setup_eager_loading(Entry.objects.filter(pk=preset_entry.pk)).get(),
+                context={'user': teacher}
+            ).data
+            assert data['title'] == preset_entry.template.name, \
+                '''A preset entry's title should be the display name of its template if the preset is deleted.
+                Instead of the now deleted preset node's display name.'''
+
+            params = factory.TeacherEntryCreationParams(assignment=assignment, show_title_in_timeline=True)
+            te_id = api.create(self, 'teacher_entries', params=params, user=teacher)['teacher_entry']['id']
+            te = TeacherEntry.objects.get(pk=te_id)
+            entry = Entry.objects.filter(teacher_entry_id=te_id, node__journal=journal).latest('pk')
+            data = EntrySerializer(
+                EntrySerializer.setup_eager_loading(Entry.objects.filter(pk=entry.pk)).get(),
+                context={'user': teacher}
+            ).data
+            assert data['title'] == te.title, \
+                '''A teacher iniated entry's title should be the title of the teacher entry, provided
+                show_title_in_timeline flag is set to True'''
+
+            te.show_title_in_timeline = False
+            te.save()
+            data = EntrySerializer(
+                EntrySerializer.setup_eager_loading(Entry.objects.filter(pk=entry.pk)).get(),
+                context={'user': teacher}
+            ).data
+            assert data['title'] == entry.template.name, \
+                '''A teacher iniated entry's title should fallback to the template's title if show_title_in_timeline
+                flag is set to False'''
+
         def check_default_fields():
             assert data['author'] == student.full_name
             assert data['last_edited_by'] == student.full_name
 
             User.objects.filter(pk=entry.author_id).delete()
-            # student.delete()
             student_deleted_data = EntrySerializer(
                 EntrySerializer.setup_eager_loading(Entry.objects.filter(pk=entry.pk))[0],
                 context={'user': teacher}
@@ -931,6 +1036,7 @@ class EntryAPITest(TestCase):
             assert student_deleted_data['last_edited_by'] == User.UNKNOWN_STR
 
         check_is_editable()
+        check_entry_title()
         check_default_fields()
 
     def test_entry_serializer_files(self):

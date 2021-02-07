@@ -951,7 +951,8 @@ class JournalAPITest(TestCase):
             assert name in [student2.full_name, student3.full_name]
 
         qry_journal = Journal.all_objects.filter(pk=journal.pk).allowed_journals().annotate_needs_lti_link().get()
-        assert qry_journal.needs_lti_link == old_needs_lti_link
+        assert len(qry_journal.needs_lti_link) == len(old_needs_lti_link)
+        assert all(student in old_needs_lti_link for student in qry_journal.needs_lti_link)
 
         journal.assignment.active_lti_id = None
         journal.assignment.save()

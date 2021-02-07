@@ -104,7 +104,7 @@ const actions = {
         connection.conn.get('/users/0/').then((response) => {
             commit(`user/${mutationTypes.HYDRATE_USER}`, response.data, { root: true })
             commit(mutationTypes.SET_PERMISSION_UPDATE_IN_FLIGHT, { val: false })
-            if (JSON.stringify(permissionsCopy) !== JSON.stringify(rootGetters['user/permissions'])) {
+            if (!Vue.prototype.$_isEqual(permissionsCopy, rootGetters['user/permissions'])) {
                 Vue.forceUpdate()
             }
         }).catch(() => {

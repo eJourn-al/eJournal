@@ -58,6 +58,9 @@ class EagerLoadingMixin:
         if hasattr(cls, 'prefetch_related'):
             queryset = queryset.prefetch_related(*cls.prefetch_related)
 
+        if hasattr(cls, 'order_by'):
+            queryset = queryset.order_by(*cls.order_by)
+
         return queryset
 
 
@@ -414,6 +417,10 @@ class PresetNodeSerializer(serializers.ModelSerializer, EagerLoadingMixin):
         'attached_files',
     ]
 
+    order_by = [
+        'due_date',
+    ]
+
     unlock_date = serializers.SerializerMethodField()
     due_date = serializers.SerializerMethodField()
     lock_date = serializers.SerializerMethodField()
@@ -445,35 +452,6 @@ class PresetNodeSerializer(serializers.ModelSerializer, EagerLoadingMixin):
         return None
 
 
-class FormatSerializer(serializers.ModelSerializer, EagerLoadingMixin):
-    class Meta:
-        model = VLE.models.Format
-        fields = (
-            'id',
-            'templates',
-            'presets',
-        )
-        read_only_fields = ()
-
-    presets = PresetNodeSerializer(many=True, source='presetnode_set', read_only=True)
-    templates = TemplateSerializer(many=True, source='template_set', read_only=True)
-
-    prefetch_related = [
-        Prefetch(
-            'presetnode_set',
-            queryset=PresetNodeSerializer.setup_eager_loading(
-                VLE.models.PresetNode.objects.order_by('due_date')
-            )
-        ),
-        Prefetch(
-            'template_set',
-            queryset=TemplateSerializer.setup_eager_loading(
-                VLE.models.Template.objects.filter(archived=False).order_by('name')
-            )
-        ),
-    ]
-
-
 class AssignmentSerializer(ExtendedModelSerializer, EagerLoadingMixin):
     class Meta:
         model = VLE.models.Assignment
@@ -489,6 +467,7 @@ class AssignmentSerializer(ExtendedModelSerializer, EagerLoadingMixin):
             'active_lti_course',
             'lti_courses',
             'has_teacher_entries',
+            'can_change_type',
             # Model fields
             'id',
             'name',
@@ -503,11 +482,13 @@ class AssignmentSerializer(ExtendedModelSerializer, EagerLoadingMixin):
             'can_set_journal_name',
             'can_set_journal_image',
             'can_lock_journal',
-            'format',
             'categories',
             # Not used / missing: active_lti_id, lti_id_set, assigned_groups, format
         )
-        read_only_fields = ()
+        read_only_fields = (
+            'active_lti_course',
+            'lti_id',
+        )
 
     select_related = []
 
@@ -532,7 +513,6 @@ class AssignmentSerializer(ExtendedModelSerializer, EagerLoadingMixin):
         'user',
     ]
 
-    format = FormatSerializer(read_only=True)
     categories = CategorySerializer(read_only=True, many=True)
     deadline = serializers.SerializerMethodField()
     journal = serializers.SerializerMethodField()
@@ -544,6 +524,7 @@ class AssignmentSerializer(ExtendedModelSerializer, EagerLoadingMixin):
     active_lti_course = serializers.SerializerMethodField()
     lti_courses = serializers.SerializerMethodField()
     has_teacher_entries = serializers.SerializerMethodField()
+    can_change_type = serializers.SerializerMethodField()
 
     def __init__(self, *args, **kwargs):
         super(AssignmentSerializer, self).__init__(*args, **kwargs)
@@ -716,43 +697,8 @@ class AssignmentSerializer(ExtendedModelSerializer, EagerLoadingMixin):
             return assignment.teacherentry_set.exists()
         return False
 
-
-class AssignmentFormatSerializer(AssignmentSerializer):
-    lti_count = serializers.SerializerMethodField()
-    can_change_type = serializers.SerializerMethodField()
-    assigned_groups = serializers.SerializerMethodField()
-    all_groups = serializers.SerializerMethodField()
-    templates = serializers.SerializerMethodField()
-
-    class Meta:
-        model = VLE.models.Assignment
-        fields = ('id', 'name', 'description', 'points_possible', 'unlock_date', 'due_date', 'lock_date',
-                  'is_published', 'course_count', 'lti_count', 'active_lti_course', 'is_group_assignment',
-                  'can_set_journal_name', 'can_set_journal_image', 'can_lock_journal', 'can_change_type',
-                  'remove_grade_upon_leaving_group', 'assigned_groups', 'all_groups', 'templates')
-        read_only_fields = ()
-
-    def get_assigned_groups(self, assignment):
-        if self.context.get('course', None):
-            return GroupSerializer(assignment.assigned_groups.filter(course=self.context['course']), many=True).data
-        return GroupSerializer(assignment.assigned_groups, many=True).data
-
-    def get_all_groups(self, assignment):
-        if self.context.get('course', None):
-            return GroupSerializer(VLE.models.Group.objects.filter(course=self.context['course']), many=True).data
-        return GroupSerializer(VLE.models.Group.objects.filter(course__in=assignment.courses.all()), many=True).data
-
-    def get_lti_count(self, assignment):
-        if 'user' in self.context and self.context['user'] and \
-           self.context['user'].has_permission('can_edit_assignment', assignment):
-            return len(assignment.lti_id_set)
-        return None
-
     def get_can_change_type(self, assignment):
         return not assignment.has_entries()
-
-    def get_templates(self, assignment):
-        return list(assignment.format.template_set.values('id', 'name'))
 
 
 class SmallAssignmentSerializer(AssignmentSerializer):
@@ -939,6 +885,8 @@ class EntrySerializer(serializers.ModelSerializer, EagerLoadingMixin):
         'node__journal__assignment',  # used in permission check can grade and locked check
         'jir__source__assignment',
         'jir__processor',
+        'node',
+        'node__preset',
     ]
 
     # NOTE: Comments (comment_set) are only serialized via GDPR, which prefetches the comment_set itself.
@@ -966,6 +914,9 @@ class EntrySerializer(serializers.ModelSerializer, EagerLoadingMixin):
     def get_title(self, entry):
         if (entry.teacher_entry and entry.teacher_entry.show_title_in_timeline):
             return entry.teacher_entry.title
+
+        if entry.node.preset:
+            return entry.node.preset.display_name
 
         return entry.template.name
 

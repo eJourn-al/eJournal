@@ -2,9 +2,11 @@ import 'flatpickr/dist/flatpickr.css' // eslint-disable-line import/no-extraneou
 import 'flatpickr/dist/themes/material_blue.css' // eslint-disable-line import/no-extraneous-dependencies
 import 'intro.js/introjs.css' // eslint-disable-line import/no-extraneous-dependencies
 import Vue from 'vue'
+import isEqual from 'lodash.isequal'
 
 import '@/helpers/vue_awesome_icons.js'
 import initBootstrap from '@/helpers/bootstrap.js'
+import initGlobalHelpers from '@/helpers/global_mixins.js'
 import initSentry from '@/helpers/sentry.js'
 
 import Icon from 'vue-awesome/components/Icon.vue'
@@ -34,9 +36,13 @@ Vue.component('reset-wrapper', ResetWrapper)
 
 initSentry(Vue)
 initBootstrap(Vue)
+initGlobalHelpers(Vue)
 
 /* Checks the store for for permissions according to the current route cID or aID. */
 Vue.prototype.$hasPermission = store.getters['permissions/hasPermission']
+
+Vue.prototype.$_isEqual = isEqual
+
 const toApi = new RegExp(`^${CustomEnv.API_URL}`)
 
 /* eslint-disable */
@@ -154,7 +160,7 @@ new Vue({
 
             if (this.$hasPermission('can_view_all_journals', 'assignment', assignment.id)) {
                 if (!assignment.is_published && !assignment.is_group_assignment) { // Teacher not published route
-                    route.name = 'FormatEdit'
+                    route.name = 'AssignmentEditor'
                 } else { // Teacher published route
                     route.name = 'Assignment'
                 }

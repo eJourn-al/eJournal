@@ -9,7 +9,7 @@ from django.db.utils import IntegrityError
 from django.test import TestCase
 from django.utils import timezone
 
-from VLE.models import Assignment, Category, EntryCategoryLink, Field
+from VLE.models import Assignment, Category, EntryCategoryLink, Field, TemplateCategoryLink
 from VLE.serializers import CategoryConcreteFieldsSerializer, CategorySerializer
 
 
@@ -20,6 +20,7 @@ class CategoryAPITest(TestCase):
         cls.format = cls.assignment.format
         cls.template = factory.Template(format=cls.format, add_fields=[{'type': Field.TEXT}])
         cls.assignment2 = factory.Assignment(format__templates=False)
+        cls.unrelated_user = factory.Student()
 
         cls.category = factory.Category(assignment=cls.assignment, name='aaa', n_rt_files=1)
 
@@ -36,8 +37,7 @@ class CategoryAPITest(TestCase):
 
         assert self.category.name != ''
         assert fc.access_id in self.category.description
-        assert self.assignment.format.template_set.filter(pk=self.category.templates.first().pk).exists(), \
-            'By default a template is randomly selected from the corresponding category\'s assignment'
+        assert not self.category.templates.exists(), 'By default a category is initialized without templates'
         assert fc.category == self.category
         assert not fc.is_temp
         assert fc.in_rich_text
@@ -51,6 +51,19 @@ class CategoryAPITest(TestCase):
 
         with self.assertRaises(IntegrityError):
             Category.objects.create(color='#INVALID', name='new', assignment=self.assignment)
+
+    def test_category_template_link_unique_contrain(self):
+        TemplateCategoryLink.objects.create(
+            category=self.category,
+            template=self.template,
+        )
+
+        # Duplicate category template links should raise an integrity error
+        with self.assertRaises(IntegrityError):
+            TemplateCategoryLink.objects.create(
+                category=self.category,
+                template=self.template,
+            )
 
     def test_category_serializer(self):
         factory.Category(assignment=self.assignment)
@@ -94,6 +107,8 @@ class CategoryAPITest(TestCase):
             api.get(self, 'categories', params={'assignment_id': self.assignment.pk}, user=ap.user)
             can_view_mock.assert_called_with(self.assignment)
 
+        api.get(self, 'categories', params={'assignment_id': self.assignment.pk}, user=self.unrelated_user, status=403)
+
     def test_category_create(self):
         template2_of_chain = factory.Template(chain=self.template.chain, archived=True, format=self.format)
 
@@ -122,6 +137,16 @@ class CategoryAPITest(TestCase):
         invalid_templates = deepcopy(self.valid_creation_data)
         invalid_templates['assignment_id'] = factory.Assignment(author=self.assignment.author).pk
         api.create(self, 'categories', params=invalid_templates, user=self.assignment.author, status=400)
+
+        # Creating a category with update_template_chain=False should only link the category to template
+        # instance which is passed during creation, not the entire chain.
+        do_not_update_template_chain = deepcopy(self.valid_creation_data)
+        do_not_update_template_chain['name'] = 'Some new name'
+        cat = Category.objects.create(**do_not_update_template_chain, update_template_chain=False)
+        assert self.template.categories.filter(pk=cat.pk).exists(), \
+            'The created category should be linked to the passed template'
+        assert not template2_of_chain.categories.filter(pk=cat.pk).exists(), \
+            '''The template's chain should not be updated when update_template_chain is set to False'''
 
     def test_category_patch(self):
         category = factory.Category(assignment=self.assignment)
@@ -190,6 +215,10 @@ class CategoryAPITest(TestCase):
             api.patch(self, 'categories/edit_entry', params={**params, 'add': False}, user=student)
             assert not entry.categories.filter(pk=self.category.pk).exists(), 'Category has been succesfully removed'
 
+            # A student cannot edit an entry's categories if the entry is graded.
+            factory.Grade(entry=entry)
+            api.patch(self, 'categories/edit_entry', params={**params}, user=student, status=403)
+
         def test_as_teacher():
             template.fixed_categories = True
             template.save()
@@ -204,6 +233,9 @@ class CategoryAPITest(TestCase):
             admin = factory.Admin()
             api.patch(self, 'categories/edit_entry', params={**params}, user=admin, status=200)
 
+        def test_as_unrelated_user():
+            api.patch(self, 'categories/edit_entry', params={**params}, user=self.unrelated_user, status=403)
+
         def test_category_linked_to_entry_assignment():
             category_assignment2 = factory.Category(assignment=self.assignment2)
             api.patch(self, 'categories/edit_entry', params={**params, 'pk': category_assignment2.pk},
@@ -212,28 +244,21 @@ class CategoryAPITest(TestCase):
         test_as_student()
         test_as_teacher()
         test_as_admin()
+        test_as_unrelated_user()
         test_category_linked_to_entry_assignment()
 
     def test_category_validate_category_data(self):
         # Name should be non empty
-        self.assertRaises(ValidationError, Category.validate_category_data, name='', color='#NEW',
-                          assignment=self.assignment)
+        self.assertRaises(ValidationError, Category.validate_category_data, name='', assignment=self.assignment)
 
-        # Name and color should be unique
-        self.assertRaises(ValidationError, Category.validate_category_data, name=self.category.name, color='#NEW',
-                          assignment=self.assignment)
-        self.assertRaises(ValidationError, Category.validate_category_data, name='NEW', color=self.category.color,
+        # Name should be unique
+        self.assertRaises(ValidationError, Category.validate_category_data, name=self.category.name,
                           assignment=self.assignment)
 
         # Unless we update ourselves
-        Category.validate_category_data(name='NEW', color=self.category.color, category=self.category,
-                                        assignment=self.assignment)
-        Category.validate_category_data(name=self.category.name, color='#NEW', category=self.category,
-                                        assignment=self.assignment)
+        Category.validate_category_data(name='NEW', category=self.category, assignment=self.assignment)
 
         # Except if another category holds those values
         cat2 = factory.Category(assignment=self.assignment)
         self.assertRaises(ValidationError, Category.validate_category_data, name=cat2.name,
-                          color=self.category.color, category=self.category, assignment=self.assignment)
-        self.assertRaises(ValidationError, Category.validate_category_data, name=self.category.name,
-                          color=cat2.color, category=self.category, assignment=self.assignment)
+                          category=self.category, assignment=self.assignment)

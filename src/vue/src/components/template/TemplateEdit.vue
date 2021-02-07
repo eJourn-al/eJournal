@@ -1,198 +1,174 @@
 <template>
-    <b-card class="no-hover template-card">
-        <div class="d-flex">
-            <b-button
-                :class="{'active': mode === 'edit'}"
-                class="multi-form orange-button flex-basis-100"
-                @click="mode = 'edit'"
-            >
-                <icon name="edit"/>
-                Edit
-            </b-button>
-            <b-button
-                :class="{'active': mode === 'preview'}"
-                class="multi-form green-button flex-basis-100"
-                @click="mode='preview'"
-            >
-                <icon name="eye"/>
-                Preview
-            </b-button>
-        </div>
-        <hr/>
-        <div v-show="mode === 'edit'">
-            <b-input
-                id="template-name"
-                v-model="template.name"
-                class="mr-sm-2 multi-form theme-input"
-                placeholder="Template name"
-                required
-            />
+    <b-card
+        :class="$root.getBorderClass($route.params.cID)"
+        class="no-hover template-card"
+    >
+        <entry-preview
+            v-if="readMode"
+            :template="template"
+        >
+            <template #edit-button>
+                <b-button
+                    class="orange-button ml-auto"
+                    @click="setModeToEdit()"
+                >
+                    <icon name="edit"/>
+                    Edit
+                </b-button>
+            </template>
+        </entry-preview>
 
-            <template-options :template="template"/>
-
-            <draggable
-                v-model="template.field_set"
-                handle=".handle"
-                @start="startDrag"
-                @end="endDrag"
-                @update="onUpdate"
+        <template v-else>
+            <b-row
+                no-gutters
+                class="multi-form"
             >
-                <template-field
-                    v-for="field in template.field_set"
-                    :key="field.location"
-                    :field="field"
-                    :showEditors="showEditors"
-                    @removeField="removeField"
+                <span class="theme-h2">
+                    {{ (template.name) ? template.name : 'Template name' }}
+                </span>
+
+                <b-button
+                    class="ml-auto"
+                    :class="(create) ? 'green-button' : 'red-button'"
+                    @click="(create) ? setModeToRead() : cancelTemplateEdit({ template })"
+                >
+                    <icon :name="(create) ? 'eye' : 'ban'"/>
+                    {{ (create) ? 'Preview' : 'Cancel' }}
+                </b-button>
+            </b-row>
+
+            <b-form-group
+                label="Name"
+                :invalid-feedback="nameInvalidFeedback"
+                :state="nameInputState"
+            >
+                <b-input
+                    v-model="template.name"
+                    placeholder="Name"
+                    class="theme-input"
+                    type="text"
+                    trim
+                    required
                 />
-                <div class="invisible"/>
-            </draggable>
-            <b-button
-                class="green-button full-width"
-                @click="addField"
-            >
-                <icon name="plus"/>
-                Add field
-            </b-button>
-        </div>
+            </b-form-group>
 
-        <template v-if="mode !== 'edit'">
-            <entry-fields
+            <template-edit-settings
+                class="mb-3"
                 :template="template"
-                :content="() => Object()"
-                :edit="true"
-                :readOnly="true"
             />
-            <category-display
-                :id="`template-${template.id}-preview`"
-                :template="template"
-                :categories="template.categories"
-            />
+
+            <template-edit-fields :template="template"/>
+
+            <hr/>
+
+            <b-row no-gutters>
+                <b-button
+                    v-if="!create"
+                    class="red-button"
+                    @click.stop="confirmDeleteTemplate()"
+                >
+                    <icon name="trash"/>
+                    Delete
+                </b-button>
+
+                <b-button
+                    class="green-button ml-auto"
+                    @click="finalizeTemplateChanges"
+                >
+                    <icon :name="(create) ? 'plus' : 'save'"/>
+                    {{ (create) ? 'Add Template' : 'Save' }}
+                </b-button>
+            </b-row>
         </template>
     </b-card>
 </template>
 
 <script>
-import CategoryDisplay from '@/components/category/CategoryDisplay.vue'
-import EntryFields from '@/components/entry/EntryFields.vue'
-import TemplateField from '@/components/template/TemplateField.vue'
-import TemplateOptions from '@/components/template/TemplateOptions.vue'
-import draggable from 'vuedraggable'
+import EntryPreview from '@/components/entry/EntryPreview.vue'
+import TemplateEditFields from '@/components/template/TemplateEditFields.vue'
+import TemplateEditSettings from '@/components/template/TemplateEditSettings.vue'
+
+import { mapActions, mapGetters, mapMutations } from 'vuex'
 
 export default {
     components: {
-        draggable,
-        EntryFields,
-        TemplateField,
-        TemplateOptions,
-        CategoryDisplay,
+        EntryPreview,
+        TemplateEditFields,
+        TemplateEditSettings,
     },
     props: {
         template: {
             required: true,
+            type: Object,
         },
     },
     data () {
         return {
-            mode: 'edit',
-            selectedLocation: null,
-            showEditors: true,
+            nameInvalidFeedback: null,
+            nameInputState: null,
         }
     },
-    created () {
-        this.template.field_set.sort((a, b) => a.location - b.location)
+    computed: {
+        ...mapGetters({
+            readMode: 'assignmentEditor/readMode',
+            assignmentCategories: 'category/assignmentCategories',
+            assignmentHasCategories: 'category/assignmentHasCategories',
+            templates: 'template/assignmentTemplates',
+        }),
+        create () { return this.template.id < 0 },
+    },
+    watch: {
+        'template.name': 'validateNameInput',
     },
     methods: {
-        updateLocations () {
-            for (let i = 0; i < this.template.field_set.length; i++) {
-                this.template.field_set[i].location = i
-            }
-        },
-        addField () {
-            const newField = {
-                type: 'rt',
-                title: '',
-                description: '',
-                options: null,
-                location: this.template.field_set.length,
-                required: true,
-            }
+        ...mapMutations({
+            setModeToEdit: 'assignmentEditor/SET_ACTIVE_COMPONENT_MODE_TO_EDIT',
+            setModeToRead: 'assignmentEditor/SET_ACTIVE_COMPONENT_MODE_TO_READ',
+        }),
+        ...mapActions({
+            cancelTemplateEdit: 'assignmentEditor/cancelTemplateEdit',
+            templateCreated: 'assignmentEditor/templateCreated',
+            templateDeleted: 'assignmentEditor/templateDeleted',
+            templateUpdated: 'assignmentEditor/templateUpdated',
+            createTemplate: 'template/create',
+            updateTemplate: 'template/update',
+            deleteTemplate: 'template/delete',
+        }),
+        validateNameInput () {
+            const name = this.template.name
 
-            this.template.field_set.push(newField)
-        },
-        removeField (location) {
-            if (this.template.field_set[location].title
-                ? window.confirm(
-                    `Are you sure you want to remove "${this.template.field_set[location].title}" from this template?`)
-                : window.confirm('Are you sure you want to remove this field from this template?')) {
-                this.template.field_set.splice(location, 1)
+            if (name === '') {
+                this.nameInvalidFeedback = 'Name cannot be empty.'
+                this.nameInputState = false
+            } else if (this.templates.some(elem => elem.id !== this.template.id && elem.name === name)) {
+                this.nameInvalidFeedback = 'Name is not unique.'
+                this.nameInputState = false
+            } else {
+                this.nameInputState = null
             }
+        },
+        finalizeTemplateChanges () {
+            if (!this.validateData()) { return }
 
-            this.updateLocations()
+            if (this.create) {
+                this.createTemplate({ template: this.template, aID: this.$route.params.aID })
+                    .then((template) => {
+                        this.templateCreated({ template, fromPresetNode: this.template.fromPresetNode })
+                    })
+            } else {
+                this.updateTemplate({ id: this.template.id, data: this.template, aID: this.$route.params.aID })
+                    .then((updatedTemplate) => {
+                        this.templateUpdated({ updatedTemplate, oldTemplateId: this.template.id })
+                    })
+            }
         },
-        startDrag () {
-            this.showEditors = false
-        },
-        endDrag () {
-            this.showEditors = true
-        },
-        onUpdate () {
-            this.updateLocations()
+        confirmDeleteTemplate () {
+            if (window.confirm(
+                `Are you sure you want to delete template "${this.template.name}" from the assignment?`)) {
+                this.deleteTemplate({ id: this.template.id, aID: this.$route.params.aID })
+                    .then(() => { this.templateDeleted({ template: this.template }) })
+            }
         },
     },
 }
 </script>
-
-<style lang="sass">
-.template-card
-    .optional-field-template
-        background-color: white
-        color: $theme-dark-blue !important
-        svg
-            fill: $theme-medium-grey
-
-    .required-field-template
-        background-color: $theme-dark-blue !important
-        color: white !important
-        svg, &:hover:not(.no-hover) svg
-            fill: $theme-red !important
-
-    #template-name
-        font-weight: bold
-        font-size: 1.8em
-        color: $theme-dark-blue
-
-    .sortable-chosen .card
-        background-color: $theme-dark-grey
-
-    .sortable-ghost
-        visibility: hidden
-
-    .sortable-drag .card
-        visibility: visible
-
-    .icon-box
-        text-align: center
-
-    .handle
-        text-align: center
-        padding-bottom: 7px
-
-    .field-card:hover .move-icon, .field-card:hover .trash-icon
-        fill: $theme-dark-blue !important
-
-    .handle:hover .move-icon
-        cursor: grab
-        fill: $theme-blue !important
-
-    .field-card:hover .trash-icon:hover
-        fill: $theme-red !important
-
-    @include sm-max
-        .icon-box
-            margin-top: 10px
-
-    .template-availability
-        font-weight: bold
-        color: grey
-        margin-bottom: 10px
-</style>

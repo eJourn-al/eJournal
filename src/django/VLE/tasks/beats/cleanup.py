@@ -38,6 +38,7 @@ def remove_unused_journal_files():
         journal__isnull=False,
         comment__isnull=True,
         content__isnull=True,
+        category__isnull=True,
     ).delete()
 
 
@@ -49,6 +50,7 @@ def remove_unused_profile_pictures():
         journal__isnull=True,
         comment__isnull=True,
         content__isnull=True,
+        category__isnull=True,
     ).delete()
 
 
@@ -59,10 +61,21 @@ def remove_unused_assignment_files():
         journal__isnull=True,
         comment__isnull=True,
         content__isnull=True,
+        category__isnull=True,
     )
-    fcs_not_in_description = ass_fcs.filter(~Q(assignment__description__contains=F('access_id')))
+    ass_fcs_without_reference = ass_fcs.filter(~Q(assignment__description__contains=F('access_id')))
 
-    for fc in fcs_not_in_description:
+    # Not in RT description, but via M2M 'attached_files'
+    fc_ids_attached_to_preset_nodes = (
+        VLE.models.PresetNode.attached_files  # M2M Manager
+        .through  # Directly acces the Django created M2M table of FC to PresetNode and vice versa
+        .objects  # Use the default manager for the M2M table
+        .values_list('filecontext__pk', flat=True)
+        .distinct()
+    )
+    ass_fcs_without_reference = ass_fcs_without_reference.exclude(pk__in=fc_ids_attached_to_preset_nodes)
+
+    for fc in ass_fcs_without_reference:
         found = VLE.models.Field.objects.filter(
             template__format__assignment=fc.assignment, description__contains=fc.access_id).exists()
         found = found or VLE.models.PresetNode.objects.filter(

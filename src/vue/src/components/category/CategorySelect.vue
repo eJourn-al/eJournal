@@ -4,7 +4,7 @@
             ref="categorySelect"
             label="name"
             trackBy="id"
-            open-direction="bottom"
+            :open-direction="openDirection"
 
             :placeholder="placeholder"
             :value="value"
@@ -97,8 +97,13 @@ export default {
         value: {
             required: true,
         },
+        openDirection: {
+            default: 'bottom',
+            type: String,
+        },
         placeholder: {
             default: 'Filter By Category',
+            type: String,
         },
     },
     data () {

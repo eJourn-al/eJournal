@@ -2,9 +2,9 @@ import datetime
 import test.factory
 
 import factory
-from django.utils import timezone
 
-from VLE.models import AssignmentParticipation, Participation, Role, User
+from VLE.models import Assignment, AssignmentParticipation, Participation, Role, User
+from VLE.serializers import AssignmentSerializer
 
 
 def _add_courses(self, create, extracted, **kwargs):
@@ -41,9 +41,10 @@ class AssignmentFactory(factory.django.DjangoModelFactory):
     name = factory.Sequence(lambda x: "Assignment {}".format(x))
     description = 'Logboek for all your logging purposes'
     is_published = True
-    unlock_date = timezone.now()
-    due_date = timezone.now() + datetime.timedelta(weeks=1)
-    lock_date = timezone.now() + datetime.timedelta(weeks=2)
+    # NOTE: Settings.allowed_date_time format excludes microseconds
+    unlock_date = datetime.datetime.now().replace(microsecond=0)
+    due_date = (datetime.datetime.now() + datetime.timedelta(weeks=1)).replace(microsecond=0)
+    lock_date = (datetime.datetime.now() + datetime.timedelta(weeks=2)).replace(microsecond=0)
     is_group_assignment = False
     can_set_journal_name = False
     can_set_journal_image = False
@@ -98,3 +99,30 @@ class LtiAssignmentFactory(AssignmentFactory):
         for course in self.courses.all():
             course.assignment_lti_id_set.append(self.active_lti_id)
             course.save()
+
+
+class AssignmentUpdateParamsFactory(factory.Factory):
+    class Meta:
+        model = dict
+
+    @classmethod
+    def _adjust_kwargs(cls, **kwargs):
+        assignment = kwargs.pop('assignment')
+        if not assignment:
+            assignment = factory.Assignment()
+
+        kwargs['pk'] = assignment.pk
+
+        kwargs['course_id'] = assignment.courses.first().pk
+
+        kwargs = {
+            **kwargs,
+            **AssignmentSerializer(
+                AssignmentSerializer.setup_eager_loading(
+                    Assignment.objects.filter(pk=assignment.pk)
+                ).get(),
+                context={'user': assignment.author},
+            ).data
+        }
+
+        return kwargs

@@ -6,11 +6,11 @@
     Nodes are accessed via array index. Some 'virtual' nodes exists, these are not part of the nodes array.
         - Start of assignment: -1
         - Add node
-            - Virtual when adding a preset to the format: nodes.length
+            - Virtual when adding a preset to the assignment: nodes.length
               (not virtual when adding an entry to the timeline, but has NO nID)
         - End of assignment: nodes.length + 1
     Passed property nodes can consist of two types:
-        - Preset nodes (edit = true) (format edit view)
+        - Preset nodes (edit = true) (assignment edit view)
         - nodes (journal view)
 -->
 
@@ -20,7 +20,9 @@
             <h3 class="theme-h3 mb-1 mr-2">
                 Timeline
             </h3>
+
             <b-dropdown
+                v-if="assignmentHasCategories"
                 class="timeline-filter"
                 noCaret
                 variant="link"
@@ -31,7 +33,7 @@
                         class="filter-button"
                         :class="{
                             'blue-filled-button': filteredCategories.length > 0,
-                            'grey-filled-button': filteredCategories.length == 0,
+                            'grey-filled-button': filteredCategories.length === 0,
                         }"
                     >
                         <icon name="eye"/>
@@ -39,7 +41,6 @@
                     </b-button>
                 </template>
                 <category-select
-                    v-if="$store.getters['category/assignmentCategories'].length"
                     v-model="filteredCategories"
                     :options="$store.getters['category/assignmentCategories']"
                     :multiple="true"
@@ -48,6 +49,7 @@
                     @input="filterByCategory"
                 />
             </b-dropdown>
+
             <category-display
                 :id="'timeline-filter-categories'"
                 :categories="filteredCategories"
@@ -64,7 +66,7 @@
                     :edit="edit"
                     :nodes="filteredNodes"
                     :allNodes="nodes"
-                    :selected="mappedSelected"
+                    :selectedIndex="mappedSelected"
                     @select-node="mapAndEmitSelectedNode"
                 />
             </template>
@@ -100,6 +102,8 @@ import CategoryDisplay from '../category/CategoryDisplay.vue'
 import CategorySelect from '@/components/category/CategorySelect.vue'
 import TimelineNodes from '@/components/timeline/TimelineNodes.vue'
 
+import { mapGetters, mapMutations } from 'vuex'
+
 export default {
     components: {
         CategoryDisplay,
@@ -107,7 +111,7 @@ export default {
         TimelineNodes,
     },
     props: {
-        /* Boolean used to indicate the assignment format is being edited, new preset nodes can be inserted
+        /* Boolean used to indicate the assignment is being edited, new preset nodes can be inserted
          * which will not yet be saved / have an id.
          * Entries are created one at a time and are always inserted after save (with id) */
         edit: {
@@ -119,10 +123,10 @@ export default {
             required: true,
             type: Array,
         },
-        /* Index of the selected node as part of the full (non filtered) nodes array */
+        /* Index of the selected node as part of the full (non filtered) nodes array
+         * Can be null, indicating nothing should be selected. */
         selected: {
             required: true,
-            type: Number,
         },
         assignment: {
             required: true,
@@ -137,13 +141,16 @@ export default {
         }
     },
     computed: {
+        ...mapGetters({
+            assignmentHasCategories: 'category/assignmentHasCategories',
+        }),
         filteredCategories: {
-            set (value) { this.$store.commit('category/setFilteredCategories', value) },
-            get () { return this.$store.getters['category/filteredCategories'] },
+            set (value) { this.$store.commit('timeline/SET_FILTERED_CATEGORIES', value) },
+            get () { return this.$store.getters['timeline/filteredCategories'] },
         },
         /* Selected node is actually part of the node array property, see virtual nodes in header */
         selectedNodeIsActualObject () {
-            return this.selected >= 0 && this.selected < this.nodes.length
+            return this.selected !== null && this.selected >= 0 && this.selected < this.nodes.length
         },
     },
     watch: {
@@ -151,9 +158,11 @@ export default {
          * assignment info (-1) and end of assignment (nodes.length + 1)
          * The selected node index needs to be mapped to the correct index of the filtered nodes array */
         selected (val) {
-            if (val < 0) { // Virtual node: assignment details
+            if (val === null) { // No node should be selected
                 this.mappedSelected = val
-            } else if (val === this.nodes.length) { // Virtual node: add node (only virtual in (format) edit mode...)
+            } else if (val < 0) { // Virtual node: assignment details
+                this.mappedSelected = val
+            } else if (val === this.nodes.length) { // Virtual node: add node (only virtual in assignment edit mode...)
                 this.mappedSelected = val
             } else if (val === this.nodes.length + 1) { // Virtual node: end of assignment
                 this.mappedSelected = val
@@ -172,9 +181,12 @@ export default {
     created () {
         this.filteredNodes = this.nodes
         this.mappedSelected = this.selected
-        this.$store.commit('category/setTimelineInstance', this)
+        this.setTimelineInstance(this)
     },
     methods: {
+        ...mapMutations({
+            setTimelineInstance: 'timeline/SET_TIMELINE_INSTANCE',
+        }),
         mapAndEmitSelectedNode (index) {
             this.$emit('select-node', this.mappedNodesIndex(index))
         },
@@ -183,7 +195,7 @@ export default {
         mappedNodesIndex (index) {
             /* Working with virtual nodes (start, end of assignment)
              * NOTE: The add node does exist, and is simply added in the backend
-             * (only for journal view not format edit). */
+             * (only for journal view not assignment edit). */
             if (index < 0 || index >= this.filteredNodes.length) {
                 return index
             } else {
@@ -203,7 +215,7 @@ export default {
         /* When a category is linked to or removed from a template, the current list of nodes can become stale.
          * Each of these nodes has been serialized before the category update, and needs to be synced with possible
          * changes. Because these changes can impact the filter, we filter once again afterwards.
-         * This only happens during format edit, so we can assume the nodes consist of preset nodes.
+         * This only happens during assignment edit, so we can assume the nodes consist of preset nodes.
          *
          * NOTE: called from store
          */

@@ -6,6 +6,7 @@ Database file
 import os
 import random
 import string
+from datetime import datetime
 
 from django.conf import settings
 from django.contrib.auth.models import AbstractUser, UserManager
@@ -24,8 +25,10 @@ from django.utils.timezone import now
 
 import VLE.permissions
 import VLE.utils.file_handling as file_handling
+import VLE.utils.generic_utils as generic_utils
 from VLE.tasks.email import send_push_notification
-from VLE.tasks.notifications import generate_new_assignment_notifications, generate_new_node_notifications
+from VLE.tasks.notifications import (generate_new_assignment_notifications, generate_new_comment_notifications,
+                                     generate_new_entry_notifications, generate_new_node_notifications)
 from VLE.utils import sanitization
 from VLE.utils.error_handling import (VLEBadRequest, VLEParticipationError, VLEPermissionError, VLEProgrammingError,
                                       VLEUnverifiedEmailError)
@@ -1112,10 +1115,9 @@ class Assignment(CreateUpdateModel):
     - active_lti_id: (optional) the active VLE id of the assignment linked through LTI which receives grade updates.
     - lti_id_set: (optional) the set of VLE assignment lti_id_set which permit basic access.
     """
-
     name = models.TextField()
     description = models.TextField(
-        null=True,
+        blank=True,
     )
     author = models.ForeignKey(
         'User',
@@ -1249,6 +1251,51 @@ class Assignment(CreateUpdateModel):
             'active_lti_id_modified': active_lti_id_modified
         }
 
+    def validate_unlock_date(self):
+        if self.due_date and self.unlock_date > self.due_date:
+            raise ValidationError('Unlocks after due date.')
+
+        if self.lock_date and self.unlock_date > self.lock_date:
+            raise ValidationError('Unlocks after lock date.')
+
+        if self.format.presetnode_set.filter(unlock_date__lt=self.unlock_date).exists():
+            raise ValidationError('One or more deadlines unlock before the assignment unlocks.')
+
+        if self.format.presetnode_set.filter(due_date__lt=self.unlock_date).exists():
+            raise ValidationError('One or more deadlines are due before the assignment unlocks.')
+
+        if self.format.presetnode_set.filter(lock_date__lt=self.unlock_date).exists():
+            raise ValidationError('One or more deadlines are locked before the assignment unlocks.')
+
+    def validate_due_date(self):
+        if self.unlock_date and self.due_date < self.unlock_date:
+            raise ValidationError('Due before unlock date.')
+
+        if self.lock_date and self.due_date > self.lock_date:
+            raise ValidationError('Due after lock date.')
+
+        if self.format.presetnode_set.filter(unlock_date__gt=self.due_date).exists():
+            raise ValidationError('One or more deadlines unlock after the assignment is due.')
+
+        if self.format.presetnode_set.filter(due_date__gt=self.due_date).exists():
+            raise ValidationError('One or more deadlines are due after the assignment is due.')
+
+    def validate_lock_date(self):
+        if self.unlock_date and self.lock_date < self.unlock_date:
+            raise ValidationError('Locks before unlock date.')
+
+        if self.due_date and self.lock_date < self.due_date:
+            raise ValidationError('Locks before due date.')
+
+        if self.format.presetnode_set.filter(unlock_date__gt=self.lock_date).exists():
+            raise ValidationError('One or more deadlines unlock after the assignment locks.')
+
+        if self.format.presetnode_set.filter(due_date__gt=self.lock_date).exists():
+            raise ValidationError('One or more deadlines are due after the assignment locks.')
+
+        if self.format.presetnode_set.filter(lock_date__gt=self.lock_date).exists():
+            raise ValidationError('One or more deadlines are locked after the assignment locks.')
+
     @staticmethod
     def validate(new, unpublished, type_changed, active_lti_id_modified, old=None):
         """
@@ -1268,6 +1315,15 @@ class Assignment(CreateUpdateModel):
 
         if active_lti_id_modified and new.conflicting_lti_link():
             raise ValidationError("An lti_id should be unique, and only part of a single assignment's lti_id_set.")
+
+        if new.unlock_date:
+            new.validate_unlock_date()
+
+        if new.due_date:
+            new.validate_due_date()
+
+        if new.lock_date:
+            new.validate_lock_date()
 
     def save(self, *args, **kwargs):
         is_new = not self.pk  # self._state.adding is false when copying an instance as, inst.pk = None, inst.save()
@@ -1503,7 +1559,7 @@ class Assignment(CreateUpdateModel):
         deadline_label = None
 
         if journal is not None:
-            for node in VLE.utils.generic_utils.get_sorted_nodes(journal).prefetch_related('entry__grade'):
+            for node in journal.get_sorted_nodes().prefetch_related('entry__grade'):
                 # Sum published grades to check if PROGRESS node is fullfiled
                 if node.holds_published_grade:
                     grade_sum += node.entry.grade.grade
@@ -1895,12 +1951,46 @@ class Journal(CreateUpdateModel):
 
     def remove_author(self, author):
         self.authors.remove(author)
-        self.save()
+        self.remove_jirs_on_user_remove_from_jounal(author.user)
+
+        if self.authors.count() == 0:
+            self.reset()
 
     def reset(self):
         Entry.objects.filter(node__journal=self).delete()
         self.import_request_targets.all().delete()
         self.import_request_sources.filter(state=JournalImportRequest.PENDING).delete()
+
+    def get_sorted_nodes(self):
+        """
+        Get all the nodes of a journal in sorted order.
+
+        Sorts first by preset due date, defaulting to entry creation date when dealing with an unlimited entry.
+        """
+        return self.node_set.select_related(
+            'entry',
+            'preset'
+        ).annotate(sort_due_date=Case(
+            When(preset__isnull=False, then='preset__due_date'),
+            default='entry__creation_date')
+        ).order_by('sort_due_date')
+
+    def remove_jirs_on_user_remove_from_jounal(self, user):
+        """
+        Removes any pending JIRs if none of the other journal's authors are also author in the JIR source.
+
+        Args:
+            self (:model:`VLE.journal`): Journal where the user is being removed from.
+            user (:model:`VLE.user`): User removed from the journal.
+        """
+        journal_authors_except_user = self.authors.all().exclude(user=user)
+        pending_journal_jirs_authored_by_user = self.import_request_targets.filter(
+            author=user, state=JournalImportRequest.PENDING)
+
+        jirs_with_no_shared_source_authors = pending_journal_jirs_authored_by_user.exclude(
+            source__authors__user__in=journal_authors_except_user.values('user'))
+
+        jirs_with_no_shared_source_authors.delete()
 
     def save(self, *args, **kwargs):
         if not self.author_limit == self.UNLIMITED and self.authors.count() > self.author_limit:
@@ -2127,6 +2217,25 @@ class Format(CreateUpdateModel):
         return "Format"
 
 
+class PresetNodeQuerySet(models.QuerySet):
+    def create(self, *args, **kwargs):
+        """
+        Create a preset node, and creates corresponding nodes for the journals of the assignment in the same
+        transaction.
+        """
+        with transaction.atomic():
+            preset = super().create(*args, **kwargs)
+
+            Node.objects.bulk_create([VLE.models.Node(
+                type=preset.type,
+                entry=None,
+                preset=preset,
+                journal=journal
+            ) for journal in preset.format.assignment.journal_set.all()])
+
+            return preset
+
+
 class PresetNode(CreateUpdateModel):
     """PresetNode.
 
@@ -2146,6 +2255,8 @@ class PresetNode(CreateUpdateModel):
             CheckConstraint(check=~Q(display_name=''), name='non_empty_display_name'),
         ]
 
+    objects = models.Manager.from_queryset(PresetNodeQuerySet)()
+
     TYPES = (
         (Node.PROGRESS, 'progress'),
         (Node.ENTRYDEADLINE, 'entrydeadline'),
@@ -2154,7 +2265,7 @@ class PresetNode(CreateUpdateModel):
     display_name = models.TextField()
 
     description = models.TextField(
-        null=True,
+        blank=True,
     )
 
     type = models.TextField(
@@ -2178,7 +2289,7 @@ class PresetNode(CreateUpdateModel):
 
     forced_template = models.ForeignKey(
         'Template',
-        on_delete=models.SET_NULL,
+        on_delete=models.PROTECT,
         null=True,
     )
     attached_files = models.ManyToManyField(
@@ -2190,6 +2301,173 @@ class PresetNode(CreateUpdateModel):
         on_delete=models.CASCADE
     )
 
+    @staticmethod
+    def validate_unlock_date(data, assignment):
+        """Own field due_date is checked in full in `validate_due_date`"""
+        unlock_date, lock_date = generic_utils.optional_typed_params(
+            data,
+            (datetime, 'unlock_date'),
+            (datetime, 'lock_date'),
+        )
+
+        if unlock_date:
+            if unlock_date < assignment.unlock_date:
+                raise ValidationError('Deadline unlocks before assignment unlocks.')
+
+            if unlock_date > assignment.due_date:
+                raise ValidationError('Deadline unlocks after assignment is due.')
+
+            if unlock_date > assignment.lock_date:
+                raise ValidationError('Deadline unlocks after assignment locks.')
+
+            if lock_date:
+                if unlock_date > lock_date:
+                    raise ValidationError('Deadline unlocks after it locks.')
+
+    @staticmethod
+    def validate_due_date(data, assignment):
+        type, = generic_utils.required_typed_params(data, (str, 'type'))
+        due_date, = generic_utils.optional_typed_params(data, (datetime, 'due_date'))
+
+        if not due_date:
+            raise ValidationError('Due date is required, cannot be empty.')
+
+        if due_date < assignment.unlock_date:
+            raise ValidationError('Deadline is due before assignment unlocks.')
+
+        if due_date > assignment.due_date:
+            raise ValidationError('Deadline is due after the assignment is due.')
+
+        if due_date > assignment.lock_date:
+            raise ValidationError('Deadline is due after the assignment locks.')
+
+        if type == Node.ENTRYDEADLINE:
+            unlock_date, lock_date = generic_utils.optional_typed_params(
+                data,
+                (datetime, 'unlock_date'),
+                (datetime, 'lock_date'),
+            )
+
+            if unlock_date:
+                if due_date < unlock_date:
+                    raise ValidationError('Deadline is due before it unlocks.')
+
+            if lock_date:
+                if due_date > lock_date:
+                    raise ValidationError('Deadline is due after it locks.')
+
+    @staticmethod
+    def validate_lock_date(data, assignment):
+        """Own field due_date is checked in full in `validate_due_date`"""
+        unlock_date, lock_date = generic_utils.optional_typed_params(
+            data,
+            (datetime, 'unlock_date'),
+            (datetime, 'lock_date'),
+        )
+
+        if lock_date:
+            if lock_date < assignment.unlock_date:
+                raise ValidationError('Deadline locks before the assignment unlocks.')
+
+            if lock_date > assignment.lock_date:
+                raise ValidationError('Deadline locks after the assignment locks.')
+
+            if unlock_date:
+                if lock_date < unlock_date:
+                    raise ValidationError('Deadline locks before it unlocks.')
+
+    @staticmethod
+    def validate(data, assignment, user, old=None):
+        display_name, type, description = generic_utils.required_typed_params(
+            data,
+            (str, 'display_name'),
+            (str, 'type'),
+            (str, 'description'),
+        )
+        attached_files, = generic_utils.required_params(data, 'attached_files')
+        attached_file_ids = [file['id'] for file in attached_files]
+
+        def validate_display_name():
+            if display_name == '':
+                raise ValidationError('Display name cannot be empty.')
+
+        def validate_attached_files():
+            if FileContext.objects.filter(pk__in=attached_file_ids).count() != len(attached_files):
+                raise ValidationError('One or more attached files are not correctly uploaded, please try again.')
+
+            if FileContext.objects.filter(
+                pk__in=attached_file_ids
+            ).exclude(
+                is_temp=True,
+            ).exclude(
+                assignment=assignment,
+            ).exists():
+                raise ValidationError('One or more attached files are not part of the assignment.')
+
+            if FileContext.objects.filter(
+                pk__in=attached_file_ids,
+                is_temp=True,
+            ).exclude(author=user).exists():
+                raise ValidationError('One or more files recently uploaded are not owned by you.')
+
+        def validate_progress_specific_fields():
+            target, due_date = generic_utils.required_typed_params(data, (int, 'target'), (datetime, 'due_date'))
+
+            if target < 0:
+                raise ValidationError('Number of points cannot be less than 0.')
+            elif target > assignment.points_possible:
+                raise ValidationError(
+                    'Number of points exceed the maximum amount for the assignment ({}/{}).'.format(
+                        target, assignment.points_possible
+                    )
+                )
+
+            earlier_deadlines_with_higher_target = assignment.format.presetnode_set.filter(
+                type=Node.PROGRESS,
+                target__gt=target,
+                due_date__lt=due_date,
+            )
+            if old:
+                earlier_deadlines_with_higher_target = earlier_deadlines_with_higher_target.exclude(pk=old.pk)
+            if earlier_deadlines_with_higher_target.exists():
+                deadline_display = generic_utils.format_query_set_values_to_display(
+                    earlier_deadlines_with_higher_target, 'display_name')
+                raise ValidationError(
+                    f'Deadlines {deadline_display} are due earlier, with a higher number of required points.')
+
+            later_deadlines_with_lower_target = assignment.format.presetnode_set.filter(
+                type=Node.PROGRESS,
+                target__lt=target,
+                due_date__gt=due_date,
+            )
+            if old:
+                later_deadlines_with_lower_target = later_deadlines_with_lower_target.exclude(pk=old.pk)
+            if later_deadlines_with_lower_target.exists():
+                deadline_display = generic_utils.format_query_set_values_to_display(
+                    later_deadlines_with_lower_target, 'display_name')
+                raise ValidationError(
+                    f'Deadlines {deadline_display} are due later, with a lower number of required points.')
+
+        def validate_deadline_specific_fields():
+            template, = generic_utils.required_params(data, 'template')
+
+            if not assignment.format.template_set.filter(pk=template['id']).exists():
+                raise ValidationError('The provided template is not part of the assignment.')
+
+            PresetNode.validate_unlock_date(data, assignment)
+            PresetNode.validate_lock_date(data, assignment)
+
+        validate_display_name()
+        validate_attached_files()
+        PresetNode.validate_due_date(data, assignment)
+
+        if type == Node.PROGRESS:
+            validate_progress_specific_fields()
+        elif type == Node.ENTRYDEADLINE:
+            validate_deadline_specific_fields()
+        else:
+            raise ValidationError('Unknown preset node type.')
+
     @property
     def is_deadline(self):
         return self.type == Node.ENTRYDEADLINE
@@ -2197,6 +2475,12 @@ class PresetNode(CreateUpdateModel):
     @property
     def is_progress(self):
         return self.type == Node.PROGRESS
+
+    def delete(self, *args, **kwargs):
+        with transaction.atomic():
+            Node.objects.filter(preset=self, entry__isnull=True).delete()
+            self.attached_files.all().delete()
+            super().delete(*args, **kwargs)
 
     def is_locked(self):
         return self.unlock_date is not None and self.unlock_date > now() or self.lock_date and self.lock_date < now()
@@ -2397,15 +2681,10 @@ class Entry(CreateUpdateModel):
                     not self.jir):
                 raise ValidationError('Saving non-teacher entry created by user not part of journal.')
 
-        super(Entry, self).save(*args, **kwargs)
+        super().save(*args, **kwargs)
 
         if is_new and not isinstance(self, TeacherEntry):
-            for user in VLE.permissions.get_supervisors_of(self.node.journal):
-                Notification.objects.create(
-                    type=Notification.NEW_ENTRY,
-                    user=user,
-                    entry=self,
-                )
+            generate_new_entry_notifications.delay(self.pk, self.node.pk)
 
     def to_string(self, user=None):
         return "Entry"
@@ -2528,7 +2807,16 @@ class TemplateQuerySet(models.QuerySet):
                 kwargs['chain'] = TemplateChain.objects.create(format=format)
             return super().create(*args, **kwargs, format=format)
 
-    def create_template_and_fields_from_data(self, data, format, archived_template=None):
+    def create_template_and_fields_from_data(
+        self,
+        data,
+        format,
+        archived_template=None,
+        template_import=False,
+        author=None,
+    ):
+        category_ids = [category['id'] for category in data['categories']]
+
         with transaction.atomic():
             template = Template.objects.create(
                 name=data['name'],
@@ -2537,6 +2825,9 @@ class TemplateQuerySet(models.QuerySet):
                 fixed_categories=data['fixed_categories'],
                 chain=archived_template.chain if archived_template else False,
             )
+
+            if not template_import:
+                template.categories.set(category_ids)
 
             fields = [
                 Field(
@@ -2550,10 +2841,22 @@ class TemplateQuerySet(models.QuerySet):
                 )
                 for field in data['field_set']
             ]
-            Field.objects.bulk_create(fields)
 
-            if archived_template:
-                template.categories.set(archived_template.categories.all())
+            if template_import:
+                if not author:
+                    raise VLEProgrammingError('Author is required when importing a template')
+
+                fields_with_copied_rt_description_files = []
+                for field in fields:
+                    field.description = file_handling.copy_assignment_related_rt_files(
+                        field.description,
+                        author,
+                        assignment=format.assignment,
+                    )
+                    fields_with_copied_rt_description_files.append(field)
+                fields = fields_with_copied_rt_description_files
+
+            fields = Field.objects.bulk_create(fields)
 
         return template
 
@@ -2574,6 +2877,14 @@ class Template(CreateUpdateModel):
 
     A template for an Entry.
     """
+    class Meta:
+        constraints = [
+            CheckConstraint(check=~Q(name=''), name='non_empty_name'),
+        ]
+        ordering = [
+            'name',
+        ]
+
     objects = models.Manager.from_queryset(TemplateQuerySet)()
 
     name = models.TextField()
@@ -2598,10 +2909,60 @@ class Template(CreateUpdateModel):
     chain = models.ForeignKey(
         'TemplateChain',
         on_delete=models.CASCADE,
-        # TODO: Remove blank and null after manually fixing all archived templates (after deploy?)
         blank=True,
         null=True,
     )
+
+    @staticmethod
+    def validate(data, assignment, old=None):
+        def validate_concrete_fields():
+            name, = generic_utils.required_typed_params(data, (str, 'name'))
+            data['name'] = name.strip()
+
+            if old:
+                assert old.format.assignment == assignment
+
+            if (
+                not old and assignment.format.template_set.filter(archived=False, name=name).exists()
+                or old and assignment.format.template_set.filter(archived=False, name=name).exclude(pk=old.pk).exists()
+            ):
+                raise ValidationError('Please provide a unique template name.')
+
+            if name == '':
+                raise ValidationError('Template name cannot be empty.')
+
+        def validate_categories():
+            category_data, = generic_utils.required_params(data, 'categories')
+            category_ids = set([category['id'] for category in category_data])
+
+            if not category_ids:
+                return
+
+            if len(category_ids) != len(category_data):
+                raise ValidationError('Duplicate categories provided.')
+            if assignment.categories.filter(pk__in=category_ids).count() != len(category_ids):
+                raise ValidationError('One or more categories are not part of the assignment.')
+
+        def validate_field_set():
+            field_set_data, = generic_utils.required_params(data, 'field_set')
+            locations = set()
+
+            for field_data in field_set_data:
+                location, = generic_utils.required_typed_params(field_data, (int, 'location'))
+
+                if location in locations:
+                    raise ValidationError('Duplicate template field location provided.')
+                if location < 0 or location >= len(field_set_data):
+                    raise ValidationError('Template field location is out of bounds.')
+
+                locations.add(location)
+
+            if len(locations) == 0:
+                raise ValidationError('A template should include one or more fields.')
+
+        validate_concrete_fields()
+        validate_categories()
+        validate_field_set()
 
     def can_be_deleted(self):
         return not (
@@ -2633,6 +2994,9 @@ class Field(CreateUpdateModel):
     """
     class Meta:
         ordering = ['location']
+        unique_together = (
+            ('location', 'template'),
+        )
 
     ALLOWED_URL_SCHEMES = ('http', 'https', 'ftp', 'ftps')
 
@@ -2666,12 +3030,12 @@ class Field(CreateUpdateModel):
     )
     title = models.TextField()
     description = models.TextField(
-        null=True
+        blank=True
     )
     options = models.TextField(
         null=True
     )
-    location = models.IntegerField()
+    location = models.PositiveIntegerField()
     template = models.ForeignKey(
         'Template',
         on_delete=models.CASCADE
@@ -2773,20 +3137,8 @@ class Comment(CreateUpdateModel):
         self.text = sanitization.strip_script_tags(self.text)
         super(Comment, self).save(*args, **kwargs)
 
-        if is_new:
-            if self.published:
-                for user in VLE.permissions.get_supervisors_of(self.entry.node.journal).exclude(pk=self.author.pk):
-                    Notification.objects.create(
-                        type=Notification.NEW_COMMENT,
-                        user=user,
-                        comment=self,
-                    )
-                for author in self.entry.node.journal.authors.all().exclude(user=self.author):
-                    Notification.objects.create(
-                        type=Notification.NEW_COMMENT,
-                        user=author.user,
-                        comment=self,
-                    )
+        if is_new and self.published:
+            generate_new_comment_notifications.delay(self.pk)
 
     def to_string(self, user=None):
         return "Comment"
@@ -2956,14 +3308,13 @@ class Category(CreateUpdateModel):
         ]
         unique_together = (
             ('name', 'assignment'),
-            ('color', 'assignment'),
         )
 
     objects = models.Manager.from_queryset(CategoryQuerySet)()
 
     name = models.TextField()
     description = models.TextField(
-        null=True,
+        blank=True,
     )
     color = models.CharField(
         max_length=9
@@ -2987,20 +3338,16 @@ class Category(CreateUpdateModel):
     )
 
     @staticmethod
-    def validate_category_data(name, color, assignment, category=None):
+    def validate_category_data(name, assignment, category=None):
         equal_name = Category.objects.filter(name=name, assignment=assignment)
-        equal_color = Category.objects.filter(color=color, assignment=assignment)
 
         if category:
             equal_name = equal_name.exclude(pk=category.pk)
-            equal_color = equal_color.exclude(pk=category.pk)
 
         if name == '':
             raise ValidationError('Please provide a non empty name.')
         if equal_name.exists():
             raise ValidationError('Please provide a unqiue category name.')
-        if equal_color.exists():
-            raise ValidationError('Please provide a unqiue category color.')
 
 
 class TemplateCategoryLink(CreateUpdateModel):
@@ -3008,7 +3355,7 @@ class TemplateCategoryLink(CreateUpdateModel):
     Explicit M2M table, linking Templates to Categories.
     """
     class Meta:
-        unique_together = ('template', 'category')  # TODO: Is this required? How are duplicate M2M handled?
+        unique_together = ('template', 'category')
 
     template = models.ForeignKey(
         'template',

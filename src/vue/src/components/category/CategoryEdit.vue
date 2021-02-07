@@ -1,160 +1,231 @@
 <template>
-    <div>
-        <b-form-group
-            label="Name"
-            :invalid-feedback="nameInvalidFeedback"
+    <b-card
+        :class="$root.getBorderClass($route.params.cID)"
+        class="no-hover"
+    >
+        <b-row
+            no-gutters
+            class="multi-form"
         >
-            <b-form-input
-                v-model="data.name"
-                :state="nameInputState"
-                autofocus
-                placeholder="Name"
-                class="theme-input"
-                type="text"
-                trim
-            />
-        </b-form-group>
+            <span class="theme-h2">
+                {{ (category.name) ? category.name : 'Category name' }}
+            </span>
 
-        <b-form-group label="Description">
-            <text-editor
-                :id="descriptionTextEditorID"
-                :key="descriptionTextEditorID"
-                ref="descriptionTextEditor"
-                v-model="data.description"
-                :footer="false"
-                :basic="true"
-                placeholder="Description"
-                @editor-focus="descriptionFocused = true"
-                @editor-blur="descriptionFocused = false"
-            />
-        </b-form-group>
+            <b-button
+                class="ml-auto"
+                :class="headerButtonClass"
+                @click="changeMode()"
+            >
+                <icon :name="headerButtonIconName"/>
+                {{ headerButtonText }}
+            </b-button>
+        </b-row>
 
-        <b-form-group label="Templates">
-            <theme-select
-                v-model="data.templates"
-                label="name"
-                trackBy="id"
-                :options="templates"
-                :multiple="true"
-                :focus="descriptionFocused"
-                :searchable="true"
-                :multiSelectText="`template${data.templates.length > 1 ? 's' : ''}`"
-                placeholder="Search and add or remove templates"
-            />
-        </b-form-group>
+        <category-read-mode
+            v-if="readMode"
+            :category="category"
+        />
 
-        <b-form-group
-            label="Color"
-            :invalid-feedback="colorInvalidFeedback"
-        >
-            <b-input
-                v-model="data.color"
-                :state="colorInputState"
-                type="color"
-            />
-        </b-form-group>
-    </div>
+        <template v-else>
+            <b-form-row>
+                <b-col>
+                    <b-form-group
+                        label="Name"
+                        class="required"
+                        :invalid-feedback="nameInvalidFeedback"
+                        :state="nameInputState"
+                    >
+                        <b-form-input
+                            v-model="category.name"
+                            autofocus
+                            placeholder="Name"
+                            class="theme-input"
+                            type="text"
+                            trim
+                        />
+                    </b-form-group>
+                </b-col>
+
+                <b-col cols="auto">
+                    <b-form-group
+                        label="Color"
+                        class="required"
+                    >
+                        <b-input
+                            v-model="category.color"
+                            class="category-color-picker"
+                            type="color"
+                        />
+                    </b-form-group>
+                </b-col>
+            </b-form-row>
+
+            <b-form-group label="Description">
+                <text-editor
+                    :id="descriptionTextEditorID"
+                    :key="descriptionTextEditorID"
+                    ref="descriptionTextEditor"
+                    v-model="category.description"
+                    :footer="false"
+                    :basic="true"
+                    placeholder="Description"
+                />
+            </b-form-group>
+
+            <b-form-group label="Templates">
+                <theme-select
+                    v-model="category.templates"
+                    label="name"
+                    trackBy="id"
+                    :options="templates"
+                    :multiple="true"
+                    :searchable="true"
+                    :multiSelectText="`template${category.templates.length > 1 ? 's' : ''}`"
+                    placeholder="Add or remove templates"
+                />
+            </b-form-group>
+
+            <hr/>
+
+            <b-row no-gutters>
+                <b-button
+                    v-if="!create"
+                    class="red-button"
+                    @click.stop="confirmDeleteCategory()"
+                >
+                    <icon name="trash"/>
+                    Delete
+                </b-button>
+
+                <b-button
+                    class="green-button ml-auto"
+                    @click="finalizeCategoryChanges"
+                >
+                    <icon :name="(create) ? 'plus' : 'save'"/>
+                    {{ (create) ? 'Add Category' : 'Save' }}
+                </b-button>
+            </b-row>
+        </template>
+    </b-card>
 </template>
 
 <script>
-import { mapGetters } from 'vuex'
+import { mapActions, mapGetters, mapMutations } from 'vuex'
+
+import CategoryReadMode from '@/components/category/CategoryReadMode.vue'
 
 export default {
     name: 'CategoryEdit',
     components: {
         textEditor: () => import(/* webpackChunkName: 'text-editor' */ '@/components/assets/TextEditor.vue'),
+        CategoryReadMode,
     },
     props: {
-        data: {
+        category: {
             required: true,
             type: Object,
-        },
-        templates: {
-            required: true,
-            type: Array,
         },
     },
     data () {
         return {
-            updateCall: null,
-            createCall: null,
-            descriptionFocused: false,
             nameInvalidFeedback: null,
-            colorInvalidFeedback: null,
-            aID: null,
+            nameInputState: null,
         }
     },
     computed: {
         ...mapGetters({
             categories: 'category/assignmentCategories',
+            templates: 'template/assignmentTemplates',
+            readMode: 'assignmentEditor/readMode',
         }),
-        descriptionTextEditorID () { return `text-editor-category-${this.data.id}-description` },
+        create () {
+            return this.category.id < 0
+        },
+        headerButtonText () {
+            if (this.readMode) { return 'Edit' }
+            return (this.create) ? 'Preview' : 'Cancel'
+        },
+        headerButtonClass () {
+            if (this.readMode) { return 'orange-button' }
+            return (this.create) ? 'green-button' : 'red-button'
+        },
+        headerButtonIconName () {
+            if (this.readMode) { return 'edit' }
+            return (this.create) ? 'eye' : 'ban'
+        },
+        descriptionTextEditorID () { return `text-editor-category-${this.category.id}-description` },
         validCategory () {
             return (
                 this.nameInputState !== false
                 && this.colorInputState !== false
             )
         },
-        nameInputState () {
-            if (this.data.name === '') {
-                this.nameInvalidFeedback = 'Name cannot be empty' // eslint-disable-line
-                return false
-            }
-            if (this.categories.some(cat => cat.id !== this.data.id && cat.name === this.data.name)) {
-                this.nameInvalidFeedback = 'Name is not unique' // eslint-disable-line
-                return false
-            }
-
-            this.nameInvalidFeedback = null // eslint-disable-line
-            return null
-        },
-        colorInputState () {
-            if (this.categories.some(cat => cat.id !== this.data.id && cat.color === this.data.color)) {
-                this.colorInvalidFeedback = 'Color is not unique' // eslint-disable-line
-                return false
-            }
-
-            this.colorInvalidFeedback = null // eslint-disable-line
-            return null
-        },
     },
     watch: {
-        data: {
-            deep: true,
-            handler (category) {
-                if (category.id >= 0) {
-                    this.patchCategory(category)
-                } else {
-                    this.createCategory(category)
-                }
-            },
-        },
-    },
-    created () {
-        this.aID = this.$route.params.aID
+        'category.name': 'validateNameInput',
     },
     methods: {
-        patchCategory (data) {
-            window.clearTimeout(this.updateCall)
+        ...mapActions({
+            cancelCategoryEdit: 'assignmentEditor/cancelCategoryEdit',
+            categoryCreated: 'assignmentEditor/categoryCreated',
+            categoryDeleted: 'assignmentEditor/categoryDeleted',
+            categoryUpdated: 'assignmentEditor/categoryUpdated',
+            categoryCreate: 'category/create',
+            categoryDelete: 'category/delete',
+            categoryUpdate: 'category/update',
+        }),
+        ...mapMutations({
+            setModeToEdit: 'assignmentEditor/SET_ACTIVE_COMPONENT_MODE_TO_EDIT',
+            setModeToRead: 'assignmentEditor/SET_ACTIVE_COMPONENT_MODE_TO_READ',
+        }),
+        validateNameInput () {
+            const name = this.category.name
 
-            if (!this.validCategory) { return }
-
-            const payload = JSON.parse(JSON.stringify(data))
-            payload.templates = data.templates.map(elem => elem.id)
-
-            this.updateCall = window.setTimeout(() => {
-                this.$store.dispatch('category/update', { id: payload.id, data: payload })
-            }, 3000)
+            if (name === '') {
+                this.nameInvalidFeedback = 'Name cannot be empty.'
+                this.nameInputState = false
+            } else if (this.categories.some(cat => cat.id !== this.category.id && cat.name === name)) {
+                this.nameInvalidFeedback = 'Name is not unique.'
+                this.nameInputState = false
+            } else {
+                this.nameInputState = null
+            }
         },
-        createCategory (localCategory) {
-            window.clearTimeout(this.createCall)
+        changeMode () {
+            if (this.readMode) {
+                this.setModeToEdit()
+            } else {
+                if (!this.create) {
+                    this.cancelCategoryEdit({ category: this.category })
+                }
+                this.setModeToRead()
+            }
+        },
+        finalizeCategoryChanges () {
+            if (!this.validateData()) { return }
 
-            if (!this.validCategory) { return }
+            if (this.create) {
+                this.categoryCreate({ category: this.category, aID: this.$route.params.aID })
+                    .then((category) => { this.categoryCreated({ category }) })
+            } else {
+                this.categoryUpdate({ id: this.category.id, category: this.category, aID: this.$route.params.aID })
+                    .then((category) => { this.categoryUpdated({ category }) })
+            }
+        },
+        confirmDeleteCategory () {
+            if (window.confirm(`
+Are you sure you want to delete ${this.category.name}?
 
-            this.createCall = window.setTimeout(() => {
-                this.$store.dispatch('category/createAndOnlyUpdateId', { localCategory, aID: this.aID })
-            }, 3000)
+This action will also remove the category from any associated entries. This action cannot be undone.`)) {
+                this.categoryDelete({ id: this.category.id })
+                    .then(() => { this.categoryDeleted({ category: this.category }) })
+            }
         },
     },
 }
 </script>
+
+<style lang="sass">
+.category-color-picker
+    width: 3em
+</style>

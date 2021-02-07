@@ -51,7 +51,7 @@ class CategoryView(viewsets.ViewSet):
         assignment = Assignment.objects.filter(pk=assignment_id).select_related('format').get()
         request.user.check_permission('can_edit_assignment', assignment)
 
-        Category.validate_category_data(name=name, color=color, assignment=assignment)
+        Category.validate_category_data(name=name, assignment=assignment)
         templates = _validate_templates(templates, assignment)
 
         category = Category.objects.create(
@@ -84,7 +84,7 @@ class CategoryView(viewsets.ViewSet):
         category = Category.objects.filter(pk=pk).select_related('assignment').get()
         request.user.check_permission('can_edit_assignment', category.assignment)
 
-        Category.validate_category_data(name=name, color=color, assignment=category.assignment, category=category)
+        Category.validate_category_data(name=name, assignment=category.assignment, category=category)
         templates = _validate_templates(templates, category.assignment)
 
         with transaction.atomic():

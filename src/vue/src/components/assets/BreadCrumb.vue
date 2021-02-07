@@ -69,7 +69,7 @@ export default {
             settings: {
                 aliases: {
                     Home: 'Courses',
-                    FormatEdit: 'Assignment Editor',
+                    AssignmentEditor: 'Assignment Editor',
                     CourseEdit: 'Course Editor',
                     AdminPanel: 'Admin Panel',
                     AssignmentsOverview: 'Assignments',

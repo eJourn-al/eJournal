@@ -43,6 +43,7 @@ class EntryContentCreationParamsFactory(factory.Factory):
     kwargs:
         template: VLE.models.Template instance for which a content dict should be generated.
         author: VLE.models.User instance, user who creates the entry.
+        node: VLE.models.Node instance, node related to entry, fallsback to nothing (unlimited entry)
     """
     class Meta:
         model = dict
@@ -51,6 +52,10 @@ class EntryContentCreationParamsFactory(factory.Factory):
     def _adjust_kwargs(cls, **kwargs):
         template = kwargs.pop('template')
         author = kwargs.pop('author')
+        node = kwargs.pop('node', None)
+
+        if node:
+            kwargs['node_id'] = node.pk
 
         content = {}
         for field in template.field_set.all():
@@ -92,9 +97,52 @@ class UnlimitedEntryCreationParamsFactory(factory.Factory):
         template = kwargs.pop('template', random.choice(journal.assignment.format.template_set.all()))
         kwargs['template_id'] = template.pk
 
-        author = kwargs.pop('author', random.choice(journal.authors.all()).user)
+        if 'author' in kwargs:
+            author = kwargs['author']
+        else:
+            author = random.choice(journal.authors.all()).user
 
         kwargs['content'] = test.factory.EntryContentCreationParams(template=template, author=author)['content']
+
+        return kwargs
+
+
+class PresetEntryCreationParamsFactory(factory.Factory):
+    """
+    Creates valid preset entry creation parameters by tweaking the provided kwargs.
+    kwargs:
+        journal: VLE.models.Journal instance, journal for which an unlimited entry should be created.
+        template: VLE.models.Template instance, fallsback to a random template available to the provided journal.
+        node: VLE.models.None instance, fallsback to a newly created ENTRYDEADLINE node
+        author: VLE.models.User instance, fallsback to a random author of the journal.
+    """
+    class Meta:
+        model = dict
+
+    @classmethod
+    def _adjust_kwargs(cls, **kwargs):
+        journal = kwargs.pop('journal')
+
+        if 'node' in kwargs:
+            node = kwargs['node']
+        else:
+            preset = test.factory.DeadlinePresetNode(format=journal.assignment.format)
+            node = preset.node_set.filter(journal=journal).get()
+
+        kwargs['node_id'] = node.pk
+        kwargs['journal_id'] = journal.pk
+
+        template = preset.forced_template
+        kwargs['template_id'] = template.pk
+
+        if 'author' in kwargs:
+            author = kwargs['author']
+        else:
+            author = random.choice(journal.authors.all()).user
+
+        kwargs['content'] = test.factory.EntryContentCreationParams(
+            template=template, author=author, node=node
+        )['content']
 
         return kwargs
 
@@ -155,49 +203,5 @@ class TeacherEntryCreationParamsFactory(factory.Factory):
             kwargs['journals'] = journals
         else:
             kwargs['journals'] = [journal_to_dict(j) for j in VLE.models.Journal.objects.filter(assignment=assignment)]
-
-        return kwargs
-
-
-class AssignmentFormatUpdateParamsFactory(factory.Factory):
-    class Meta:
-        model = dict
-
-    @classmethod
-    def _adjust_kwargs(cls, **kwargs):
-        assignment = kwargs.pop('assignment')
-        if not assignment:
-            assignment = factory.Assignment()
-
-        kwargs['pk'] = assignment.pk
-
-        kwargs['course_id'] = assignment.courses.first().pk
-
-        kwargs['assignment_details'] = VLE.serializers.AssignmentFormatSerializer(
-            VLE.serializers.AssignmentFormatSerializer.setup_eager_loading(
-               VLE.models.Assignment.objects.filter(pk=assignment.pk)
-            ).get(),
-            context={'user': assignment.author},
-        ).data
-
-        kwargs['templates'] = VLE.serializers.TemplateSerializer(
-            VLE.serializers.TemplateSerializer.setup_eager_loading(
-                assignment.format.template_set.filter(archived=False)
-            ),
-            many=True,
-        ).data
-
-        kwargs['presets'] = kwargs.pop(
-            'presets',
-            VLE.serializers.PresetNodeSerializer(
-                VLE.serializers.PresetNodeSerializer.setup_eager_loading(
-                    VLE.models.PresetNode.objects.filter(format__assignment=assignment)
-                ),
-                many=True,
-            ).data,
-        )
-
-        kwargs['removed_templates'] = kwargs.pop('removed_templates', [])
-        kwargs['removed_presets'] = kwargs.pop('removed_presets', [])
 
         return kwargs

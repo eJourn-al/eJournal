@@ -103,9 +103,11 @@ export default {
     },
     methods: {
         onSubmit () {
-            if (this.$refs.assignmentDetails && !this.$refs.assignmentDetails.validateDetails()) {
+            if (!this.$refs.assignmentDetails.validateData()
+                && !this.$refs.assignmentDetails.$refs.assignmentDetailsDates.validateData()) {
                 return
             }
+
             assignmentAPI.create(this.form)
                 .then((assignment) => {
                     this.$emit('handleAction', assignment.id)

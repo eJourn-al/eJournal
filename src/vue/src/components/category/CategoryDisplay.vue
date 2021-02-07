@@ -1,6 +1,8 @@
 <template>
     <div
+        v-if="categories"
         :ref="`${id}-category-display`"
+        class="category-display"
         :class="{
             'compact': compact,
         }"
@@ -55,7 +57,6 @@ export default {
     props: {
         categories: {
             required: true,
-            type: Array,
         },
         id: {
             type: String,
