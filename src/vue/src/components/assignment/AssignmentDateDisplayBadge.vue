@@ -1,7 +1,7 @@
 <template>
     <b-badge
-        class="background-medium-grey align-middle mr-1"
         v-if="date"
+        class="background-medium-grey align-middle mr-1"
         pill
     >
         <span class="text-grey">
