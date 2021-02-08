@@ -24,15 +24,15 @@
         <template v-if="assignmentHasCategories">
             <hr/>
             <radio-button
-                v-model="template.fixed_categories"
+                v-model="template.allow_custom_categories"
                 :options="[
                     {
-                        value: false,
+                        value: true,
                         icon: 'check',
                         class: 'green-button',
                     },
                     {
-                        value: true,
+                        value: false,
                         icon: 'times',
                         class: 'red-button',
                     },

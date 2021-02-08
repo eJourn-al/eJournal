@@ -5,7 +5,6 @@ def _template_concrete_fields_updated(template, data):
     check_fields = [
         'name',
         'preset_only',
-        'fixed_categories',
     ]
 
     return any(getattr(template, f) != data[f] for f in check_fields)
@@ -85,8 +84,21 @@ def update_categories_of_template_chain(data, template):
         TemplateCategoryLink.objects.bulk_create(template_category_links)
 
 
+def update_template_chain(data, chain):
+    """
+    Updates template settings which hold for the entire template chain.
+
+    Archiving a template part of the chain should have no impact on these settings.
+    """
+    if chain.allow_custom_categories != data['allow_custom_categories']:
+        chain.allow_custom_categories = data['allow_custom_categories']
+        chain.save()
+
+
 def handle_template_update(data, current_template):
     updated_template = current_template
+
+    update_template_chain(data, current_template.chain)
 
     if _should_be_archived(current_template, data):
         updated_template = Template.objects.create_template_and_fields_from_data(

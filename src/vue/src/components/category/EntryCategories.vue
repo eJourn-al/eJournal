@@ -61,7 +61,13 @@ export default {
     },
     computed: {
         editable () {
-            return this.$hasPermission('can_grade') || ((this.edit || this.create) && !this.template.fixed_categories)
+            return (
+                this.$hasPermission('can_grade')
+                || (
+                    (this.edit || this.create)
+                    && this.template.allow_custom_categories
+                )
+            )
         },
     },
     created () {

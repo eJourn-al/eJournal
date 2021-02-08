@@ -61,7 +61,7 @@ class TemplateView(viewsets.ViewSet):
         })
 
     def partial_update(self, request, pk):
-        template = Template.objects.select_related('format', 'format__assignment').get(pk=pk)
+        template = Template.objects.select_related('format', 'format__assignment', 'chain').get(pk=pk)
         assignment = template.format.assignment
 
         request.user.check_permission('can_edit_assignment', assignment)

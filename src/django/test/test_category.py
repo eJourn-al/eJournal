@@ -193,7 +193,7 @@ class CategoryAPITest(TestCase):
         params = {'pk': self.category.pk, 'entry_id': entry.pk, 'add': True}
 
         def test_as_student():
-            assert template.fixed_categories
+            assert not template.chain.allow_custom_categories
             for add in [True, False]:
                 api.patch(self, 'categories/edit_entry', params={**params, 'add': add}, user=student, status=403)
                 with mock.patch('VLE.models.User.has_permission') as has_permission_mock:
@@ -201,8 +201,8 @@ class CategoryAPITest(TestCase):
                     has_permission_mock.assert_any_call('can_have_journal', self.assignment)
                     has_permission_mock.assert_any_call('can_grade', self.assignment)
 
-            template.fixed_categories = False
-            template.save()
+            template.chain.allow_custom_categories = True
+            template.chain.save()
             api.patch(self, 'categories/edit_entry', params={**params}, user=student)
             with mock.patch('VLE.models.User.can_edit') as can_edit_mock:
                 api.patch(self, 'categories/edit_entry', params={**params}, user=student)
@@ -220,8 +220,8 @@ class CategoryAPITest(TestCase):
             api.patch(self, 'categories/edit_entry', params={**params}, user=student, status=403)
 
         def test_as_teacher():
-            template.fixed_categories = True
-            template.save()
+            template.chain.allow_custom_categories = False
+            template.chain.save()
             api.patch(self, 'categories/edit_entry', params={**params}, user=teacher)
 
             lock_date = self.assignment.lock_date

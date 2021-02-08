@@ -28,11 +28,6 @@ class Migration(migrations.Migration):
                 'ordering': ['name'],
             },
         ),
-        migrations.AddField(
-            model_name='template',
-            name='fixed_categories',
-            field=models.BooleanField(default=True),
-        ),
         migrations.CreateModel(
             name='TemplateCategoryLink',
             fields=[

@@ -800,7 +800,7 @@ class AssignmentAPITest(TestCase):
                     name=source_category_template.name,
                     preset_only=source_category_template.preset_only,
                     archived=source_category_template.archived,
-                    fixed_categories=source_category_template.fixed_categories,
+                    chain__allow_custom_categories=source_category_template.chain.allow_custom_categories,
                 )
                 for source_field, target_field in zip(
                     source_category_template.field_set.order_by('location'),

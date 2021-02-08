@@ -36,6 +36,7 @@ class Migration(migrations.Migration):
                 ('creation_date', models.DateTimeField(auto_now_add=True)),
                 ('update_date', models.DateTimeField(auto_now=True)),
                 ('format', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='VLE.Format')),
+                ('allow_custom_categories', models.BooleanField(default=False)),
             ],
             options={
                 'abstract': False,

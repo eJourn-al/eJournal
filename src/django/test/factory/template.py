@@ -93,7 +93,7 @@ class TemplateCreationParamsFactory(factory.Factory):
         model = dict
 
     name = factory.Sequence(lambda x: f"Template {x + 1}".format(x))
-    fixed_categories = True
+    allow_custom_categories = False
     preset_only = True
 
     @classmethod

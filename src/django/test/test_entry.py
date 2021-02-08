@@ -1110,7 +1110,7 @@ class EntryAPITest(TestCase):
         cat2 = factory.Category(assignment=factory.Assignment())
         category_ids = list(Category.objects.filter(pk=cat1.pk).values_list('pk', flat=True))
         template.categories.set([])
-        assert template.fixed_categories
+        assert not template.chain.allow_custom_categories
         with self.assertRaises(ValidationError):
             Entry.validate_categories(category_ids, assignment, template)
 

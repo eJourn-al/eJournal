@@ -132,7 +132,6 @@ class TemplateConcreteFieldsSerializer(serializers.ModelSerializer):
             'format',
             'preset_only',
             'archived',
-            'fixed_categories',
         )
         read_only_fields = fields
 
@@ -170,16 +169,22 @@ class TemplateSerializer(serializers.ModelSerializer, EagerLoadingMixin):
         model = VLE.models.Template
         fields = (
             *TemplateConcreteFieldsSerializer.Meta.fields,
+            'allow_custom_categories',
             'field_set',
             'categories',
         )
         read_only_fields = ()
+
+    select_related = [
+        'chain',
+    ]
 
     prefetch_related = [
         'categories',
         Prefetch('field_set', queryset=VLE.models.Field.objects.order_by('location')),
     ]
 
+    allow_custom_categories = serializers.BooleanField(source='chain.allow_custom_categories')
     field_set = FieldSerializer(many=True, read_only=True)
     categories = CategoryConcreteFieldsSerializer(many=True, read_only=True)
 
@@ -879,6 +884,7 @@ class EntrySerializer(serializers.ModelSerializer, EagerLoadingMixin):
     select_related = [
         'author',
         'template',
+        'template__chain',
         'last_edited_by',
         'teacher_entry',
         'grade',
@@ -1071,6 +1077,12 @@ class TeacherEntrySerializer(EntrySerializer):
                 .annotate_teacher_entry_grade_serializer_fields()
                 .order_by('name')
             )
+        )
+
+        # Fetch everthing the TemplateSerializer requires
+        queryset = queryset.select_related(
+            'template',
+            'template__chain',
         )
 
         return queryset

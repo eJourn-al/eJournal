@@ -118,14 +118,20 @@ class CategoryView(viewsets.ViewSet):
         entry_id, add = utils.required_typed_params(request.data, (int, 'entry_id'), (bool, 'add'))
 
         category = Category.objects.get(pk=pk)
-        entry = Entry.objects.select_related('node__journal__assignment', 'template').get(pk=entry_id)
+        entry = Entry.objects.select_related(
+            'node__journal__assignment',
+            'template',
+            'template__chain',
+        ).get(
+            pk=entry_id,
+        )
         template = entry.template
         assignment = entry.node.journal.assignment
 
         if request.user.has_permission('can_grade', assignment):
             pass  # A category can always be changed by someone with the permission to grade.
         elif request.user.has_permission('can_have_journal', assignment):
-            if template.fixed_categories:
+            if not template.chain.allow_custom_categories:
                 return response.forbidden('This entry\'s categories are locked.')
             if not request.user.can_edit(entry):
                 return response.forbidden('You can no longer edit the entry\'s categories.')

@@ -2622,10 +2622,10 @@ class Entry(CreateUpdateModel):
         if not category_ids.issubset(assignment_category_ids):
             raise ValidationError('Entry can only be linked to categories which are part of the assignment.')
 
-        if template and template.fixed_categories:
+        if template and not template.chain.allow_custom_categories:
             template_category_ids = set(template.categories.values_list('pk', flat=True))
             if category_ids != template_category_ids:
-                raise ValidationError('An entry of this type has fixed categories.')
+                raise ValidationError('An entry of this type does not allow for custom categories.')
 
         return category_ids
 
@@ -2792,10 +2792,18 @@ class Counter(CreateUpdateModel):
 
 
 class TemplateChain(CreateUpdateModel):
-    """Identifies multiple templates which were updated as belonging to the same template"""
+    """
+    Identifies multiple templates which were updated as belonging to the same template
+
+    Any fields hold for the entire template chain
+    """
     format = models.ForeignKey(
         'Format',
         on_delete=models.CASCADE
+    )
+
+    allow_custom_categories = models.BooleanField(
+        default=False,
     )
 
 
@@ -2803,8 +2811,14 @@ class TemplateQuerySet(models.QuerySet):
     def create(self, format, *args, **kwargs):
         """Creates a template and starts a new chain if not provided in the same transaction."""
         with transaction.atomic():
+            allow_custom_categories = kwargs.pop('allow_custom_categories', False)
+
             if not kwargs.get('chain', False):
-                kwargs['chain'] = TemplateChain.objects.create(format=format)
+                kwargs['chain'] = TemplateChain.objects.create(
+                    format=format,
+                    allow_custom_categories=allow_custom_categories,
+                )
+
             return super().create(*args, **kwargs, format=format)
 
     def create_template_and_fields_from_data(
@@ -2822,7 +2836,7 @@ class TemplateQuerySet(models.QuerySet):
                 name=data['name'],
                 format=format,
                 preset_only=data['preset_only'],
-                fixed_categories=data['fixed_categories'],
+                allow_custom_categories=data['allow_custom_categories'],
                 chain=archived_template.chain if archived_template else False,
             )
 
@@ -2900,10 +2914,6 @@ class Template(CreateUpdateModel):
 
     archived = models.BooleanField(
         default=False
-    )
-
-    fixed_categories = models.BooleanField(
-        default=True,
     )
 
     chain = models.ForeignKey(

@@ -222,7 +222,7 @@ def make_node(journal, entry=None, type=VLE.models.Node.ENTRY, preset=None):
 
 
 def make_entry(template, author, node, category_ids=None):
-    if template.fixed_categories or category_ids is None:
+    if not template.chain.allow_custom_categories or category_ids is None:
         category_ids = list(template.categories.values_list('pk', flat=True))
 
     with transaction.atomic():

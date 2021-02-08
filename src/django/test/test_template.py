@@ -248,7 +248,7 @@ class TemplateTest(TestCase):
             assert data['format'] == template.format.pk
             assert data['preset_only'] == template.preset_only
             assert data['archived'] == template.archived
-            assert data['fixed_categories'] == template.fixed_categories
+            assert data['allow_custom_categories'] == template.chain.allow_custom_categories
 
             check_field_set_serialization_order(data)
 
@@ -373,7 +373,7 @@ class TemplateTest(TestCase):
         # Check if the template itself is created according to the provided data
         template = Template.objects.get(pk=resp['template']['id'])
         assert template.name == params['name']
-        assert template.fixed_categories == params['fixed_categories']
+        assert template.chain.allow_custom_categories == params['allow_custom_categories']
         assert template.preset_only == params['preset_only']
 
         _validate_field_creation(template, params['field_set'])
@@ -418,7 +418,7 @@ class TemplateTest(TestCase):
 
             # Check if the template itself is created according to the provided data
             assert imported_template.name == import_params['name']
-            assert imported_template.fixed_categories == import_params['fixed_categories']
+            assert imported_template.chain.allow_custom_categories == import_params['allow_custom_categories']
             assert imported_template.preset_only == import_params['preset_only']
             _validate_field_creation(imported_template, import_params['field_set'], template_import=True)
             assert not imported_template.categories.all().exists(), \
@@ -464,7 +464,7 @@ class TemplateTest(TestCase):
 
             valid_patch_data = TemplateSerializer(template).data
             valid_patch_data['name'] = 'New'
-            valid_patch_data['fixed_categories'] = False
+            valid_patch_data['allow_custom_categories'] = True
             valid_patch_data['archived'] = True
             valid_patch_data['pk'] = template.pk
             new_field_data = deepcopy(valid_patch_data['field_set'][0])
@@ -480,7 +480,7 @@ class TemplateTest(TestCase):
             new_template = Template.objects.get(pk=resp['template']['id'])
 
             assert valid_patch_data['name'] == new_template.name
-            assert valid_patch_data['fixed_categories'] == new_template.fixed_categories
+            assert valid_patch_data['allow_custom_categories'] == new_template.chain.allow_custom_categories
             assert not new_template.archived, 'Archived should be ignored as request data'
             _validate_field_creation(new_template, valid_patch_data['field_set'])
 
@@ -568,29 +568,27 @@ class TemplateTest(TestCase):
             template.refresh_from_db()
             assert not template.archived
 
-        def test_update_fixed_categories_flag():
-            template = factory.Template(format=self.format, add_fields=[{'type': Field.TEXT}], fixed_categories=False)
-            # Ensure the original template is not deleted, but instead is archived, by linking it to an entry
+        def test_update_allow_custom_categories_flag():
+            template = factory.Template(
+                format=self.format, add_fields=[{'type': Field.TEXT}], allow_custom_categories=True)
+            # Ensure the template is not deleted, by linking it to an entry
             factory.UnlimitedEntry(node__journal__assignment=self.assignment, template=template)
 
             patch_data = TemplateSerializer(template).data
             patch_data['pk'] = template.pk
-            patch_data['fixed_categories'] = True
+            patch_data['allow_custom_categories'] = False
 
-            resp = api.patch(self, 'templates', params=patch_data, user=self.assignment.author)
+            api.patch(self, 'templates', params=patch_data, user=self.assignment.author)
 
             template.refresh_from_db()
-            assert template.archived, 'Changing the fixed categories flag archives the template.'
-            assert not template.fixed_categories, 'Fixed categories is unchanged on the archived template.'
-            new_template = Template.objects.get(pk=resp['template']['id'])
-            assert not new_template.archived, 'The new template is unarchived.'
-            assert new_template.fixed_categories, 'The newly generated template does have fixed_categories'
+            assert not template.archived, 'Changing the allow_custom_categories flag does not archive the template.'
+            assert not template.chain.allow_custom_categories, 'Custom categories flag is updated.'
 
         test_used_template_patch()
         test_unused_template_patch()
         test_patch_validation()
         test_should_be_archived()
-        test_update_fixed_categories_flag()
+        test_update_allow_custom_categories_flag()
 
     def test_template_delete(self):
         def test_unused_template_delete():

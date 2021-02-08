@@ -156,7 +156,7 @@ const mutations = {
                 name: '',
                 id: -1,
                 preset_only: !!fromPresetNode,
-                fixed_categories: true,
+                allow_custom_categories: false,
                 categories: [],
                 fromPresetNode,
             }
