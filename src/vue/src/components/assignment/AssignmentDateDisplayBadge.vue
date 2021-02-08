@@ -1,6 +1,7 @@
-<template v-if="date">
+<template>
     <b-badge
         class="background-medium-grey align-middle mr-1"
+        v-if="date"
         pill
     >
         <span class="text-grey">
