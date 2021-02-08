@@ -1115,6 +1115,11 @@ class Assignment(CreateUpdateModel):
     - active_lti_id: (optional) the active VLE id of the assignment linked through LTI which receives grade updates.
     - lti_id_set: (optional) the set of VLE assignment lti_id_set which permit basic access.
     """
+    class Meta:
+        constraints = [
+            CheckConstraint(check=Q(points_possible__gte=0.0), name='points_possible_gte_0'),
+        ]
+
     name = models.TextField()
     description = models.TextField(
         blank=True,
@@ -1125,9 +1130,9 @@ class Assignment(CreateUpdateModel):
         null=True
     )
     is_published = models.BooleanField(default=False)
-    points_possible = models.IntegerField(
+    points_possible = models.FloatField(
         'points_possible',
-        default=10
+        default=10,
     )
     unlock_date = models.DateTimeField(
         'unlock_date',

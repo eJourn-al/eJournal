@@ -49,7 +49,7 @@ class AssignmentFactory(factory.django.DjangoModelFactory):
     can_set_journal_name = False
     can_set_journal_image = False
     can_lock_journal = False
-    points_possible = 10
+    points_possible = 10.0
 
     format = factory.SubFactory('test.factory.format.FormatFactory', called_from_assignment=True)
 

@@ -11,6 +11,7 @@ import pytest
 from dateutil.relativedelta import relativedelta
 from django.core.exceptions import ValidationError
 from django.core.files.uploadedfile import SimpleUploadedFile
+from django.db import transaction
 from django.db.models import Q
 from django.db.utils import IntegrityError
 from django.test import TestCase
@@ -167,6 +168,18 @@ class AssignmentAPITest(TestCase):
 
         assert test.utils.generic_utils.equal_models(pre_update_assignment, post_update_format), \
             'Unmodified update paramaters should be able to succesfully update the format without making any changes'
+
+    def test_assignment_constraint(self):
+        with transaction.atomic():
+            format = Format.objects.create()
+            self.assertRaises(IntegrityError, Assignment.objects.create, points_possible=-1.0, format=format)
+
+        with transaction.atomic():
+            format = Format.objects.create()
+            self.assertRaises(IntegrityError, Assignment.objects.create, points_possible=-0.001, format=format)
+
+        format = Format.objects.create()
+        Assignment.objects.create(points_possible=0, format=format)
 
     def test_create_assignment(self):
         lti_params = {**self.create_params, **{'lti_id': 'new_lti_id'}}
