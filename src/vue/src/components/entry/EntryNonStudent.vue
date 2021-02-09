@@ -65,8 +65,17 @@
                 :content="entryNode.entry.content"
                 :edit="false"
             />
+
+            <entry-categories
+                :id="`entry-${entryNode.entry.id}-entry-categories`"
+                :entry="entryNode.entry"
+                :create="false"
+                :template="entryNode.entry.template"
+                :categories="entryNode.entry.categories"
+            />
+
             <div class="full-width timestamp">
-                <hr class="full-width"/>
+                <hr/>
                 <template
                     v-if="(new Date(entryNode.entry.last_edited).getTime() - new Date(entryNode.entry.creation_date)
                         .getTime()) / 1000 < 3"
@@ -147,7 +156,7 @@
                 </b-table>
                 <div v-else>
                     <b>No grades available</b>
-                    <hr class="m-0 mb-1"/>
+                    <hr/>
                     This entry has not yet been graded.
                 </div>
             </b-card>
@@ -169,6 +178,7 @@
 </template>
 
 <script>
+import EntryCategories from '@/components/category/EntryCategories.vue'
 import EntryTitle from '@/components/entry/EntryTitle.vue'
 import comments from '@/components/entry/Comments.vue'
 import dropdownButton from '@/components/assets/DropdownButton.vue'
@@ -180,6 +190,7 @@ export default {
         comments,
         dropdownButton,
         entryFields,
+        EntryCategories,
         EntryTitle,
     },
     props: ['entryNode', 'journal', 'assignment'],

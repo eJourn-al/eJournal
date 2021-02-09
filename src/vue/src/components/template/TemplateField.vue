@@ -137,6 +137,7 @@
 
 <script>
 export default {
+    name: 'TemplateField',
     components: {
         TextEditor: () => import(/* webpackChunkName: 'text-editor' */ '@/components/assets/TextEditor.vue'),
     },
@@ -219,3 +220,48 @@ export default {
     },
 }
 </script>
+
+<style lang="sass">
+.field-card
+    .optional-field-template
+        background-color: white
+        color: $theme-dark-blue !important
+        svg
+            fill: $theme-medium-grey
+
+    .required-field-template
+        background-color: $theme-dark-blue !important
+        color: white !important
+        svg, &:hover:not(.no-hover) svg
+            fill: $theme-red !important
+
+    .sortable-chosen .card
+        background-color: $theme-dark-grey
+
+    .sortable-ghost
+        visibility: hidden
+
+    .sortable-drag .card
+        visibility: visible
+
+    .handle
+        text-align: center
+        padding-bottom: 7px
+
+    .field-card:hover .move-icon, .field-card:hover .trash-icon
+        fill: $theme-dark-blue !important
+
+    .handle:hover .move-icon
+        cursor: grab
+        fill: $theme-blue !important
+
+    .field-card:hover .trash-icon:hover
+        fill: $theme-red !important
+
+    .icon-box
+        text-align: center
+
+    @include sm-max
+        .icon-box
+            margin-top: 10px
+</style>

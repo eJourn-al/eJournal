@@ -155,14 +155,17 @@ class TeacherEntryCreationParamsFactory(factory.Factory):
         template: VLE.models.Template instance, fallsback to a random template available to the provided assignment.
         author: VLE.models.User instance, fallsback the assignment author.
         content: Valid content for the selected template.
-        journals: list, contains elements structured as follows:
+        journals: list, can contain elements structured as follows:
             {
                 'journal_id': <int>,
                 'grade': <float>,
                 'published': <bool>,
             },
+            OR a list of VLE.models.Journal instances.
             Defaults to all assignment's journal ids, with a published grade of one.
             Grade and published can be uniformly changed by providing a grade and published kwarg
+        categories: list of VLE.models.Category instances
+        category_ids: list if VLE.models.Category ids, has prio over categories.
     """
     class Meta:
         model = dict
@@ -181,57 +184,24 @@ class TeacherEntryCreationParamsFactory(factory.Factory):
         author = kwargs.pop('author', assignment.author)
         kwargs['content'] = test.factory.EntryContentCreationParams(template=template, author=author)['content']
 
-        kwargs['journals'] = kwargs.pop('journals', [
-            {
-                'journal_id': j.pk,
+        categories = kwargs.pop('categories', [])
+        if categories:
+            kwargs['category_ids'] = [category.pk for category in categories]
+        kwargs['category_ids'] = kwargs.pop('category_ids', categories)
+
+        def journal_to_dict(journal):
+            return {
+                'journal_id': journal.pk,
                 'grade': kwargs['grade'] if 'grade' in kwargs else 1,
                 'published': kwargs['published'] if 'published' in kwargs else True,
             }
-            for j in VLE.models.Journal.objects.filter(assignment=assignment)
-        ])
 
-        return kwargs
-
-
-class AssignmentFormatUpdateParamsFactory(factory.Factory):
-    class Meta:
-        model = dict
-
-    @classmethod
-    def _adjust_kwargs(cls, **kwargs):
-        assignment = kwargs.pop('assignment')
-        if not assignment:
-            assignment = factory.Assignment()
-
-        kwargs['pk'] = assignment.pk
-
-        kwargs['course_id'] = assignment.courses.first().pk
-
-        kwargs['assignment_details'] = VLE.serializers.AssignmentFormatSerializer(
-            VLE.serializers.AssignmentFormatSerializer.setup_eager_loading(
-               VLE.models.Assignment.objects.filter(pk=assignment.pk)
-            ).get(),
-            context={'user': assignment.author},
-        ).data
-
-        kwargs['templates'] = VLE.serializers.TemplateSerializer(
-            VLE.serializers.TemplateSerializer.setup_eager_loading(
-                assignment.format.template_set.filter(archived=False)
-            ),
-            many=True,
-        ).data
-
-        kwargs['presets'] = kwargs.pop(
-            'presets',
-            VLE.serializers.PresetNodeSerializer(
-                VLE.serializers.PresetNodeSerializer.setup_eager_loading(
-                    VLE.models.PresetNode.objects.filter(format__assignment=assignment)
-                ),
-                many=True,
-            ).data,
-        )
-
-        kwargs['removed_templates'] = kwargs.pop('removed_templates', [])
-        kwargs['removed_presets'] = kwargs.pop('removed_presets', [])
+        journals = kwargs.pop('journals', None)
+        if journals and isinstance(journals, list) and isinstance(journals[0], VLE.models.Journal):
+            kwargs['journals'] = [journal_to_dict(j) for j in journals]
+        elif journals:
+            kwargs['journals'] = journals
+        else:
+            kwargs['journals'] = [journal_to_dict(j) for j in VLE.models.Journal.objects.filter(assignment=assignment)]
 
         return kwargs

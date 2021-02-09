@@ -95,7 +95,7 @@ const mutations = {
 const actions = {
     /* Update the permissions, keeping track of the request flight status and setting a cooldown timer.
      * Triggers a global update if the permissions have in fact changed to the clients previous state. */
-    updatePermissions({ state, commit, dispatch, getters, rootGetters }) { // eslint-disable-line
+    updatePermissions ({ commit, rootGetters }) {
         const permissionsCopy = JSON.parse(JSON.stringify(rootGetters['user/permissions']))
 
         commit(mutationTypes.SET_LAST_PERMISSION_UPDATE, { date: new Date() })
@@ -104,7 +104,7 @@ const actions = {
         connection.conn.get('/users/0/').then((response) => {
             commit(`user/${mutationTypes.HYDRATE_USER}`, response.data, { root: true })
             commit(mutationTypes.SET_PERMISSION_UPDATE_IN_FLIGHT, { val: false })
-            if (JSON.stringify(permissionsCopy) !== JSON.stringify(rootGetters['user/permissions'])) {
+            if (!Vue.prototype.$_isEqual(permissionsCopy, rootGetters['user/permissions'])) {
                 Vue.forceUpdate()
             }
         }).catch(() => {

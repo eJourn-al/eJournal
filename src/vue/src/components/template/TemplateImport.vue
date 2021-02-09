@@ -1,13 +1,9 @@
 <template>
-    <b-modal
-        :id="modalID"
-        :ref="modalID"
-        size="lg"
-        title="Import template"
-        hideFooter
-        noEnforceFocus
-    >
-        <b-card class="no-hover">
+    <load-wrapper :loading="loading">
+        <b-card
+            class="no-hover"
+            :class="$root.getBorderClass($route.params.cID)"
+        >
             <div v-if="importableTemplates && importableTemplates.length > 0">
                 <h2 class="theme-h2 multi-form">
                     Select a template to import
@@ -69,17 +65,14 @@
 
                 <hr/>
 
-                <b-card
-                    v-if="previewTemplate"
-                    class="no-hover multi-form"
-                >
-                    <entry-fields
+                <template v-if="previewTemplate">
+                    <entry-preview
+                        class="multi-form"
                         :template="selectedTemplate"
-                        :content="() => Object()"
-                        :edit="true"
-                        :readOnly="true"
                     />
-                </b-card>
+
+                    <hr/>
+                </template>
 
                 <b-button
                     v-if="!previewTemplate"
@@ -100,41 +93,38 @@
                 </b-button>
 
                 <b-button
-                    class="orange-button float-right"
+                    class="green-button float-right"
                     :class="{ 'input-disabled': !selectedTemplate }"
                     @click="importTemplate(selectedTemplate)"
                 >
-                    <icon name="file-import"/>
-                    Import template
+                    <icon name="plus"/>
+                    Add template
                 </b-button>
             </div>
 
             <div v-else>
                 <b>No existing templates available</b>
-                <hr class="m-0 mb-1"/>
+                <hr/>
                 Only templates in assignments where you have permission to edit are available to import.
             </div>
         </b-card>
-    </b-modal>
+    </load-wrapper>
 </template>
 
 <script>
-import EntryFields from '@/components/entry/EntryFields.vue'
+import EntryPreview from '@/components/entry/EntryPreview.vue'
+import LoadWrapper from '@/components/loading/LoadWrapper.vue'
 
 import assignmentAPI from '@/api/assignment.js'
 import utils from '@/utils/generic_utils.js'
 
+import { mapActions, mapMutations } from 'vuex'
+
 export default {
+    name: 'TemplateImport',
     components: {
-        EntryFields,
-    },
-    props: {
-        modalID: {
-            required: true,
-        },
-        aID: {
-            required: true,
-        },
+        EntryPreview,
+        LoadWrapper,
     },
     data () {
         return {
@@ -144,6 +134,7 @@ export default {
             previewTemplate: null,
             importableTemplates: [],
 
+            loading: true,
             // The actual templates (so containing fields, description etc.) which can be selected.
             templates: [],
         }
@@ -164,23 +155,38 @@ export default {
     created () {
         assignmentAPI.getImportable()
             .then((data) => {
+                this.loading = false
                 data.forEach((d) => {
-                    d.assignments = d.assignments.filter(assignment => assignment.id !== this.aID)
+                    d.assignments = d.assignments.filter(assignment => assignment.id !== this.$route.params.aID)
                 })
                 this.importableTemplates = data.filter(d => d.assignments.length > 0)
             })
     },
     methods: {
+        ...mapMutations({
+            templateSelected: 'assignmentEditor/SELECT_TEMPLATE',
+        }),
+        ...mapActions({
+            create: 'template/create',
+            list: 'template/list',
+        }),
         importTemplate (template) {
-            this.$emit('imported-template', template)
-            this.$refs[this.modalID].hide()
-            this.selectedCourse = null
-            this.selectedAssignment = null
-            this.selectedTemplate = null
-            this.previewTemplate = false
+            const payload = JSON.parse(JSON.stringify(template))
+            payload.id = -1
+            payload.categories = []
+
+            this.create({ template: payload, aID: this.$route.params.aID, templateImport: true })
+                .then((createdTemplate) => {
+                    this.selectedCourse = null
+                    this.selectedAssignment = null
+                    this.selectedTemplate = null
+                    this.previewTemplate = false
+
+                    this.templateSelected({ template: createdTemplate })
+                })
         },
         getTemplatesForSelectedAssignment () {
-            assignmentAPI.getTemplates(this.selectedAssignment.id)
+            this.list({ aID: this.selectedAssignment.id })
                 .then((templates) => {
                     this.templates = templates
                 })

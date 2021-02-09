@@ -50,7 +50,7 @@
                     </reset-wrapper>
                 </b-col>
             </b-row>
-            <hr class="mt-2"/>
+            <hr/>
             <b-button
                 class="float-left orange-button"
                 type="reset"

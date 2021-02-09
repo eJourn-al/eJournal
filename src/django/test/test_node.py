@@ -2,7 +2,6 @@ import datetime
 import test.factory as factory
 from test.utils import api
 
-from django.core.exceptions import ValidationError
 from django.db import IntegrityError
 from django.test import TestCase
 from django.utils import timezone
@@ -22,8 +21,7 @@ class NodeTest(TestCase):
         assignment = journal.assignment
         deadline = factory.DeadlinePresetNode(format=assignment.format)
 
-        entry = factory.PresetEntry(node__preset=deadline, node__journal=journal)
-        self.assertRaises(ValidationError, factory.PresetEntry, node=entry.node)
+        factory.PresetEntry(node=journal.node_set.get(preset=deadline))
         self.assertRaises(IntegrityError, VLE.models.Node.objects.create, preset=deadline, journal=journal)
 
     def test_get(self):
@@ -42,7 +40,8 @@ class NodeTest(TestCase):
         assert deadline.is_deadline and deadline.type == VLE.models.Node.ENTRYDEADLINE
 
         entry = factory.UnlimitedEntry(node__journal=journal)
-        deadline = factory.PresetEntry(node__journal=journal, node__preset=deadline)
+        node = journal.node_set.get(preset=deadline)
+        deadline = factory.PresetEntry(node=node)
         progress_node = journal.node_set.get(preset=progress)
 
         assert entry.node.is_entry and entry.node.type == VLE.models.Node.ENTRY
@@ -58,8 +57,8 @@ class NodeTest(TestCase):
         deadline = factory.DeadlinePresetNode(
             format=assignment.format, due_date=timezone.now() + datetime.timedelta(days=1))
 
-        entry = factory.PresetEntry(node__journal=journal, node__preset=deadline)
-        node = entry.node
+        node = journal.node_set.get(preset=deadline)
+        entry = factory.PresetEntry(node=node)
         assert not node.open_deadline(), 'Node holds an entry so the deadline is not outstanding'
         entry.delete()
         node.refresh_from_db()

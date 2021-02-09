@@ -7,9 +7,9 @@ def setDefaultDisplayNames(apps, schema_editor):
     PresetNode = apps.get_model('VLE', 'PresetNode')
 
     for preset in PresetNode.objects.all().select_related('forced_template'):
-        if preset.is_deadline:
+        if preset.type == 'd':
             preset.display_name = preset.forced_template.name
-        if preset.is_progress:
+        if preset.type == 'p':
             preset.display_name = 'Progress goal'
 
         preset.save()

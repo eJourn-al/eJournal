@@ -1,6 +1,7 @@
 import test.factory as factory
 from test.utils import api
 from test.utils.response import in_response
+from unittest import mock
 
 from django.test import TestCase
 
@@ -196,3 +197,35 @@ class GroupAPITest(TestCase):
 
         assert group_names == set(Group.objects.filter(course=course).values_list('name', flat=True))
         assert before_count == Group.objects.filter(course=course).count()
+
+    def test_get_assigned_groups(self):
+        assignment = factory.Assignment(courses=[self.course])
+
+        with mock.patch('VLE.models.User.check_permission') as check_permission_mock:
+            assigned_groups = api.get(
+                self,
+                'groups/assigned_groups',
+                params={'course_id': self.course.pk, 'assignment_id': assignment.pk},
+                user=self.teacher,
+            )['assigned_groups']
+            check_permission_mock.assert_called_with('can_edit_assignment', assignment)
+        assert assigned_groups == [], 'No groups are assigned yet'
+
+        # Assigned groups information is not available to students
+        assigned_groups = api.get(
+            self,
+            'groups/assigned_groups',
+            params={'course_id': self.course.pk, 'assignment_id': assignment.pk},
+            user=factory.Student(),
+            status=403,
+        )
+
+        assignment.assigned_groups.add(self.group)
+        assigned_groups = api.get(
+            self,
+            'groups/assigned_groups',
+            params={'course_id': self.course.pk, 'assignment_id': assignment.pk},
+            user=self.teacher,
+        )['assigned_groups']
+        assert len(assigned_groups) == 1 and self.group.pk == assigned_groups[0]['id'], \
+            'Assigned groups are actually serialized'

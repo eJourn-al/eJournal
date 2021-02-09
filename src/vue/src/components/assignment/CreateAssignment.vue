@@ -103,9 +103,13 @@ export default {
     },
     methods: {
         onSubmit () {
-            if (this.$refs.assignmentDetails && !this.$refs.assignmentDetails.validateDetails()) {
+            const validBaseData = this.$refs.assignmentDetails.validateData()
+            const validDateData = this.$refs.assignmentDetails.$refs.assignmentDetailsDates.validateData()
+
+            if (!(validBaseData && validDateData)) {
                 return
             }
+
             assignmentAPI.create(this.form)
                 .then((assignment) => {
                     this.$emit('handleAction', assignment.id)
@@ -120,11 +124,12 @@ export default {
                 evt.preventDefault()
             }
             /* Reset form values */
-            this.form.name = ''
+            this.form.name = null
             this.form.description = ''
             /* Due to defensive programming, resetting the rich text content does not work directly */
             this.$refs.assignmentDetails.$refs['text-editor-assignment-edit-description'].clearContent()
-            this.form.course_id = ''
+            this.form.course_id = this.$route.params.cID
+            this.form.is_published = null
             this.form.points_possible = null
             this.form.unlock_date = null
             this.form.due_date = null

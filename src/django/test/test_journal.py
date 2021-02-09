@@ -45,7 +45,6 @@ class JournalAPITest(TestCase):
             'Generating a journal whose assignment hold no courses, does indeed generate no courses'
         assert Assignment.objects.filter(journal=journal).exists() and Assignment.objects.count() == a_count + 1, \
             'A single assignment is generated when generating a journal'
-        # QUESTION: Lars is het logisch dat hier all_objects nodig is?
         assert Journal.all_objects.count() == j_count + 1, 'A single journal is generated'
         assert AssignmentParticipation.objects.count() == ap_count + 1, 'Generating a journal generates a single AP'
         assert u_count + 2 == User.objects.count(), \
@@ -952,7 +951,8 @@ class JournalAPITest(TestCase):
             assert name in [student2.full_name, student3.full_name]
 
         qry_journal = Journal.all_objects.filter(pk=journal.pk).allowed_journals().annotate_needs_lti_link().get()
-        assert qry_journal.needs_lti_link == old_needs_lti_link
+        assert len(qry_journal.needs_lti_link) == len(old_needs_lti_link)
+        assert all(student in old_needs_lti_link for student in qry_journal.needs_lti_link)
 
         journal.assignment.active_lti_id = None
         journal.assignment.save()

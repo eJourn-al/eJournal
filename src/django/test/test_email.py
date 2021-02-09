@@ -288,7 +288,7 @@ class EmailAPITest(TestCase):
 
         # No notifaction is generated for the entry deadline, as it now has an entry
         journal_filled = factory.Journal(assignment=assignment, entries__n=0)
-        factory.PresetEntry(node__journal=journal_filled, node__preset=deadline_inside_notification_window)
+        factory.PresetEntry(node=journal_filled.node_set.get(preset=deadline_inside_notification_window))
         before_ns = list(Notification.objects.all().values_list('pk', flat=True))
         generated_ns = notifications.generate_upcoming_deadline_notifications()
         after_ns = Notification.objects.all().exclude(pk__in=before_ns)
@@ -298,7 +298,9 @@ class EmailAPITest(TestCase):
 
         journal_filled_and_graded_5 = factory.Journal(assignment=assignment)
         factory.PresetEntry(
-            node__journal=journal_filled_and_graded_5, grade__grade=5, node__preset=deadline_inside_notification_window)
+            node=journal_filled_and_graded_5.node_set.get(preset=deadline_inside_notification_window),
+            grade__grade=5,
+        )
         before_ns = list(Notification.objects.all().values_list('pk', flat=True))
         generated_ns = notifications.generate_upcoming_deadline_notifications()
         after_ns = Notification.objects.all().exclude(pk__in=before_ns)
@@ -306,8 +308,10 @@ class EmailAPITest(TestCase):
         assert after_ns.filter(node__preset=progres_inside_notifcation_window2).exists()
 
         journal_filled_and_graded_100 = factory.Journal(assignment=assignment)
-        factory.PresetEntry(node__journal=journal_filled_and_graded_100, grade__grade=100,
-                            node__preset=deadline_inside_notification_window)
+        factory.PresetEntry(
+            node=journal_filled_and_graded_100.node_set.get(preset=deadline_inside_notification_window),
+            grade__grade=100,
+        )
         before_ns = list(Notification.objects.all().values_list('pk', flat=True))
         generated_ns = notifications.generate_upcoming_deadline_notifications()
         after_ns = Notification.objects.all().exclude(pk__in=before_ns)

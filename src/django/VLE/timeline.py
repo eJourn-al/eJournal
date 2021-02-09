@@ -5,9 +5,8 @@ Useful timeline functions.
 """
 from django.utils import timezone
 
-from VLE.models import Entry, Node
+from VLE.models import Entry, Node, Template
 from VLE.serializers import EntrySerializer, FileSerializer, TemplateSerializer
-from VLE.utils import generic_utils as utils
 
 
 def get_nodes(journal, author=None):
@@ -19,11 +18,9 @@ def get_nodes(journal, author=None):
     """
     can_add = journal.can_add(author)
 
-    node_qry = utils.get_sorted_nodes(journal)
-    node_qry = node_qry.select_related(
+    node_qry = journal.get_sorted_nodes().select_related(
         'preset__forced_template',
-    )
-    node_qry = node_qry.prefetch_related(
+    ).prefetch_related(
         'preset__attached_files',
     )
 
@@ -114,7 +111,10 @@ def get_deadline(journal, node, user):
         'display_name': node.preset.display_name,
         # NOTE: 'template' duplicate serialization, Entry also serializes its template.
         # Is it needed to serialize the template, if an Entry is present?
-        'template': TemplateSerializer(node.preset.forced_template).data,
+        'template': TemplateSerializer(
+            TemplateSerializer.setup_eager_loading(Template.objects.filter(pk=node.preset.forced_template_id)).get(),
+            context={'user': user},
+        ).data,
         'attached_files': FileSerializer(node.preset.attached_files, many=True).data,
         'description': node.preset.description,
         'unlock_date': node.preset.unlock_date,

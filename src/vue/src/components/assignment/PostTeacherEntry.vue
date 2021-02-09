@@ -26,7 +26,10 @@
                 :searchable="true"
                 placeholder="Select A Template"
                 class="mt-2"
-                @select="teacherEntryContent = Object()"
+                @select="
+                    teacherEntryContent = Object()
+                    teacherEntryCategories = { categories: (selectedTemplate) ? selectedTemplate.categories : [] }
+                "
             />
         </template>
         <span
@@ -42,6 +45,14 @@
                 :edit="true"
                 class="mt-3"
             />
+
+            <entry-categories
+                :id="`teacher-entry-create-template-${selectedTemplate.id}`"
+                :create="true"
+                :entry="teacherEntryCategories"
+                :template="selectedTemplate"
+            />
+
             <hr/>
             <h2 class="theme-h2 field-heading">
                 Journals to add
@@ -173,16 +184,19 @@
 </template>
 
 <script>
+import EntryCategories from '@/components/category/EntryCategories.vue'
 import EntryFields from '@/components/entry/EntryFields.vue'
 import Tooltip from '@/components/assets/Tooltip.vue'
 
-import assignmentAPI from '@/api/assignment.js'
 import teacherEntryAPI from '@/api/teacherEntry.js'
+
+import { mapGetters } from 'vuex'
 
 export default {
     components: {
         EntryFields,
         Tooltip,
+        EntryCategories,
     },
     props: {
         aID: {
@@ -197,23 +211,24 @@ export default {
             selectedJournals: [],
             selectableJournals: [],
             selectedTemplate: null,
-            templates: null,
             showUsernameInput: false,
             usernameInput: null,
             sameGradeForAllEntries: true,
             grade: null,
             publishSameGrade: true,
             teacherEntryContent: Object(),
+            teacherEntryCategories: {},
             requestInFlight: false,
             title: null,
             showTitleInTimeline: true,
         }
     },
+    computed: {
+        ...mapGetters({
+            templates: 'template/assignmentTemplates',
+        }),
+    },
     created () {
-        assignmentAPI.getTemplates(this.aID)
-            .then((templates) => {
-                this.templates = templates
-            })
         this.assignmentJournals.forEach((journal) => {
             this.selectableJournals.push({
                 journal_id: journal.id,
@@ -271,6 +286,7 @@ export default {
                     assignment_id: this.$route.params.aID,
                     template_id: this.selectedTemplate.id,
                     content: this.teacherEntryContent,
+                    category_ids: this.teacherEntryCategories.categories.map(category => category.id),
                     journals: this.selectedJournals,
                 }, {
                     customSuccessToast: 'Teacher entry successfully posted.',

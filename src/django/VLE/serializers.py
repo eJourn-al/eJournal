@@ -58,6 +58,9 @@ class EagerLoadingMixin:
         if hasattr(cls, 'prefetch_related'):
             queryset = queryset.prefetch_related(*cls.prefetch_related)
 
+        if hasattr(cls, 'order_by'):
+            queryset = queryset.order_by(*cls.order_by)
+
         return queryset
 
 
@@ -120,17 +123,70 @@ class FileSerializer(serializers.ModelSerializer):
         return file.download_url(access_id=file.in_rich_text)
 
 
-class TemplateSerializer(serializers.ModelSerializer, EagerLoadingMixin):
+class TemplateConcreteFieldsSerializer(serializers.ModelSerializer):
     class Meta:
         model = VLE.models.Template
-        fields = ('id', 'name', 'preset_only', 'archived', 'field_set',)
+        fields = (
+            'id',
+            'name',
+            'format',
+            'preset_only',
+            'archived',
+        )
+        read_only_fields = fields
+
+
+class CategoryConcreteFieldsSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = VLE.models.Category
+        fields = (
+            'id',
+            'name',
+            'description',
+            'color',
+        )
+        read_only_fields = fields
+
+
+class CategorySerializer(serializers.ModelSerializer, EagerLoadingMixin):
+    class Meta:
+        model = VLE.models.Category
+        fields = (
+            *CategoryConcreteFieldsSerializer.Meta.fields,
+            'templates',
+        )
         read_only_fields = ()
 
     prefetch_related = [
+        Prefetch('templates', queryset=VLE.models.Template.objects.filter(archived=False)),
+    ]
+
+    templates = TemplateConcreteFieldsSerializer(many=True, read_only=True)
+
+
+class TemplateSerializer(serializers.ModelSerializer, EagerLoadingMixin):
+    class Meta:
+        model = VLE.models.Template
+        fields = (
+            *TemplateConcreteFieldsSerializer.Meta.fields,
+            'allow_custom_categories',
+            'field_set',
+            'categories',
+        )
+        read_only_fields = ()
+
+    select_related = [
+        'chain',
+    ]
+
+    prefetch_related = [
+        'categories',
         Prefetch('field_set', queryset=VLE.models.Field.objects.order_by('location')),
     ]
 
+    allow_custom_categories = serializers.BooleanField(source='chain.allow_custom_categories')
     field_set = FieldSerializer(many=True, read_only=True)
+    categories = CategoryConcreteFieldsSerializer(many=True, read_only=True)
 
 
 class UserSerializer(ExtendedModelSerializer):
@@ -342,6 +398,65 @@ class ParticipationSerializer(serializers.ModelSerializer, EagerLoadingMixin):
     groups = GroupSerializer(many=True)
 
 
+class PresetNodeSerializer(serializers.ModelSerializer, EagerLoadingMixin):
+    class Meta:
+        model = VLE.models.PresetNode
+        fields = (
+            'id',
+            'description',
+            'type',
+            'unlock_date',
+            'due_date',
+            'lock_date',
+            'target',
+            'template',
+            'attached_files',
+            'display_name',
+        )
+        read_only_fields = ('type',)
+
+    select_related = []
+
+    prefetch_related = [
+        Prefetch('forced_template', queryset=TemplateSerializer.setup_eager_loading(VLE.models.Template.objects.all())),
+        'attached_files',
+    ]
+
+    order_by = [
+        'due_date',
+    ]
+
+    unlock_date = serializers.SerializerMethodField()
+    due_date = serializers.SerializerMethodField()
+    lock_date = serializers.SerializerMethodField()
+    target = serializers.SerializerMethodField()
+    template = serializers.SerializerMethodField()
+    attached_files = FileSerializer(many=True, read_only=True)
+
+    def get_unlock_date(self, node):
+        if node.is_deadline and node.unlock_date is not None:
+            return node.unlock_date.strftime(settings.ALLOWED_DATETIME_FORMAT)
+        return None
+
+    def get_due_date(self, node):
+        return node.due_date.strftime(settings.ALLOWED_DATETIME_FORMAT)
+
+    def get_lock_date(self, node):
+        if node.is_deadline and node.lock_date is not None:
+            return node.lock_date.strftime(settings.ALLOWED_DATETIME_FORMAT)
+        return None
+
+    def get_target(self, node):
+        if node.is_progress:
+            return node.target
+        return None
+
+    def get_template(self, node):
+        if node.is_deadline:
+            return TemplateSerializer(node.forced_template, read_only=True, context=self.context).data
+        return None
+
+
 class AssignmentSerializer(ExtendedModelSerializer, EagerLoadingMixin):
     class Meta:
         model = VLE.models.Assignment
@@ -352,11 +467,11 @@ class AssignmentSerializer(ExtendedModelSerializer, EagerLoadingMixin):
             'stats',
             'course',
             'courses',
-            'course_count',
             'journals',
             'active_lti_course',
             'lti_courses',
             'has_teacher_entries',
+            'can_change_type',
             # Model fields
             'id',
             'name',
@@ -373,12 +488,27 @@ class AssignmentSerializer(ExtendedModelSerializer, EagerLoadingMixin):
             'can_lock_journal',
             # Not used / missing: active_lti_id, lti_id_set, assigned_groups, format
         )
-        read_only_fields = ()
+        read_only_fields = (
+            'active_lti_course',
+            'lti_id',
+        )
 
     select_related = []
 
     prefetch_related = [
         'courses',
+        Prefetch(
+            'format__presetnode_set',
+            queryset=PresetNodeSerializer.setup_eager_loading(
+                VLE.models.PresetNode.objects.order_by('due_date')
+            ),
+        ),
+        Prefetch(
+            'format__template_set',
+            queryset=TemplateSerializer.setup_eager_loading(
+                VLE.models.Template.objects.filter(archived=False).order_by('name')
+            ),
+        ),
     ]
 
     enforced_context = [
@@ -390,11 +520,11 @@ class AssignmentSerializer(ExtendedModelSerializer, EagerLoadingMixin):
     stats = serializers.SerializerMethodField()
     course = serializers.SerializerMethodField()
     courses = serializers.SerializerMethodField()
-    course_count = serializers.SerializerMethodField()
     journals = serializers.SerializerMethodField()
     active_lti_course = serializers.SerializerMethodField()
     lti_courses = serializers.SerializerMethodField()
     has_teacher_entries = serializers.SerializerMethodField()
+    can_change_type = serializers.SerializerMethodField()
 
     def __init__(self, *args, **kwargs):
         super(AssignmentSerializer, self).__init__(*args, **kwargs)
@@ -559,51 +689,13 @@ class AssignmentSerializer(ExtendedModelSerializer, EagerLoadingMixin):
             return {c.pk: c.name for c in courses}
         return None
 
-    def get_course_count(self, assignment):
-        return assignment.courses.count()
-
     def get_has_teacher_entries(self, assignment):
         if self.permission_from_context('can_post_teacher_entries', assignment):
             return assignment.teacherentry_set.exists()
         return False
 
-
-class AssignmentFormatSerializer(AssignmentSerializer):
-    lti_count = serializers.SerializerMethodField()
-    can_change_type = serializers.SerializerMethodField()
-    assigned_groups = serializers.SerializerMethodField()
-    all_groups = serializers.SerializerMethodField()
-    templates = serializers.SerializerMethodField()
-
-    class Meta:
-        model = VLE.models.Assignment
-        fields = ('id', 'name', 'description', 'points_possible', 'unlock_date', 'due_date', 'lock_date',
-                  'is_published', 'course_count', 'lti_count', 'active_lti_course', 'is_group_assignment',
-                  'can_set_journal_name', 'can_set_journal_image', 'can_lock_journal', 'can_change_type',
-                  'remove_grade_upon_leaving_group', 'assigned_groups', 'all_groups', 'templates')
-        read_only_fields = ()
-
-    def get_assigned_groups(self, assignment):
-        if self.context.get('course', None):
-            return GroupSerializer(assignment.assigned_groups.filter(course=self.context['course']), many=True).data
-        return GroupSerializer(assignment.assigned_groups, many=True).data
-
-    def get_all_groups(self, assignment):
-        if self.context.get('course', None):
-            return GroupSerializer(VLE.models.Group.objects.filter(course=self.context['course']), many=True).data
-        return GroupSerializer(VLE.models.Group.objects.filter(course__in=assignment.courses.all()), many=True).data
-
-    def get_lti_count(self, assignment):
-        if 'user' in self.context and self.context['user'] and \
-           self.context['user'].has_permission('can_edit_assignment', assignment):
-            return len(assignment.lti_id_set)
-        return None
-
     def get_can_change_type(self, assignment):
         return not assignment.has_entries()
-
-    def get_templates(self, assignment):
-        return list(assignment.format.template_set.values('id', 'name'))
 
 
 class SmallAssignmentSerializer(AssignmentSerializer):
@@ -613,6 +705,12 @@ class SmallAssignmentSerializer(AssignmentSerializer):
             'id', 'name', 'is_group_assignment', 'is_published', 'points_possible', 'unlock_date', 'due_date',
             'lock_date', 'deadline', 'journal', 'stats', 'course', 'courses', 'active_lti_course')
         read_only_fields = fields
+
+    select_related = []
+
+    prefetch_related = [
+        'courses',
+    ]
 
 
 class CommentSerializer(serializers.ModelSerializer, EagerLoadingMixin):
@@ -752,88 +850,6 @@ class JournalSerializer(serializers.ModelSerializer):
         return journal.needs_lti_link
 
 
-class PresetNodeSerializer(serializers.ModelSerializer, EagerLoadingMixin):
-    class Meta:
-        model = VLE.models.PresetNode
-        fields = (
-            'id',
-            'description',
-            'display_name',
-            'type',
-            'unlock_date',
-            'due_date',
-            'lock_date',
-            'target',
-            'template',
-            'attached_files',
-        )
-        read_only_fields = ('type',)
-
-    select_related = [
-        'forced_template',
-    ]
-
-    prefetch_related = [
-        Prefetch('forced_template__field_set', queryset=VLE.models.Field.objects.order_by('location')),
-        'attached_files',
-    ]
-
-    unlock_date = serializers.SerializerMethodField()
-    due_date = serializers.SerializerMethodField()
-    lock_date = serializers.SerializerMethodField()
-    target = serializers.SerializerMethodField()
-    template = serializers.SerializerMethodField()
-    attached_files = FileSerializer(many=True, read_only=True)
-
-    def get_unlock_date(self, node):
-        if node.is_deadline and node.unlock_date is not None:
-            return node.unlock_date.strftime(settings.ALLOWED_DATETIME_FORMAT)
-        return None
-
-    def get_due_date(self, node):
-        return node.due_date.strftime(settings.ALLOWED_DATETIME_FORMAT)
-
-    def get_lock_date(self, node):
-        if node.is_deadline and node.lock_date is not None:
-            return node.lock_date.strftime(settings.ALLOWED_DATETIME_FORMAT)
-        return None
-
-    def get_target(self, node):
-        if node.is_progress:
-            return node.target
-        return None
-
-    def get_template(self, node):
-        if node.is_deadline:
-            return TemplateSerializer(node.forced_template, read_only=True, context=self.context).data
-        return None
-
-
-class FormatSerializer(serializers.ModelSerializer, EagerLoadingMixin):
-    class Meta:
-        model = VLE.models.Format
-        fields = ('id', 'templates', 'presets',)
-        read_only_fields = ()
-
-    presets = PresetNodeSerializer(many=True, source='presetnode_set', read_only=True)
-    templates = TemplateSerializer(many=True, source='template_set', read_only=True)
-
-    prefetch_related = [
-        Prefetch(
-            'presetnode_set',
-            queryset=PresetNodeSerializer.setup_eager_loading(
-                VLE.models.PresetNode.objects.order_by('due_date')
-            )
-        ),
-        Prefetch(
-            'template_set',
-            queryset=TemplateSerializer.setup_eager_loading(
-                VLE.models.Template.objects.filter(archived=False).order_by('name')
-            )
-        ),
-    ]
-
-
 # Would massively benefit from top down serialization (many=True)
 class EntrySerializer(serializers.ModelSerializer, EagerLoadingMixin):
     class Meta:
@@ -851,6 +867,7 @@ class EntrySerializer(serializers.ModelSerializer, EagerLoadingMixin):
             'author',
             'last_edited_by',
             'jir',
+            'categories',
         )
         read_only_fields = (
             'creation_date',
@@ -859,6 +876,7 @@ class EntrySerializer(serializers.ModelSerializer, EagerLoadingMixin):
     select_related = [
         'author',
         'template',
+        'template__chain',
         'last_edited_by',
         'teacher_entry',
         'grade',
@@ -874,11 +892,14 @@ class EntrySerializer(serializers.ModelSerializer, EagerLoadingMixin):
         'content_set',
         'content_set__field',
         'content_set__filecontext_set',
+        'categories',
+        Prefetch('template', queryset=TemplateSerializer.setup_eager_loading(VLE.models.Template.objects.all())),
         # NOTE: Too uncommon, not worth the additional prefetch.
         # 'jir__source__assignment__courses',
     ]
 
     template = TemplateSerializer(read_only=True)
+    categories = CategoryConcreteFieldsSerializer(read_only=True, many=True)
     editable = serializers.BooleanField(read_only=True, source='is_editable')
     author = serializers.CharField(source='author.full_name', default=VLE.models.User.UNKNOWN_STR)
     last_edited_by = serializers.CharField(source='last_edited_by.full_name', default=VLE.models.User.UNKNOWN_STR)
@@ -1019,10 +1040,18 @@ class GradeHistorySerializer(serializers.ModelSerializer, EagerLoadingMixin):
 class TeacherEntrySerializer(EntrySerializer):
     class Meta:
         model = VLE.models.TeacherEntry
-        fields = ('id', 'title', 'template', 'content', 'journals')
+        fields = (
+            'id',
+            'title',
+            'template',
+            'content',
+            'journals',
+            'categories',
+        )
         read_only_fields = fields
 
     journals = TeacherEntryGradeSerializer(many=True, read_only=True, source='entry_set')
+    categories = CategoryConcreteFieldsSerializer(many=True, read_only=True)
     # This is to overwrite the EntrySerializer serializedmethod title field, and use the db variable instead
     title = None
 
@@ -1040,6 +1069,12 @@ class TeacherEntrySerializer(EntrySerializer):
                 .annotate_teacher_entry_grade_serializer_fields()
                 .order_by('name')
             )
+        )
+
+        # Fetch everthing the TemplateSerializer requires
+        queryset = queryset.select_related(
+            'template',
+            'template__chain',
         )
 
         return queryset

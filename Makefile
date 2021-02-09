@@ -143,6 +143,7 @@ git-set-custom-hooks-path:
 	git config core.hooksPath .githooks
 
 git-update-submodules:
+	git submodule init
 	git submodule update --remote --merge
 
 output-webpack-config:

@@ -170,7 +170,11 @@
                     <h2 class="theme-h2 multi-form">
                         Manage existing teacher entries
                     </h2>
-                    <b>Note:</b> Changes will not be saved until you click 'save' at the bottom of this window!
+                    <b>Note:</b>
+                    <ul>
+                        <li>Changes will not be saved until you click 'save' at the bottom of this window!</li>
+                        <li>Categories are synchronised with any changes made to the teacher entry.</li>
+                    </ul>
 
                     <hr/>
                     <teacher-entries
@@ -622,7 +626,7 @@ export default {
         },
         handleEdit () {
             this.$router.push({
-                name: 'FormatEdit',
+                name: 'AssignmentEditor',
                 params: {
                     cID: this.cID,
                     aID: this.aID,

@@ -296,3 +296,44 @@ class RichTextPresetNodeDescriptionFileContextFactory(RichTextFileContextFactory
             })
             preset.description = _none_to_str(preset.description) + _fc_to_rt_img_element(self)
             preset.save()
+
+
+class AttachedPresetNodeFileContextFactory(RichTextPresetNodeDescriptionFileContextFactory):
+    """
+    Yields a FC which is attached to a preset node by default.
+    """
+    in_rich_text = False
+    # Order matters, cannot inherit the FileContextFactory file property, the author would be set after.
+    file = factory.django.FileField()
+
+    @factory.post_generation
+    def preset(self, create, extracted, **kwargs):
+        if not create:
+            return
+
+        if isinstance(extracted, PresetNode):
+            if extracted.format.assignment != self.assignment:
+                raise ValidationError('Provided presetnode is not part of the set assignment.')
+
+            extracted.attached_files.add(self)
+        else:
+            preset = test.factory.ProgressPresetNode(**{
+                'forced_template': self.assignment.format.template_set.first(),
+                **kwargs,
+                'format': self.assignment.format,
+            })
+            preset.attached_files.add(self)
+
+
+class RichTextCategoryDescriptionFileContextFactory(RichTextFileContextFactory):
+    """Generates a RT file embedded in the description of a category."""
+    category = factory.SubFactory('test.factory.category.CategoryFactory')
+    author = factory.SelfAttribute('category.author')
+
+    @factory.post_generation
+    def update_category_description(self, create, extracted):
+        if not create:
+            return
+
+        self.category.description = _none_to_str(self.category.description) + _fc_to_rt_img_element(self)
+        self.category.save()

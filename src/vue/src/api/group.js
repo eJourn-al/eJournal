@@ -25,6 +25,11 @@ export default {
             .then(response => response.data.groups)
     },
 
+    getAssignedGroups (cID, aID, connArgs = auth.DEFAULT_CONN_ARGS) {
+        return auth.get('groups/assigned_groups', { course_id: cID, assignment_id: aID }, connArgs)
+            .then(response => response.data.assigned_groups)
+    },
+
     getDataNose (cID, connArgs = auth.DEFAULT_CONN_ARGS) {
         return auth.get('groups/datanose', { course_id: cID }, connArgs)
             .then(response => response.data.groups)
