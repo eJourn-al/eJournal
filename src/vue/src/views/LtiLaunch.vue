@@ -333,7 +333,7 @@ export default {
                     } else {
                         /* A new assignment has been created, yet to be configured. */
                         this.$router.push({
-                            name: 'FormatEdit',
+                            name: 'AssignmentEditor',
                             params: {
                                 cID: this.page.cID,
                                 aID: this.page.aID,

@@ -1,7 +1,7 @@
 -r base.txt
 
 coverage==5.0.3 # Tests
-Faker==2.0.2 # Tests
+Faker==5.8.0 # Tests
 flake8==3.7.8 # Tests
 flake8-functions==0.0.4 # Linter, max function length and argument number
 mccabe==0.6.1 # Tests, plugin for flake8
@@ -17,6 +17,7 @@ py==1.8.0 # Pytest
 pytest==5.2.0 # Testing library
 pytest-cov==2.7.1 # Pytest
 pytest-django==3.5.1 # Pytest
+pytest-split==0.1.5 # Pytest with GitHub Actions speedup locally used to store test durations
 pytest-xdist==1.30.0 # Run Pytest in parallel
 django-silk==4.0.1 # Profiling / Optimisation
 deepdiff==5.0.2 # Testing deep difference of dictionary and list combinations

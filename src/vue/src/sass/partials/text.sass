@@ -66,3 +66,21 @@ $font-family-sans-serif: 'Roboto', sans-serif
     &.required::after
         content: " *"
         color: $theme-red
+
+.form-group
+    margin-bottom: 10px
+    &:last-child
+        margin-bottom: 0px
+    legend
+        @extend .field-heading
+        font-weight: bold
+        padding: 0px
+
+    &.required
+        legend::after
+            content: " *"
+            color: $theme-red
+
+.no-optional-content-value
+    color: $theme-dark-grey
+    font-style: italic

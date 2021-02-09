@@ -4,10 +4,13 @@ assignment.py.
 In this file are all the assignment api requests.
 """
 import csv
+from datetime import datetime
 
 import chardet
 from dateutil.relativedelta import relativedelta
 from django.conf import settings
+from django.core.exceptions import ValidationError
+from django.db import transaction
 from django.db.models import Q
 from django.utils import timezone
 from rest_framework import viewsets
@@ -18,11 +21,11 @@ import VLE.utils.generic_utils as utils
 import VLE.utils.import_utils as import_utils
 import VLE.utils.responses as response
 import VLE.validators as validators
-from VLE.models import Assignment, Course, Journal, PresetNode, Template, User
-from VLE.serializers import (AssignmentSerializer, CourseSerializer, SmallAssignmentSerializer, TeacherEntrySerializer,
-                             TemplateSerializer)
+from VLE.models import Assignment, Course, Group, Journal, PresetNode, Template, User
+from VLE.serializers import AssignmentSerializer, CourseSerializer, SmallAssignmentSerializer, TeacherEntrySerializer
 from VLE.utils import file_handling, grading
 from VLE.utils.error_handling import VLEMissingRequiredKey, VLEParamWrongType
+from VLE.utils.file_handling import copy_assignment_related_rt_files
 
 
 def day_neutral_datetime_increment(date, months=0):
@@ -37,6 +40,40 @@ def set_assignment_dates(assignment, months=0):
         assignment.due_date = day_neutral_datetime_increment(assignment.due_date, months)
     if assignment.lock_date:
         assignment.lock_date = day_neutral_datetime_increment(assignment.lock_date, months)
+
+
+def handle_assigned_groups_update(request, assignment, assigned_groups):
+    """
+    Updates an assignment's assigned groups based on the provided id list from the perspective of the provided
+    course. Only groups associated with that course are added or removed.
+
+    Args:
+        request: Unvalidated request data
+        assignment (:model:`VLE.assignment`): The assignment whose m2m field 'assigned_groups' should be updated.
+        assigned_groups [{group data}]:
+    """
+    course_id, = utils.required_typed_params(request.data, (int, 'course_id'))
+
+    if not Course.objects.filter(pk=course_id, assignment=assignment).exists():
+        raise ValidationError('Provided course id is unrelated to the assignment')
+
+    requested_group_ids = [group['id'] for group in assigned_groups]
+
+    db_group_ids = set(assignment.assigned_groups.values_list('pk', flat=True))
+    db_assignment_course_group_ids = set(
+        assignment.assigned_groups.filter(course_id=course_id).values_list('pk', flat=True))
+
+    # Ensure the requested group ids are part of the provided course
+    req_course_group_ids = set(Group.objects.filter(
+        course_id=course_id, pk__in=requested_group_ids).values_list('pk', flat=True))
+
+    group_ids_to_add = req_course_group_ids - db_assignment_course_group_ids
+    group_ids_to_remove = db_assignment_course_group_ids - req_course_group_ids
+    assigned_groups = (db_group_ids - group_ids_to_remove) | group_ids_to_add
+
+    # Only update the DB if there is an actual difference
+    if db_group_ids != assigned_groups:
+        assignment.assigned_groups.set(assigned_groups)
 
 
 class AssignmentView(viewsets.ViewSet):
@@ -111,25 +148,48 @@ class AssignmentView(viewsets.ViewSet):
 
         """
         name, description, course_id = utils.required_typed_params(
-            request.data, (str, 'name'), (str, 'description'), (int, 'course_id'))
+            request.data,
+            (str, 'name'),
+            (str, 'description'),
+            (int, 'course_id'),
+        )
         unlock_date, due_date, lock_date, lti_id, is_published, points_possible, is_group_assignment, \
             can_set_journal_name, can_set_journal_image, can_lock_journal, remove_grade_upon_leaving_group = \
             utils.optional_typed_params(
-                request.data, (str, 'unlock_date'), (str, 'due_date'), (str, 'lock_date'), (str, 'lti_id'),
-                (bool, 'is_published'), (float, 'points_possible'), (bool, 'is_group_assignment'),
-                (bool, 'can_set_journal_name'), (bool, 'can_set_journal_image'), (bool, 'can_lock_journal'),
-                (bool, 'remove_grade_upon_leaving_group'))
+                request.data,
+                (datetime, 'unlock_date'),
+                (datetime, 'due_date'),
+                (datetime, 'lock_date'),
+                (str, 'lti_id'),
+                (bool, 'is_published'),
+                (float, 'points_possible'),
+                (bool, 'is_group_assignment'),
+                (bool, 'can_set_journal_name'),
+                (bool, 'can_set_journal_image'),
+                (bool, 'can_lock_journal'),
+                (bool, 'remove_grade_upon_leaving_group')
+            )
         course = Course.objects.get(pk=course_id)
 
         request.user.check_permission('can_add_assignment', course)
 
         assignment = factory.make_assignment(
-            name, description, courses=[course], author=request.user, active_lti_id=lti_id,
-            points_possible=points_possible, unlock_date=unlock_date, due_date=due_date,
-            lock_date=lock_date, is_published=is_published, is_group_assignment=is_group_assignment or False,
-            can_set_journal_name=can_set_journal_name or False, can_set_journal_image=can_set_journal_image or False,
+            name,
+            description,
+            courses=[course],
+            author=request.user,
+            active_lti_id=lti_id,
+            points_possible=points_possible,
+            unlock_date=unlock_date,
+            due_date=due_date,
+            lock_date=lock_date,
+            is_published=is_published or False,
+            is_group_assignment=is_group_assignment or False,
+            can_set_journal_name=can_set_journal_name or False,
+            can_set_journal_image=can_set_journal_image or False,
             can_lock_journal=can_lock_journal or False,
-            remove_grade_upon_leaving_group=remove_grade_upon_leaving_group or False)
+            remove_grade_upon_leaving_group=remove_grade_upon_leaving_group or False,
+        )
 
         # Add new lti id to assignment
         if lti_id is not None:
@@ -178,67 +238,47 @@ class AssignmentView(viewsets.ViewSet):
 
         serializer = AssignmentSerializer(
             AssignmentSerializer.setup_eager_loading(Assignment.objects.filter(pk=assignment.pk)).get(),
-            context={'user': request.user, 'course': course,
-                     'serialize_journals': request.user.has_permission('can_grade', assignment)}
+            context={
+                'user': request.user,
+                'course': course,
+                'serialize_journals': request.user.has_permission('can_grade', assignment),
+            },
         )
         return response.success({'assignment': serializer.data})
 
-    def partial_update(self, request, *args, **kwargs):
-        """Update an existing assignment.
+    @transaction.atomic
+    def partial_update(self, request, pk):
+        active_lti_course, lti_id = utils.optional_typed_params(
+            request.data,
+            (int, 'active_lti_course'),
+            (int, 'lti_id')
+        )
+        assigned_groups, = utils.optional_params(request.data, 'assigned_groups')
 
-        Arguments:
-        request -- request data
-            data -- the new data for the assignment
-        pk -- assignment ID
-
-        Returns:
-        On failure:
-            unauthorized -- when the user is not logged in
-            not found -- when the assignment does not exist
-            forbidden -- User not allowed to edit this assignment
-            unauthorized -- when the user is unauthorized to edit the assignment
-            bad_request -- when there is invalid data in the request
-        On success:
-            success -- with the new assignment data
-
-        """
-        pk, = utils.required_typed_params(kwargs, (int, 'pk'))
         assignment = AssignmentSerializer.setup_eager_loading(Assignment.objects.filter(pk=pk)).get()
         course = None
 
         request.user.check_permission('can_edit_assignment', assignment)
 
-        # Remove data that must not be changed by the serializer
-        req_data = request.data
-        if not (request.user.is_superuser or request.user == assignment.author):
-            req_data.pop('author', None)
+        if assigned_groups is not None:
+            handle_assigned_groups_update(request, assignment, assigned_groups)
 
-        is_published, can_set_journal_name, can_set_journal_image, can_lock_journal = \
-            utils.optional_typed_params(
-                request.data, (bool, 'is_published'),
-                (bool, 'can_set_journal_name'), (bool, 'can_set_journal_image'), (bool, 'can_lock_journal'))
-
-        # Set active lti course
-        active_lti_course, = utils.optional_typed_params(request.data, (int, 'active_lti_course'))
         if active_lti_course is not None:
             assignment.set_active_lti_course(Course.objects.get(pk=active_lti_course))
-            request.data.pop('active_lti_course')
 
-        # Add new lti id to assignment
-        lti_id, = utils.optional_typed_params(request.data, (str, 'lti_id'))
         if lti_id is not None:
             course_id, = utils.required_typed_params(request.data, (int, 'course_id'))
             course = Course.objects.get(pk=course_id)
             request.user.check_permission('can_add_assignment', course)
             assignment.add_lti_id(lti_id, course)
-            request.data.pop('lti_id')
 
-        # Update the other data
         serializer = AssignmentSerializer(
-            assignment, data=req_data, context={'user': request.user, 'course': course}, partial=True)
+            assignment, data=request.data, context={'user': request.user, 'course': course}, partial=True)
         if not serializer.is_valid():
-            return response.bad_request()
+            return response.bad_request('One or more assignment fields contains invalid data.')
         serializer.save()
+
+        file_handling.establish_rich_text(author=request.user, rich_text=assignment.description, assignment=assignment)
 
         return response.success({'assignment': serializer.data})
 
@@ -447,7 +487,8 @@ class AssignmentView(viewsets.ViewSet):
         """
         course_id, months_offset = utils.required_typed_params(request.data, (int, 'course_id'), (int, 'months_offset'))
         course = Course.objects.get(pk=course_id)
-        assignment_source = Assignment.objects.get(pk=pk)
+        assignment_source_id = pk
+        assignment_source = Assignment.objects.get(pk=assignment_source_id)
 
         request.user.check_permission('can_add_assignment', course)
         request.user.check_permission('can_edit_assignment', assignment_source)
@@ -469,22 +510,45 @@ class AssignmentView(viewsets.ViewSet):
         assignment.format = format
         assignment.save()
 
+        assignment_source = Assignment.objects.get(pk=assignment_source_id)
+
         # Many to many field requires manual update, only set the course we are importing into
         assignment.courses.set([])
         assignment.add_course(course)
+        # Requires assignment with accurate pk
+        assignment.description = copy_assignment_related_rt_files(
+            assignment.description, request.user, assignment=assignment)
         assignment.save()
 
         template_dict = {}
 
         for template in Template.objects.filter(format=source_format_id, archived=False):
             source_template_id = template.pk
-            import_utils.import_template(template, assignment)
+            import_utils.import_template(template, assignment, request.user)
             template_dict[source_template_id] = template.pk
 
+        source_target_categories_zip = import_utils.bulk_import_assignment_categories(
+            source_assignment=assignment_source,
+            target_assignment=assignment,
+            author=request.user,
+        )
+
+        # Link the new categories to the newly created templates, similar to the source assignment
+        for source_category, target_category in source_target_categories_zip:
+            source_templates = [
+                template_dict[source_category_id]
+                for source_category_id in source_category.templates.values_list('pk', flat=True)
+            ]
+            target_category.templates.set(source_templates)
+
         journals = assignment.journal_set.all()
-        for preset in PresetNode.objects.filter(format=source_format_id):
+        for preset in PresetNode.objects.filter(format=source_format_id).prefetch_related('attached_files'):
+            old_attached_files = preset.attached_files.all()
+
             preset.pk = None
             preset.format = format
+            preset.description = copy_assignment_related_rt_files(
+                preset.description, request.user, assignment=assignment)
             preset.due_date = day_neutral_datetime_increment(preset.due_date, months_offset)
             if preset.unlock_date:
                 preset.unlock_date = day_neutral_datetime_increment(preset.unlock_date, months_offset)
@@ -492,7 +556,10 @@ class AssignmentView(viewsets.ViewSet):
                 preset.lock_date = day_neutral_datetime_increment(preset.lock_date, months_offset)
             if preset.forced_template:
                 preset.forced_template = Template.objects.get(pk=template_dict[preset.forced_template.pk])
+
             preset.save()
+            import_utils.copy_preset_node_attached_files(preset, old_attached_files, request.user, assignment)
+
             for journal in journals:
                 factory.make_node(journal, None, preset.type, preset)
 
@@ -527,22 +594,6 @@ class AssignmentView(viewsets.ViewSet):
                 })
 
         return response.success({'participants': participants_without_journal})
-
-    @action(methods=['get'], detail=True)
-    def templates(self, request, pk):
-        """Get all templates (unlimited and preset-only) for an assignment.
-
-        Returns a list of templates."""
-        assignment = Assignment.objects.get(pk=pk)
-
-        if not (request.user.has_permission('can_post_teacher_entries', assignment) or
-                request.user.has_permission('can_edit_assignment', assignment)):
-            return response.forbidden('You are not allowed to view all templates for this assignment.')
-
-        qry = assignment.format.template_set.filter(archived=False).order_by('name')
-        return response.success({
-            'templates': TemplateSerializer(TemplateSerializer.setup_eager_loading(qry), many=True).data
-        })
 
     @action(methods=['get'], detail=True)
     def teacher_entries(self, request, pk):

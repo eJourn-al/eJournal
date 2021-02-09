@@ -3,10 +3,19 @@
         :class="$root.getBorderClass($route.params.cID)"
         class="no-hover"
     >
-        <h2 class="theme-h2">
-            End of assignment
-        </h2>
-        <hr class="full-width"/>
+        <b-row
+            no-gutters
+            class="multi-form"
+        >
+            <span class="theme-h2">
+                End of assignment
+            </span>
+
+            <slot name="edit-button"/>
+        </b-row>
+
+        <hr/>
+
         <span
             v-if="assignment.due_date"
             class="text-grey"

@@ -8,10 +8,32 @@ from rest_framework import viewsets
 
 import VLE.utils.generic_utils as utils
 import VLE.utils.responses as response
-from VLE.models import Assignment, Entry, Grade, Journal, Node, TeacherEntry, Template
+from VLE.models import Assignment, Entry, EntryCategoryLink, Grade, Journal, Node, TeacherEntry, Template
 from VLE.serializers import TeacherEntrySerializer
 from VLE.utils import entry_utils, grading
 from VLE.utils.error_handling import VLEBadRequest
+
+
+def _update_categories_of_existing_entries(entries, author, new_category_ids, existing_category_ids):
+    """
+    Keeps the categories of all existing entries synced with those set on the teacher entry.
+
+    Does not touch the category links of entries which already belong to the desired categories
+
+    Args:
+        entries (:model:`VLE.entry`): List of entries associated with a teacher entry which should be updated.
+        author (:model:`VLE.author`): Author of the teacher entry edit.
+        new_category_ids ([int]): List of category ids which should now belong to the entry.
+        existing_category_ids ([int]): List of category ids which currently belong to the entry.
+    """
+    EntryCategoryLink.objects.filter(entry__in=entries).exclude(category_id__in=new_category_ids).delete()
+    new_entry_category_links = []
+    for new_category_id in new_category_ids:
+        new_entry_category_links += [
+            EntryCategoryLink(entry=entry, category_id=new_category_id, author=author)
+            for entry in entries.exclude(categories__pk=new_category_id)
+        ]
+    EntryCategoryLink.objects.bulk_create(new_entry_category_links)
 
 
 class TeacherEntryView(viewsets.ViewSet):
@@ -38,6 +60,7 @@ class TeacherEntryView(viewsets.ViewSet):
             journal_ids -- the journal ids of all journals to which the entry should be added
             grades -- dict of grades with journal id as keys
             publish_grade -- dict of grade publish state with journal id as keys
+            category_ids -- list of category ids that should be linked to the entries
         """
         title, show_title_in_timeline, assignment_id, template_id, content_dict, journals = utils.required_params(
             request.data,
@@ -46,8 +69,9 @@ class TeacherEntryView(viewsets.ViewSet):
             'assignment_id',
             'template_id',
             'content',
-            'journals'
+            'journals',
         )
+        category_ids, = utils.required_typed_params(request.data, (int, 'category_ids'))
 
         assignment = Assignment.objects.get(pk=assignment_id)
         request.user.check_permission('can_post_teacher_entries', assignment)
@@ -59,6 +83,7 @@ class TeacherEntryView(viewsets.ViewSet):
         template = Template.objects.get(pk=template_id)
 
         entry_utils.check_fields(template, content_dict)
+        category_ids = Entry.validate_categories(category_ids, assignment)
 
         teacher_entry = TeacherEntry.objects.create(
             title=title,
@@ -68,8 +93,10 @@ class TeacherEntryView(viewsets.ViewSet):
             author=request.user,
             last_edited_by=request.user
         )
+        teacher_entry.set_categories(category_ids, request.user)
+
         entry_utils.create_entry_content(content_dict, teacher_entry, request.user)
-        self._create_new_entries(teacher_entry, journals, request.user)
+        self._create_new_entries(teacher_entry, journals, category_ids, request.user)
 
         return response.created({
             'teacher_entry': TeacherEntrySerializer(
@@ -94,9 +121,9 @@ class TeacherEntryView(viewsets.ViewSet):
         that journal).
         """
         journals, = utils.required_params(request.data, 'journals')
-        title, = utils.required_typed_params(request.data, (str, 'title'))
+        title, category_ids = utils.required_typed_params(request.data, (str, 'title'), (int, 'category_ids'))
 
-        teacher_entry = TeacherEntry.objects.get(pk=pk)
+        teacher_entry = TeacherEntry.objects.select_related('assignment').get(pk=pk)
 
         request.user.check_permission('can_post_teacher_entries', teacher_entry.assignment)
         request.user.check_permission('can_grade', teacher_entry.assignment)
@@ -104,6 +131,9 @@ class TeacherEntryView(viewsets.ViewSet):
 
         if title is None or len(title) == 0:
             return response.bad_request('Title cannot be empty.')
+
+        category_ids = Entry.validate_categories(category_ids, teacher_entry.assignment)
+        existing_category_ids = set(teacher_entry.categories.values_list('pk', flat=True))
 
         journals = self._check_teacher_entry_content(journals, teacher_entry.assignment, teacher_entry=teacher_entry)
 
@@ -124,12 +154,20 @@ class TeacherEntryView(viewsets.ViewSet):
             elif journal['grade'] is not None:
                 existing_journals.append(journal)
 
-        self._create_new_entries(teacher_entry, new_journals, request.user)
-        self._update_existing_entries(teacher_entry, existing_journals, request.user)
+        self._create_new_entries(teacher_entry, new_journals, category_ids, request.user)
+        self._update_existing_entries(
+            teacher_entry=teacher_entry,
+            journals_data=existing_journals,
+            new_category_ids=category_ids,
+            existing_category_ids=existing_category_ids,
+            author=request.user,
+        )
 
         if teacher_entry.title != title:
             teacher_entry.title = title
             teacher_entry.save()
+        if category_ids != existing_category_ids:
+            teacher_entry.set_categories(category_ids, request.user)
 
         return response.success({
             'teacher_entry': TeacherEntrySerializer(
@@ -158,7 +196,7 @@ class TeacherEntryView(viewsets.ViewSet):
 
         return response.success(description='Successfully deleted teacher entry.')
 
-    def _create_new_entries(self, teacher_entry, journals_data, author):
+    def _create_new_entries(self, teacher_entry, journals_data, category_ids, author):
         """Copies a teacher entry to journals."""
         journals = Journal.objects.filter(pk__in=map(lambda j: j['journal_id'], journals_data)).order_by('pk')
 
@@ -173,6 +211,13 @@ class TeacherEntryView(viewsets.ViewSet):
             for _ in range(len(journals))
         ]
         entries = Entry.objects.bulk_create(entries)
+
+        entry_category_links = [
+            EntryCategoryLink(entry=entry, category_id=category_id, author=author)
+            for category_id in category_ids
+            for entry in entries
+        ]
+        EntryCategoryLink.objects.bulk_create(entry_category_links)
 
         nodes, grades = [], []
         journals = list(journals)
@@ -206,7 +251,7 @@ class TeacherEntryView(viewsets.ViewSet):
 
         grading.task_bulk_send_journal_status_to_LMS.delay([journal.pk for journal in journals])
 
-    def _update_existing_entries(self, teacher_entry, journals_data, author):
+    def _update_existing_entries(self, teacher_entry, journals_data, new_category_ids, existing_category_ids, author):
         """
         Updates grades of existing entries.
         Only provided journals of which the grade actually changed (is not None).
@@ -215,8 +260,8 @@ class TeacherEntryView(viewsets.ViewSet):
         journal_pks = list(journals_data_dict.keys())
         entries = Entry.objects.filter(teacher_entry=teacher_entry, node__journal__in=journal_pks) \
             .select_related('grade', 'node__journal')
-        grades = []
 
+        grades = []
         for entry in entries:
             if (
                 not entry.grade or
@@ -230,8 +275,9 @@ class TeacherEntryView(viewsets.ViewSet):
                     entry=entry,
                 )
                 grades.append(grade)
-
         Grade.objects.bulk_create(grades)
+
+        _update_categories_of_existing_entries(entries, author, new_category_ids, existing_category_ids)
 
         # Set the grade field of the updated entries to the newly created grades.
         entries = list(

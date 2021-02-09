@@ -755,6 +755,14 @@ class LtiLaunchTest(TestCase):
         assert set(journal.groups) == set(Group.objects.filter(lti_id__in=groups).values_list('pk', flat=True)), \
             'Journal groups should also be updated'
 
+        course.active_lti_id = '6068'
+        course.save()
+        lti.update_lti_course_if_exists({
+            'custom_course_id': course.active_lti_id,
+            'custom_section_id': '12489,12492',
+        }, user=student, role=settings.ROLES['Teacher'][0])
+        assert Group.objects.filter(name='Cohort 2017').exists()
+
     def test_select_journal(self):
         """Hopefully select a journal."""
         selected_journal = lti.select_create_journal(

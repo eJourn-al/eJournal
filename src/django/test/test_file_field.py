@@ -2,6 +2,7 @@ import test.factory as factory
 from test.utils import api
 
 from django.core.files.uploadedfile import SimpleUploadedFile
+from django.db.models import Max
 from django.test import TestCase
 
 from VLE.models import Field
@@ -30,11 +31,13 @@ class FileFieldTest(TestCase):
         self.txt = SimpleUploadedFile('file.txt', b'text_content', content_type='text/plain')
 
     def test_template_save(self):
+        max_loc = self.template.field_set.all().aggregate(Max('location'))['location__max']
+
         txt_field = Field.objects.create(
-            type=Field.FILE, options=' txt,pdf,  doc  ', template=self.template, location=9, required=False)
+            type=Field.FILE, options=' txt,pdf,  doc  ', template=self.template, location=max_loc + 1, required=False)
         assert txt_field.options == 'txt, pdf, doc'
 
-        all_field = Field.objects.create(type=Field.FILE, template=self.template, location=10, required=False)
+        all_field = Field.objects.create(type=Field.FILE, template=self.template, location=max_loc + 2, required=False)
         assert not all_field.options
 
         entry_file = api.post(

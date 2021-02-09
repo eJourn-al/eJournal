@@ -1,4 +1,4 @@
 -r base.txt
 
-Faker==2.0.2 # Required to run preset db
+Faker==5.8.0 # Required to run preset db
 django-prometheus==2.1.0 # Monitoring

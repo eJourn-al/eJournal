@@ -5,9 +5,9 @@ export default {
         return auth.downloadFile(`users/${id}/GDPR/`, null, connArgs)
     },
 
-    getAllUsers (connArgs = auth.DEFAULT_CONN_ARGS) {
-        return auth.get('users', null, connArgs)
-            .then(response => response.data.users)
+    list (params, connArgs = auth.DEFAULT_CONN_ARGS) {
+        return auth.get('users', params, connArgs)
+            .then(response => response.data)
     },
 
     update (id, data, connArgs = auth.DEFAULT_CONN_ARGS) {

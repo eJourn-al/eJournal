@@ -36,10 +36,11 @@ class EntryView(viewsets.ViewSet):
             template_id -- the template id to create the entry with
             node_id -- optional: the node to bind the entry to (only for entrydeadlines)
             content -- the list of {tag, data} tuples to bind data to a template field.
+            category_ids -- list of category ids the entry should be associated with
         """
         journal_id, template_id, content_dict = utils.required_params(
             request.data, 'journal_id', 'template_id', 'content')
-        node_id, = utils.optional_params(request.data, 'node_id')
+        node_id, category_ids = utils.optional_params(request.data, 'node_id', 'category_ids')
 
         journal = Journal.objects.get(pk=journal_id, authors__user=request.user)
         assignment = journal.assignment
@@ -59,15 +60,16 @@ class EntryView(viewsets.ViewSet):
             return response.forbidden('Entry template is not available.')
 
         entry_utils.check_fields(template, content_dict)
+        category_ids = Entry.validate_categories(category_ids, assignment, template)
 
         # Deadline entry
         if node_id:
             node = Node.objects.get(pk=node_id, journal=journal)
-            entry = entry_utils.add_entry_to_node(node, template, request.user)
+            entry = entry_utils.add_entry_to_node(node, template, request.user, category_ids)
         # Unlimited entry
         else:
             node = factory.make_node(journal)
-            entry = factory.make_entry(template, request.user, node)
+            entry = factory.make_entry(template, request.user, node, category_ids)
 
         entry_utils.create_entry_content(content_dict, entry, request.user)
         # Notify teacher on new entry

@@ -3,7 +3,9 @@ user.py.
 
 In this file are all the user api requests.
 """
+
 from django.conf import settings
+from django.db.models import Q
 from django.utils import timezone
 from rest_framework import viewsets
 from rest_framework.decorators import action
@@ -22,6 +24,7 @@ from VLE.serializers import EntrySerializer, OwnUserSerializer, UserSerializer
 from VLE.tasks import send_email_verification_link, send_invite_emails
 from VLE.utils import file_handling
 from VLE.utils.authentication import set_sentry_user_scope
+from VLE.utils.pagination import ExtendedPageNumberPagination
 from VLE.views import lti
 
 
@@ -50,26 +53,54 @@ class LoginView(TokenObtainPairView):
         return result
 
 
-class UserView(viewsets.ViewSet):
-    def list(self, request):
-        """Get all users.
+class UserResultsSetPagination(ExtendedPageNumberPagination):
+    page_size = 100
+    max_page_size = 1000
 
-        Arguments:
-        request -- request data
+
+class UserView(viewsets.ViewSet):
+    pagination = UserResultsSetPagination()
+
+    def list(self, request):
+        """
+        Orderable and filterable paginated list of all users, only accessible by administrators.
+
+        Query parameters:
+            page (int): window of the query set to serialize.
+            page_size (int): size of the window.
+            order_by (str): order by argument, can be descending (-).
+            filter (str): filter to apply to the query, performs a case insensitive search for the columns
+                `full_name`, `username`, and `email`.
 
         Returns:
-        On failure:
-            unauthorized -- when the user is not logged in
-        On success:
-            success -- with the course data
-
+            Paginated response object, where `results` contain the serialized page data
         """
         if not request.user.is_superuser:
             return response.forbidden('Only administrators are allowed to request all user data.')
 
-        users = list(User.objects.values('username', 'full_name', 'email', 'is_teacher', 'is_active', 'id')
-                     .order_by('full_name'))
-        return response.success({'users': users})
+        order_by = request.query_params.get('order_by', 'full_name')
+        order_by = order_by if order_by else 'full_name'
+
+        users = User.objects.values(
+            'username',
+            'full_name',
+            'email',
+            'is_teacher',
+            'is_active',
+            'id',
+        ).order_by(
+            order_by,
+        )
+
+        if request.query_params.get('filter'):
+            users = users.filter(
+                Q(email__icontains=request.query_params.get('filter'))
+                | Q(username__icontains=request.query_params.get('filter'))
+                | Q(full_name__icontains=request.query_params.get('filter'))
+            )
+
+        page = self.pagination.paginate_queryset(users, request)
+        return self.pagination.get_paginated_response(data=page)
 
     def retrieve(self, request, pk):
         """Get the user data of the requested user.

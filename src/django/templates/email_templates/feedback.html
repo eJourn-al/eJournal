@@ -12,17 +12,36 @@
                     <tr>
                         <td style="padding: 20px">
                             <h2 style="margin-bottom: 10px; color: #252C39">Support</h2>
+
                             <p style="margin-bottom: 10px; color: #252C39">
-                                Thank you for reaching out to eJournal support! Below you will find a copy of your message:
+                                {% if email_data.ftype == 'bug' %}
+                                    Thank you for reporting a bug! We appreciate you taking the time to help us
+                                    improve eJournal.
+                                {% elif email_data.ftype == 'help' %}
+                                    Thank you for reaching out! We will get back to you shortly to help you on your
+                                    way.
+                                {% elif email_data.ftype == 'feedback' %}
+                                    Thank you for your feedback! We appreciate you taking the time to help us
+                                    improve eJournal.
+                                {% else %}
+                                    Thank you for reaching out to eJournal support!
+                                {% endif %}
                             </p>
+
+                            <p style="margin-bottom: 10px; color: #252C39">
+                                Below you will find a copy of your message:
+                            </p>
+
                             <p style="margin-bottom: 10px; color: #252C39; background-color: #DDDDDD; border-radius: 5px; padding: 10px">
                                 {{ email_data.feedback }}
                             </p>
+
                             {% if email_data.attachments_added %}
                                 <p style="margin-bottom: 10px; color: #252C39">
                                     Uploaded attachments have been added to this e-mail as well.
                                 </p>
                             {% endif %}
+
                             <p style="margin-bottom: 10px; color: #252C39">
                                 This is to notify that your message has been successfully received.
                                 You can reply to this email should you wish to add any additional comments.<br/><br/>

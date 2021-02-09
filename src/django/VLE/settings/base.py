@@ -19,7 +19,8 @@ from sentry_sdk.integrations.celery import CeleryIntegration
 from sentry_sdk.integrations.django import DjangoIntegration
 
 sentry_sdk.init(
-    dsn=None if 'TRAVIS' in os.environ else os.environ['SENTRY_DSN'],
+    # Setting DSN to an empty value or None will disable the SDK
+    dsn=os.environ.get('SENTRY_DSN', None),
     integrations=[DjangoIntegration(), CeleryIntegration()],
     release=os.environ['RELEASE_VERSION']
 )
@@ -30,6 +31,7 @@ USER_MAX_TOTAL_STORAGE_BYTES = 100 * MiB
 USER_MAX_EMAIL_ATTACHMENT_BYTES = USER_MAX_FILE_SIZE_BYTES
 DATA_UPLOAD_MAX_MEMORY_SIZE = USER_MAX_FILE_SIZE_BYTES
 
+# Format follow by our frontend date and datetime pickers
 ALLOWED_DATE_FORMAT = '%Y-%m-%d'
 ALLOWED_DATETIME_FORMAT = '%Y-%m-%dT%H:%M:%S'
 

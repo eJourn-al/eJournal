@@ -8,6 +8,7 @@ import factory
 from django.conf import settings
 
 import VLE.models
+import VLE.serializers
 
 
 class JWTParamsFactory(factory.Factory):
@@ -42,6 +43,7 @@ class EntryContentCreationParamsFactory(factory.Factory):
     kwargs:
         template: VLE.models.Template instance for which a content dict should be generated.
         author: VLE.models.User instance, user who creates the entry.
+        node: VLE.models.Node instance, node related to entry, fallsback to nothing (unlimited entry)
     """
     class Meta:
         model = dict
@@ -50,6 +52,10 @@ class EntryContentCreationParamsFactory(factory.Factory):
     def _adjust_kwargs(cls, **kwargs):
         template = kwargs.pop('template')
         author = kwargs.pop('author')
+        node = kwargs.pop('node', None)
+
+        if node:
+            kwargs['node_id'] = node.pk
 
         content = {}
         for field in template.field_set.all():
@@ -91,9 +97,52 @@ class UnlimitedEntryCreationParamsFactory(factory.Factory):
         template = kwargs.pop('template', random.choice(journal.assignment.format.template_set.all()))
         kwargs['template_id'] = template.pk
 
-        author = kwargs.pop('author', random.choice(journal.authors.all()).user)
+        if 'author' in kwargs:
+            author = kwargs['author']
+        else:
+            author = random.choice(journal.authors.all()).user
 
         kwargs['content'] = test.factory.EntryContentCreationParams(template=template, author=author)['content']
+
+        return kwargs
+
+
+class PresetEntryCreationParamsFactory(factory.Factory):
+    """
+    Creates valid preset entry creation parameters by tweaking the provided kwargs.
+    kwargs:
+        journal: VLE.models.Journal instance, journal for which an unlimited entry should be created.
+        template: VLE.models.Template instance, fallsback to a random template available to the provided journal.
+        node: VLE.models.None instance, fallsback to a newly created ENTRYDEADLINE node
+        author: VLE.models.User instance, fallsback to a random author of the journal.
+    """
+    class Meta:
+        model = dict
+
+    @classmethod
+    def _adjust_kwargs(cls, **kwargs):
+        journal = kwargs.pop('journal')
+
+        if 'node' in kwargs:
+            node = kwargs['node']
+        else:
+            preset = test.factory.DeadlinePresetNode(format=journal.assignment.format)
+            node = preset.node_set.filter(journal=journal).get()
+
+        kwargs['node_id'] = node.pk
+        kwargs['journal_id'] = journal.pk
+
+        template = preset.forced_template
+        kwargs['template_id'] = template.pk
+
+        if 'author' in kwargs:
+            author = kwargs['author']
+        else:
+            author = random.choice(journal.authors.all()).user
+
+        kwargs['content'] = test.factory.EntryContentCreationParams(
+            template=template, author=author, node=node
+        )['content']
 
         return kwargs
 
@@ -106,14 +155,17 @@ class TeacherEntryCreationParamsFactory(factory.Factory):
         template: VLE.models.Template instance, fallsback to a random template available to the provided assignment.
         author: VLE.models.User instance, fallsback the assignment author.
         content: Valid content for the selected template.
-        journals: list, contains elements structured as follows:
+        journals: list, can contain elements structured as follows:
             {
                 'journal_id': <int>,
                 'grade': <float>,
                 'published': <bool>,
             },
+            OR a list of VLE.models.Journal instances.
             Defaults to all assignment's journal ids, with a published grade of one.
             Grade and published can be uniformly changed by providing a grade and published kwarg
+        categories: list of VLE.models.Category instances
+        category_ids: list if VLE.models.Category ids, has prio over categories.
     """
     class Meta:
         model = dict
@@ -132,13 +184,24 @@ class TeacherEntryCreationParamsFactory(factory.Factory):
         author = kwargs.pop('author', assignment.author)
         kwargs['content'] = test.factory.EntryContentCreationParams(template=template, author=author)['content']
 
-        kwargs['journals'] = kwargs.pop('journals', [
-            {
-                'journal_id': j.pk,
+        categories = kwargs.pop('categories', [])
+        if categories:
+            kwargs['category_ids'] = [category.pk for category in categories]
+        kwargs['category_ids'] = kwargs.pop('category_ids', categories)
+
+        def journal_to_dict(journal):
+            return {
+                'journal_id': journal.pk,
                 'grade': kwargs['grade'] if 'grade' in kwargs else 1,
                 'published': kwargs['published'] if 'published' in kwargs else True,
             }
-            for j in VLE.models.Journal.objects.filter(assignment=assignment)
-        ])
+
+        journals = kwargs.pop('journals', None)
+        if journals and isinstance(journals, list) and isinstance(journals[0], VLE.models.Journal):
+            kwargs['journals'] = [journal_to_dict(j) for j in journals]
+        elif journals:
+            kwargs['journals'] = journals
+        else:
+            kwargs['journals'] = [journal_to_dict(j) for j in VLE.models.Journal.objects.filter(assignment=assignment)]
 
         return kwargs

@@ -170,3 +170,20 @@ class GroupView(viewsets.ViewSet):
         serializer = GroupSerializer(queryset, many=True, context={'user': request.user, 'course': course})
 
         return response.success({'groups': serializer.data})
+
+    @action(['get'], detail=False)
+    def assigned_groups(self, request):
+        course_id, assignment_id = utils.required_typed_params(
+            request.query_params,
+            (int, 'course_id'),
+            (int, 'assignment_id'),
+        )
+
+        course = Course.objects.get(pk=course_id)
+        assignment = Assignment.objects.get(pk=assignment_id)
+
+        request.user.check_permission('can_edit_assignment', assignment)
+
+        return response.success({
+            'assigned_groups': GroupSerializer(assignment.assigned_groups.filter(course=course), many=True).data
+        })

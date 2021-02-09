@@ -49,7 +49,7 @@ class UserAPITest(TestCase):
                       update_params={'username': 'test2'},
                       user=factory.Admin())
 
-    def test_get(self):
+    def test_get_user(self):
         journal = factory.Journal()
         student = journal.authors.first().user
         admin = factory.Admin()
@@ -57,7 +57,7 @@ class UserAPITest(TestCase):
 
         # Test get all users
         api.get(self, 'users', user=student, status=403)
-        resp = api.get(self, 'users', user=admin)['users']
+        resp = api.get(self, 'users', user=admin)['results']
         assert len(resp) == User.objects.count(), 'Test if the admin got all the users'
 
         # Test get own user
@@ -84,6 +84,81 @@ class UserAPITest(TestCase):
         assert 'id' in resp, 'Admin can retrieve basic user data'
         assert 'verified_email' in resp, 'Admin can retrieve all user data'
         assert 'email' in resp, 'Admin can retrieve all user data'
+
+    def test_list_paginated(self):
+        admin = factory.Admin()
+
+        def test_serialized_fields():
+            expected_keys = [
+                'id',
+                'username',
+                'full_name',
+                'email',
+                'is_teacher',
+                'is_active',
+            ]
+
+            resp = api.get(self, 'users', user=admin)
+
+            assert len(resp['results'][0]) == len(expected_keys)
+            assert all(getattr(admin, key) == resp['results'][0][key] for key in expected_keys)
+            assert resp['code_version'] == settings.CODE_VERSION, \
+                'Code version is also serialized for paginated responses'
+            assert resp['count'] == User.objects.count()
+
+        def test_search_vector():
+            user_a = factory.Student(username='aaa')
+            data = api.get(self, 'users', params={'filter': 'aa'}, user=admin)['results']
+            assert len(data) == 1 and data[0]['id'] == user_a.pk, 'Username is part of the search vector'
+
+            user_b = factory.Student(email='b@b.b')
+            data = api.get(self, 'users', params={'filter': user_b.email}, user=admin)['results']
+            assert len(data) == 1 and data[0]['id'] == user_b.pk, 'Email is part of the search vector'
+            data = api.get(self, 'users', params={'filter': 'b@'}, user=admin)['results']
+            assert len(data) == 1 and data[0]['id'] == user_b.pk, 'Partial, special char (@) no issues'
+
+            user_c = factory.Student(full_name='c c')
+            data = api.get(self, 'users', params={'filter': 'c c'}, user=admin)['results']
+            assert len(data) == 1 and data[0]['id'] == user_c.pk, 'Full name is part of the search vector'
+
+            user_a_full_name = factory.Student(full_name='aa')
+            data = api.get(self, 'users', params={'filter': 'aa'}, user=admin)['results']
+            assert len(data) == 2 and all(dat['id'] in [user_a.pk, user_a_full_name.pk] for dat in data)
+
+        def test_page_param():
+            resp = api.get(self, 'users', params={'page': 1, 'page_size': 1}, user=admin)
+            assert len(resp['results']) == 1
+
+            resp = api.get(self, 'users', params={'page': 1, 'page_size': 2}, user=admin)
+            assert len(resp['results']) == 2
+
+            factory.Student(full_name='a')
+            factory.Student(full_name='ab')
+            all_users = User.objects.all().order_by('full_name')
+
+            resp = api.get(self, 'users', params={'page': 1, 'page_size': 1, 'order_by': 'full_name'}, user=admin)
+            assert resp['results'][0]['id'] == all_users[0].pk
+
+            resp = api.get(self, 'users', params={'page': 2, 'page_size': 1, 'order_by': 'full_name'}, user=admin)
+            assert resp['results'][0]['id'] == all_users[1].pk
+
+        def test_order_by():
+            users = User.objects.all().order_by('full_name')
+
+            data = api.get(self, 'users', params={'order_by': ''}, user=admin)['results']
+            data[0]['id'] == users[0].pk, 'Empty string order_by values default to order_by full_name'
+
+            data = api.get(self, 'users', params={'order_by': 'full_name'}, user=admin)['results']
+            assert all(dat['id'] == user.pk for dat, user in zip(data, users))
+
+            data_desc = api.get(self, 'users', params={'order_by': '-full_name'}, user=admin)['results']
+            data.reverse()
+            assert data == data_desc
+
+        test_serialized_fields()
+        test_search_vector()
+        test_page_param()
+        test_order_by()
 
     def test_create_user(self):
         params = dict(self.create_params)

@@ -60,7 +60,7 @@
 
                 <div v-else>
                     <b>No importable journals available</b>
-                    <hr class="m-0 mb-1"/>
+                    <hr/>
                     You can only import journal your own journals, and you cannot import a journal from within the same
                     assignment.
                 </div>
@@ -110,7 +110,12 @@ export default {
             return courses
         },
         assignments () {
-            return this.fetchedAssignments.filter(a => a.course.id === this.selectedCourse.id)
+            return this.fetchedAssignments
+                .filter(a => a.course.id === this.selectedCourse.id)
+                .map((a) => {
+                    a.name = utils.assignmentWithDatesDisplay(a)
+                    return a
+                })
         },
     },
     created () {

@@ -124,6 +124,16 @@ class ParticipationAPITest(TestCase):
                        user=self.teacher)
         assert len(resp['participants']) == 0
 
+        # Check case insensitive search
+        resp = api.get(self, 'participations/unenrolled',
+                       params={'course_id': self.course.pk, 'unenrolled_query': self.not_connected.full_name.upper()},
+                       user=self.teacher)['participants']
+        assert len(resp) == 1, 'Full name search should be case insensitive'
+        resp = api.get(self, 'participations/unenrolled',
+                       params={'course_id': self.course.pk, 'unenrolled_query': self.not_connected.username.upper()},
+                       user=self.teacher)['participants']
+        assert len(resp) == 1, 'Username search should be case insensitive'
+
     def test_set_groups(self):
         assignment = factory.Assignment()
         course = assignment.courses.first()

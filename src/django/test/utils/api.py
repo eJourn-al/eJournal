@@ -6,6 +6,7 @@ Helpter function for the test enviroment.
 
 import json
 import test.factory.user as userfactory
+from urllib.parse import urlencode
 
 from django.urls import reverse
 
@@ -28,12 +29,8 @@ def format_url(obj, url, params, function):
         url += '/'
 
     # add params to the url if it cant have a body
-    if function in [obj.client.get, obj.client.delete]:
-        url += '?'
-        for key, value in params.items():
-            url += '{}={}&'.format(key, value)
-        # Remove last & or ? when there are no params
-        url = url[:-1]
+    if params and function in [obj.client.get, obj.client.delete]:
+        url += f'?{urlencode(params)}'
 
     return url
 

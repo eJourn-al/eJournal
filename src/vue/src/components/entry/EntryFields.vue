@@ -56,11 +56,12 @@
                     @fileUploadFailed="$emit('finished-uploading-file')"
                     @fileUploadSuccess="content[field.id] = $event; $emit('finished-uploading-file')"
                 />
-                <b-input
+                <validated-input
                     v-else-if="field.type == 'v'"
                     v-model="content[field.id]"
-                    placeholder="Enter a YouTube URL"
-                    class="theme-input"
+                    :validator="youtubeVideoUrlValidator"
+                    placeholder="Enter a YouTube video URL"
+                    invalidFeedback="Enter a valid YouTube video URL"
                 />
                 <!-- Newly added fields in template editor have id <0. -->
                 <text-editor
@@ -71,10 +72,13 @@
                     @startedUploading="$emit('uploading-file')"
                     @finishedUploading="$emit('finished-uploading-file')"
                 />
-                <url-input
+                <validated-input
                     v-else-if="field.type == 'u'"
+                    v-model="content[field.id]"
+                    :validator="urlValidator"
+                    :validatorArgs="[false, true]"
                     placeholder="Enter a URL"
-                    @correctUrlInput="content[field.id] = $event"
+                    invalidFeedback="Enter a valid URL"
                 />
                 <b-form-select
                     v-else-if="field.type == 's'"
@@ -115,13 +119,20 @@
                 v-else-if="field.type == 'f'"
                 :file="content[field.id]"
             />
-            <b-embed
-                v-else-if="field.type == 'v'"
-                :src="youtubeEmbedFromURL(content[field.id])"
-                type="iframe"
-                aspect="16by9"
-                allowfullscreen
-            />
+            <template v-else-if="field.type == 'v'">
+                <b-embed
+                    v-if="youtubeEmbedFromURL(content[field.id], field.id)"
+                    :src="youtubeEmbedFromURL(content[field.id], field.id)"
+                    type="iframe"
+                    aspect="16by9"
+                    allowfullscreen
+                />
+                <span
+                    v-else
+                >
+                    {{ content[field.id] }}
+                </span>
+            </template>
             <sandboxed-iframe
                 v-else-if="field.type == 'rt'"
                 :content="content[field.id]"
@@ -144,18 +155,22 @@
 </template>
 
 <script>
+import ValidatedInput from '@/components/assets/ValidatedInput.vue'
 import fileDisplay from '@/components/assets/file_handling/FileDisplay.vue'
 import fileUploadInput from '@/components/assets/file_handling/FileUploadInput.vue'
 import sandboxedIframe from '@/components/assets/SandboxedIframe.vue'
-import urlInput from '@/components/assets/UrlInput.vue'
+
+import genericUtils from '@/utils/generic_utils.js'
+import validation from '@/utils/validation.js' /* eslint-disable-line */
+
 
 export default {
     components: {
         textEditor: () => import(/* webpackChunkName: 'text-editor' */ '@/components/assets/TextEditor.vue'),
         fileUploadInput,
-        urlInput,
         fileDisplay,
         sandboxedIframe,
+        ValidatedInput,
     },
     props: {
         template: {
@@ -176,6 +191,12 @@ export default {
             default: -1,
         },
     },
+    data () {
+        return {
+            youtubeVideoUrlValidator: validation.validateYouTubeUrlWithVideoID,
+            urlValidator: validation.validateURL,
+        }
+    },
     computed: {
         orderedFields () {
             return this.template.field_set.slice().sort((a, b) => a.location - b.location)
@@ -185,14 +206,20 @@ export default {
         },
     },
     methods: {
-        // from https://stackoverflow.com/a/9102270
-        youtubeEmbedFromURL (url) {
-            const regExp = /^.*(youtu\.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/
-            const match = url.match(regExp)
-            if (match && match[2].length === 11) {
-                return `https://www.youtube.com/embed/${match[2]}?rel=0&amp;showinfo=0`
+        youtubeEmbedFromURL (url, fieldID) {
+            const match = genericUtils.parseYouTubeVideoID(url)
+
+            if (match) {
+                return `https://www.youtube.com/embed/${match}?rel=0&amp;showinfo=0`
             } else {
-                this.$toasted.error('A YouTube video field contained an invalid URL.')
+                this.$store.commit('sentry/CAPTURE_SCOPED_MESSAGE', {
+                    level: 'warning',
+                    msg: 'A YouTube video field contained an invalid URL.',
+                    extra: {
+                        url,
+                        fieldID,
+                    },
+                })
                 return null
             }
         },

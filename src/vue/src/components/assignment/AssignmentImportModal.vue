@@ -42,7 +42,7 @@
 
             <div v-if="!importableFormats">
                 <b>No existing assignments available</b>
-                <hr class="m-0 mb-1"/>
+                <hr/>
                 Only assignments where you have permission to edit are available to import.
             </div>
 
@@ -137,7 +137,10 @@ export default {
         },
         assignments () {
             return this.importableFormats.find(importable => importable.course.id === this.selectedCourse.id)
-                .assignments
+                .assignments.map((assignment) => {
+                    assignment.name = utils.assignmentWithDatesDisplay(assignment)
+                    return assignment
+                })
         },
     },
     created () {
@@ -165,7 +168,7 @@ export default {
                     })
 
                     this.$router.push({
-                        name: 'FormatEdit',
+                        name: 'AssignmentEditor',
                         params: {
                             cID: this.cID,
                             aID: response.assignment_id,

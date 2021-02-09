@@ -59,6 +59,15 @@
                 :edit="false"
                 class="mt-3"
             />
+
+            <entry-categories
+                :id="`edit-teacher-entry-${selectedTeacherEntry.id}`"
+                :entry="selectedTeacherEntry"
+                :template="selectedTeacherEntry.template"
+                :edit="true"
+                :autosave="false"
+            />
+
             <hr/>
             <h2 class="theme-h2 field-heading">
                 Journals to add
@@ -169,6 +178,7 @@
 </template>
 
 <script>
+import EntryCategories from '@/components/category/EntryCategories.vue'
 import EntryFields from '@/components/entry/EntryFields.vue'
 import Tooltip from '@/components/assets/Tooltip.vue'
 
@@ -179,6 +189,7 @@ export default {
     components: {
         EntryFields,
         Tooltip,
+        EntryCategories,
     },
     props: {
         aID: {
@@ -202,6 +213,7 @@ export default {
             publishGrade: Object(),
             showUpdateTitle: false,
             updatedTitle: null,
+            updatedCategories: null,
         }
     },
     computed: {
@@ -277,6 +289,7 @@ export default {
                 teacherEntryAPI.update(this.selectedTeacherEntry.id, {
                     journals: this.selectedJournals,
                     title: this.updatedTitle,
+                    category_ids: this.selectedTeacherEntry.categories.map(elem => elem.id),
                 }, {
                     customSuccessToast: 'Teacher entry successfully updated.',
                 })
