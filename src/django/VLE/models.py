@@ -2924,8 +2924,6 @@ class Template(CreateUpdateModel):
     chain = models.ForeignKey(
         'TemplateChain',
         on_delete=models.CASCADE,
-        blank=True,
-        null=True,
     )
 
     @staticmethod
