@@ -225,7 +225,7 @@ def make_entry(template, author, node, category_ids=None):
     params = {}
     if not template.chain.allow_custom_categories or category_ids is None:
         params['category_ids'] = list(template.categories.values_list('pk', flat=True))
-    if category_ids:
+    elif category_ids:
         params['category_ids'] = category_ids
 
     # NOTE: because we use a custom variable (category_ids) we have to call the save function seperatly
