@@ -65,11 +65,11 @@ class EntryView(viewsets.ViewSet):
         # Deadline entry
         if node_id:
             node = Node.objects.get(pk=node_id, journal=journal)
-            entry = entry_utils.add_entry_to_node(node, template, request.user, category_ids)
+            entry_utils.validate_node(node, template)
         # Unlimited entry
         else:
             node = factory.make_node(journal)
-            entry = factory.make_entry(template, request.user, node, category_ids)
+        entry = factory.make_entry(template, request.user, node, category_ids)
 
         entry_utils.create_entry_content(content_dict, entry, request.user)
         # Notify teacher on new entry

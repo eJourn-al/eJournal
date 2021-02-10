@@ -222,20 +222,15 @@ def make_node(journal, entry=None, type=VLE.models.Node.ENTRY, preset=None):
 
 
 def make_entry(template, author, node, category_ids=None):
+    params = {}
     if not template.chain.allow_custom_categories or category_ids is None:
-        category_ids = list(template.categories.values_list('pk', flat=True))
+        params['category_ids'] = list(template.categories.values_list('pk', flat=True))
+    if category_ids:
+        params['category_ids'] = category_ids
 
-    with transaction.atomic():
-        entry = VLE.models.Entry.objects.create(template=template, author=author, node=node)
-        entry_category_links = [
-            VLE.models.EntryCategoryLink(entry=entry, category_id=id, author=author)
-            for id in category_ids
-        ]
-        VLE.models.EntryCategoryLink.objects.bulk_create(entry_category_links)
-
-        entry.node.entry = entry
-        entry.node.save()
-
+    # NOTE: because we use a custom variable (category_ids) we have to call the save function seperatly
+    entry = VLE.models.Entry(template=template, author=author, node=node)
+    entry.save(**params)
     return entry
 
 

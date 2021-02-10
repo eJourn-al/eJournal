@@ -2671,25 +2671,49 @@ class Entry(CreateUpdateModel):
         author_id = self.__dict__.get('author_id', None)
         node_id = self.__dict__.get('node_id', None)
         author = self.author if self.author else User.objects.get(pk=author_id) if author_id else None
+        category_ids = kwargs.pop('category_ids', None)
         self.grade = self.grade_set.order_by('creation_date').last()
 
         if author and not self.last_edited_by:
             self.last_edited_by = author
 
-        if not isinstance(self, TeacherEntry):
-            try:
-                node = Node.objects.get(pk=node_id) if node_id else self.node
-            except Node.DoesNotExist:
-                raise ValidationError('Saving entry without corresponding node.')
+        if isinstance(self, TeacherEntry):
+            return super().save(*args, **kwargs)
 
-            if (author and not node.journal.authors.filter(user=author).exists() and not self.teacher_entry and
-                    not self.jir):
-                raise ValidationError('Saving non-teacher entry created by user not part of journal.')
+        # NOTE: TeacherEntry creation does not execute passed this block
 
-        super().save(*args, **kwargs)
+        try:
+            node = Node.objects.get(pk=node_id) if node_id else self.node
+        except Node.DoesNotExist:
+            raise ValidationError('Saving entry without corresponding node.')
 
-        if is_new and not isinstance(self, TeacherEntry):
+        if (
+            author
+            and not node.journal.authors.filter(user=author).exists()
+            and not self.teacher_entry
+            and not self.jir
+        ):
+            raise ValidationError('Author of the entry is no longer part of the journal.')
+
+        with transaction.atomic():
+            super().save(*args, **kwargs)
+
+            if is_new:
+                if category_ids:
+                    self.create_categories(category_ids)
+
+                self.node.entry = self
+                self.node.save()
+
+        if is_new:
             generate_new_entry_notifications.delay(self.pk, self.node.pk)
+
+    def create_categories(self, category_ids):
+        entry_category_links = [
+            VLE.models.EntryCategoryLink(entry=self, category_id=id, author=self.author)
+            for id in category_ids
+        ]
+        VLE.models.EntryCategoryLink.objects.bulk_create(entry_category_links)
 
     def to_string(self, user=None):
         return "Entry"
