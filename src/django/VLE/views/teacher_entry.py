@@ -240,16 +240,12 @@ class TeacherEntryView(viewsets.ViewSet):
         Node.objects.bulk_create(nodes, new_node_notifications=False)
         grades = Grade.objects.bulk_create(grades)
 
-        # Set the grade field of the newly created entries to the newly created grades.
         # Last edited is set on creation, even when specified during initialization.
         entries = list(
             Entry.objects.filter(pk__in=[e.pk for e in entries]).annotate(newest_grade_id=Max('grade_set__id')))
         for entry in entries:
-            entry.grade_id = entry.newest_grade_id
             entry.last_edited = teacher_entry.last_edited
-        Entry.objects.bulk_update(entries, ['grade', 'last_edited'])
-
-        grading.task_bulk_send_journal_status_to_LMS.delay([journal.pk for journal in journals])
+        Entry.objects.bulk_update(entries, ['last_edited'])
 
     def _update_existing_entries(self, teacher_entry, journals_data, new_category_ids, existing_category_ids, author):
         """
@@ -278,17 +274,6 @@ class TeacherEntryView(viewsets.ViewSet):
         Grade.objects.bulk_create(grades)
 
         _update_categories_of_existing_entries(entries, author, new_category_ids, existing_category_ids)
-
-        # Set the grade field of the updated entries to the newly created grades.
-        entries = list(
-            Entry.objects.filter(teacher_entry=teacher_entry, node__journal__in=journal_pks)
-            .annotate(newest_grade_id=Max('grade_set__id'))
-        )
-        for entry in entries:
-            entry.grade_id = entry.newest_grade_id
-        Entry.objects.bulk_update(entries, ['grade'])
-
-        grading.task_bulk_send_journal_status_to_LMS.delay(journal_pks)
 
     def _check_teacher_entry_content(self, journals, assignment, is_new=False, teacher_entry=None):
         """Check if all journals that have been selected also have valid content.

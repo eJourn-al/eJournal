@@ -139,8 +139,8 @@ class NotificationTest(TestCase):
     def test_grade_notification(self):
         entry = factory.UnlimitedEntry()
         notifications_before = Notification.objects.count()
-        VLE.factory.make_grade(entry, entry.node.journal.assignment.author.pk, 10, published=True)
-        VLE.factory.make_grade(entry, entry.node.journal.assignment.author.pk, 10, published=False)
+        VLE.factory.make_grade(entry, entry.node.journal.assignment.author, 10, published=True)
+        VLE.factory.make_grade(entry, entry.node.journal.assignment.author, 10, published=False)
         assert Notification.objects.count() == notifications_before + 1, '1 grade notification are created'
         assert Notification.objects.last().user == entry.node.journal.authors.first().user
         assert Notification.objects.last().type == Notification.NEW_GRADE

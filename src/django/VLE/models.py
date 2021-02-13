@@ -14,7 +14,7 @@ from django.contrib.postgres.aggregates import ArrayAgg, StringAgg
 from django.contrib.postgres.fields import ArrayField, CIEmailField, CITextField
 from django.core.exceptions import ValidationError
 from django.db import models, transaction
-from django.db.models import (Case, CharField, CheckConstraint, Count, F, FloatField, IntegerField, Min, OuterRef,
+from django.db.models import (Case, CharField, CheckConstraint, Count, F, FloatField, IntegerField, Max, Min, OuterRef,
                               Prefetch, Q, Subquery, Sum, TextField, Value, When)
 from django.db.models.deletion import CASCADE, SET_NULL
 from django.db.models.functions import Cast, Coalesce
@@ -26,9 +26,11 @@ from django.utils.timezone import now
 import VLE.permissions
 import VLE.utils.file_handling as file_handling
 import VLE.utils.generic_utils as generic_utils
+import VLE.utils.grading as grading
 from VLE.tasks.email import send_push_notification
 from VLE.tasks.notifications import (generate_new_assignment_notifications, generate_new_comment_notifications,
-                                     generate_new_entry_notifications, generate_new_node_notifications)
+                                     generate_new_entry_notifications, generate_new_grade_notifications,
+                                     generate_new_node_notifications)
 from VLE.utils import sanitization
 from VLE.utils.error_handling import (VLEBadRequest, VLEParticipationError, VLEPermissionError, VLEProgrammingError,
                                       VLEUnverifiedEmailError)
@@ -2760,11 +2762,53 @@ class TeacherEntry(Entry):
         return super(TeacherEntry, self).save(*args, **kwargs)
 
 
+class GradeQuerySet(models.QuerySet):
+    def bulk_create(self, grades, *args, send_grade_notifications=True, **kwargs):
+        grades = super().bulk_create(grades, *args, **kwargs)
+
+        # Correct grade attached to entry
+        entries = list(
+            Entry.objects.filter(
+                pk__in=[e.pk for e in grades.values('entry')]
+            ).annotate(
+                newest_grade_id=Max('grade_set__id')
+            )
+        )
+        for entry in entries:
+            entry.grade_id = entry.newest_grade_id
+        Entry.objects.bulk_update(entries, ['grade', 'last_edited'])
+
+        # Publish all comments attached to grade
+        Comment.objects.filter(
+            entry__in=grades.filter(published=True)
+        ).update(published=True)
+
+        # Send new grade notification in background task
+        if send_grade_notifications:
+            generate_new_grade_notifications.delay(list(grades.values_list('pk', flat=True)))
+
+        journal_pks = list(grades.values_list('entry__node__journal__pk', flat=True))
+        grading.task_bulk_send_journal_status_to_LMS.delay(journal_pks)
+
+        return grades
+
+    def only_unpublished(self):
+        return self.filter(published=False)
+
+    def from_assignment(self, assignment):
+        return self.filter(entry__node__journal__assignment=assignment)
+
+    def from_journal(self, journal):
+        return self.filter(entry__node__journal=journal)
+
+
 class Grade(CreateUpdateModel):
     """Grade.
 
     Used to keep a history of grades.
     """
+    objects = models.Manager.from_queryset(EntryQuerySet)()
+
     entry = models.ForeignKey(
         'Entry',
         related_name='grade_set',
@@ -2785,18 +2829,14 @@ class Grade(CreateUpdateModel):
     )
 
     def save(self, *args, **kwargs):
-        is_new = self._state.adding
         super(Grade, self).save(*args, **kwargs)
+
         if self.published:
-            for author in self.entry.node.journal.authors.all():
-                Notification.objects.create(
-                    type=Notification.NEW_GRADE,
-                    user=author.user,
-                    grade=self
-                )
+            generate_new_grade_notifications.delay([self.pk])
+
         # Save entry to set this grade as the new entry grade
-        if is_new:
-            self.entry.save()
+        self.entry.grade = self
+        self.entry.save()
 
     def to_string(self, user=None):
         return "Grade"

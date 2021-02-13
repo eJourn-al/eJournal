@@ -4,24 +4,23 @@ from django.conf import settings
 from django.utils import timezone
 from sentry_sdk import capture_exception, push_scope
 
-from VLE import factory
+import VLE.models
 from VLE.lti_grade_passback import GradePassBackRequest
-from VLE.models import AssignmentParticipation, Comment, Entry, Journal
 from VLE.utils.error_handling import LmsGradingResponseException
 
 
-def publish_all_journal_grades(journal, publisher):
-    """publish all grades that are not None for a journal.
-
-    - journal: the journal in question
-    - publisher: the publisher of the grade
-    """
-    entries = Entry.objects.filter(node__journal=journal).exclude(grade=None)
-
-    for entry in entries:
-        factory.make_grade(entry, publisher.pk, entry.grade.grade, True)
-
-    Comment.objects.filter(entry__node__journal=journal).exclude(entry__grade=None).update(published=True)
+def publish_grades(grades, author, send_grade_notification=True):
+    new_grades = [
+        VLE.models.Grade(
+            entry=grade.entry,
+            author=author,
+            grade=grade.grade,
+            published=True,
+        )
+        for grade in grades
+        if not grade.published
+    ]
+    VLE.models.Grade.objects.bulk_create(new_grades, send_grade_notifications=send_grade_notification)
 
 
 @shared_task
@@ -32,7 +31,7 @@ def task_bulk_send_journal_status_to_LMS(journal_pks):
 
 @shared_task
 def task_journal_status_to_LMS(journal_pk):
-    return send_journal_status_to_LMS(Journal.objects.get(pk=journal_pk))
+    return send_journal_status_to_LMS(VLE.models.Journal.objects.get(pk=journal_pk))
 
 
 def send_journal_status_to_LMS(journal):
@@ -46,8 +45,13 @@ def send_journal_status_to_LMS(journal):
     if not journal.authors.exists():
         return None
 
-    Entry.objects.filter(node__in=journal.published_nodes).exclude(vle_coupling=Entry.LINK_COMPLETE) \
-        .update(vle_coupling=Entry.NEEDS_GRADE_PASSBACK)
+    VLE.models.Entry.objects.filter(
+        node__in=journal.published_nodes
+    ).exclude(
+        vle_coupling=VLE.models.Entry.LINK_COMPLETE
+    ).update(
+        vle_coupling=VLE.models.Entry.NEEDS_GRADE_PASSBACK
+    )
 
     response = {}
     failed = False
@@ -57,8 +61,16 @@ def send_journal_status_to_LMS(journal):
             failed = True
 
     if not failed:
-        Entry.objects.filter(node__in=journal.published_nodes).update(vle_coupling=Entry.LINK_COMPLETE)
-        Entry.objects.filter(node__in=journal.unpublished_nodes).update(vle_coupling=Entry.SENT_SUBMISSION)
+        VLE.models.Entry.objects.filter(
+            node__in=journal.published_nodes
+        ).update(
+            vle_coupling=VLE.models.Entry.LINK_COMPLETE
+        )
+        VLE.models.Entry.objects.filter(
+            node__in=journal.unpublished_nodes
+        ).update(
+            vle_coupling=VLE.models.Entry.SENT_SUBMISSION
+        )
 
     return {
         'successful': not failed,
@@ -69,7 +81,10 @@ def send_journal_status_to_LMS(journal):
 @shared_task
 def task_author_status_to_LMS(journal_pk, author_pk, left_journal=False):
     return send_author_status_to_LMS(
-        Journal.objects.get(pk=journal_pk), AssignmentParticipation.objects.get(pk=author_pk), left_journal)
+        VLE.models.Journal.objects.get(pk=journal_pk),
+        VLE.models.AssignmentParticipation.objects.get(pk=author_pk),
+        left_journal
+    )
 
 
 def send_author_status_to_LMS(journal, author, left_journal=False):
@@ -112,7 +127,7 @@ def send_author_status_to_LMS(journal, author, left_journal=False):
 
     # Send student latest grade. But only send it when there are new entries OR grade changed
     response_student = None
-    if journal.published_nodes.filter(entry__vle_coupling=Entry.NEEDS_GRADE_PASSBACK).exists() or \
+    if journal.published_nodes.filter(entry__vle_coupling=VLE.models.Entry.NEEDS_GRADE_PASSBACK).exists() or \
        journal.LMS_grade != grade:
         if journal.LMS_grade != grade:
             submitted_at = str(timezone.now())

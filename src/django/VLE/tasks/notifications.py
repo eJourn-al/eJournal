@@ -61,3 +61,20 @@ def generate_new_entry_notifications(entry_id, node_id):
             user=user,
             entry=entry,
         )
+
+
+@shared_task
+def generate_new_grade_notifications(grade_ids):
+    grades = VLE.models.Grade.objects.filter(
+        pk__in=grade_ids,
+        published=True,  # Only generate notificaitons for published grades
+    ).select_related(
+        'entry__node__journal__authors'
+    )
+    for grade in grades:
+        for author in grade.entry.node.journal.authors.all():
+            VLE.models.Notification.objects.create(
+                type=VLE.models.Notification.NEW_GRADE,
+                user=author.user,
+                grade=grade
+            )

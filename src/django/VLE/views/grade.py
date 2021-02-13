@@ -6,11 +6,10 @@ In this file are all the grade api requests.
 from rest_framework import viewsets
 from rest_framework.decorators import action
 
-import VLE.factory as factory
 import VLE.utils.generic_utils as utils
 import VLE.utils.grading as grading
 import VLE.utils.responses as response
-from VLE.models import Assignment, Comment, Entry, Journal
+from VLE.models import Assignment, Entry, Grade, Journal
 from VLE.serializers import EntrySerializer, GradeHistorySerializer
 
 
@@ -84,11 +83,12 @@ class GradeView(viewsets.ViewSet):
         if grade is not None and grade < 0:
             return response.bad_request('Grade must be greater than or equal to zero.')
 
-        grade = factory.make_grade(entry, request.user.pk, grade, published)
-
-        if published:
-            Comment.objects.filter(entry=entry).update(published=True)
-        grading.task_journal_status_to_LMS.delay(journal.pk)
+        grade = Grade.objects.create(
+            entry=entry,
+            author=request.user,
+            grade=grade,
+            published=published
+        )
 
         return response.created({
             'entry': EntrySerializer(
@@ -105,9 +105,9 @@ class GradeView(viewsets.ViewSet):
 
         request.user.check_permission('can_publish_grades', assignment)
 
-        journals = Journal.objects.filter(assignment=assignment, unpublished__gt=0).distinct()
-        for journal in journals:
-            grading.publish_all_journal_grades(journal, request.user)
-        grading.task_bulk_send_journal_status_to_LMS.delay(list(journals.values_list('pk', flat=True)))
+        grading.publish_grades(
+            grades=Grade.objects.from_assignment(assignment).only_unpublished(),
+            author=request.user,
+        )
 
         return response.success()

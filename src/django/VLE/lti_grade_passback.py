@@ -3,7 +3,7 @@ import xml.etree.cElementTree as ET
 import oauth2
 from django.conf import settings
 
-from VLE.models import Counter
+import VLE.models
 
 
 class GradePassBackRequest(object):
@@ -34,7 +34,7 @@ class GradePassBackRequest(object):
     @classmethod
     def get_message_id_and_increment(cls):
         """Get the current count for message_id and increment this count."""
-        message_id_counter = Counter.objects.get_or_create(name='message_id')[0]
+        message_id_counter = VLE.models.Counter.objects.get_or_create(name='message_id')[0]
         count = message_id_counter.count
         message_id_counter.count += 1
         message_id_counter.save()

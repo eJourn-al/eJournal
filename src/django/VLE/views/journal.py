@@ -10,7 +10,7 @@ import VLE.factory
 import VLE.utils.generic_utils as utils
 import VLE.utils.grading as grading
 import VLE.utils.responses as response
-from VLE.models import Assignment, AssignmentParticipation, Course, Journal, User
+from VLE.models import Assignment, AssignmentParticipation, Course, Grade, Journal, User
 from VLE.serializers import AssignmentParticipationSerializer, JournalSerializer
 
 
@@ -423,8 +423,10 @@ class JournalView(viewsets.ViewSet):
         })
 
     def publish(self, request, journal):
-        grading.publish_all_journal_grades(journal, request.user)
-        grading.task_journal_status_to_LMS.delay(journal.pk)
+        grading.publish_grades(
+            grades=Grade.objects.from_journal(journal).only_unpublished(),
+            author=request.user,
+        )
 
         return response.success({
             'journal': JournalSerializer(Journal.objects.get(pk=journal.pk), context={'user': request.user}).data
