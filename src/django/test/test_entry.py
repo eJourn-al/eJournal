@@ -470,16 +470,38 @@ class EntryAPITest(TestCase):
         self.group_journal.assignment.active_lti_id = assignment_old_lti_id
         self.group_journal.assignment.save()
 
-        # Check entry categories
+        # Check entry categories, fixed categories
         cat = factory.Category(assignment=self.g_assignment, templates=self.template)
         payload = deepcopy(self.valid_create_params)
-        payload['category_ids'] = list(Category.objects.filter(pk=cat.pk).values_list('pk', flat=True))
+        payload['category_ids'] = [cat.pk]
 
         with mock.patch('VLE.models.Entry.validate_categories') as validate_categories_mock:
             resp = api.create(self, 'entries', params=payload, user=self.student)['entry']
             validate_categories_mock.assert_called_with(payload['category_ids'], self.g_assignment, self.template)
         assert resp['categories'][0]['id'] == cat.pk
         assert all(link.author == self.student for link in cat.entrycategorylink_set.filter(entry__pk=resp['id']))
+
+        # Check entry categories, allowing custom categories
+        cat2 = factory.Category(assignment=self.g_assignment)
+        self.template.chain.allow_custom_categories = True
+        self.template.chain.save()
+        payload = deepcopy(self.valid_create_params)
+        payload['category_ids'] = [cat.pk, cat2.pk]
+        resp = api.create(self, 'entries', params=payload, user=self.student)['entry']
+        entry = Entry.objects.get(pk=resp['id'])
+        assert set(entry.categories.all()) == set([cat, cat2]), (
+            'Entry is succesfully created, including categories which are not all default for the template '
+            'since we allow custom categories'
+        )
+
+        # It should not be possible to add a category on entry creation when the template has no default
+        # categories and allow_custom_categories is disabled
+        self.template.chain.allow_custom_categories = False
+        self.template.chain.save()
+        self.template.categories.set([])
+        payload = deepcopy(self.valid_create_params)
+        payload['category_ids'] = [cat2.pk]
+        api.create(self, 'entries', params=payload, user=self.student, status=400)
 
         # TODO: Test for entry bound to entrydeadline
         # TODO: Test with file upload

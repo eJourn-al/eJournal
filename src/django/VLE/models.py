@@ -813,7 +813,7 @@ class Notification(CreateUpdateModel):
         if is_new:
             # Send notification on creation if user preference is set to push, default (for reminders) is daily
             if self.email_preference == Preferences.PUSH:
-                send_push_notification.delay(self.pk)
+                send_push_notification.apply_async(args=[self.pk], countdown=settings.WEBSERVER_TIMEOUT)
 
 
 class Course(CreateUpdateModel):
@@ -1384,9 +1384,12 @@ class Assignment(CreateUpdateModel):
         self.connect_assignment_participations_to_journals(aps_without_journal)
 
         # Generate new assignment notification for all users already in course
-        generate_new_assignment_notifications.delay([
-            ap.pk for ap in AssignmentParticipation.objects.filter(assignment=self).exclude(user=self.author)
-        ])
+        generate_new_assignment_notifications.apply_async(
+            args=[list(AssignmentParticipation.objects.filter(
+                assignment=self,
+            ).exclude(user=self.author).values_list('pk', flat=True))],
+            countdown=settings.WEBSERVER_TIMEOUT,
+        )
 
         # Bulk create missing assignment participations, automatically generates journals & nodes
         AssignmentParticipation.objects.bulk_create(
@@ -1615,10 +1618,10 @@ class AssignmentParticipationQuerySet(models.QuerySet):
 
             # Generate new assignment notifications
             if new_assignment_notification:
-                generate_new_assignment_notifications.delay([
-                    ap.pk
-                    for ap in aps if ap.user != ap.assignment.author
-                ])
+                generate_new_assignment_notifications.apply_async(
+                    args=[[ap.pk for ap in aps if ap.user != ap.assignment.author]],
+                    countdown=settings.WEBSERVER_TIMEOUT,
+                )
             return aps
 
 
@@ -2079,7 +2082,10 @@ class NodeQuerySet(models.QuerySet):
     def bulk_create(self, nodes, *args, new_node_notifications=True, **kwargs):
         nodes = super().bulk_create(nodes, *args, **kwargs)
         if new_node_notifications:
-            generate_new_node_notifications.delay([node.pk for node in nodes])
+            generate_new_node_notifications.apply_async(
+                args=[[node.pk for node in nodes]],
+                countdown=settings.WEBSERVER_TIMEOUT,
+            )
 
         return nodes
 
@@ -2689,7 +2695,8 @@ class Entry(CreateUpdateModel):
         super().save(*args, **kwargs)
 
         if is_new and not isinstance(self, TeacherEntry):
-            generate_new_entry_notifications.delay(self.pk, self.node.pk)
+            generate_new_entry_notifications.apply_async(
+                args=[self.pk, self.node.pk], countdown=settings.WEBSERVER_TIMEOUT)
 
     def to_string(self, user=None):
         return "Entry"
@@ -3151,7 +3158,7 @@ class Comment(CreateUpdateModel):
         super(Comment, self).save(*args, **kwargs)
 
         if is_new and self.published:
-            generate_new_comment_notifications.delay(self.pk)
+            generate_new_comment_notifications.apply_async(args=[self.pk], countdown=settings.WEBSERVER_TIMEOUT)
 
     def to_string(self, user=None):
         return "Comment"
