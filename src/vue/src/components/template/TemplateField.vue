@@ -155,7 +155,6 @@ export default {
         fileExtensions[this.$root.fileTypes.pdf] = 'Accept PDF Only'
         fileExtensions[' '] = 'Accept Custom Extensions Only'
 
-
         return {
             fieldTypes: {
                 t: 'Text',

@@ -163,7 +163,6 @@ import sandboxedIframe from '@/components/assets/SandboxedIframe.vue'
 import genericUtils from '@/utils/generic_utils.js'
 import validation from '@/utils/validation.js' /* eslint-disable-line */
 
-
 export default {
     components: {
         textEditor: () => import(/* webpackChunkName: 'text-editor' */ '@/components/assets/TextEditor.vue'),
@@ -202,7 +201,7 @@ export default {
             return this.template.field_set.slice().sort((a, b) => a.location - b.location)
         },
         displayFields () {
-            return this.orderedFields.filter(field => this.content[field.id])
+            return this.orderedFields.filter((field) => this.content[field.id])
         },
     },
     methods: {
@@ -227,7 +226,7 @@ export default {
             if (!fieldOptions) {
                 return [{ value: null, text: 'Please select an option...' }]
             }
-            const options = JSON.parse(fieldOptions).filter(e => e).map(x => Object({ value: x, text: x }))
+            const options = JSON.parse(fieldOptions).filter((e) => e).map((x) => Object({ value: x, text: x }))
             options.unshift({ value: null, text: 'Please select an option...' })
             return options
         },

@@ -81,28 +81,28 @@ const router = new Router({
         path: '/Home/Course/:cID',
         name: 'Course',
         component: Course,
-        props: route => ({
+        props: (route) => ({
             cID: Number.parseInt(route.params.cID, 10),
         }),
     }, {
         path: '/Home/Course/:cID/CourseEdit',
         name: 'CourseEdit',
         component: () => import(/* webpackChunkName: 'course-edit' */ '@/views/CourseEdit.vue'),
-        props: route => ({
+        props: (route) => ({
             cID: Number.parseInt(route.params.cID, 10),
         }),
     }, {
         path: '/Home/Course/:cID/CourseEdit/UserRoleConfiguration',
         name: 'UserRoleConfiguration',
         component: () => import(/* webpackChunkName: 'role-config' */ '@/views/UserRoleConfiguration.vue'),
-        props: route => ({
+        props: (route) => ({
             cID: Number.parseInt(route.params.cID, 10),
         }),
     }, {
         path: '/Home/Course/:cID/Assignment/:aID',
         name: 'Assignment',
         component: Assignment,
-        props: route => ({
+        props: (route) => ({
             cID: Number.parseInt(route.params.cID, 10),
             aID: Number.parseInt(route.params.aID, 10),
         }),
@@ -110,7 +110,7 @@ const router = new Router({
         path: '/Home/Course/:cID/Assignment/:aID/AssignmentEditor',
         name: 'AssignmentEditor',
         component: () => import(/* webpackChunkName: 'format-edit' */ '@/views/AssignmentEditor.vue'),
-        props: route => ({
+        props: (route) => ({
             cID: Number.parseInt(route.params.cID, 10),
             aID: Number.parseInt(route.params.aID, 10),
         }),
@@ -118,7 +118,7 @@ const router = new Router({
         path: '/Home/Course/:cID/Assignment/:aID/Journal/New',
         name: 'JoinJournal',
         component: () => import(/* webpackChunkName: 'join-journal' */ '@/views/JoinJournal.vue'),
-        props: route => ({
+        props: (route) => ({
             cID: Number.parseInt(route.params.cID, 10),
             aID: Number.parseInt(route.params.aID, 10),
         }),
@@ -126,7 +126,7 @@ const router = new Router({
         path: '/Home/Course/:cID/Assignment/:aID/Journal/:jID',
         name: 'Journal',
         component: Journal,
-        props: route => ({
+        props: (route) => ({
             cID: Number.parseInt(route.params.cID, 10),
             aID: Number.parseInt(route.params.aID, 10),
             jID: Number.parseInt(route.params.jID, 10),
@@ -221,6 +221,5 @@ router.afterEach((to, from) => {
         }
     }
 })
-
 
 export default router

@@ -128,17 +128,17 @@ export default {
             if (this.$root.canGradeForSomeCourse() && deadlines.length > 0) {
                 if (this.filterOwnGroups) {
                     deadlines = deadlines.filter(
-                        dd => (dd.stats.needs_marking_own_groups + dd.stats.unpublished_own_groups) > 0
+                        (dd) => (dd.stats.needs_marking_own_groups + dd.stats.unpublished_own_groups) > 0
                         || !dd.is_published,
                     )
                 } else {
                     deadlines = deadlines.filter(
-                        d => d.stats.needs_marking + d.stats.unpublished > 0 || !d.is_published,
+                        (d) => d.stats.needs_marking + d.stats.unpublished > 0 || !d.is_published,
                     )
                 }
             } else {
                 deadlines = deadlines.filter(
-                    d => d.deadline.date !== null)
+                    (d) => d.deadline.date !== null)
             }
 
             if (this.sortBy === 'date') {

@@ -118,8 +118,8 @@ function initRequest (func, url, data = null, connArgs = DEFAULT_CONN_ARGS) {
     const packedConnArgs = packConnArgs(connArgs)
 
     return func(url, data).then(
-        resp => handleSuccess(resp, packedConnArgs),
-        error => handleError(error, packedConnArgs))
+        (resp) => handleSuccess(resp, packedConnArgs),
+        (error) => handleError(error, packedConnArgs))
 }
 
 function improveUrl (url, data = null) {
@@ -149,7 +149,7 @@ export default {
             email,
             jwt_params: jwtParams,
         }, connArgs)
-            .then(response => response.data.user)
+            .then((response) => response.data.user)
     },
 
     /* Change password (old password is known by user). */

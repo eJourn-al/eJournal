@@ -258,7 +258,6 @@ export default {
                 this.loadJournal(false)
             })
 
-
         if (store.state.filteredJournals.length === 0) {
             if (this.$hasPermission('can_view_all_journals')) {
                 journalAPI.getFromAssignment(this.cID, this.aID)

@@ -2,7 +2,7 @@ import * as Sentry from '@sentry/browser'
 import * as types from '../constants/mutation-types.js'
 
 const getters = {
-    lastEvenID: state => state.lastEvenID,
+    lastEvenID: (state) => state.lastEvenID,
 }
 
 const mutations = {

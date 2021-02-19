@@ -118,7 +118,7 @@ export default {
     },
     computed: {
         filteredCourses () {
-            return this.courses.filter(course => course.name.toLowerCase().includes(this.searchValue.toLowerCase()))
+            return this.courses.filter((course) => course.name.toLowerCase().includes(this.searchValue.toLowerCase()))
         },
     },
     created () {

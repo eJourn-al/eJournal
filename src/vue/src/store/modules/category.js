@@ -8,14 +8,14 @@ function propagateTemplateCategoryUpdate (categories, updatedTemplate, oldTempla
 
     categories.forEach((category) => {
         const categoryTemplateIndex = category.templates.findIndex(
-            template => template.id === updatedTemplate.id || template.id === oldTemplateId)
+            (template) => template.id === updatedTemplate.id || template.id === oldTemplateId)
         const categoryLinkedToTemplate = categoryTemplateIndex !== -1
 
         if (categoryLinkedToTemplate) {
             Vue.set(category.templates, categoryTemplateIndex, templateConcreteFields)
         }
 
-        const updatedTemplateLinkedToCategory = updatedTemplate.categories.find(elem => elem.id === category.id)
+        const updatedTemplateLinkedToCategory = updatedTemplate.categories.find((elem) => elem.id === category.id)
 
         if (!categoryLinkedToTemplate && updatedTemplateLinkedToCategory) {
             category.templates.push(templateConcreteFields)
@@ -27,7 +27,7 @@ function propagateTemplateCategoryUpdate (categories, updatedTemplate, oldTempla
 
 function propagateTemplateDelete (categories, deletedTemplateId) {
     categories.forEach((category) => {
-        const categoryTemplateIndex = category.templates.findIndex(template => template.id === deletedTemplateId)
+        const categoryTemplateIndex = category.templates.findIndex((template) => template.id === deletedTemplateId)
 
         if (categoryTemplateIndex !== -1) {
             Vue.delete(category.templates, categoryTemplateIndex)
@@ -45,13 +45,13 @@ const getters = {
         const aID = rootState.route.params.aID
 
         if (aID in state.assignmentsCategories) {
-            return state.assignmentsCategories[aID].some(category => 'id' in category && category.id >= 0)
+            return state.assignmentsCategories[aID].some((category) => 'id' in category && category.id >= 0)
         }
 
         return false
     },
-    assignmentsCategories: state => state.assignmentCategories,
-    timelineInstance: state => state.timelineInstance,
+    assignmentsCategories: (state) => state.assignmentCategories,
+    timelineInstance: (state) => state.timelineInstance,
 }
 
 const mutations = {
@@ -63,14 +63,14 @@ const mutations = {
         state.assignmentsCategories[aID].sort((a, b) => a.name.localeCompare(b.name))
     },
     UPDATE_ASSIGNMENT_CATEGORY (state, { aID, category, oldId }) {
-        const updatedCategoryIndex = state.assignmentsCategories[aID].findIndex(elem => elem.id === oldId)
+        const updatedCategoryIndex = state.assignmentsCategories[aID].findIndex((elem) => elem.id === oldId)
         Vue.set(state.assignmentsCategories[aID], updatedCategoryIndex, category)
         state.assignmentsCategories[aID].sort((a, b) => a.name.localeCompare(b.name))
     },
     DELETE_ASSIGNMENT_CATEGORY (state, { aID, id }) {
         Vue.delete(
             state.assignmentsCategories[aID],
-            state.assignmentsCategories[aID].findIndex(elem => elem.id === id),
+            state.assignmentsCategories[aID].findIndex((elem) => elem.id === id),
         )
     },
     SET_ID_OF_CREATED_CATEGORY (state, { category, id }) {
@@ -88,7 +88,7 @@ const actions = {
     /* NOTE: Get is currently unused */
     get (context, { id, connArgs = auth.DEFAULT_CONN_ARGS }) {
         return auth.get(`categories/${id}`, null, connArgs)
-            .then(response => response.data.category)
+            .then((response) => response.data.category)
     },
     list (context, { aID, force = false, connArgs = auth.DEFAULT_CONN_ARGS }) {
         function fn () {
@@ -106,7 +106,7 @@ const actions = {
         function fn () {
             /* Create a payload so we do not modify the local categories templates directly */
             const payload = JSON.parse(JSON.stringify(category))
-            payload.templates = payload.templates.map(elem => elem.id)
+            payload.templates = payload.templates.map((elem) => elem.id)
             payload.assignment_id = aID
 
             return auth.create('categories', payload, connArgs)
@@ -132,7 +132,7 @@ const actions = {
         function fn () {
             /* Create a payload so we do not modify the local categories templates directly */
             const payload = JSON.parse(JSON.stringify(category))
-            payload.templates = payload.templates.map(elem => elem.id)
+            payload.templates = payload.templates.map((elem) => elem.id)
             payload.assignment_id = aID
 
             return auth.update(`categories/${id}`, payload, connArgs)
@@ -174,7 +174,7 @@ const actions = {
     editEntry (context, { id, data, connArgs = auth.DEFAULT_CONN_ARGS }) {
         function fn () {
             return auth.update(`categories/${id}/edit_entry`, data, connArgs)
-                .then(response => response.data)
+                .then((response) => response.data)
         }
 
         return fn()

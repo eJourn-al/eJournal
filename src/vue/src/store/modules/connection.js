@@ -8,9 +8,9 @@ function invalidAccessToken (status, error) {
 }
 
 const getters = {
-    showConnectionSpinner: state => state.minConTimerRunning || state.openApiCalls > 0,
-    fetchingAccessToken: state => state.fetchingAccessToken,
-    minConTimerRunning: state => state.minConTimerRunning,
+    showConnectionSpinner: (state) => state.minConTimerRunning || state.openApiCalls > 0,
+    fetchingAccessToken: (state) => state.fetchingAccessToken,
+    minConTimerRunning: (state) => state.minConTimerRunning,
 }
 
 const mutations = {

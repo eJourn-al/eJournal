@@ -243,12 +243,12 @@ export default {
         selectUsername () {
             // Split input on comma and space
             this.usernameInput.split(/[ ,]+/).forEach((username) => {
-                const journalFromUsername = this.assignmentJournals.find(journal => journal.usernames.split(', ')
-                    .some(journalUsername => journalUsername === username))
+                const journalFromUsername = this.assignmentJournals.find((journal) => journal.usernames.split(', ')
+                    .some((journalUsername) => journalUsername === username))
 
                 if (!journalFromUsername) {
                     this.$toasted.error(`${username} does not exist.`)
-                } else if (!this.selectedJournals.some(journal => journal.journal_id === journalFromUsername.id)) {
+                } else if (!this.selectedJournals.some((journal) => journal.journal_id === journalFromUsername.id)) {
                     this.selectedJournals.push({
                         journal_id: journalFromUsername.id,
                         grade: this.grade,
@@ -263,12 +263,12 @@ export default {
         },
         createTeacherEntry () {
             if (this.selectedTemplate.field_set.some(
-                field => field.required && !this.teacherEntryContent[field.id])) {
+                (field) => field.required && !this.teacherEntryContent[field.id])) {
                 this.$toasted.error('Some required fields are empty.')
             } else if (this.selectedJournals.length === 0) {
                 this.$toasted.error('No journals selected.')
             } else if (((this.sameGradeForAllEntries && !this.grade)
-                || (!this.sameGradeForAllEntries && this.selectedJournals.some(journal => !journal.grade)))
+                || (!this.sameGradeForAllEntries && this.selectedJournals.some((journal) => !journal.grade)))
                 && !window.confirm('Students will be able to edit the entry if no grade is set. Are you sure you'
                 + ' want to post ungraded entries?')) {
                 this.$toasted.error('Teacher entry not posted: no grade set.')
@@ -286,7 +286,7 @@ export default {
                     assignment_id: this.$route.params.aID,
                     template_id: this.selectedTemplate.id,
                     content: this.teacherEntryContent,
-                    category_ids: this.teacherEntryCategories.categories.map(category => category.id),
+                    category_ids: this.teacherEntryCategories.categories.map((category) => category.id),
                     journals: this.selectedJournals,
                 }, {
                     customSuccessToast: 'Teacher entry successfully posted.',

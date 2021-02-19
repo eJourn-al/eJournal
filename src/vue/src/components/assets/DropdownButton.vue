@@ -76,7 +76,7 @@ export default {
             }
         },
         filteredOptions () {
-            const filteredOptions = Object.assign({}, this.options)
+            const filteredOptions = { ...this.options }
             delete filteredOptions[this.selectedOption]
 
             return filteredOptions

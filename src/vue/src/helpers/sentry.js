@@ -2,7 +2,6 @@ import * as Sentry from '@sentry/browser'
 import { Vue as SentryVueIntegration } from '@sentry/integrations'
 import store from '@/store/index.js'
 
-
 function beforeSend (event, hint) { // eslint-disable-line no-unused-vars
     // Filtering can be done here https://docs.sentry.io/error-reporting/configuration/filtering/?platform=browser
     if (event.exception) {

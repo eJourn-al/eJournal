@@ -78,14 +78,14 @@ export default {
     methods: {
         removeCategory (category) {
             if (this.create || !this.autosave) {
-                this.entry.categories = this.entry.categories.filter(elem => elem.id !== category.id)
+                this.entry.categories = this.entry.categories.filter((elem) => elem.id !== category.id)
             } else {
                 this.$store.dispatch(
                     'category/editEntry',
                     { id: category.id, data: { entry_id: this.entry.id, add: false } },
                 )
                     .then(() => {
-                        this.entry.categories = this.entry.categories.filter(elem => elem.id !== category.id)
+                        this.entry.categories = this.entry.categories.filter((elem) => elem.id !== category.id)
                     })
             }
         },

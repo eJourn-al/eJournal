@@ -136,7 +136,7 @@ export default {
             })
         },
         assignments () {
-            return this.importableFormats.find(importable => importable.course.id === this.selectedCourse.id)
+            return this.importableFormats.find((importable) => importable.course.id === this.selectedCourse.id)
                 .assignments.map((assignment) => {
                     assignment.name = utils.assignmentWithDatesDisplay(assignment)
                     return assignment

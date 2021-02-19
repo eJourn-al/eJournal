@@ -218,8 +218,8 @@ export default {
     },
     computed: {
         hasRemovedJournal () {
-            const journalIds = this.selectedJournals.map(journal => journal.id)
-            return this.selectedTeacherEntry.journals.some(journal => !journalIds.includes(journal.id))
+            const journalIds = this.selectedJournals.map((journal) => journal.id)
+            return this.selectedTeacherEntry.journals.some((journal) => !journalIds.includes(journal.id))
         },
     },
     watch: {
@@ -253,8 +253,8 @@ export default {
         selectUsername () {
             // Split input on comma and space
             this.usernameInput.split(/[ ,]+/).forEach((username) => {
-                const journalFromUsername = this.assignmentJournals.find(journal => journal.usernames.split(', ')
-                    .some(journalUsername => journalUsername === username))
+                const journalFromUsername = this.assignmentJournals.find((journal) => journal.usernames.split(', ')
+                    .some((journalUsername) => journalUsername === username))
 
                 if (!journalFromUsername) {
                     this.$toasted.error(`${username} does not exist`)
@@ -276,7 +276,7 @@ export default {
                 this.$toasted.error('No journals selected.')
             } else if (!this.updatedTitle) {
                 this.$toasted.error('Title cannot be empty.')
-            } else if (this.selectedJournals.some(journal => !journal.grade)
+            } else if (this.selectedJournals.some((journal) => !journal.grade)
                 && !window.confirm('Students will be able to edit the entry if no grade is set. Are you sure you'
                 + ' want to post ungraded entries?')) {
                 this.$toasted.error('Changes not saved: no grade set.')
@@ -289,7 +289,7 @@ export default {
                 teacherEntryAPI.update(this.selectedTeacherEntry.id, {
                     journals: this.selectedJournals,
                     title: this.updatedTitle,
-                    category_ids: this.selectedTeacherEntry.categories.map(elem => elem.id),
+                    category_ids: this.selectedTeacherEntry.categories.map((elem) => elem.id),
                 }, {
                     customSuccessToast: 'Teacher entry successfully updated.',
                 })

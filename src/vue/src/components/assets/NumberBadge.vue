@@ -33,7 +33,7 @@ export default {
                 value: 0,
                 tooltip: 'Tooltip msg',
             }],
-            validator: badges => badges.every(badge => 'value' in badge),
+            validator: (badges) => badges.every((badge) => 'value' in badge),
         },
     },
     data () {

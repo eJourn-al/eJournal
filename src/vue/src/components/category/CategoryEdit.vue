@@ -184,7 +184,7 @@ export default {
             if (name === '') {
                 this.nameInvalidFeedback = 'Name cannot be empty.'
                 this.nameInputState = false
-            } else if (this.categories.some(cat => cat.id !== this.category.id && cat.name === name)) {
+            } else if (this.categories.some((cat) => cat.id !== this.category.id && cat.name === name)) {
                 this.nameInvalidFeedback = 'Name is not unique.'
                 this.nameInputState = false
             } else {

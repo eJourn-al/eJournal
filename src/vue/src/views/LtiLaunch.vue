@@ -248,7 +248,7 @@ export default {
                     this.linkableAssignments = assignments.slice()
                     for (let i = 0; i < this.linkableAssignments.length; i++) {
                         this.linkableAssignments[i].assignments = this.linkableAssignments[i].assignments.filter(
-                            assignment => !assignment.active_lti_course
+                            (assignment) => !assignment.active_lti_course
                             || assignment.active_lti_course.cID !== this.page.cID)
                     }
                     if (this.assignments.length) {

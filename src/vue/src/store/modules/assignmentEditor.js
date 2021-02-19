@@ -31,33 +31,33 @@ function isDraftDirty (drafts, obj) {
 }
 
 const getters = {
-    activeComponent: state => state.activeComponent,
-    activeComponentOptions: state => state.activeComponentOptions,
+    activeComponent: (state) => state.activeComponent,
+    activeComponentOptions: (state) => state.activeComponentOptions,
 
-    activeComponentMode: state => state.activeComponentMode,
-    activeComponentModeOptions: state => state.activeComponentModeOptions,
-    readMode: state => state.activeComponentMode === state.activeComponentModeOptions.read,
-    editMode: state => state.activeComponentMode === state.activeComponentModeOptions.edit,
+    activeComponentMode: (state) => state.activeComponentMode,
+    activeComponentModeOptions: (state) => state.activeComponentModeOptions,
+    readMode: (state) => state.activeComponentMode === state.activeComponentModeOptions.read,
+    editMode: (state) => state.activeComponentMode === state.activeComponentModeOptions.edit,
 
-    assignmentDetailsDraft: state => state.assignmentDetailsDraft,
+    assignmentDetailsDraft: (state) => state.assignmentDetailsDraft,
 
-    selectedCategory: state => state.selectedCategory,
-    newCategoryDraft: state => state.newCategoryDraft,
+    selectedCategory: (state) => state.selectedCategory,
+    newCategoryDraft: (state) => state.newCategoryDraft,
 
-    selectedTemplate: state => state.selectedTemplate,
-    newTemplateDraft: state => state.newTemplateDraft,
+    selectedTemplate: (state) => state.selectedTemplate,
+    newTemplateDraft: (state) => state.newTemplateDraft,
 
-    selectedPresetNode: state => state.selectedPresetNode,
-    newPresetNodeDraft: state => state.newPresetNodeDraft,
+    selectedPresetNode: (state) => state.selectedPresetNode,
+    newPresetNodeDraft: (state) => state.newPresetNodeDraft,
 
-    selectedTimelineElementIndex: state => state.selectedTimelineElementIndex,
+    selectedTimelineElementIndex: (state) => state.selectedTimelineElementIndex,
 
-    isAssignmentDetailsDirty: state => original => (
+    isAssignmentDetailsDirty: (state) => (original) => (
         state.assignmentDetailsDraft && !Vue.prototype.$_isEqual(state.assignmentDetailsDraft, original)
     ),
-    isCategoryDirty: state => originalCategory => isDraftDirty(state.categoryDrafts, originalCategory),
-    isPresetNodeDirty: state => originalPresetNode => isDraftDirty(state.presetNodeDrafts, originalPresetNode),
-    isTemplateDirty: state => originalTemplate => isDraftDirty(state.templateDrafts, originalTemplate),
+    isCategoryDirty: (state) => (originalCategory) => isDraftDirty(state.categoryDrafts, originalCategory),
+    isPresetNodeDirty: (state) => (originalPresetNode) => isDraftDirty(state.presetNodeDrafts, originalPresetNode),
+    isTemplateDirty: (state) => (originalTemplate) => isDraftDirty(state.templateDrafts, originalTemplate),
 }
 
 const mutations = {
@@ -114,14 +114,14 @@ const mutations = {
     /* When a category is updated, it is possible its templates were changed.
      * These changes need to be propagated to the the template drafts in order to keep state in sync. */
     PROPAGATE_DRAFT_CATEGORY_TEMPLATE_UPDATE (state, { updatedCategory }) {
-        const drafts = Object.values(state.templateDrafts).map(draft => draft.draft)
+        const drafts = Object.values(state.templateDrafts).map((draft) => draft.draft)
         if (state.newTemplateDraft) { drafts.push(state.newTemplateDraft) }
 
         templateStore.propagateCategoryTemplateUpdate(drafts, updatedCategory)
     },
     /* When a category is deleted, it also needs to be removed from all template drafts */
     PROPAGATE_DRAFT_CATEGORY_DELETE (state, { deletedCategoryId }) {
-        const drafts = Object.values(state.templateDrafts).map(draft => draft.draft)
+        const drafts = Object.values(state.templateDrafts).map((draft) => draft.draft)
         if (state.newTemplateDraft) { drafts.push(state.newTemplateDraft) }
 
         templateStore.propagateCategoryDelete(drafts, deletedCategoryId)
@@ -173,7 +173,7 @@ const mutations = {
     /* When a template is updated, it is possible its categories were changed.
      * These changes need to be propagated to the category drafts in order to keep state in sync. */
     PROPAGATE_DRAFT_TEMPLATE_CATEGORY_UPDATE (state, { updatedTemplate, oldTemplateId }) {
-        const drafts = Object.values(state.categoryDrafts).map(draft => draft.draft)
+        const drafts = Object.values(state.categoryDrafts).map((draft) => draft.draft)
         if (state.newCategoryDraft) { drafts.push(state.newCategoryDraft) }
 
         categoryStore.propagateTemplateCategoryUpdate(drafts, updatedTemplate, oldTemplateId)
@@ -181,7 +181,7 @@ const mutations = {
     /* When a template is deleted, it also needs to be removed from all category drafts */
     PROPAGATE_TEMPLATE_DELETE (state, { deletedTemplateId }) {
         categoryStore.propagateTemplateDelete(
-            Object.values(state.categoryDrafts).map(draft => draft.draft),
+            Object.values(state.categoryDrafts).map((draft) => draft.draft),
             deletedTemplateId,
         )
     },
@@ -235,7 +235,7 @@ const mutations = {
     /* When a template is updated, it is possible preset deadlines' forced template becomes stale.
      * These changes need to be propagated to the preset node drafts in order to keep state in sync. */
     PROPAGATE_DRAFT_TEMPLATE_PRESET_NODE_UPDATE (state, { updatedTemplate, oldTemplateId }) {
-        const drafts = Object.values(state.presetNodeDrafts).map(draft => draft.draft)
+        const drafts = Object.values(state.presetNodeDrafts).map((draft) => draft.draft)
         if (state.newPresetNodeDraft) { drafts.push(state.newPresetNodeDraft) }
 
         presetNodeStore.propagateTemplatePresetNodeUpdate(drafts, updatedTemplate, oldTemplateId)
@@ -293,7 +293,7 @@ const actions = {
             if (fromPresetNode.id === -1) {
                 timelineElementIndex = presetNodes.length /* Add node should be selected */
             } else {
-                timelineElementIndex = presetNodes.findIndex(elem => elem.id === fromPresetNode.id)
+                timelineElementIndex = presetNodes.findIndex((elem) => elem.id === fromPresetNode.id)
             }
 
             const presetNodeExists = timelineElementIndex !== -1
@@ -386,27 +386,27 @@ const actions = {
         const presetNodes = context.rootGetters['presetNode/assignmentPresetNodes']
         context.commit(
             'SET_TIMELINE_ELEMENT_INDEX',
-            { index: presetNodes.findIndex(elem => elem.id === presetNode.id) },
+            { index: presetNodes.findIndex((elem) => elem.id === presetNode.id) },
         )
     },
 
     cancelCategoryEdit (context, { category }) {
         const categories = context.rootGetters['category/assignmentCategories']
-        const originalCategory = categories.find(elem => elem.id === category.id)
+        const originalCategory = categories.find((elem) => elem.id === category.id)
 
         context.commit('CLEAR_DRAFT', { drafts: context.state.categoryDrafts, obj: category })
         context.commit('SELECT_CATEGORY', { category: originalCategory })
     },
     cancelPresetNodeEdit (context, { presetNode }) {
         const presetNodes = context.rootGetters['presetNode/assignmentPresetNodes']
-        const originalPresetNode = presetNodes.find(elem => elem.id === presetNode.id)
+        const originalPresetNode = presetNodes.find((elem) => elem.id === presetNode.id)
 
         context.commit('CLEAR_DRAFT', { drafts: context.state.presetNodeDrafts, obj: presetNode })
         context.commit('SELECT_PRESET_NODE', { presetNode: originalPresetNode })
     },
     cancelTemplateEdit (context, { template }) {
         const templates = context.rootGetters['template/assignmentTemplates']
-        const originalTemplate = templates.find(elem => elem.id === template.id)
+        const originalTemplate = templates.find((elem) => elem.id === template.id)
 
         context.commit('CLEAR_DRAFT', { drafts: context.state.templateDrafts, obj: template })
         context.commit('SELECT_TEMPLATE', { template: originalTemplate })
@@ -440,7 +440,7 @@ const actions = {
 
         Object.values(context.state.categoryDrafts).forEach((draft) => {
             const categoryDraft = draft.draft
-            const originalCategory = categories.find(elem => elem.id === categoryDraft.id)
+            const originalCategory = categories.find((elem) => elem.id === categoryDraft.id)
 
             if (!Vue.prototype.$_isEqual(originalCategory, categoryDraft)) {
                 dirtyWarnings.push(`Edit to category '${originalCategory.name}'.`)
@@ -448,7 +448,7 @@ const actions = {
         })
         Object.values(context.state.presetNodeDrafts).forEach((draft) => {
             const presetNodeDraft = draft.draft
-            const originalPresetNode = presetNodes.find(elem => elem.id === presetNodeDraft.id)
+            const originalPresetNode = presetNodes.find((elem) => elem.id === presetNodeDraft.id)
 
             if (!Vue.prototype.$_isEqual(originalPresetNode, presetNodeDraft)) {
                 dirtyWarnings.push(`Edit to deadline '${originalPresetNode.display_name}'.`)
@@ -456,7 +456,7 @@ const actions = {
         })
         Object.values(context.state.templateDrafts).forEach((draft) => {
             const templateDraft = draft.draft
-            const originalTemplate = templates.find(elem => elem.id === templateDraft.id)
+            const originalTemplate = templates.find((elem) => elem.id === templateDraft.id)
 
             if (!Vue.prototype.$_isEqual(originalTemplate, templateDraft)) {
                 dirtyWarnings.push(`Edit to template '${originalTemplate.name}'.`)
@@ -467,7 +467,7 @@ const actions = {
             return window.confirm(`
 The following unsaved changes will be lost:
 
-${dirtyWarnings.map(warn => `- ${warn}\n`).join('')}
+${dirtyWarnings.map((warn) => `- ${warn}\n`).join('')}
 Are you sure you want to continue?
             `)
         }
