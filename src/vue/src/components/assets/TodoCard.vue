@@ -103,7 +103,7 @@ export default {
         },
         courseAbbreviations () {
             if (this.courses) {
-                const abbrList = this.courses.map(c => c.abbreviation)
+                const abbrList = this.courses.map((c) => c.abbreviation)
                 return `(${abbrList.join(', ')})`
             } else {
                 return `(${this.deadline.course.abbreviation})`

@@ -203,14 +203,16 @@ export default {
             }
         },
         hasCategory (categories, filters) {
-            return categories.some(category => filters.find(filteredCategory => category.id === filteredCategory.id))
+            return categories.some((category) => filters.find(
+                (filteredCategory) => category.id === filteredCategory.id),
+            )
         },
         findNodeIndex (nodes, node) {
             /* When editing the timeline (edit = true) we are working with preset nodes directly
              * Otherwise we are working with a timeline consisting of normal nodes */
             const idKey = (this.edit) ? 'id' : 'nID'
 
-            return nodes.findIndex(elem => elem[idKey] === node[idKey])
+            return nodes.findIndex((elem) => elem[idKey] === node[idKey])
         },
         /* When a category is linked to or removed from a template, the current list of nodes can become stale.
          * Each of these nodes has been serialized before the category update, and needs to be synced with possible

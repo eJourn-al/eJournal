@@ -148,7 +148,7 @@ export default {
             })
         },
         assignments () {
-            return this.importableTemplates.find(importable => importable.course.id === this.selectedCourse.id)
+            return this.importableTemplates.find((importable) => importable.course.id === this.selectedCourse.id)
                 .assignments
         },
     },
@@ -157,9 +157,9 @@ export default {
             .then((data) => {
                 this.loading = false
                 data.forEach((d) => {
-                    d.assignments = d.assignments.filter(assignment => assignment.id !== this.$route.params.aID)
+                    d.assignments = d.assignments.filter((assignment) => assignment.id !== this.$route.params.aID)
                 })
-                this.importableTemplates = data.filter(d => d.assignments.length > 0)
+                this.importableTemplates = data.filter((d) => d.assignments.length > 0)
             })
     },
     methods: {

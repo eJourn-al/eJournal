@@ -69,7 +69,7 @@ export default {
             })
         },
         assignments () {
-            return this.linkableAssignments.find(linkable => linkable.course.id === this.selectedCourse.id)
+            return this.linkableAssignments.find((linkable) => linkable.course.id === this.selectedCourse.id)
                 .assignments
         },
     },

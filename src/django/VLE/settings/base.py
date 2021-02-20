@@ -113,6 +113,10 @@ CELERY_TASK_SERIALIZER = 'json'
 DJANGO_CELERY_BEAT_TZ_AWARE = False
 
 
+# Webserver settings
+WEBSERVER_TIMEOUT = 60
+
+
 # Read for webserver, r + w for django
 FILE_UPLOAD_PERMISSIONS = 0o644
 

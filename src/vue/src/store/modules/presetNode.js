@@ -7,7 +7,7 @@ const getters = {
         if (aID in state.assignmentsPresetNodes) { return state.assignmentsPresetNodes[aID] }
         return []
     },
-    assignmentsPresetNodes: state => state.assignmentsPresetNodes,
+    assignmentsPresetNodes: (state) => state.assignmentsPresetNodes,
 }
 
 function propagateTemplatePresetNodeUpdate (presetNodes, updatedTemplate, oldTemplateId) {
@@ -30,7 +30,7 @@ const mutations = {
         state.assignmentsPresetNodes[aID].sort((a, b) => new Date(a.due_date) - new Date(b.due_date))
     },
     UPDATE_ASSIGNMENT_PRESET_NODE (state, { aID, presetNode }) {
-        const updatedPresetNodeIndex = state.assignmentsPresetNodes[aID].findIndex(elem => elem.id === presetNode.id)
+        const updatedPresetNodeIndex = state.assignmentsPresetNodes[aID].findIndex((elem) => elem.id === presetNode.id)
 
         Vue.set(state.assignmentsPresetNodes[aID], updatedPresetNodeIndex, presetNode)
         state.assignmentsPresetNodes[aID].sort((a, b) => new Date(a.due_date) - new Date(b.due_date))
@@ -38,7 +38,7 @@ const mutations = {
     DELETE_ASSIGNMENT_PRESET_NODE (state, { aID, id }) {
         Vue.delete(
             state.assignmentsPresetNodes[aID],
-            state.assignmentsPresetNodes[aID].findIndex(elem => elem.id === id),
+            state.assignmentsPresetNodes[aID].findIndex((elem) => elem.id === id),
         )
     },
     PROPAGATE_TEMPLATE_PRESET_NODE_UPDATE (state, { aID, updatedTemplate, oldTemplateId }) {

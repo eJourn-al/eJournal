@@ -102,7 +102,7 @@ export default {
     },
     computed: {
         courses () {
-            const courses = this.fetchedCourses.filter(c => this.fetchedAssignments.some(a => a.course.id === c.id))
+            const courses = this.fetchedCourses.filter((c) => this.fetchedAssignments.some((a) => a.course.id === c.id))
             courses.map((c) => {
                 c.name = utils.courseWithDatesDisplay(c)
                 return c
@@ -111,7 +111,7 @@ export default {
         },
         assignments () {
             return this.fetchedAssignments
-                .filter(a => a.course.id === this.selectedCourse.id)
+                .filter((a) => a.course.id === this.selectedCourse.id)
                 .map((a) => {
                     a.name = utils.assignmentWithDatesDisplay(a)
                     return a
@@ -132,7 +132,7 @@ export default {
                     results.forEach((assignments) => {
                         this.fetchedAssignments = [
                             ...this.fetchedAssignments,
-                            ...assignments.filter(a => a.id !== this.targetAssignmentID),
+                            ...assignments.filter((a) => a.id !== this.targetAssignmentID),
                         ]
                     })
 
@@ -150,7 +150,7 @@ export default {
                 ).then(() => {
                     this.selectedCourse = null
                     this.selectedAssignment = null
-                    this.fetchedAssignments = this.fetchedAssignments.filter(a => a.id !== assignment.id)
+                    this.fetchedAssignments = this.fetchedAssignments.filter((a) => a.id !== assignment.id)
                 })
             }
         },

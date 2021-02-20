@@ -569,7 +569,7 @@ export default {
         /* Check query to see if the LTI submission corresponds to a left journal. Remove query param to prevent
          * showing an alert on subsequent page visits / refreshes. */
         if (this.$route.query.left_journal) {
-            const query = Object.assign({}, this.$route.query)
+            const query = { ...this.$route.query }
             delete query.left_journal
             this.$router.replace({ query })
             this.LTILeftJournal = true
@@ -607,7 +607,7 @@ export default {
                        groups of the user provided that yields journals. */
                     if (!this.getSelfSetGroupFilter && participant && participant.groups) {
                         this.setJournalGroupFilter(participant.groups.filter(
-                            participantGroup => this.groups.some(group => group.id === participantGroup.id)))
+                            (participantGroup) => this.groups.some((group) => group.id === participantGroup.id)))
                     }
                 }
 

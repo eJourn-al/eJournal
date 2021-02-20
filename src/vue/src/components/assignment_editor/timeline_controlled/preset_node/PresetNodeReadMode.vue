@@ -60,7 +60,7 @@ export default {
         }),
         /* Do not use the presetNode serialized template as it might be stale due to updates else where */
         template () {
-            return this.templates.find(elem => elem.id === this.presetNode.template.id)
+            return this.templates.find((elem) => elem.id === this.presetNode.template.id)
         },
     },
     methods: {

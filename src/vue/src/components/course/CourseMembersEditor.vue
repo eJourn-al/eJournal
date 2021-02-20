@@ -223,7 +223,7 @@ export default {
                     }
                     /* Only check if group filter is applied. */
                     if (self.groupFilter) {
-                        return user.groups.map(group => group.name).includes(self.groupFilter)
+                        return user.groups.map((group) => group.name).includes(self.groupFilter)
                     }
                 }
                 return true
@@ -250,7 +250,7 @@ export default {
     watch: {
         participants: {
             handler (val) {
-                this.numTeachers = val.filter(p => p.role === 'Teacher').length
+                this.numTeachers = val.filter((p) => p.role === 'Teacher').length
             },
             deep: true,
         },
@@ -278,10 +278,10 @@ export default {
         },
 
         deleteParticipantLocally (user) {
-            this.participants = this.participants.filter(item => user.id !== item.id)
+            this.participants = this.participants.filter((item) => user.id !== item.id)
         },
         addParticipantLocally (user) {
-            this.unenrolledStudents = this.unenrolledStudents.filter(item => user.id !== item.id)
+            this.unenrolledStudents = this.unenrolledStudents.filter((item) => user.id !== item.id)
             user.role = 'Student'
             user.group = null
             this.participants.push(user)
@@ -293,7 +293,7 @@ export default {
                     this.participants[i].role = val
                 }
             }
-            this.numTeachers = this.participants.filter(p => p.role === 'Teacher').length
+            this.numTeachers = this.participants.filter((p) => p.role === 'Teacher').length
         },
 
         toggleEnrolled () {

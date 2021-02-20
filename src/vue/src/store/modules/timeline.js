@@ -1,9 +1,8 @@
 import Vue from 'vue'
 
-
 const getters = {
-    filteredCategories: state => state.filteredCategories,
-    timelineInstance: state => state.timelineInstance,
+    filteredCategories: (state) => state.filteredCategories,
+    timelineInstance: (state) => state.timelineInstance,
 }
 
 const mutations = {
@@ -11,7 +10,7 @@ const mutations = {
         state.filteredCategories = filteredCategories
     },
     REMOVE_CATEGORY_FROM_FILTER (state, { id }) {
-        Vue.delete(state.filteredCategories, state.filteredCategories.findIndex(elem => elem.id === id))
+        Vue.delete(state.filteredCategories, state.filteredCategories.findIndex((elem) => elem.id === id))
     },
     CLEAR_FILTERED_CATEGORIES (state) {
         state.filteredCategories = []

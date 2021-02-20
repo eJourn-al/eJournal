@@ -32,7 +32,6 @@
     </content-columns>
 </template>
 
-
 <script>
 import breadCrumb from '@/components/assets/BreadCrumb.vue'
 import contentColumns from '@/components/columns/ContentColumns.vue'

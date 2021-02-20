@@ -116,7 +116,7 @@ export default {
     },
     computed: {
         someExportOptionSelected () {
-            return Object.values(this.exportSelection).some(bool => bool)
+            return Object.values(this.exportSelection).some((bool) => bool)
         },
     },
     methods: {
@@ -154,27 +154,27 @@ export default {
             this.exportInProgress = true
 
             if (this.exportSelection.name) {
-                data.name = journalsToExport.map(journal => journal.name)
+                data.name = journalsToExport.map((journal) => journal.name)
             }
             if (this.exportSelection.full_name) {
-                data.full_name = journalsToExport.map(journal => journal.full_names)
+                data.full_name = journalsToExport.map((journal) => journal.full_names)
             }
             if (this.exportSelection.username) {
-                data.username = journalsToExport.map(journal => journal.usernames)
+                data.username = journalsToExport.map((journal) => journal.usernames)
             }
             if (this.exportSelection.progress_percentage) {
                 data.progress_percentage = journalsToExport.map(
-                    journal => this.zeroIfNull(journal.grade / this.assignment.points_possible * 100).toFixed(0))
+                    (journal) => this.zeroIfNull((journal.grade * 100) / this.assignment.points_possible).toFixed(0))
             }
             if (this.exportSelection.total_points) {
-                data.total_points = journalsToExport.map(journal => journal.grade)
+                data.total_points = journalsToExport.map((journal) => journal.grade)
             }
             if (this.exportSelection.entry_points) {
                 data.entry_points = journalsToExport.map(
-                    journal => (journal.grade - journal.bonus_points))
+                    (journal) => (journal.grade - journal.bonus_points))
             }
             if (this.exportSelection.bonus_points) {
-                data.bonus_points = journalsToExport.map(journal => journal.bonus_points)
+                data.bonus_points = journalsToExport.map((journal) => journal.bonus_points)
             }
 
             this.exportExcel(`eJournal export ${this.assignment.name}`, data)
