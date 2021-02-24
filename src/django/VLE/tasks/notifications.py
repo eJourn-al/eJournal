@@ -69,7 +69,7 @@ def generate_new_grade_notifications(grade_ids):
         pk__in=grade_ids,
         published=True,  # Only generate notificaitons for published grades
     ).select_related(
-        'entry__node__journal__authors'
+        'entry__node__journal'
     )
     for grade in grades:
         for author in grade.entry.node.journal.authors.all():

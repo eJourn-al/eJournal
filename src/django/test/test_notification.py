@@ -9,7 +9,7 @@ from django.test import TestCase
 from django.test.utils import override_settings
 
 import VLE.factory
-from VLE.models import JournalImportRequest, Notification, Preferences, Role, User, gen_url
+from VLE.models import Grade, JournalImportRequest, Notification, Preferences, Role, User, gen_url
 from VLE.permissions import get_supervisors_of
 from VLE.tasks.beats.notifications import send_digest_notifications
 from VLE.tasks.email import send_push_notification
@@ -139,8 +139,18 @@ class NotificationTest(TestCase):
     def test_grade_notification(self):
         entry = factory.UnlimitedEntry()
         notifications_before = Notification.objects.count()
-        VLE.factory.make_grade(entry, entry.node.journal.assignment.author, 10, published=True)
-        VLE.factory.make_grade(entry, entry.node.journal.assignment.author, 10, published=False)
+        Grade.objects.create(
+            entry=entry,
+            author=entry.node.journal.assignment.author,
+            grade=10,
+            published=True,
+        )
+        Grade.objects.create(
+            entry=entry,
+            author=entry.node.journal.assignment.author,
+            grade=10,
+            published=False,
+        )
         assert Notification.objects.count() == notifications_before + 1, '1 grade notification are created'
         assert Notification.objects.last().user == entry.node.journal.authors.first().user
         assert Notification.objects.last().type == Notification.NEW_GRADE

@@ -2765,29 +2765,30 @@ class TeacherEntry(Entry):
 class GradeQuerySet(models.QuerySet):
     def bulk_create(self, grades, *args, send_grade_notifications=True, **kwargs):
         grades = super().bulk_create(grades, *args, **kwargs)
+        grades_query = Grade.objects.filter(pk__in=[grade.pk for grade in grades])
 
         # Correct grade attached to entry
         entries = list(
             Entry.objects.filter(
-                pk__in=[e.pk for e in grades.values('entry')]
+                pk__in=grades_query.values_list('entry__pk', flat=True)
             ).annotate(
                 newest_grade_id=Max('grade_set__id')
             )
         )
         for entry in entries:
             entry.grade_id = entry.newest_grade_id
-        Entry.objects.bulk_update(entries, ['grade', 'last_edited'])
+        Entry.objects.bulk_update(entries, ['grade_id'])
 
         # Publish all comments attached to grade
         Comment.objects.filter(
-            entry__in=grades.filter(published=True)
+            entry__in=grades_query.filter(published=True).values('entry')
         ).update(published=True)
 
         # Send new grade notification in background task
         if send_grade_notifications:
-            generate_new_grade_notifications.delay(list(grades.values_list('pk', flat=True)))
+            generate_new_grade_notifications.delay(list(grades_query.values_list('pk', flat=True)))
 
-        journal_pks = list(grades.values_list('entry__node__journal__pk', flat=True))
+        journal_pks = list(grades_query.values_list('entry__node__journal__pk', flat=True))
         grading.task_bulk_send_journal_status_to_LMS.delay(journal_pks)
 
         return grades
@@ -2807,7 +2808,7 @@ class Grade(CreateUpdateModel):
 
     Used to keep a history of grades.
     """
-    objects = models.Manager.from_queryset(EntryQuerySet)()
+    objects = models.Manager.from_queryset(GradeQuerySet)()
 
     entry = models.ForeignKey(
         'Entry',

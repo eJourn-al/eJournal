@@ -310,24 +310,6 @@ def make_comment(entry, author, text, published):
     )
 
 
-def make_grade(entry, author, grade, published=False):
-    """Make a new grade record for an entry.
-
-    Make a grade record for an entry based on its ID.
-    Arguments:
-    entry -- entry that the grade belongs to
-    author -- uID of the author of the grade
-    grade -- the new grade
-    published -- publishment state of the grade
-    """
-    return VLE.models.Grade.objects.create(
-        entry=entry,
-        author=VLE.models.User.objects.get(pk=author),
-        grade=grade,
-        published=published
-    )
-
-
 def make_journal_image(file, journal, author):
     validators.validate_user_file(file, author)
 
