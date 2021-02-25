@@ -2844,7 +2844,7 @@ class Grade(CreateUpdateModel):
 
         if self.published:
             generate_new_grade_notifications.apply_async(
-                args=[self.pk],
+                args=[[self.pk]],
                 countdown=settings.WEBSERVER_TIMEOUT
             )
 
