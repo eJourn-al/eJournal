@@ -64,7 +64,7 @@ export default {
             } else if (this.form.lockDate) {
                 additionalConfig.maxDate = new Date(this.form.lockDate)
             }
-            return Object.assign({}, additionalConfig, this.$root.flatPickrTimeConfig)
+            return { ...additionalConfig, ...this.$root.flatPickrTimeConfig }
         },
         dueDateConfig () {
             const additionalConfig = {}
@@ -74,7 +74,7 @@ export default {
             if (this.form.lockDate) {
                 additionalConfig.maxDate = new Date(this.form.lockDate)
             }
-            return Object.assign({}, additionalConfig, this.$root.flatPickrTimeConfig)
+            return { ...additionalConfig, ...this.$root.flatPickrTimeConfig }
         },
         lockDateConfig () {
             const additionalConfig = {}
@@ -83,7 +83,7 @@ export default {
             } else if (this.form.unlockDate) {
                 additionalConfig.minDate = new Date(this.form.unlockDate)
             }
-            return Object.assign({}, additionalConfig, this.$root.flatPickrTimeConfig)
+            return { ...additionalConfig, ...this.$root.flatPickrTimeConfig }
         },
     },
     mounted () {
@@ -99,7 +99,7 @@ export default {
         } else {
             this.form.course_id = this.$route.params.cID
         }
-        this.reset = Object.assign({}, this.form)
+        this.reset = { ...this.form }
     },
     methods: {
         onSubmit () {

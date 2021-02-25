@@ -140,7 +140,7 @@ export default {
             if (name === '') {
                 this.nameInvalidFeedback = 'Name cannot be empty.'
                 this.nameInputState = false
-            } else if (this.templates.some(elem => elem.id !== this.template.id && elem.name === name)) {
+            } else if (this.templates.some((elem) => elem.id !== this.template.id && elem.name === name)) {
                 this.nameInvalidFeedback = 'Name is not unique.'
                 this.nameInputState = false
             } else {

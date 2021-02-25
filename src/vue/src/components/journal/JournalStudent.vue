@@ -193,7 +193,7 @@ export default {
     },
     computed: {
         addIndex () {
-            return this.nodes.findIndex(node => node.type === 'a')
+            return this.nodes.findIndex((node) => node.type === 'a')
         },
         deadlineRange () {
             const unlockDate = this.$root.beautifyDate(this.nodes[this.currentNode].unlock_date)

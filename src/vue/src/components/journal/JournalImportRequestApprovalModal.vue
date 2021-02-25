@@ -116,7 +116,7 @@ export default {
     computed: {
         assignments () {
             const arr = []
-            this.jirs.forEach(jir => arr.push({
+            this.jirs.forEach((jir) => arr.push({
                 name: `${utils.assignmentWithDatesDisplay(jir.source.assignment)}, ${utils.courseWithDatesDisplay(
                     jir.source.assignment.course)}`,
                 id: jir.id,
@@ -128,7 +128,7 @@ export default {
             return (this.selectedAssignment ? this.selectedAssignment.jir : null)
         },
         autoShow () {
-            return this.jirs.some(jir => !this.$store.getters['preferences/dismissedJIRs'].includes(jir.id))
+            return this.jirs.some((jir) => !this.$store.getters['preferences/dismissedJIRs'].includes(jir.id))
         },
     },
     created () {
@@ -162,7 +162,7 @@ export default {
                 this.$store.getters['preferences/journalImportRequestButtonSetting'],
                 { responseSuccessToast: true },
             ).then(() => {
-                this.$delete(this.jirs, this.jirs.findIndex(elem => elem.id === jir.id))
+                this.$delete(this.jirs, this.jirs.findIndex((elem) => elem.id === jir.id))
                 if (this.jirs.length === 1) {
                     this.selectedAssignment = {
                         jir: this.jirs[0],
@@ -188,7 +188,7 @@ export default {
              * If it was an event, it was closed programatically, e.g. when there are simply no more jirs to process.
              */
             if (event.trigger !== 'event') {
-                this.$store.commit('preferences/ADD_DISMISSED_JIRS_TO_JOURNAL', Array.from(this.jirs, jir => jir.id))
+                this.$store.commit('preferences/ADD_DISMISSED_JIRS_TO_JOURNAL', Array.from(this.jirs, (jir) => jir.id))
             }
         },
     },

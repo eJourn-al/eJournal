@@ -4,6 +4,7 @@
             ref="categorySelect"
             label="name"
             trackBy="id"
+            class="theme-shadow"
             :open-direction="openDirection"
 
             :placeholder="placeholder"
@@ -138,18 +139,22 @@ export default {
 <style src="vue-multiselect/dist/vue-multiselect.min.css"></style>
 
 <style lang="sass">
-@import '~sass/partials/shadows.sass'
-
 .category-select .multiselect
-    @extend .theme-shadow
-    border-radius: 5px
-
-    .multiselect__content-wrapper
-        @extend .theme-shadow
-
-    .multiselect__placeholder
+    color: $theme-dark-blue
+    word-wrap: nowrap !important
+    &, .multiselect__content-wrapper
+        border: 1px solid $theme-dark-grey
+    &, .multiselect__content-wrapper, .multiselect__tags
+        border-radius: 5px !important
+        .multiselect__placeholder, .multiselect__single
+            color: inherit
+    .multiselect__tags
+        font-size: 1em
+        border-width: 0px
+    .multiselect__select::before
+        border-color: $theme-dark-blue transparent transparent
+    span.multiselect__option--selected, span.multiselect__option--selected::after,
+    span.multiselect__option--highlight, span.multiselect__option--highlight::after
+        background: $theme-light-grey !important
         color: $theme-dark-blue
-
-    span.multiselect__option--highlight
-        background: $theme-medium-grey
 </style>

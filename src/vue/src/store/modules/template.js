@@ -7,14 +7,14 @@ function propagateCategoryTemplateUpdate (templates, updatedCategory) {
     delete categoryConcreteFields.allow_custom_categories
 
     templates.forEach((template) => {
-        const templateCategoryIndex = template.categories.findIndex(category => category.id === updatedCategory.id)
+        const templateCategoryIndex = template.categories.findIndex((category) => category.id === updatedCategory.id)
         const templateLinkedToCategory = templateCategoryIndex !== -1
 
         if (templateLinkedToCategory) {
             Vue.set(template.categories, templateCategoryIndex, categoryConcreteFields)
         }
 
-        const updatedCategoryLinkedToTemplate = updatedCategory.templates.find(elem => elem.id === template.id)
+        const updatedCategoryLinkedToTemplate = updatedCategory.templates.find((elem) => elem.id === template.id)
 
         if (!templateLinkedToCategory && updatedCategoryLinkedToTemplate) {
             template.categories.push(categoryConcreteFields)
@@ -26,7 +26,7 @@ function propagateCategoryTemplateUpdate (templates, updatedCategory) {
 
 function propagateCategoryDelete (templates, deletedCategoryId) {
     templates.forEach((template) => {
-        const templateCategoryIndex = template.categories.findIndex(category => category.id === deletedCategoryId)
+        const templateCategoryIndex = template.categories.findIndex((category) => category.id === deletedCategoryId)
 
         if (templateCategoryIndex !== -1) {
             Vue.delete(template.categories, templateCategoryIndex)
@@ -40,8 +40,8 @@ const getters = {
         if (aID in state.assignmentsTemplates) { return state.assignmentsTemplates[aID] }
         return []
     },
-    assignmentsTemplates: state => state.assignmentsTemplates,
-    timelineInstance: state => state.timelineInstance,
+    assignmentsTemplates: (state) => state.assignmentsTemplates,
+    timelineInstance: (state) => state.timelineInstance,
 }
 
 const mutations = {
@@ -53,14 +53,14 @@ const mutations = {
         state.assignmentsTemplates[aID].sort((a, b) => a.name.localeCompare(b.name))
     },
     UPDATE_ASSIGNMENT_TEMPLATE (state, { aID, template, oldId }) {
-        const updatedTemplateIndex = state.assignmentsTemplates[aID].findIndex(elem => elem.id === oldId)
+        const updatedTemplateIndex = state.assignmentsTemplates[aID].findIndex((elem) => elem.id === oldId)
         Vue.set(state.assignmentsTemplates[aID], updatedTemplateIndex, template)
         state.assignmentsTemplates[aID].sort((a, b) => a.name.localeCompare(b.name))
     },
     DELETE_ASSIGNMENT_TEMPLATE (state, { aID, id }) {
         Vue.delete(
             state.assignmentsTemplates[aID],
-            state.assignmentsTemplates[aID].findIndex(elem => elem.id === id),
+            state.assignmentsTemplates[aID].findIndex((elem) => elem.id === id),
         )
     },
     PROPAGATE_CATEGORY_TEMPLATE_UPDATE (state, { aID, updatedCategory }) {

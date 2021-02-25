@@ -12,6 +12,6 @@ const ENTITY_MAP = {
 /* Taken from https://github.com/janl/mustache.js/blob/master/mustache.js#L60 */
 export default {
     escapeHtml (string) {
-        return String(string).replace(/[&<>"'`=/]/g, s => ENTITY_MAP[s])
+        return String(string).replace(/[&<>"'`=/]/g, (s) => ENTITY_MAP[s])
     },
 }

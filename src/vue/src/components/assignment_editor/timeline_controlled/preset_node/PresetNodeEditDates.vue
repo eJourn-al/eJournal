@@ -137,7 +137,7 @@ export default {
                 additionalConfig.minDate = new Date(this.assignment.unlock_date)
             }
 
-            return Object.assign({}, additionalConfig, this.$root.flatPickrTimeConfig)
+            return { ...additionalConfig, ...this.$root.flatPickrTimeConfig }
         },
         // Ensure the due date is preset unlock / lock date and between the assignment unlock and due / lock date.
         dueDateConfig () {
@@ -161,7 +161,7 @@ export default {
                 additionalConfig.maxDate = new Date(this.assignment.due_date)
             }
 
-            return Object.assign({}, additionalConfig, this.$root.flatPickrTimeConfig)
+            return { ...additionalConfig, ...this.$root.flatPickrTimeConfig }
         },
         // Ensure the lock date is after the preset unlock / due date and betwween the assignment unlock / due and lock
         // date.
@@ -180,7 +180,7 @@ export default {
                 additionalConfig.maxDate = new Date(this.assignment.lock_date)
             }
 
-            return Object.assign({}, additionalConfig, this.$root.flatPickrTimeConfig)
+            return { ...additionalConfig, ...this.$root.flatPickrTimeConfig }
         },
         // Ensure the progress date is between the assignment unlock and due / lock date.
         progressDateConfig () {
@@ -196,7 +196,7 @@ export default {
                 additionalConfig.maxDate = new Date(this.assignment.lock_date)
             }
 
-            return Object.assign({}, additionalConfig, this.$root.flatPickrTimeConfig)
+            return { ...additionalConfig, ...this.$root.flatPickrTimeConfig }
         },
     },
     watch: {

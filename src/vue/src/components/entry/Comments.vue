@@ -86,7 +86,7 @@ export default {
                 commentAPI.delete(cID, { responseSuccessToast: true })
                     .then(() => {
                         // Remove comment from the list of comments
-                        this.comments.splice(this.comments.map(c => c.id).indexOf(cID), 1)
+                        this.comments.splice(this.comments.map((c) => c.id).indexOf(cID), 1)
                     })
             }
         },

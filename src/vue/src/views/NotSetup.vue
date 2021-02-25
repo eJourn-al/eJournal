@@ -50,7 +50,7 @@ export default {
     computed: {
         knownAssignment () {
             if (!this.$store.getters['user/loggedIn']) { return false }
-            return Object.keys(this.$store.getters['user/permissions']).some(key => key.indexOf('assignment') > -1)
+            return Object.keys(this.$store.getters['user/permissions']).some((key) => key.indexOf('assignment') > -1)
         },
     },
     mounted () {

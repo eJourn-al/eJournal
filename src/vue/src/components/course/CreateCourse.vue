@@ -97,14 +97,14 @@ export default {
             if (this.form.enddate) {
                 additionalConfig.maxDate = new Date(this.form.enddate)
             }
-            return Object.assign({}, additionalConfig, this.$root.flatPickrConfig)
+            return { ...additionalConfig, ...this.$root.flatPickrConfig }
         },
         endDateConfig () {
             const additionalConfig = {}
             if (this.form.startdate) {
                 additionalConfig.minDate = new Date(this.form.startdate)
             }
-            return Object.assign({}, additionalConfig, this.$root.flatPickrConfig)
+            return { ...additionalConfig, ...this.$root.flatPickrConfig }
         },
     },
     mounted () {

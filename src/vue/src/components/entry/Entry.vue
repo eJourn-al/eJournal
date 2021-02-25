@@ -189,7 +189,7 @@ export default {
             immediate: true,
             handler () {
                 if (this.node && this.node.entry) {
-                    this.newEntryContent = Object.assign({}, this.node.entry.content)
+                    this.newEntryContent = { ...this.node.entry.content }
                 } else {
                     this.newEntryContent = Object()
                 }
@@ -239,7 +239,7 @@ export default {
 
                 let categoryIds = []
                 if (this.newEntryContent.categories) {
-                    categoryIds = this.newEntryContent.categories.map(category => category.id)
+                    categoryIds = this.newEntryContent.categories.map((category) => category.id)
                     delete this.newEntryContent.categories
                 }
 
@@ -258,7 +258,7 @@ export default {
             }
         },
         checkRequiredFields () {
-            if (this.template.field_set.some(field => field.required && !this.newEntryContent[field.id])) {
+            if (this.template.field_set.some((field) => field.required && !this.newEntryContent[field.id])) {
                 this.$toasted.error('Some required fields are empty.')
                 return false
             }
@@ -268,7 +268,8 @@ export default {
         safeToLeave () {
             // It is safe to leave the entry if it is not currently being edited AND if no content for an entry to be
             // created is provided.
-            return !this.edit && !(this.create && this.template.field_set.some(field => this.newEntryContent[field.id]))
+            return !this.edit && !(
+                this.create && this.template.field_set.some((field) => this.newEntryContent[field.id]))
         },
     },
 }

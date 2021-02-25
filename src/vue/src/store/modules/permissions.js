@@ -36,8 +36,8 @@ function getPermission (permissions, levelAndID, permission) {
 }
 
 const getters = {
-    lastPermissionUpdate: state => state.lastPermissionUpdate,
-    permissionUpdateInFlight: state => state.permissionUpdateInFlight,
+    lastPermissionUpdate: (state) => state.lastPermissionUpdate,
+    permissionUpdateInFlight: (state) => state.permissionUpdateInFlight,
     // eslint-disable-next-line
     hasPermission: (state, getters, rootState, rootGetters) => (permission, givenKeyLevel = null, id = null) => {
         if (!rootGetters['user/loggedIn']) { return false }

@@ -419,7 +419,6 @@ export default {
             left: 0
             pointer-events: none
 
-
 div.mce-fullscreen
     padding-top: $header-height
 

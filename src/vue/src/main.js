@@ -195,6 +195,6 @@ new Vue({
                 ([key, value]) => ((key.indexOf('assignment') >= 0) && value.can_grade))
         },
     },
-    render: h => h(App),
+    render: (h) => h(App),
     template: '<App/>',
 }).$mount('#app')

@@ -37,7 +37,7 @@ export default {
                 return false
             }
 
-            return groups.some(group => journal.groups.includes(group.id))
+            return groups.some((group) => journal.groups.includes(group.id))
         }
 
         function searchFilter (journal) {
