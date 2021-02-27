@@ -181,7 +181,7 @@ class JournalView(viewsets.ViewSet):
         if published:
             request.user.check_permission('can_publish_grades', journal.assignment)
             req_data.pop('published', None)
-            return self.publish(request, journal)
+            return self.publish_all_journal_grades(request, journal)
 
         bonus_points, = utils.optional_typed_params(request.data, (float, 'bonus_points'))
         if bonus_points is not None:
@@ -422,7 +422,7 @@ class JournalView(viewsets.ViewSet):
             'journal': JournalSerializer(Journal.objects.get(pk=journal.pk), context={'user': request.user}).data
         })
 
-    def publish(self, request, journal):
+    def publish_all_journal_grades(self, request, journal):
         grading.publish_grades(
             grades=Grade.objects.from_journal(journal).only_unpublished(),
             author=request.user,

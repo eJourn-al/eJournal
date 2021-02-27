@@ -17,7 +17,7 @@ def publish_grades(grades, author, send_grade_notification=True):
             grade=grade.grade,
             published=True,
         )
-        for grade in grades
+        for grade in grades.select_related('entry')
         if not grade.published
     ]
     VLE.models.Grade.objects.bulk_create(new_grades, send_grade_notifications=send_grade_notification)

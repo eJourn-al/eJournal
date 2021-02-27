@@ -4,7 +4,7 @@ import test.utils.generic_utils
 from copy import deepcopy
 from test.utils import api
 from test.utils.generic_utils import check_equality_of_imported_file_context, equal_models
-from test.utils.performance import QueryContext
+from test.utils.performance import QueryContext, assert_num_queries_less_than
 from unittest import mock
 
 import pytest
@@ -1343,9 +1343,13 @@ class AssignmentAPITest(TestCase):
         assert not Entry.objects.get(pk=grade_to_publish.entry.pk).grade.published
         assert not Entry.objects.get(pk=grade_other_journal.entry.pk).grade.published
 
-        api.patch(
-            self, 'grades/publish_all_assignment_grades', params={'assignment_id': journal.assignment.pk},
-            user=journal.assignment.author)
+        with QueryContext() as queries_for_publishing_one_grade:
+            api.patch(
+                self,
+                'grades/publish_all_assignment_grades',
+                params={'assignment_id': journal.assignment.pk},
+                user=journal.assignment.author,
+            )
 
         assert Entry.objects.get(pk=grade_published.entry.pk).grade.published, \
             'published grades should stay published'
@@ -1353,6 +1357,17 @@ class AssignmentAPITest(TestCase):
             'unpublished grades should now be published'
         assert not Entry.objects.get(pk=grade_other_journal.entry.pk).grade.published, \
             'grades not in assignment should not be published'
+
+        for _ in range(10):
+            factory.Grade(published=False, entry__node__journal=journal)
+
+        with assert_num_queries_less_than(len(queries_for_publishing_one_grade) + 1, verbose=True):
+            api.patch(
+                self,
+                'grades/publish_all_assignment_grades',
+                params={'assignment_id': journal.assignment.pk},
+                user=journal.assignment.author,
+            )
 
     def test_get_active_course(self):
         no_startdate = factory.Course(startdate=None)

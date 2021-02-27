@@ -67,12 +67,12 @@ def generate_new_entry_notifications(entry_id, node_id):
 def generate_new_grade_notifications(grade_ids):
     grades = VLE.models.Grade.objects.filter(
         pk__in=grade_ids,
-        published=True,  # Only generate notificaitons for published grades
+        published=True,  # Only generate notifications for published grades
     ).select_related(
         'entry__node__journal'
     )
     for grade in grades:
-        for author in grade.entry.node.journal.authors.all():
+        for author in grade.entry.node.journal.authors.all().select_related('user'):
             VLE.models.Notification.objects.create(
                 type=VLE.models.Notification.NEW_GRADE,
                 user=author.user,

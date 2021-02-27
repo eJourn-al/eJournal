@@ -2697,9 +2697,9 @@ class Entry(CreateUpdateModel):
 
         if (
             author
-            and not node.journal.authors.filter(user=author).exists()
             and not self.teacher_entry
             and not self.jir
+            and not node.journal.authors.filter(user=author).exists()
         ):
             raise ValidationError('Author of the entry is no longer part of the journal.')
 
@@ -2708,7 +2708,7 @@ class Entry(CreateUpdateModel):
 
             if is_new:
                 if category_ids:
-                    self.create_categories(category_ids)
+                    self.link_categories(category_ids)
 
                 self.node.entry = self
                 self.node.save()
@@ -2717,7 +2717,7 @@ class Entry(CreateUpdateModel):
             generate_new_entry_notifications.apply_async(
                 args=[self.pk, self.node.pk], countdown=settings.WEBSERVER_TIMEOUT)
 
-    def create_categories(self, category_ids):
+    def link_categories(self, category_ids):
         entry_category_links = [
             VLE.models.EntryCategoryLink(entry=self, category_id=id, author=self.author)
             for id in category_ids
@@ -2771,25 +2771,26 @@ class TeacherEntry(Entry):
 
 class GradeQuerySet(models.QuerySet):
     def bulk_create(self, grades, *args, send_grade_notifications=True, **kwargs):
-        grades = super().bulk_create(grades, *args, **kwargs)
-        grades_query = Grade.objects.filter(pk__in=[grade.pk for grade in grades])
+        with transaction.atomic():
+            grades = super().bulk_create(grades, *args, **kwargs)
+            grades_query = Grade.objects.filter(pk__in=[grade.pk for grade in grades])
 
-        # Correct grade attached to entry
-        entries = list(
-            Entry.objects.filter(
-                pk__in=grades_query.values_list('entry__pk', flat=True)
-            ).annotate(
-                newest_grade_id=Max('grade_set__id')
+            # Update the grade of each entry to those (most recently) created.
+            entries = list(
+                Entry.objects.filter(
+                    pk__in=grades_query.values_list('entry__pk', flat=True)
+                ).annotate(
+                    newest_grade_id=Max('grade_set__id')
+                )
             )
-        )
-        for entry in entries:
-            entry.grade_id = entry.newest_grade_id
-        Entry.objects.bulk_update(entries, ['grade_id'])
+            for entry in entries:
+                entry.grade_id = entry.newest_grade_id
+            Entry.objects.bulk_update(entries, ['grade_id'])
 
-        # Publish all comments attached to grade
-        Comment.objects.filter(
-            entry__in=grades_query.filter(published=True).values('entry')
-        ).update(published=True)
+            # Publish all comments attached to grade
+            Comment.objects.filter(
+                entry__in=grades_query.filter(published=True).values('entry')
+            ).update(published=True)
 
         # Send new grade notification in background task
         if send_grade_notifications:
@@ -2799,7 +2800,10 @@ class GradeQuerySet(models.QuerySet):
             )
 
         journal_pks = list(grades_query.values_list('entry__node__journal__pk', flat=True))
-        grading.task_bulk_send_journal_status_to_LMS.delay(journal_pks)
+        grading.task_bulk_send_journal_status_to_LMS.apply_async(
+            args=[journal_pks],
+            countdown=settings.WEBSERVER_TIMEOUT
+        )
 
         return grades
 
