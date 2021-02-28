@@ -16,10 +16,11 @@ from django.test import TestCase
 from django.utils import timezone
 from faker import Faker
 
+import VLE.utils.entry_utils as entry_utils
 from VLE.models import (Assignment, Category, Comment, Content, Course, Entry, Field, FileContext, Format, Grade,
                         Journal, JournalImportRequest, Node, PresetNode, TeacherEntry, Template, User)
 from VLE.serializers import EntrySerializer, TemplateSerializer
-from VLE.utils.error_handling import VLEMissingRequiredField, VLEPermissionError
+from VLE.utils.error_handling import VLEBadRequest, VLEMissingRequiredField, VLEPermissionError
 from VLE.validators import validate_entry_content
 
 faker = Faker()
@@ -287,6 +288,51 @@ class EntryAPITest(TestCase):
         assert Node.objects.get(type=Node.ENTRYDEADLINE, journal=journal, preset__forced_template=template), \
             'Correct node type is created, attached to the journal, whose PresetNode links to the correct template'
 
+    def test_add_entry_to_deadline_preset_node(self):
+        assignment = factory.Assignment(format__templates=False)
+        archived_template = factory.Template(format=assignment.format, add_fields=[{'type': Field.TEXT}], archived=True)
+        new_template = factory.Template(
+            format=assignment.format, add_fields=[{'type': Field.TEXT}], chain=archived_template.chain)
+        deadline = factory.DeadlinePresetNode(format=assignment.format, forced_template=new_template)
+        journal = factory.Journal(assignment=assignment, entries__n=0)
+        student = journal.author
+        deadline_node = journal.node_set.get(preset=deadline)
+
+        with self.assertRaises(VLEBadRequest) as context:
+            entry_utils.add_entry_to_deadline_preset_node(deadline_node, archived_template, student)
+        assert 'updated the template' in str(context.exception)
+
+        different_chain_template = factory.Template(format=assignment.format, add_fields=[{'type': Field.TEXT}])
+        with self.assertRaises(VLEBadRequest) as context:
+            entry_utils.add_entry_to_deadline_preset_node(deadline_node, different_chain_template, student)
+        assert 'Provided template is not used by the deadline' in str(context.exception)
+
+        deadline_node.type = 'p'
+        with self.assertRaises(VLEBadRequest) as context:
+            entry_utils.add_entry_to_deadline_preset_node(deadline_node, new_template, student)
+        assert 'Provided deadline type does not support entries' in str(context.exception)
+        deadline_node.type = 'd'
+
+        lock_date = deadline.lock_date
+        deadline.lock_date = datetime.now()
+        deadline.save()
+        deadline_node.refresh_from_db()
+        with self.assertRaises(VLEBadRequest) as context:
+            entry_utils.add_entry_to_deadline_preset_node(deadline_node, new_template, student)
+        assert 'The lock date for this deadline has passed' in str(context.exception)
+        deadline.lock_date = lock_date
+        deadline.save()
+
+        entry = factory.PresetEntry(node=deadline_node)
+        with self.assertRaises(VLEBadRequest) as context:
+            entry_utils.add_entry_to_deadline_preset_node(deadline_node, new_template, student)
+        assert 'Deadline already contains an entry' in str(context.exception)
+        entry.delete()
+        deadline_node.refresh_from_db()
+
+        entry = entry_utils.add_entry_to_deadline_preset_node(deadline_node, new_template, student)
+        assert entry.node == deadline_node, 'Entry creation was succesful'
+
     def test_validate_entry_content(self):
         assignment = factory.Assignment(format__templates=False)
         template = factory.TemplateAllTypes(format=assignment.format)
@@ -526,14 +572,15 @@ class EntryAPITest(TestCase):
         invalid_params = create_params.copy()
         invalid_params['template_id'] = factory.Template(format=self.g_assignment.format).pk
         resp = api.create(self, 'entries', params=invalid_params, user=self.student, status=400)['description']
-        assert 'Invalid template' in resp, \
+        assert 'Provided template is not used by the deadline' in resp, \
             'It should not be possible to create a deadline entry using a template other than the preset\'s template'
 
         # Node must be progress node if 'node_id' is supplied
         node.type = Node.PROGRESS
         node.save()
         resp = api.create(self, 'entries', params=create_params, user=self.student, status=400)['description']
-        assert 'EntryDeadline' in resp, 'You should not be able to create an entry in a PROGRESS node'
+        assert 'Provided deadline type does not support entries' in resp, \
+            'You should not be able to create an entry in a PROGRESS node'
         node.type = Node.ENTRYDEADLINE
         node.save()
 
