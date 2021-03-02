@@ -182,6 +182,7 @@ export default {
         this.filteredNodes = this.nodes
         this.mappedSelected = this.selected
         this.setTimelineInstance(this)
+        this.syncNodes()
     },
     methods: {
         ...mapMutations({
