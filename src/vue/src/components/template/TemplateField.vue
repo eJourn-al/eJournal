@@ -14,7 +14,7 @@
                 <b-input
                     v-model="field.title"
                     class="multi-form theme-input"
-                    placeholder="Field title"
+                    placeholder="Optional field title"
                     required
                 />
                 <text-editor
@@ -26,7 +26,7 @@
                     :displayInline="true"
                     :minifiedTextArea="true"
                     class="multi-form"
-                    placeholder="Description"
+                    placeholder="Optional description"
                     required
                 />
                 <div class="d-flex">

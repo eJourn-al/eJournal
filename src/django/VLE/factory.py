@@ -4,12 +4,9 @@ factory.py.
 The factory has all kinds of functions to create entries in the database.
 Sometimes this also supports extra functionallity like adding courses to assignments.
 """
-from datetime import timedelta
-
 import requests
 from django.conf import settings
 from django.db import transaction
-from django.utils import timezone
 
 import VLE.models
 import VLE.validators as validators
@@ -153,11 +150,7 @@ def make_assignment(
         can_lock_journal=can_lock_journal,
     )
 
-    setup_default_assignment_layout(
-        assignment,
-        due_date if due_date else timezone.now() + timedelta(days=365),
-        points_possible,
-    )
+    setup_default_assignment_layout(assignment)
 
     for course in courses:
         assignment.add_course(course)
@@ -187,28 +180,19 @@ def make_lti_groups(course):
             VLE.models.Group.objects.filter(course=course, lti_id=lti_id).update(name=name)
 
 
-def setup_default_assignment_layout(assignment, due_date, points_possible):
+def setup_default_assignment_layout(assignment):
     template = VLE.models.Template.objects.create(
-        name='Entry',
+        name='Template',
         format=assignment.format,
     )
 
     VLE.models.Field.objects.create(
         template=template,
-        title='Content',
+        title='',
         location=0,
         type=VLE.models.Field.RICH_TEXT,
         required=True,
     )
-
-    if due_date and points_possible and int(points_possible) > 0:
-        VLE.models.PresetNode.objects.create(
-            type=VLE.models.Node.PROGRESS,
-            due_date=due_date,
-            target=points_possible,
-            format=assignment.format,
-            display_name='Progress goal',
-        )
 
 
 def make_node(journal, entry=None, type=VLE.models.Node.ENTRY, preset=None):

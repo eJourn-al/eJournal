@@ -149,7 +149,7 @@ const mutations = {
             const newTemplate = {
                 field_set: [{
                     type: 'rt',
-                    title: 'Content',
+                    title: '',
                     description: '',
                     options: null,
                     location: 0,
