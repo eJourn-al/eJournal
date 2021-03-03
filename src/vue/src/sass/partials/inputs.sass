@@ -72,3 +72,13 @@
     .custom-control-input:checked~.custom-control-label::before
         background-color: $theme-blue
         border-radius: 5px
+
+.input-group-text
+    background-color: $theme-orange
+    border: none
+
+.input-group
+    .input-group-prepend:first-child
+        .input-group-text
+            border-radius: 4px 0px 0px 0px
+            border-right: 1px solid $theme-dark-grey

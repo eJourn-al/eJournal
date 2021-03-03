@@ -159,6 +159,7 @@ const mutations = {
                 id: -1,
                 preset_only: !!fromPresetNode,
                 allow_custom_categories: false,
+                default_grade: null,
                 categories: [],
                 fromPresetNode,
             }

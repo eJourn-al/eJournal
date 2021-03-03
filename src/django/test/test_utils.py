@@ -59,8 +59,21 @@ class UtilsTest(TestCase):
             date, = utils.optional_typed_params({'date': empty_optional_date}, (datetime, 'date'))
             assert date is None
 
+        def test_empty_value():
+            # Data types other than string which are optional and have are represented by an empty string are converted
+            # to None value
+            data = {'empty_int': '', 'empty_float': ''}
+            empty_int, empty_float = utils.optional_typed_params(data, (int, 'empty_int'), (int, 'empty_float'))
+            assert empty_int is None
+            assert empty_float is None
+
+            # If required, empty values for data type other than string raise a value error
+            with self.assertRaises(ValueError):
+                empty_int, empty_float = utils.required_typed_params(data, (int, 'empty_int'), (int, 'empty_float'))
+
         test_cast_bool()
         test_cast_datetime()
+        test_empty_value()
 
     def test_code_version_in_utils_json_response(self):
         json_resp = VLE.utils.responses.json_response()

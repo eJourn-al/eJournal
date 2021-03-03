@@ -359,20 +359,22 @@ export default {
             return false
         },
         safeToLeave () {
-            if (this.currentNode !== -1
-                && this.currentNode < this.nodes.length
-                && (this.nodes[this.currentNode].type === 'e'
-                || (this.nodes[this.currentNode].type === 'd' && this.nodes[this.currentNode].entry !== null))) {
-                if (this.nodes[this.currentNode].entry.grade === null) {
-                    if (this.$refs['entry-template-card'].grade.grade > 0
-                        && !window.confirm('Progress will not be saved if you leave. Do you wish to continue?')) {
+            const node = this.nodes[this.currentNode]
+
+            if (node && node.entry) {
+                const pendingGrade = this.$refs['entry-template-card'].grade
+                const actualGrade = node.entry.grade
+                const defaultGrade = node.entry.template.default_grade
+
+                if (!actualGrade) {
+                    if (pendingGrade.grade > 0
+                        && parseFloat(pendingGrade.grade) !== defaultGrade
+                        && !window.confirm('Grade will not be saved if you leave. Do you wish to continue?')) {
                         return false
                     }
-                } else if (this.$refs['entry-template-card'].grade.grade
-                           !== this.nodes[this.currentNode].entry.grade.grade
-                           || this.$refs['entry-template-card'].grade.published
-                           !== this.nodes[this.currentNode].entry.grade.published) {
-                    if (!window.confirm('Progress will not be saved if you leave. Do you wish to continue?')) {
+                } else if (parseFloat(pendingGrade.grade) !== actualGrade.grade
+                           || pendingGrade.published !== actualGrade.published) {
+                    if (!window.confirm('Grade will not be saved if you leave. Do you wish to continue?')) {
                         return false
                     }
                 }

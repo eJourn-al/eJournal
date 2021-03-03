@@ -94,6 +94,7 @@ class TemplateCreationParamsFactory(factory.Factory):
 
     name = factory.Sequence(lambda x: f"Template {x + 1}".format(x))
     allow_custom_categories = False
+    default_grade = None
     preset_only = True
 
     @classmethod

@@ -8,22 +8,36 @@
                 v-if="$hasPermission('can_grade')"
                 class="grade-section sticky"
             >
-                <b-form-input
-                    v-model="grade.grade"
-                    type="number"
-                    class="theme-input"
-                    size="2"
-                    autofocus
-                    placeholder="0"
-                    min="0.0"
-                />
-                <b-button
-                    v-if="$hasPermission('can_view_grade_history')"
-                    class="grade-history-button float-right"
-                    @click="showGradeHistory"
-                >
-                    <icon name="history"/>
-                </b-button>
+                <b-input-group>
+                    <template
+                        v-if="usingDefaultGrade && defaultGrade === grade.grade"
+                        #prepend
+                    >
+                        <b-input-group-text
+                            v-b-tooltip="'Default grade: not saved'"
+                            class="text-white"
+                        >
+                            <icon name="exclamation"/>
+                        </b-input-group-text>
+                    </template>
+
+                    <b-form-input
+                        v-model="grade.grade"
+                        type="number"
+                        class="theme-input"
+                        size="2"
+                        autofocus
+                        placeholder="0"
+                        min="0.0"
+                    />
+                    <b-button
+                        v-if="$hasPermission('can_view_grade_history')"
+                        class="grade-history-button float-right"
+                        @click="showGradeHistory"
+                    >
+                        <icon name="history"/>
+                    </b-button>
+                </b-input-group>
                 <dropdown-button
                     :selectedOption="this.$store.getters['preferences/saved'].grade_button_setting"
                     :options="{
@@ -207,32 +221,43 @@ export default {
         gradePublished () {
             return this.entryNode.entry && this.entryNode.entry.grade && this.entryNode.entry.grade.published
         },
+        defaultGrade () {
+            if (this.entryNode.entry && this.entryNode.entry.template.default_grade !== null) {
+                return this.entryNode.entry.template.default_grade
+            } else {
+                return null
+            }
+        },
+        usingDefaultGrade () {
+            return this.defaultGrade && !this.entryNode.entry.grade
+        },
     },
     watch: {
-        entryNode () {
+        entryNode: 'setGrade',
+    },
+    created () {
+        this.setGrade()
+    },
+    methods: {
+        changeButtonOption (option) {
+            this.$store.commit('preferences/CHANGE_PREFERENCES', { grade_button_setting: option })
+        },
+        setGrade () {
+            /* Work with a local grade object, so the entryNode.grade is our original */
             if (this.entryNode.entry && this.entryNode.entry.grade) {
-                this.grade = this.entryNode.entry.grade
+                this.grade.grade = this.entryNode.entry.grade.grade
+                this.grade.published = this.entryNode.entry.grade.published
+            } else if (this.usingDefaultGrade) {
+                this.grade = {
+                    grade: this.defaultGrade,
+                    published: false,
+                }
             } else {
                 this.grade = {
                     grade: '',
                     published: false,
                 }
             }
-        },
-    },
-    created () {
-        if (this.entryNode.entry && this.entryNode.entry.grade) {
-            this.grade = this.entryNode.entry.grade
-        } else {
-            this.grade = {
-                grade: '',
-                published: false,
-            }
-        }
-    },
-    methods: {
-        changeButtonOption (option) {
-            this.$store.commit('preferences/CHANGE_PREFERENCES', { grade_button_setting: option })
         },
         commitGrade (option) {
             if (this.grade.grade !== '') {
