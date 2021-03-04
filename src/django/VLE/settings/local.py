@@ -36,6 +36,8 @@ if os.environ.get('DJANGO_PROMETHEUS', False):
     INSTALLED_APPS += ['django_prometheus']
     MIDDLEWARE = ['django_prometheus.middleware.PrometheusBeforeMiddleware'] + MIDDLEWARE
 
+INSTALLED_APPS += ['django_extensions']
+
 MIDDLEWARE = ['corsheaders.middleware.CorsMiddleware'] + MIDDLEWARE
 
 if os.environ.get('DJANGO_PROMETHEUS', False):
