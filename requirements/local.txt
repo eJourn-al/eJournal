@@ -25,6 +25,8 @@ django-test-migrations==0.3.0
 django-prometheus==2.1.0 # Monitoring
 
 # Also requires sudo apt-get install graphviz graphviz-dev, and a C/C++ compiler
+# Allows the visualization of the models, e.g.
+# ./manage.py graph_models VLE -a -X CreateUpdateModel,TaskResult,SolarSchedule,IntervalSchedule,ClockedSchedule,CrontabSchedule,PeriodicTasks,PeriodicTask -o file.png
 django-extensions==3.1.1
 graphviz==0.16 # Graph models
 pygraphviz==1.7 # Graph models
