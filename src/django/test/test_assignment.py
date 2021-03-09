@@ -1362,7 +1362,7 @@ class AssignmentAPITest(TestCase):
         for _ in range(10):
             factory.Grade(published=False, entry__node__journal=journal)
 
-        with assert_num_queries_less_than(len(queries_for_publishing_one_grade) + 1):
+        with assert_num_queries_less_than(len(queries_for_publishing_one_grade) + 1, verbose=True):
             api.patch(
                 self,
                 'grades/publish_all_assignment_grades',
