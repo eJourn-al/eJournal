@@ -19,6 +19,8 @@ def lms_authenticate(request):
         status: this specifies the data to retrieve and the context to retrieve it with
         code: code used to retrieve the access_token
     """
+    print(request)
+    print(request.query_params)
     instance = Instance.objects.get(pk=1)
     resp = requests.post(instance.auth_token_url, data={
         'grant_type': 'authorization_code',

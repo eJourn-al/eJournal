@@ -3,7 +3,7 @@ import enum
 from django.conf import settings
 from django.db.models import Q
 from pylti1p3.contrib.django import DjangoCacheDataStorage, DjangoMessageLaunch
-from pylti1p3.service_connector import SectionsService, ServiceConnector
+from pylti1p3.service_connector import ServiceConnector
 
 # TODO lti: check if SectionsService import is working correctly
 from VLE.lti1p3 import claims, roles
@@ -41,7 +41,8 @@ class ExtendedDjangoMessageLaunch(DjangoMessageLaunch):
         """Fetches Canvas' specific sections service for the current launch."""
         connector = ServiceConnector(self._registration)
         sections_service = 'http://canvas.docker/api/v1/courses/{}/sections'.format(1)
-        return SectionsService(connector, sections_service)
+        # TODO LTI: should be SectionsService
+        return ServiceConnector(connector, sections_service)
 
 
 def is_teacher_launch(message_launch_data):

@@ -11,8 +11,8 @@ https://docs.djangoproject.com/en/2.0/ref/settings/
 """
 import os
 
-from VLE.lti1p3.tool_conf import eToolConfJsonFile
 from VLE.settings.base import *
+from VLE.utils.tool_conf import eToolConfJsonFile
 
 ENVIRONMENT = 'LOCAL'
 

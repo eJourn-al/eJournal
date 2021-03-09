@@ -3,6 +3,7 @@ from pylti1p3.exception import LtiException
 
 
 def api_request(url, access_token, data=None, is_post=False, content_type='application/json'):
+    print(url, access_token, data, is_post, content_type)
     headers = {
         'Authorization': 'Bearer ' + access_token,
     }

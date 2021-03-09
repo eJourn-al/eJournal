@@ -177,14 +177,58 @@ class GroupView(viewsets.ViewSet):
     def LMS(self, request):
         course_id, = utils.required_typed_params(request.query_params, (int, 'course_id'))
         instance = Instance.objects.get(pk=1)
-        return response.success({'redirect_uri': build_url(
+        url = build_url(
             instance.lms_url,
             'login/oauth2/auth',
             {
                 'response_type': 'code',
                 'redirect_uri': build_url(settings.API_URL, 'lms/authenticate/'),  # TODO LTI: change to API_URL
-                'scope': 'url:GET|/api/v1/courses/:course_id/sections url:GET|/api/v1/courses/:course_id/users',
+                'scope': ' '.join('''
+                    url:GET|/api/v1/courses/:course_id/sections
+                    url:GET|/api/v1/courses
+                    url:GET|/api/v1/courses/:id
+                    url:GET|/api/v1/courses/:course_id/students
+                    url:GET|/api/v1/courses/:course_id/settings
+                    url:GET|/api/v1/courses/:course_id/recent_students
+                    url:GET|/api/v1/courses/:course_id/users
+                    url:GET|/api/v1/courses/:course_id/search_users
+                    url:GET|/api/v1/courses/:course_id/users/:id
+                    url:GET|/api/v1/courses/:course_id/content_share_users
+                    url:GET|/api/v1/courses/:course_id/activity_stream
+                    url:GET|/api/v1/courses/:course_id/activity_stream/summary
+                    url:GET|/api/v1/courses/:course_id/todo
+                    url:GET|/api/v1/courses/:course_id/course_copy/:id
+                    url:GET|/api/v1/users/:user_id/courses
+                    url:GET|/api/v1/courses/:course_id/effective_due_dates
+                    url:GET|/api/v1/courses/:course_id/permissions
+                    url:GET|/api/v1/courses/:course_id/student_view_student
+                    url:GET|/api/v1/accounts/:account_id/courses/:id
+                    url:GET|/api/v1/users/self/activity_stream
+                    url:GET|/api/v1/users/activity_stream
+                    url:GET|/api/v1/users/self/activity_stream/summary
+                    url:GET|/api/v1/users/self/todo
+                    url:GET|/api/v1/users/self/todo_item_count
+                    url:GET|/api/v1/users/self/upcoming_events
+                    url:GET|/api/v1/users/:user_id/missing_submissions
+                    url:GET|/api/v1/accounts/:account_id/users
+                    url:GET|/api/v1/users/:id
+                    url:GET|/api/v1/users/:id/settings
+                    url:GET|/api/v1/users/:id/colors
+                    url:GET|/api/v1/users/:id/colors/:asset_string
+                    url:GET|/api/v1/users/:id/dashboard_positions
+                    url:GET|/api/v1/users/:id/graded_submissions
+                    url:GET|/api/v1/users/:user_id/custom_data(/*scope)
+                    url:GET|/api/v1/users/:user_id/page_views
+                    url:GET|/api/v1/users/:user_id/profile
+                    url:GET|/api/v1/users/:user_id/avatars
+                    url:GET|/api/v1/users/self/course_nicknames
+                    url:GET|/api/v1/users/self/course_nicknames/:course_id
+                    url:GET|/api/v1/courses/:course_id/sections/:id
+                    url:GET|/api/v1/sections/:id
+                '''.split()),
                 'client_id': instance.api_client_id,
                 'state': 'sync-groups-{}'.format(course_id)
             }
-        )})
+        )
+        print(url)
+        return response.success({'redirect_uri': url})
