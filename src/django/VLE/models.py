@@ -2713,9 +2713,8 @@ class Entry(CreateUpdateModel):
                 self.node.entry = self
                 self.node.save()
 
-        if is_new:
-            generate_new_entry_notifications.apply_async(
-                args=[self.pk, self.node.pk], countdown=settings.WEBSERVER_TIMEOUT)
+                generate_new_entry_notifications.apply_async(
+                    args=[self.pk, self.node.pk], countdown=settings.WEBSERVER_TIMEOUT)
 
     def link_categories(self, category_ids):
         entry_category_links = [
