@@ -21,7 +21,7 @@ from django.utils import timezone
 import VLE.tasks.beats.cleanup as cleanup
 import VLE.utils.statistics as stats_utils
 from VLE.models import (Assignment, AssignmentParticipation, Category, Course, Entry, Field, FileContext, Format, Group,
-                        Journal, JournalImportRequest, Node, Participation, PresetNode, Role, Template)
+                        Journal, JournalImportRequest, Node, Participation, Preferences, PresetNode, Role, Template)
 from VLE.serializers import AssignmentSerializer, SmallAssignmentSerializer
 from VLE.utils.error_handling import VLEParticipationError, VLEProgrammingError
 from VLE.utils.file_handling import get_files_from_rich_text
@@ -1335,6 +1335,7 @@ class AssignmentAPITest(TestCase):
     def test_publish_all_assignment_grades(self):
         grade_to_publish = factory.Grade(published=False)
         journal = grade_to_publish.entry.node.journal
+        Preferences.objects.update(new_grade_notifications=Preferences.OFF)
         grade_published = factory.Grade(published=True, entry__node__journal=journal)
         grade_other_journal = factory.Grade(published=False)
 
