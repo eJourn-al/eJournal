@@ -17,6 +17,7 @@ module.exports = {
         'sort-imports-es6-autofix',
     ],
     rules: {
+        'arrow-parens': ['error', 'always'],
         'generator-star-spacing': 'off',
         'import/no-cycle': 'off',
         'no-console': process.env.NODE_ENV === 'production' ? 'error' : 'off',

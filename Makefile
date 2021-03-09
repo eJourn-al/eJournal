@@ -94,14 +94,14 @@ setup-no-input:
 	(sudo apt-cache show python3.6 | grep "Package: python3.6") || \
 	(sudo add-apt-repository ppa:deadsnakes/ppa -y; sudo apt update) || echo "0"
 
-	sudo apt install npm -y
+	sudo apt install nodejs -y
 	sudo npm install npm@latest -g
 	sudo apt install nodejs python3 python3-pip libpq-dev python3-dev postgresql postgresql-contrib rabbitmq-server python3-setuptools sshpass -y
 
 	make setup-venv requirements_file=local.txt
 
 	# Istall nodejs dependencies.
-	npm install --prefix ./src/vue
+	npm install --legacy-peer-deps --prefix ./src/vue
 
 	make postgres-init
 	make migrate-back

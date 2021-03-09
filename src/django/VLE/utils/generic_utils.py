@@ -47,16 +47,16 @@ def optional_params(post, *keys):
 
 
 def cast_value(value, type, optional=False):
-    if value is None:
+    if (
+        value is None
+        or optional and value == '' and type != str
+    ):
         return None
-
-    if type == bool and value == 'false':
+    elif type == bool and value == 'false':
         return False
     elif type == bool and value == 'true':
         return True
     elif type == datetime:
-        if optional and value == '':
-            return None
         try:
             return datetime.strptime(value, settings.ALLOWED_DATETIME_FORMAT)
         except ValueError:
@@ -88,6 +88,7 @@ def required_typed_params(data, *type_key_tuples):
 
 
 def optional_typed_params(data, *type_key_tuples):
+    """Value can be None (data is '' or None) or missing (represented by None)"""
     if type_key_tuples and not data:
         return [None] * len(type_key_tuples)
 

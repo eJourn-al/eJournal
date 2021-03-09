@@ -170,6 +170,7 @@ class TemplateSerializer(serializers.ModelSerializer, EagerLoadingMixin):
         fields = (
             *TemplateConcreteFieldsSerializer.Meta.fields,
             'allow_custom_categories',
+            'default_grade',
             'field_set',
             'categories',
         )
@@ -185,6 +186,7 @@ class TemplateSerializer(serializers.ModelSerializer, EagerLoadingMixin):
     ]
 
     allow_custom_categories = serializers.BooleanField(source='chain.allow_custom_categories')
+    default_grade = serializers.FloatField(source='chain.default_grade')
     field_set = FieldSerializer(many=True, read_only=True)
     categories = CategoryConcreteFieldsSerializer(many=True, read_only=True)
 
