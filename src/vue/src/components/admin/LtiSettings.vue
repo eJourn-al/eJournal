@@ -18,27 +18,27 @@
             <template v-if="instance.lms_name">
                 <template v-if="instance.lms_url">
                     <h2 class="theme-h2 field-heading multi-form">
-                        Configure the tool with the following configuration ({{ configuredToolStep + 1 }} / 4)
+                        Configure the tool with the following configuration
+                        ({{ configuredToolStep + 1 }} / {{ maxSteps + 1 }})
                     </h2>
 
                     <template v-if="configuredToolStep === 0">
-                        First, isert the url of the LMS below (e.g. https://canvas.uva.nl/).
-                        <h2 class="theme-h2 field-heading multi-form">
-                            LMS url
-                        </h2>
+                        First, we will need to get the domain of your LMS.
                         <b-input
                             v-model="instance.lms_url"
                             class="theme-input multi-form"
                             type="text"
-                            placeholder="LMS url"
+                            placeholder="LMS url (e.g. https://canvas.uva.nl/)"
                         />
                     </template>
                     <template v-if="configuredToolStep === 1">
-                        Now start adding an LTI Development Key as shown in the screenshot below.
+                        Now add an LTI Development Key as shown in the screenshot below.
+                        <br/>
                         <img
                             src="/guide/lti/canvas-connect-1.png"
                             class="theme-img"
                         />
+                        <br/>
                     </template>
                     <template v-if="configuredToolStep === 2">
                         Fill the fields in as follows:
@@ -60,14 +60,46 @@
                             </li>
                         </ul>
                         An example of this is shown in the screenshot below.
+                        <br/>
                         <img
                             src="/guide/lti/canvas-connect-2.png"
                             class="theme-img"
                         />
+                        <br/>
+                    </template>
+                    <template v-if="configuredToolStep === 3">
+                        After saving the LTI key, switch the state to "ON" and remember the key for the next steps.
+                        <br/>
+                        <img
+                            src="/guide/lti/canvas-connect-3.png"
+                            class="theme-img"
+                        />
+                        <br/>
+                    </template>
+                    <template v-if="configuredToolStep === 4">
+                        Next, we will be adding eJournal to the LMS. Go to the admin settings and
+                        click the blue "+ App" button.
+                        An example of this is shown in the screenshot below.
+                        <br/>
+                        <img
+                            src="/guide/lti/canvas-connect-4.png"
+                            class="theme-img"
+                        />
+                        <br/>
+                    </template>
+                    <template v-if="configuredToolStep === 5">
+                        Select "By Client ID" and fill in the Client ID from the previous step. Click "Submit".
+                        <br/>
+                        <img
+                            src="/guide/lti/canvas-connect-5.png"
+                            class="theme-img"
+                        />
+                        <br/>
                     </template>
                     <template v-if="configuredToolStep === maxSteps">
                         Now report back the Client ID and Deployment ID in the fields below. If there are multiple
                         deployment IDs, they can be comma seperated.
+                        If everything went well, your tool if now correctly configured.
                         <h2 class="theme-h2 field-heading multi-form">
                             Client ID
                         </h2>
@@ -175,7 +207,7 @@ export default {
         return {
             instance: null,
             configuredToolStep: 0,
-            maxSteps: 3,
+            maxSteps: 6,
             lmsNames: [
                 { value: null, text: 'No LMS' },
                 { value: 'Canvas', text: 'Canvas' },
