@@ -288,28 +288,27 @@ class EntryAPITest(TestCase):
         assert Node.objects.get(type=Node.ENTRYDEADLINE, journal=journal, preset__forced_template=template), \
             'Correct node type is created, attached to the journal, whose PresetNode links to the correct template'
 
-    def test_add_entry_to_deadline_preset_node(self):
+    def test_validate_node(self):
         assignment = factory.Assignment(format__templates=False)
         archived_template = factory.Template(format=assignment.format, add_fields=[{'type': Field.TEXT}], archived=True)
         new_template = factory.Template(
             format=assignment.format, add_fields=[{'type': Field.TEXT}], chain=archived_template.chain)
         deadline = factory.DeadlinePresetNode(format=assignment.format, forced_template=new_template)
         journal = factory.Journal(assignment=assignment, entries__n=0)
-        student = journal.author
         deadline_node = journal.node_set.get(preset=deadline)
 
         with self.assertRaises(VLEBadRequest) as context:
-            entry_utils.add_entry_to_deadline_preset_node(deadline_node, archived_template, student)
+            entry_utils.validate_node(deadline_node, archived_template)
         assert 'updated the template' in str(context.exception)
 
         different_chain_template = factory.Template(format=assignment.format, add_fields=[{'type': Field.TEXT}])
         with self.assertRaises(VLEBadRequest) as context:
-            entry_utils.add_entry_to_deadline_preset_node(deadline_node, different_chain_template, student)
+            entry_utils.validate_node(deadline_node, different_chain_template)
         assert 'Provided template is not used by the deadline' in str(context.exception)
 
         deadline_node.type = 'p'
         with self.assertRaises(VLEBadRequest) as context:
-            entry_utils.add_entry_to_deadline_preset_node(deadline_node, new_template, student)
+            entry_utils.validate_node(deadline_node, new_template)
         assert 'Provided deadline type does not support entries' in str(context.exception)
         deadline_node.type = 'd'
 
@@ -318,20 +317,19 @@ class EntryAPITest(TestCase):
         deadline.save()
         deadline_node.refresh_from_db()
         with self.assertRaises(VLEBadRequest) as context:
-            entry_utils.add_entry_to_deadline_preset_node(deadline_node, new_template, student)
+            entry_utils.validate_node(deadline_node, new_template)
         assert 'The lock date for this deadline has passed' in str(context.exception)
         deadline.lock_date = lock_date
         deadline.save()
 
         entry = factory.PresetEntry(node=deadline_node)
         with self.assertRaises(VLEBadRequest) as context:
-            entry_utils.add_entry_to_deadline_preset_node(deadline_node, new_template, student)
+            entry_utils.validate_node(deadline_node, new_template)
         assert 'Deadline already contains an entry' in str(context.exception)
         entry.delete()
         deadline_node.refresh_from_db()
 
-        entry = entry_utils.add_entry_to_deadline_preset_node(deadline_node, new_template, student)
-        assert entry.node == deadline_node, 'Entry creation was succesful'
+        entry_utils.validate_node(deadline_node, new_template)
 
     def test_validate_entry_content(self):
         assignment = factory.Assignment(format__templates=False)
