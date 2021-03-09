@@ -18,7 +18,7 @@ from faker import Faker
 
 import VLE.utils.entry_utils as entry_utils
 from VLE.models import (Assignment, Category, Comment, Content, Course, Entry, Field, FileContext, Format, Grade,
-                        Journal, JournalImportRequest, Node, PresetNode, TeacherEntry, Template, User)
+                        Journal, JournalImportRequest, Node, PresetNode, TeacherEntry, Template, TemplateChain, User)
 from VLE.serializers import EntrySerializer, TemplateSerializer
 from VLE.utils.error_handling import VLEBadRequest, VLEMissingRequiredField, VLEPermissionError
 from VLE.validators import validate_entry_content
@@ -96,6 +96,7 @@ class EntryAPITest(TestCase):
         assert Node.objects.filter(type=Node.ENTRY, journal__assignment=assignment, entry=entry).count() == 1, \
             'An entry node is correctly attached and of the correct type'
         assert entry.grade is None, 'Entry is ungraded by default'
+        assert entry.title is None, 'Entry has no custom title by default'
         assert entry.categories.first().assignment == assignment
 
         grade = 7
@@ -106,11 +107,13 @@ class EntryAPITest(TestCase):
             node__journal__assignment=assignment,
             node__journal__entries__n=0,
             grade__grade=grade,
-            categories=[category]
+            categories=[category],
+            title='Custom',
         )
         assert grade_c + 1 == Grade.objects.count(), 'A single grade instance is created for the grade entry'
         assert entry.grade.grade == grade, 'Deep syntax works for entry grade instance'
         assert entry.categories.first() == category, 'Passing categories directly works'
+        assert entry.title == 'Custom', 'We can set the title'
 
         assignment = factory.Assignment()
         template_c = Template.objects.count()
@@ -477,7 +480,7 @@ class EntryAPITest(TestCase):
         # Check if students cannot update journals without required parts filled in
         create_params = self.valid_create_params.copy()
         create_params['content'] = {
-            list(self.valid_create_params['content'])[0]: 'only one field filled',
+            list(self.valid_create_params['content'])[1]: 'only optional field filled',
         }
         api.create(self, 'entries', params=create_params, user=self.student, status=400)
 
@@ -515,6 +518,27 @@ class EntryAPITest(TestCase):
             'When the active LTI uplink is outdated no more entries can be created.'
         self.group_journal.assignment.active_lti_id = assignment_old_lti_id
         self.group_journal.assignment.save()
+
+        # Cannot set a custom title when the template does not allow it
+        payload = deepcopy(self.valid_create_params)
+        TemplateChain.objects.filter(template=payload['template_id']).update(allow_custom_title=False)
+        title = 'Custom'
+        payload['title'] = title
+        api.create(self, 'entries', params=payload, user=self.student, status=403)
+
+        # But we can do so if the template does allow for a custom title
+        TemplateChain.objects.filter(template=payload['template_id']).update(allow_custom_title=True)
+        resp = api.create(self, 'entries', params=payload, user=self.student)['entry']
+        assert resp['title'] == title, \
+            'It is possible to set a custom entry title if its template allows as such'
+
+        # A custom title can also be set for deadline entries
+        payload = deepcopy(payload)
+        deadline = factory.DeadlinePresetNode(format=self.g_assignment.format, forced_template=self.template)
+        payload['node_id'] = self.group_journal.node_set.get(preset=deadline).pk
+        resp = api.create(self, 'entries', params=payload, user=self.student)['entry']
+        assert resp['title'] == title, \
+            'It is possible to set a custom entry title if its template allows as such, for a deadline entry as well'
 
         # Check entry categories, fixed categories
         cat = factory.Category(assignment=self.g_assignment, templates=self.template)
@@ -731,6 +755,19 @@ class EntryAPITest(TestCase):
         updated_entry = api.update(self, 'entries', params=params.copy(), user=self.student)['entry']
         assert entry['last_edited'] != updated_entry['last_edited'], \
             'Last edited should update when entry content changes'
+
+        # Cannot set a custom title when the template does not allow it
+        payload = deepcopy(params)
+        TemplateChain.objects.filter(template=entry['template']['id']).update(allow_custom_title=False)
+        title = 'Custom'
+        payload['title'] = title
+        api.update(self, 'entries', params=payload, user=self.student, status=403)
+
+        # But we can do so if the template does allow for a custom title
+        TemplateChain.objects.filter(template=entry['template']['id']).update(allow_custom_title=True)
+        resp = api.update(self, 'entries', params=payload, user=self.student)['entry']
+        assert resp['title'] == title, \
+            'It is possible to set a custom entry title if its template allows as such'
 
         # Check if last_edited_by gets set to the correct other user
         last_edited = factory.AssignmentParticipation(assignment=self.group_journal.assignment)
@@ -1060,6 +1097,18 @@ class EntryAPITest(TestCase):
             ).data
             assert data['title'] == preset_node_display_name, \
                 '''A preset entry's title should be the display name of the preset node.'''
+
+            custom_title = 'Custom title'
+            preset_entry.title = custom_title
+            preset_entry.save()
+            data = EntrySerializer(
+                EntrySerializer.setup_eager_loading(Entry.objects.filter(pk=preset_entry.pk)).get(),
+                context={'user': teacher}
+            ).data
+            assert data['title'] == custom_title, \
+                '''A student's custom entry title should take precedence over the preset node display name.'''
+            preset_entry.title = None
+            preset_entry.save()
 
             preset_entry.node.preset.delete()
             data = EntrySerializer(

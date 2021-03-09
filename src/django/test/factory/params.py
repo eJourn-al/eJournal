@@ -89,6 +89,8 @@ class UnlimitedEntryCreationParamsFactory(factory.Factory):
     class Meta:
         model = dict
 
+    title = None
+
     @classmethod
     def _adjust_kwargs(cls, **kwargs):
         journal = kwargs.pop('journal')
@@ -118,6 +120,8 @@ class PresetEntryCreationParamsFactory(factory.Factory):
     """
     class Meta:
         model = dict
+
+    title = None
 
     @classmethod
     def _adjust_kwargs(cls, **kwargs):

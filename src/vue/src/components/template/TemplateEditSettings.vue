@@ -75,6 +75,30 @@
                 placeholder="Set categories"
             />
         </template>
+
+        <hr/>
+
+        <radio-button
+            v-model="template.allow_custom_title"
+            :options="[
+                {
+                    value: true,
+                    icon: 'check',
+                    class: 'green-button',
+                },
+                {
+                    value: false,
+                    icon: 'times',
+                    class: 'red-button',
+                },
+            ]"
+            class="float-right mb-3 ml-3"
+        />
+        <h2 class="theme-h2 field-heading multi-form">
+            Allow custom title
+        </h2>
+        Allow students to set a custom title when creating an entry using this template. The title is visible in the
+        timeline.
     </b-card>
 </template>
 

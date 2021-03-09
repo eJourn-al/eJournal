@@ -77,6 +77,8 @@ from test.factory.file_context import RichTextContentFileContextFactory as RichT
 from test.factory.file_context import RichTextFieldDescriptionFileContextFactory as RichTextFieldDescriptionFileContext  # noqa: F401, E501
 from test.factory.file_context import \
     RichTextPresetNodeDescriptionFileContextFactory as RichTextPresetNodeDescriptionFileContext  # noqa: F401, E501
+from test.factory.file_context import \
+    RichTextTemplateTitleDescriptionFileContextFactory as RichTextTemplateTitleDescriptionFileContext  # noqa: F401, E501
 from test.factory.file_context import TempFileContextFactory as TempFileContext  # noqa: F401
 from test.factory.file_context import TempRichTextFileContextFactory as TempRichTextFileContext  # noqa: F401
 from test.factory.format import FormatFactory as Format  # noqa: F401

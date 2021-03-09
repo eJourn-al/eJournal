@@ -42,6 +42,24 @@
                 v-if="node && (edit || create)"
                 :files="node.attached_files"
             />
+
+            <b-form-group v-if="node && template.allow_custom_title && (edit || create)">
+                <template #label>
+                    Title
+                    <tooltip tip="The title will also be displayed in the timeline."/>
+                </template>
+
+                <sandboxed-iframe
+                    v-if="template.title_description"
+                    :content="template.title_description"
+                />
+
+                <b-input
+                    v-model="title"
+                    class="theme-input"
+                />
+            </b-form-group>
+
             <entry-fields
                 :template="template"
                 :content="newEntryContent"
@@ -146,6 +164,7 @@ import EntryCategories from '@/components/category/EntryCategories.vue'
 import EntryFields from '@/components/entry/EntryFields.vue'
 import EntryTitle from '@/components/entry/EntryTitle.vue'
 import SandboxedIframe from '@/components/assets/SandboxedIframe.vue'
+import Tooltip from '@/components/assets/Tooltip.vue'
 import filesList from '@/components/assets/file_handling/FilesList.vue'
 
 import entryAPI from '@/api/entry.js'
@@ -155,6 +174,7 @@ export default {
         EntryFields,
         EntryTitle,
         SandboxedIframe,
+        Tooltip,
         Comments,
         filesList,
         EntryCategories,
@@ -176,6 +196,7 @@ export default {
             edit: false,
             requestInFlight: false,
             newEntryContent: () => Object(),
+            title: null,
             uploadingFiles: 0,
         }
     },
@@ -190,8 +211,10 @@ export default {
             handler () {
                 if (this.node && this.node.entry) {
                     this.newEntryContent = { ...this.node.entry.content }
+                    this.title = this.node.entry.title
                 } else {
                     this.newEntryContent = Object()
+                    this.title = ''
                 }
                 this.edit = false
             },
@@ -202,6 +225,7 @@ export default {
                 // Add node should empty filled in entry content when switching template
                 if (this.node.type === 'a') {
                     this.newEntryContent = Object()
+                    this.title = ''
                 }
             },
         },
@@ -210,7 +234,7 @@ export default {
         saveChanges () {
             if (this.checkRequiredFields()) {
                 this.requestInFlight = true
-                entryAPI.update(this.node.entry.id, { content: this.newEntryContent },
+                entryAPI.update(this.node.entry.id, { content: this.newEntryContent, title: this.title },
                     { customSuccessToast: 'Entry successfully updated.' })
                     .then((entry) => {
                         this.node.entry = entry
@@ -249,6 +273,7 @@ export default {
                     content: this.newEntryContent,
                     node_id: this.node && this.node.nID > 0 ? this.node.nID : null,
                     category_ids: categoryIds,
+                    title: this.title,
                 }, { customSuccessToast: 'Entry successfully posted.' })
                     .then((data) => {
                         this.requestInFlight = false

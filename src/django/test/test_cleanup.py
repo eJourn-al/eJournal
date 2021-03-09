@@ -11,7 +11,8 @@ from VLE.models import Category, Field, FileContext, PresetNode
 
 class CleanupTest(TestCase):
     def setUp(self):
-        self.assignment = factory.Assignment()
+        self.assignment = factory.Assignment(format__templates=False)
+        self.template = factory.Template(format=self.assignment.format, add_fields=[{'type': Field.RICH_TEXT}])
         self.entry = factory.UnlimitedEntry(node__journal__assignment=self.assignment)
 
     def test_remove_temp_files(self, cleanup_function=cleanup.remove_temp_files):
@@ -112,15 +113,18 @@ class CleanupTest(TestCase):
         a_description_fc = factory.RichTextAssignmentDescriptionFileContext(assignment=self.assignment)
         f_description_fc = factory.RichTextFieldDescriptionFileContext(assignment=self.assignment)
         progress_description_fc = factory.RichTextPresetNodeDescriptionFileContext(assignment=self.assignment)
+        t_title_description_fc = factory.RichTextTemplateTitleDescriptionFileContext(
+            assignment=self.assignment, template=self.template)
         fc_pks = [
             a_description_fc.pk,
             f_description_fc.pk,
             progress_description_fc.pk,
+            t_title_description_fc.pk,
         ]
 
         cleanup_function()
 
-        assert FileContext.objects.filter(pk__in=fc_pks).count() == 3, \
+        assert FileContext.objects.filter(pk__in=fc_pks).count() == len(fc_pks), \
             'All correct assignment specific FCs should remain'
 
         self.assignment.description = ''
@@ -130,6 +134,8 @@ class CleanupTest(TestCase):
         PresetNode.objects.filter(
             format=self.assignment.format, description__contains=progress_description_fc.access_id
         ).update(description='')
+        self.template.chain.title_description = ''
+        self.template.chain.save()
         cleanup_function()
         assert not FileContext.objects.filter(pk__in=fc_pks).exists(), \
             'Once the respective descriptions no longer refer to the FCs, they should be cleaned'

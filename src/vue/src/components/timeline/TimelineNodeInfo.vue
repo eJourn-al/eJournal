@@ -54,12 +54,11 @@ export default {
             isAssignmentDetailsDirty: 'assignmentEditor/isAssignmentDetailsDirty',
         }),
         nodeTitle () {
-            if (this.node.deleted_preset) {
+            if (this.node.entry) {
                 return this.node.entry.title
             }
+
             switch (this.node.type) {
-            case 'e':
-                return this.node.entry.title
             case 'd':
             case 'p':
                 return this.node.display_name

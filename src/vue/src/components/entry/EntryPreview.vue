@@ -19,6 +19,17 @@
             <files-list :files="presetNode.attached_files"/>
         </template>
 
+        <b-form-group
+            v-if="template.allow_custom_title"
+            label="Title"
+        >
+            <sandboxed-iframe
+                v-if="template.title_description"
+                :content="template.title_description"
+            />
+            <b-input class="theme-input input-disabled"/>
+        </b-form-group>
+
         <entry-fields
             :template="template"
             :content="() => Object()"
