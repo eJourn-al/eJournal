@@ -87,7 +87,10 @@ def assert_num_queries_less_than(value, db_alias='default', verbose=False):
     with CaptureQueriesContext(connections[db_alias]) as context:
         yield
 
-    msg = '\n%s' % json.dumps(context.captured_queries, indent=4) if verbose else ''
+    if verbose:
+        msg = '\n%s' % json.dumps(context.captured_queries, indent=4)
+    else:
+        msg = f'{len(context.captured_queries)} >= {value}'
 
     assert len(context.captured_queries) < value, msg
 
