@@ -5,7 +5,7 @@ from pylti1p3.names_roles import NamesRolesProvisioningService
 from pylti1p3.service_connector import ServiceConnector
 
 import VLE.lti1p3 as lti
-from VLE.models import User
+from VLE.models import Instance, User
 
 
 def is_test_student(member_data):
@@ -15,11 +15,10 @@ def is_test_student(member_data):
     )
 
 
-def sync_members(course, iss='https://canvas.instructure.com', client_id='10000000000001'):
+def sync_members(course):
     # TODO LTI: make sure message_launch_data is not needed anymore
-    # TODO LTI: set client id to instance default.
-    # TODO future LTI: create admin panel where client id and iss can be set / changed
-    registration = settings.TOOL_CONF.find_registration(iss, client_id=client_id)
+    instance = Instance.objects.get(pk=1)
+    registration = settings.TOOL_CONF.find_registration(instance.iss, client_id=instance.lti_client_id)
     connector = ServiceConnector(registration)
     nrs = NamesRolesProvisioningService(connector, json.loads(course.names_role_service))
 
@@ -28,7 +27,6 @@ def sync_members(course, iss='https://canvas.instructure.com', client_id='100000
     # if lti.utils.is_test_student(member):
     #     User.objects.filter(participation__course=course, is_test_student=True).exclude(pk=user.pk).delete()
     for member_data in members:
-        print(member_data)
         # Transfer to launch_data standard so we can use the launch data functions
         member_data['sub'] = member_data['user_id']
         member_data[lti.claims.CUSTOM] = {

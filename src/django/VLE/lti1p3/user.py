@@ -10,7 +10,7 @@ def _get_profile_picture(message_launch_data, user=None):
     If that is the default, return the users profile picture instead.
     If no user is set, return None."""
     if message_launch_data.get('picture') == \
-       Instance.objects.get_or_create(pk=1)[0].default_lms_profile_picture:
+       Instance.objects.get(pk=1).default_lms_profile_picture:
         return user.profile_picture if user else None
 
     return message_launch_data.get('picture')
@@ -19,7 +19,10 @@ def _get_profile_picture(message_launch_data, user=None):
 def create_with_launch_data(message_launch_data, password=None, course=None):
     is_test_student = lti.utils.is_test_student_launch(message_launch_data)
     user = User(
-        username=message_launch_data.get(lti.claims.CUSTOM).get('username', None),
+        # Get the customly provided username. This is used for login at the LMS
+        # If that doesn't exist, get the sourcedid and use that for login purposes as it is often the same
+        username=message_launch_data.get(lti.claims.CUSTOM).get(
+            'username', message_launch_data.get(lti.claims.LIS)['person_sourcedid']),
         full_name=message_launch_data['name'],
         email=message_launch_data.get('email', None),
         verified_email='email' in message_launch_data,

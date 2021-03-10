@@ -48,7 +48,7 @@ def update_with_launch_data(course, message_launch_data):
         course.active_lti_id = message_launch_data.get(lti.claims.COURSE)['id']
         # Only sync members on first launch
         # TODO LTI: add sync members btn on eJournal to sync later added users
-        lti.members.sync_members(course)
+    lti.members.sync_members(course)
     course.startdate = message_launch_data.get(lti.claims.CUSTOM).get('course_start', course.startdate)
     course.enddate = message_launch_data.get(lti.claims.CUSTOM).get('course_end', course.enddate)
     course.names_role_service = json.dumps(message_launch_data.get(lti.claims.NAMESROLES))

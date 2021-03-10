@@ -50,6 +50,9 @@ class EntryView(viewsets.ViewSet):
         if assignment.is_locked():
             return response.forbidden('The assignment is locked, entries can no longer be edited/changed.')
 
+        if len(journal.needs_lti_link) > 0:
+            return response.forbidden(journal.outdated_link_warning_msg)
+
         # Check if the template is available
         if not (node_id or assignment.format.template_set.filter(archived=False, preset_only=False,
                                                                  pk=template.pk).exists()):
@@ -103,6 +106,7 @@ class EntryView(viewsets.ViewSet):
 
         if assignment.is_locked():
             return response.forbidden('The assignment is locked, entries can no longer be edited/changed.')
+
         request.user.check_permission('can_have_journal', assignment)
         if not (journal.authors.filter(user=request.user).exists() or request.user.is_superuser):
             return response.forbidden('You are not allowed to edit someone else\'s entry.')
@@ -110,6 +114,8 @@ class EntryView(viewsets.ViewSet):
             return response.bad_request('You are not allowed to edit graded entries.')
         if entry.is_locked():
             return response.bad_request('You are not allowed to edit locked entries.')
+        if len(journal.needs_lti_link) > 0:
+            return response.forbidden(journal.outdated_link_warning_msg)
 
         # Check for required fields
         entry_utils.check_fields(entry.template, content_dict)
@@ -195,6 +201,8 @@ class EntryView(viewsets.ViewSet):
                 return response.forbidden('You are not allowed to delete locked entries.')
             if assignment.is_locked():
                 return response.forbidden('You are not allowed to delete entries in a locked assignment.')
+            if len(journal.needs_lti_link) > 0:
+                return response.forbidden(journal.outdated_link_warning_msg)
         elif not request.user.is_superuser:
             return response.forbidden('You are not allowed to delete someone else\'s entry.')
 

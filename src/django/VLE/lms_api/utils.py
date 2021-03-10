@@ -3,7 +3,6 @@ from pylti1p3.exception import LtiException
 
 
 def api_request(url, access_token, data=None, is_post=False, content_type='application/json'):
-    print(url, access_token, data, is_post, content_type)
     headers = {
         'Authorization': 'Bearer ' + access_token,
     }
@@ -15,9 +14,8 @@ def api_request(url, access_token, data=None, is_post=False, content_type='appli
     else:
         r = requests.get(url, params={
             # 'state[]': ['available'],
-            'include[]': ['students'],
+            'include[]': ['students', 'total_students'],
         }, headers=headers)
-        print(r.url)
 
     if r.status_code not in (200, 201):
         raise LtiException('HTTP response [%s]: %s - %s' % (url, str(r.status_code), r.text))

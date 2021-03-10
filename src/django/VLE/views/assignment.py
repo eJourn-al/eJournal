@@ -115,7 +115,15 @@ class AssignmentView(viewsets.ViewSet):
         if launch_id:
             launch_data = lti.utils.get_launch_data_from_id(launch_id, request)
             assignment = lti.assignment.create_with_launch_data(launch_data)
-            return response.created({'assignment': AssignmentSerializer(assignment, many=False).data})
+            serializer = AssignmentSerializer(
+                AssignmentSerializer.setup_eager_loading(Assignment.objects.filter(pk=assignment.pk)).get(),
+                context={
+                    'user': request.user,
+                    'course': lti.course.get_with_launch_data(launch_data),
+                    'serialize_journals': request.user.has_permission('can_grade', assignment),
+                }
+            )
+            return response.created({'assignment': serializer.data})
 
         name, description, course_id = utils.required_typed_params(
             request.data, (str, 'name'), (str, 'description'), (int, 'course_id'))

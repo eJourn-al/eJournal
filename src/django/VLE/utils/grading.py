@@ -5,6 +5,7 @@ from django.utils import timezone
 from sentry_sdk import capture_exception, push_scope
 
 from VLE import factory
+from VLE.lti1p3 import grading
 from VLE.lti_grade_passback import GradePassBackRequest
 from VLE.models import AssignmentParticipation, Comment, Entry, Journal
 from VLE.utils.error_handling import LmsGradingResponseException
@@ -81,6 +82,7 @@ def send_author_status_to_LMS(journal, author, left_journal=False):
             'successful': False,
         }
 
+    return grading.send_grade(author)
     # gr = Grade()
     # gr.set_score_given(journal.grade)\
     #      .set_score_maximum(assignment.points_possible)\

@@ -179,7 +179,6 @@ def update_lti_groups(request):
         return response.bad_request('Course not found.')
 
     #
-    # print(message_launch_data)
     # lineitem = message_launch_data.get(claims.GRADES).get('lineitem')
     # lineitems = message_launch_data.get(claims.GRADES).get('lineitems')
     # course_lti_id = message_launch_data.get(claims.COURSE).get('id')

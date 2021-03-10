@@ -7,7 +7,7 @@ class eToolConfJsonFile(ToolConfJsonFile):
     def update_config(self, iss=None, instance=None):
         if not instance:
             from VLE.models import Instance
-            instance = Instance.objects.get_or_create(pk=1)[0]
+            instance = Instance.objects.get(pk=1)
 
         if not iss:
             iss = instance.iss

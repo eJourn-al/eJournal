@@ -1820,11 +1820,17 @@ class JournalQuerySet(models.QuerySet):
         Annotates for each journal linked to an lti assignment (active lti id is not None)
         the full name as array of the users who do not have a sourcedid set as `needs_lti_link`
         """
-        return self.annotate(needs_lti_link=ArrayAgg(
-            'authors__user__full_name',
-            filter=Q(authors__sourcedid__isnull=True, assignment__active_lti_id__isnull=False),
-            distinct=True,
-        ))
+        return self.annotate(
+            needs_lti_link=Case(
+                # If assignment is LTI1.3 there is no need for lti link
+                When(Q(assignment__assignments_grades_service__isnull=False), then=[]),
+                default=ArrayAgg(
+                    'authors__user__full_name',
+                    filter=Q(authors__sourcedid__isnull=True, assignment__active_lti_id__isnull=False),
+                    distinct=True,
+                )
+            )
+        )
 
     def annotate_name(self):
         """

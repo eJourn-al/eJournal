@@ -104,7 +104,7 @@ def send_email_verification_link(user_pk):
 def send_invite_emails(user_pks):
     """Sends an invite link to join the platform to the users email adress."""
     users = VLE.models.User.objects.filter(pk__in=user_pks)
-    instance_name = VLE.models.Instance.objects.get_or_create(pk=1)[0].name
+    instance_name = VLE.models.Instance.objects.get(pk=1).name
     token_generator = PasswordResetTokenGenerator()
     for user in users:
         email_data = {}

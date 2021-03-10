@@ -313,7 +313,7 @@ class GroupSerializer(serializers.ModelSerializer):
 class AssignmentParticipationSerializer(serializers.ModelSerializer, EagerLoadingMixin):
     class Meta:
         model = VLE.models.AssignmentParticipation
-        fields = ('id', 'journal', 'assignment', 'user')
+        fields = ('id', 'journal', 'assignment', 'user', 'needs_lti_link')
         read_only_fields = ('journal', 'assignment',)
 
     select_related = [
@@ -322,6 +322,7 @@ class AssignmentParticipationSerializer(serializers.ModelSerializer, EagerLoadin
     ]
 
     user = UserSerializer(read_only=True)
+    needs_lti_link = serializers.BooleanField()
 
 
 class ParticipationSerializer(serializers.ModelSerializer, EagerLoadingMixin):
@@ -676,6 +677,7 @@ class JournalSerializer(serializers.ModelSerializer):
             'grade',
             'unpublished',
             'needs_marking',
+            'needs_lti_link',
             'groups',
         )
         read_only_fields = (
@@ -689,6 +691,7 @@ class JournalSerializer(serializers.ModelSerializer):
             'grade',
             'unpublished',
             'needs_marking',
+            'needs_lti_link',
             'groups',
         )
 
@@ -702,6 +705,7 @@ class JournalSerializer(serializers.ModelSerializer):
     grade = serializers.FloatField()
     unpublished = serializers.IntegerField()
     needs_marking = serializers.IntegerField()
+    needs_lti_link = serializers.SerializerMethodField()
     groups = serializers.SerializerMethodField()
 
     def __init__(self, *args, **kwargs):
@@ -748,6 +752,9 @@ class JournalSerializer(serializers.ModelSerializer):
         if self.context.get('can_manage_journal_import_requests', False):
             return journal.import_requests
         return None
+
+    def get_needs_lti_link(self, journal):
+        return journal.needs_lti_link
 
 
 class PresetNodeSerializer(serializers.ModelSerializer, EagerLoadingMixin):

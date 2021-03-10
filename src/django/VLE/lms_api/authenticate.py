@@ -19,8 +19,8 @@ def lms_authenticate(request):
         status: this specifies the data to retrieve and the context to retrieve it with
         code: code used to retrieve the access_token
     """
-    print(request)
-    print(request.query_params)
+    # TODO LTI: do not continuesly re-request integration. Appearently you can extand expeiration date
+    # Everytime someone uses FBF, the expiration date gets postponed by 1 hour
     instance = Instance.objects.get(pk=1)
     resp = requests.post(instance.auth_token_url, data={
         'grant_type': 'authorization_code',
@@ -32,5 +32,5 @@ def lms_authenticate(request):
     response = json.loads(resp.content)
     access_token = response['access_token']
 
-    # TODO LTI: return nice display that it is done, and you may close the tab.
+# TODO LTI: return nice display that it is done, and you may close the tab.
     return JsonResponse(data=lti.groups.sync_groups(access_token))

@@ -149,7 +149,7 @@ class UserView(viewsets.ViewSet):
             })
 
         # Check if instance allows standalone registration if user did not register through some LTI instance
-        instance = Instance.objects.get_or_create(pk=1)[0]
+        instance = Instance.objects.get(pk=1)
         if not instance.allow_standalone_registration:
             return response.bad_request(
                 ('{} does not allow you to register through the website,' +

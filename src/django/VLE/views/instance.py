@@ -20,7 +20,7 @@ class InstanceView(viewsets.ViewSet):
     """
     def retrieve(self, request, pk=0):
         """Get all instance details."""
-        instance = Instance.objects.get_or_create(pk=1)[0]
+        instance = Instance.objects.get(pk=1)
 
         return response.success({'instance': InstanceSerializer(instance).data})
 
@@ -41,7 +41,7 @@ class InstanceView(viewsets.ViewSet):
         if not request.user.is_superuser:
             return response.forbidden('You are not allowed to edit instance details.')
 
-        instance = Instance.objects.get_or_create(pk=1)[0]
+        instance = Instance.objects.get(pk=1)
 
         serializer = InstanceSerializer(instance, data=request.data, context={'user': request.user}, partial=True)
         if not serializer.is_valid():

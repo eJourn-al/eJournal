@@ -184,10 +184,10 @@ class GroupView(viewsets.ViewSet):
                 'response_type': 'code',
                 'redirect_uri': build_url(settings.API_URL, 'lms/authenticate/'),  # TODO LTI: change to API_URL
                 'scope': ' '.join('''
+                    url:GET|/api/v1/courses/:course_id/students
                     url:GET|/api/v1/courses/:course_id/sections
                     url:GET|/api/v1/courses
                     url:GET|/api/v1/courses/:id
-                    url:GET|/api/v1/courses/:course_id/students
                     url:GET|/api/v1/courses/:course_id/settings
                     url:GET|/api/v1/courses/:course_id/recent_students
                     url:GET|/api/v1/courses/:course_id/users

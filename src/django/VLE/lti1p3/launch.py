@@ -166,6 +166,8 @@ def launch(request):
     launch_id = message_launch.get_launch_id()
 
     message_launch_data = message_launch.get_launch_data()
+    import json
+    print(json.dumps(message_launch_data, indent=4, sort_keys=True))
 
     # Check if it is an initial assignment setup
     if message_launch.is_deep_link_launch():
@@ -187,17 +189,20 @@ def launch(request):
         # TODO LTI: change to is initialized user or not (cuz lti_id can be set with the roles service)
         if not user:
             return handle_no_user_connected_to_launch_data(message_launch_data, launch_id)
+        print('LTI user:', user)
 
         course = lti.course.get_and_update_course_with_launch_data(message_launch_data)
         if not course:
             return handle_no_course_connected_to_launch_data(message_launch_data, launch_id, user)
+        print('LTI course:', course)
 
         assignment = lti.assignment.get_and_update_assignment_with_launch_data(message_launch_data)
         if not assignment:
             return handle_no_assignment_connected_to_launch_data(message_launch_data, launch_id, user, course)
+        print('LTI assignment:', assignment)
 
-        print(user, assignment)
         journal = Journal.objects.filter(authors__user=user, assignment=assignment).first()
+        print('LTI journal:', journal)
         return handle_all_connected_to_launch_data(
             message_launch_data, launch_id, user, course, assignment, journal, request)
 

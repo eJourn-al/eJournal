@@ -124,7 +124,11 @@ def _can_edit_entry(user, entry):
         not journal.authors.filter(user=user).exists() or
         journal.assignment.is_locked() or
         entry.is_graded() or
-        entry.is_locked()
+        entry.is_locked() or
+        len(journal.needs_lti_link) > 0 or
+        not user.has_permission('can_have_journal', journal.assignment) or
+        not journal.authors.filter(user=user).exists()
+
     ):
         return False
 
