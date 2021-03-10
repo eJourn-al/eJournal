@@ -1,3 +1,4 @@
+import VLE.utils.generic_utils as generic_utils
 from VLE.models import Entry, EntryCategoryLink, PresetNode, Template, TemplateCategoryLink
 
 
@@ -115,8 +116,18 @@ def update_template_chain_based_settings(chain, data):
 
     Archiving a template part of the chain should have no impact on these settings.
     """
-    if chain.allow_custom_categories != data['allow_custom_categories']:
-        chain.allow_custom_categories = data['allow_custom_categories']
+    chain_fields = [
+        'allow_custom_categories',
+        'allow_custom_title',
+        'title_description',
+        'default_grade',
+    ]
+
+    if any(getattr(chain, f) != data[f] for f in chain_fields):
+        chain.allow_custom_categories, = generic_utils.required_typed_params(data, (bool, 'allow_custom_categories'))
+        chain.allow_custom_title, = generic_utils.required_typed_params(data, (bool, 'allow_custom_title'))
+        chain.title_description, = generic_utils.required_typed_params(data, (str, 'title_description'))
+        chain.default_grade, = generic_utils.optional_typed_params(data, (float, 'default_grade'))
         chain.save()
 
 

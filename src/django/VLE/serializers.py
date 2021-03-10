@@ -170,6 +170,9 @@ class TemplateSerializer(serializers.ModelSerializer, EagerLoadingMixin):
         fields = (
             *TemplateConcreteFieldsSerializer.Meta.fields,
             'allow_custom_categories',
+            'allow_custom_title',
+            'title_description',
+            'default_grade',
             'field_set',
             'categories',
         )
@@ -185,6 +188,9 @@ class TemplateSerializer(serializers.ModelSerializer, EagerLoadingMixin):
     ]
 
     allow_custom_categories = serializers.BooleanField(source='chain.allow_custom_categories')
+    allow_custom_title = serializers.BooleanField(source='chain.allow_custom_title')
+    title_description = serializers.CharField(source='chain.title_description')
+    default_grade = serializers.FloatField(source='chain.default_grade')
     field_set = FieldSerializer(many=True, read_only=True)
     categories = CategoryConcreteFieldsSerializer(many=True, read_only=True)
 
@@ -910,6 +916,9 @@ class EntrySerializer(serializers.ModelSerializer, EagerLoadingMixin):
     jir = serializers.SerializerMethodField()
 
     def get_title(self, entry):
+        if entry.title:
+            return entry.title
+
         if (entry.teacher_entry and entry.teacher_entry.show_title_in_timeline):
             return entry.teacher_entry.title
 

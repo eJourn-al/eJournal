@@ -4,7 +4,6 @@ import auth from '@/api/auth.js'
 function propagateCategoryTemplateUpdate (templates, updatedCategory) {
     const categoryConcreteFields = JSON.parse(JSON.stringify(updatedCategory))
     delete categoryConcreteFields.templates
-    delete categoryConcreteFields.allow_custom_categories
 
     templates.forEach((template) => {
         const templateCategoryIndex = template.categories.findIndex((category) => category.id === updatedCategory.id)

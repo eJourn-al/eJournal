@@ -41,6 +41,13 @@
                     trim
                     required
                 />
+
+                <template
+                    v-if="presetNode.template && presetNode.template.allow_custom_title"
+                    #description
+                >
+                    The template setting <i>"allow custom title"</i> allows students to override this value.
+                </template>
             </b-form-group>
 
             <preset-node-edit-select-and-preview-template

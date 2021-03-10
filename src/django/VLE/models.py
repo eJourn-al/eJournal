@@ -2615,6 +2615,11 @@ class Entry(CreateUpdateModel):
         through_fields=('entry', 'category'),
     )
 
+    title = models.TextField(
+        null=True,
+        blank=True,
+    )
+
     @staticmethod
     def validate_categories(category_ids, assignment, template=None):
         """
@@ -2711,9 +2716,6 @@ class TeacherEntry(Entry):
         'Assignment',
         on_delete=models.CASCADE,
     )
-    title = models.TextField(
-        null=False,
-    )
     show_title_in_timeline = models.BooleanField(
         default=True
     )
@@ -2809,6 +2811,14 @@ class TemplateChain(CreateUpdateModel):
 
     Any fields hold for the entire template chain
     """
+    class Meta:
+        constraints = [
+            CheckConstraint(
+                check=Q(default_grade__gte=0) | Q(default_grade__isnull=True),
+                name='default_grade_gte_0',
+            ),
+        ]
+
     format = models.ForeignKey(
         'Format',
         on_delete=models.CASCADE
@@ -2818,17 +2828,39 @@ class TemplateChain(CreateUpdateModel):
         default=False,
     )
 
+    allow_custom_title = models.BooleanField(
+        default=True,
+    )
+
+    title_description = models.TextField(
+        blank=True,
+        null=True,
+    )
+
+    default_grade = models.FloatField(
+        blank=True,
+        null=True,
+    )
+
 
 class TemplateQuerySet(models.QuerySet):
     def create(self, format, *args, **kwargs):
         """Creates a template and starts a new chain if not provided in the same transaction."""
         with transaction.atomic():
             allow_custom_categories = kwargs.pop('allow_custom_categories', False)
+            allow_custom_title = kwargs.pop('allow_custom_title', True)
+            title_description = kwargs.pop('title_description', None)
+            default_grade = kwargs.pop('default_grade', None)
+            if default_grade == '':
+                default_grade = None
 
             if not kwargs.get('chain', False):
                 kwargs['chain'] = TemplateChain.objects.create(
                     format=format,
                     allow_custom_categories=allow_custom_categories,
+                    allow_custom_title=allow_custom_title,
+                    title_description=title_description,
+                    default_grade=default_grade,
                 )
 
             return super().create(*args, **kwargs, format=format)
@@ -2849,6 +2881,9 @@ class TemplateQuerySet(models.QuerySet):
                 format=format,
                 preset_only=data['preset_only'],
                 allow_custom_categories=data['allow_custom_categories'],
+                allow_custom_title=data['allow_custom_title'],
+                title_description=data['title_description'],
+                default_grade=data['default_grade'],
                 chain=archived_template.chain if archived_template else False,
             )
 
@@ -2951,6 +2986,13 @@ class Template(CreateUpdateModel):
             if name == '':
                 raise ValidationError('Template name cannot be empty.')
 
+        def validate_chain_fields():
+            default_grade, = generic_utils.optional_typed_params(data, (float, 'default_grade'))
+
+            if default_grade is not None:
+                if default_grade < 0:
+                    raise ValidationError('Default grade should be positive.')
+
         def validate_categories():
             category_data, = generic_utils.required_params(data, 'categories')
             category_ids = set([category['id'] for category in category_data])
@@ -2981,6 +3023,7 @@ class Template(CreateUpdateModel):
                 raise ValidationError('A template should include one or more fields.')
 
         validate_concrete_fields()
+        validate_chain_fields()
         validate_categories()
         validate_field_set()
 

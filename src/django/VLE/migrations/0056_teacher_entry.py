@@ -24,12 +24,6 @@ class Migration(migrations.Migration):
         ),
         migrations.AddField(
             model_name='teacherentry',
-            name='title',
-            field=models.TextField(default='BESTONE'),
-            preserve_default=False,
-        ),
-        migrations.AddField(
-            model_name='teacherentry',
             name='show_title_in_timeline',
             field=models.BooleanField(default=True),
         ),

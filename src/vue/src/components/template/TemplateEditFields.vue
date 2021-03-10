@@ -1,8 +1,24 @@
 <template>
     <section>
-        <h2 class="theme-h2 field-heading multi-form">
+        <h2 class="theme-h2 multi-form">
             Fields
         </h2>
+
+        <b-form-group
+            v-if="template.allow_custom_title"
+            label="Title"
+        >
+            <text-editor
+                :id="`rich-text-editor-template-${template.id}-title-description`"
+                :key="`rich-text-editor-template-${template.id}-title-description`"
+                v-model="template.title_description"
+                :basic="true"
+                :displayInline="true"
+                :minifiedTextArea="true"
+                class="multi-form"
+                placeholder="Optional description"
+            />
+        </b-form-group>
 
         <draggable
             v-model="template.field_set"
@@ -40,6 +56,7 @@ export default {
     components: {
         draggable,
         TemplateField,
+        TextEditor: () => import(/* webpackChunkName: 'text-editor' */ '@/components/assets/TextEditor.vue'),
     },
     props: {
         template: {

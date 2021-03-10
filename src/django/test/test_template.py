@@ -7,6 +7,7 @@ from test.utils.performance import QueryContext
 from unittest import mock
 
 from django.core.exceptions import ValidationError
+from django.db import transaction
 from django.db.utils import IntegrityError
 from django.test import TestCase
 
@@ -89,6 +90,18 @@ class TemplateTest(TestCase):
         assert c_c == Course.objects.count(), 'No additional course should be generated'
         assert j_c == Journal.objects.count(), 'No journals should be generated'
         assert t_c + 1 == Template.objects.count(), 'One template should be generated'
+
+        template = factory.Template(
+            format=self.assignment.format,
+            allow_custom_categories=True,
+            allow_custom_title=True,
+            title_description='A description',
+            default_grade=1,
+        )
+        assert template.chain.allow_custom_categories
+        assert template.chain.allow_custom_title
+        assert template.chain.title_description == 'A description'
+        assert template.chain.default_grade == 1
 
     def test_full_chain(self):
         template1_of_chain1 = Template.objects.create(format=self.format, name='A')
@@ -196,6 +209,17 @@ class TemplateTest(TestCase):
         with self.assertRaises(IntegrityError):
             Template.objects.create(name='', format=self.format)
 
+    def test_template_chain_constraints(self):
+        TemplateChain.objects.create(default_grade=None, format=self.format)
+        TemplateChain.objects.create(default_grade=0, format=self.format)
+        TemplateChain.objects.create(default_grade=0.0, format=self.format)
+
+        with transaction.atomic():
+            self.assertRaises(IntegrityError, TemplateChain.objects.create, default_grade=-0.0001, format=self.format)
+
+        with transaction.atomic():
+            self.assertRaises(IntegrityError, TemplateChain.objects.create, default_grade=-1, format=self.format)
+
     def test_template_serializer(self):
         format = self.format
 
@@ -251,12 +275,33 @@ class TemplateTest(TestCase):
             assert data['format'] == template.format.pk
             assert data['preset_only'] == template.preset_only
             assert data['archived'] == template.archived
-            assert data['allow_custom_categories'] == template.chain.allow_custom_categories
+
+        def test_template_chain_fields_serialization():
+            # Default to False and None
+            template = factory.Template(format=self.format)
+            data = TemplateSerializer(template).data
+            assert data['allow_custom_categories'] is False
+            assert data['allow_custom_title'] is True, 'By default a template allows for a custom title'
+            assert data['title_description'] is None, 'By default a template title description is not set'
+            assert data['default_grade'] is None, 'Float field can also serialize None value'
+
+            # Custom values are correctly serialized
+            template = factory.Template(
+                format=self.format,
+                allow_custom_categories=True,
+                allow_custom_title=False,
+                default_grade=1.0,
+            )
+            data = TemplateSerializer(template).data
+            assert data['allow_custom_categories'] is True
+            assert data['allow_custom_title'] is False
+            assert data['default_grade'] == 1.0
 
             check_field_set_serialization_order(data)
 
         test_template_list_serializer()
         test_template_instance_serializer()
+        test_template_chain_fields_serialization()
 
     def test_template_validate(self):
         template = factory.Template(format=self.format, add_fields=[{'type': Field.TEXT}])
@@ -290,6 +335,23 @@ class TemplateTest(TestCase):
             archived_non_unique_name['name'] = archived_duplicate_name
             Template.validate(archived_non_unique_name, assignment=self.assignment)
 
+        def test_validate_chain_fields():
+            no_default_grade = deepcopy(valid_data)
+            no_default_grade['default_grade'] = None
+            Template.validate(no_default_grade, assignment=self.assignment)
+
+            zero_default_grade = deepcopy(valid_data)
+            zero_default_grade['default_grade'] = 0
+            Template.validate(zero_default_grade, assignment=self.assignment)
+
+            positive_float_default_grade = deepcopy(valid_data)
+            positive_float_default_grade['default_grade'] = 0.005
+            Template.validate(positive_float_default_grade, assignment=self.assignment)
+
+            negative_default_grade = deepcopy(valid_data)
+            negative_default_grade['default_grade'] = -1
+            self.assertRaises(ValidationError, Template.validate, negative_default_grade, self.assignment)
+
         def test_category_validation():
             category = factory.Category(assignment=self.assignment)
             unrelated_category = factory.Category()
@@ -320,6 +382,7 @@ class TemplateTest(TestCase):
             self.assertRaises(ValidationError, Template.validate, no_fields, self.assignment)
 
         test_concrete_fields_validation()
+        test_validate_chain_fields()
         test_category_validation()
         test_field_set_validation()
 
@@ -359,11 +422,18 @@ class TemplateTest(TestCase):
 
     def test_template_create(self):
         category = factory.Category(assignment=self.assignment)
+        template_title_description_temp_fc = factory.TempFileContext(author=self.assignment.author)
+        template_title_description = '<p>A description</p><p><img src="{}"/></p>'.format(
+            template_title_description_temp_fc.download_url(access_id=template_title_description_temp_fc.access_id)
+        )
 
         params = factory.TemplateCreationParams(
             assignment_id=self.assignment.pk,
             n_fields_with_file_in_description=1,
             author=self.assignment.author,
+            allow_custom_title=True,
+            title_description=template_title_description,
+            default_grade=2.0,
         )
         params['categories'] = [{'id': category.pk}]
 
@@ -376,9 +446,18 @@ class TemplateTest(TestCase):
         template = Template.objects.get(pk=resp['template']['id'])
         assert template.name == params['name']
         assert template.chain.allow_custom_categories == params['allow_custom_categories']
+        assert template.chain.allow_custom_title == params['allow_custom_title']
+        assert template.chain.title_description == params['title_description']
         assert template.preset_only == params['preset_only']
+        assert template.chain.default_grade == params['default_grade']
 
         _validate_field_creation(template, params['field_set'])
+        assert FileContext.objects.filter(
+            in_rich_text=True,
+            assignment=template.format.assignment,
+            access_id=template_title_description_temp_fc.access_id,
+            is_temp=False,
+        ).exists(), '''The template's title description is correctly linked and no longer temporary'''
         assert set(template.categories.all()) == {category}, 'The category is correctly linked to the template'
 
         # When importing a template the author is required, as it is needed to set the author
@@ -463,10 +542,17 @@ class TemplateTest(TestCase):
             factory.UnlimitedEntry(node__journal=self.journal, template=template)
             temp_fc = factory.TempFileContext(author=self.assignment.author)
             field_description_with_temp_file = f'<img src="{temp_fc.download_url(access_id=temp_fc.access_id)}"/>'
+            template_title_description_temp_fc = factory.TempFileContext(author=self.assignment.author)
+            template_title_description = '<p>A description</p><p><img src="{}"/></p>'.format(
+                template_title_description_temp_fc.download_url(access_id=template_title_description_temp_fc.access_id)
+            )
 
             valid_patch_data = TemplateSerializer(template).data
             valid_patch_data['name'] = 'New'
             valid_patch_data['allow_custom_categories'] = True
+            valid_patch_data['allow_custom_title'] = True
+            valid_patch_data['title_description'] = template_title_description
+            valid_patch_data['default_grade'] = 3.0
             valid_patch_data['archived'] = True
             valid_patch_data['pk'] = template.pk
             new_field_data = deepcopy(valid_patch_data['field_set'][0])
@@ -483,11 +569,26 @@ class TemplateTest(TestCase):
 
             assert valid_patch_data['name'] == new_template.name
             assert valid_patch_data['allow_custom_categories'] == new_template.chain.allow_custom_categories
+            assert valid_patch_data['allow_custom_title'] == new_template.chain.allow_custom_title
+            assert valid_patch_data['title_description'] == new_template.chain.title_description
+            assert valid_patch_data['default_grade'] == new_template.chain.default_grade
             assert not new_template.archived, 'Archived should be ignored as request data'
             _validate_field_creation(new_template, valid_patch_data['field_set'])
+            assert FileContext.objects.filter(
+                in_rich_text=True,
+                assignment=template.format.assignment,
+                access_id=template_title_description_temp_fc.access_id,
+                is_temp=False,
+            ).exists(), '''The template's title description is correctly linked and no longer temporary'''
 
             assert equal_models(template, archived_template, ignore_keys=['update_date', 'archived']), \
                 'The archived template should not be modified'
+
+            remove_default_grade = TemplateSerializer(template).data
+            remove_default_grade['default_grade'] = ''
+            remove_default_grade['pk'] = template.pk
+            api.patch(self, 'templates', params=remove_default_grade, user=self.assignment.author)
+            assert template.chain.default_grade is None, 'Default grade is succesfully removed'
 
         def test_unused_template_patch():
             template = factory.Template(format=self.format, add_fields=[{'type': Field.TEXT}])

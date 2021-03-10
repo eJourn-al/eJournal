@@ -45,6 +45,12 @@ class TemplateView(viewsets.ViewSet):
                 author=request.user,
             )
 
+            file_handling.establish_rich_text(
+                author=request.user,
+                rich_text=template.chain.title_description,
+                assignment=assignment,
+            )
+
             if not template_import:
                 for field in template.field_set.all():
                     file_handling.establish_rich_text(
@@ -70,6 +76,12 @@ class TemplateView(viewsets.ViewSet):
 
         with transaction.atomic():
             template = template_utils.handle_template_update(request.data, template, request.user)
+
+            file_handling.establish_rich_text(
+                author=request.user,
+                rich_text=template.chain.title_description,
+                assignment=assignment,
+            )
 
             for field in template.field_set.all():
                 file_handling.establish_rich_text(
