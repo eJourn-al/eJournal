@@ -1,6 +1,7 @@
 import json
 
 from django.conf import settings
+from django.db.models import Q
 from pylti1p3.names_roles import NamesRolesProvisioningService
 from pylti1p3.service_connector import ServiceConnector
 
@@ -29,13 +30,19 @@ def sync_members(course):
     for member_data in members:
         # Transfer to launch_data standard so we can use the launch data functions
         member_data['sub'] = member_data['user_id']
-        member_data[lti.claims.CUSTOM] = {
-            'username': member_data['user_id']
-        }
         member_data[lti.claims.ROLES] = member_data['roles']
         user = User.objects.filter(lti_id=member_data['sub']).first()
         if user:
             # TODO LTI: what to do if email already exists?
             lti.user.get_or_create_participation_with_launch_data(user, member_data, course=course)
-        else:
-            lti.user.create_with_launch_data(member_data, course=course)
+            continue
+
+        # QUESTION LTI: What should be automatically do with usernames / emails that already exists?
+        # This is executed in the background, dont want to bother the user
+        # I for now just select the email with that email / username and update the values for that user
+        user = User.objects.filter(
+            Q(email=member_data['email']) | Q(username=member_data['lis_person_sourcedid'])).first()
+        if user:
+            lti.user.update_with_launch_data(user, member_data, course=course)
+
+        lti.user.create_with_launch_data(member_data, course=course)

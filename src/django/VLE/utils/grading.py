@@ -59,7 +59,7 @@ def send_journal_status_to_LMS(journal):
 
     if not failed:
         Entry.objects.filter(node__in=journal.published_nodes).update(vle_coupling=Entry.LINK_COMPLETE)
-        Entry.objects.filter(node__in=journal.unpublished_nodes).update(vle_coupling=Entry.SENT_SUBMISSION)
+        Entry.objects.filter(node__in=journal.require_grade_action_nodes).update(vle_coupling=Entry.SENT_SUBMISSION)
 
     return {
         'successful': not failed,
@@ -141,13 +141,13 @@ def send_author_status_to_LMS(journal, author, left_journal=False):
     response_teacher = None
     if not left_journal:
         # Notify teacher about last ungraded submission
-        if journal.unpublished_nodes.exists():
+        if journal.require_grade_action_nodes.exists():
             result_data = {
                 'url': '{0}/Home/Course/{1}/Assignment/{2}/Journal/{3}?nID={4}'.format(
                     settings.BASELINK, course.pk, journal.assignment.pk, journal.pk,
-                    journal.unpublished_nodes.first().pk)
+                    journal.require_grade_action_nodes.first().pk)
             }
-            submitted_at = str(journal.unpublished_nodes.first().entry.last_edited)
+            submitted_at = str(journal.require_grade_action_nodes.first().entry.last_edited)
             grade_request = GradePassBackRequest(
                 author, grade, result_data=result_data, send_score=False, submitted_at=submitted_at)
             response_teacher = grade_request.send_post_request()

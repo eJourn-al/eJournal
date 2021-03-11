@@ -1,7 +1,6 @@
 import json
 
 from django.conf import settings
-from django.urls import reverse
 from pylti1p3.assignments_grades import AssignmentsGradesService
 from pylti1p3.grade import Grade
 from pylti1p3.service_connector import ServiceConnector
@@ -43,7 +42,10 @@ class GradeProgress(object):
     def get_grade_progress(cls, journal):
         if journal.grade is None and not journal.node_set.filter(entry__isnull=False).exists():
             return cls.NO_SUBMISSION
-        elif journal.unpublished_nodes.exists():
+        elif journal.require_grade_action_nodes.exists():
+            # NOTE: With LTI1.3 it either gives teacher a TODO or sets a grade
+            # NOTE: Canvas is wrong. NEEDS_GRADING does NOT give a TODO to the teacher, while DONE_GRADING does,
+            # although the LTI specification say otherwise
             return cls.NEEDS_GRADING
         else:
             return cls.FINISHED
@@ -61,7 +63,7 @@ class ActivityProgress(object):
         if journal.grade is None and not journal.node_set.filter(entry__isnull=False).exists():
             return cls.NO_SUBMISSION
         else:
-            return cls.FINISHED
+            return cls.HAS_SUBMISSIONS
 
 
 def send_grade(assignment_participation, ags=None):
@@ -95,7 +97,7 @@ def send_grade(assignment_participation, ags=None):
             {
                 'submission_type': 'basic_lti_launch',
                 'submission_data': '{base}?submission={submission}'.format(
-                    base=reverse('lti_launch'),
+                    base=settings.LTI_LAUNCH_URL,
                     submission=journal.pk,
                 ),
             }

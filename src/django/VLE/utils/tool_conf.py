@@ -11,7 +11,7 @@ class eToolConfJsonFile(ToolConfJsonFile):
 
         if not iss:
             iss = instance.iss
-        print(self._config[instance.iss])
+
         if iss in self._config:
             if instance.lti_client_id:
                 self._config[iss][0]['client_id'] = instance.lti_client_id

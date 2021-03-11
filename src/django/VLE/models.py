@@ -1985,10 +1985,12 @@ class Journal(CreateUpdateModel):
 
     @property
     def published_nodes(self):
+        '''Return the nodes that have a published grade attached'''
         return self.node_set.filter(entry__grade__published=True).order_by('entry__grade__creation_date')
 
     @property
-    def unpublished_nodes(self):
+    def require_grade_action_nodes(self):
+        '''Return the nodes that have an unpublished or no grade attached'''
         return self.node_set.filter(
             Q(entry__grade__isnull=True) | Q(entry__grade__published=False),
             entry__isnull=False).order_by('entry__last_edited')
