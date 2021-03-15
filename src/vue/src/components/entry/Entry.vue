@@ -234,8 +234,14 @@ export default {
         saveChanges () {
             if (this.checkRequiredFields()) {
                 this.requestInFlight = true
-                entryAPI.update(this.node.entry.id, { content: this.newEntryContent, title: this.title },
-                    { customSuccessToast: 'Entry successfully updated.' })
+                entryAPI.update(
+                    this.node.entry.id,
+                    {
+                        content: this.newEntryContent,
+                        title: this.template.allow_custom_title ? this.title : null,
+                    },
+                    { customSuccessToast: 'Entry successfully updated.' },
+                )
                     .then((entry) => {
                         this.node.entry = entry
                         this.edit = false
@@ -273,7 +279,7 @@ export default {
                     content: this.newEntryContent,
                     node_id: this.node && this.node.nID > 0 ? this.node.nID : null,
                     category_ids: categoryIds,
-                    title: this.title,
+                    title: this.template.allow_custom_title ? this.title : null,
                 }, { customSuccessToast: 'Entry successfully posted.' })
                     .then((data) => {
                         this.requestInFlight = false
