@@ -2907,6 +2907,13 @@ class TemplateQuerySet(models.QuerySet):
                 if not author:
                     raise VLEProgrammingError('Author is required when importing a template')
 
+                template.chain.title_description = file_handling.copy_assignment_related_rt_files(
+                    template.chain.title_description,
+                    author,
+                    assignment=format.assignment,
+                )
+                template.chain.save()
+
                 fields_with_copied_rt_description_files = []
                 for field in fields:
                     field.description = file_handling.copy_assignment_related_rt_files(

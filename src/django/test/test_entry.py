@@ -577,6 +577,95 @@ class EntryAPITest(TestCase):
         # TODO: Test with file upload
         # TODO: Test added index
 
+    def test_create_entry_title(self):
+        assignment = factory.Assignment(format__templates=[{'type': Field.TEXT}])
+        template = assignment.format.template_set.first()
+        TemplateChain.objects.filter(template=template).update(allow_custom_title=False)
+        journal = factory.Journal(assignment=assignment, entries__n=0)
+
+        # Providing an empty title despite the template setting not allowing a custom title is allowed
+        for val in ['', None]:
+            params = factory.UnlimitedEntryCreationParams(title=val, journal=journal, author=journal.author)
+            resp = api.create(self, 'entries', params=params, user=journal.author)['entry']
+            entry = Entry.objects.get(pk=resp['id'])
+
+            assert not entry.title, 'Entry title remains unset (None or empty string)'
+            assert resp['title'] == template.name, (
+                'The entry title is still serialized based on the template name despite having been passed an empty '
+                'title during creation'
+            )
+
+        # A user cannot pass an actual value as title when the template setting does not allow as such
+        params = factory.UnlimitedEntryCreationParams(title='A title', journal=journal, author=journal.author)
+        api.create(self, 'entries', params=params, user=journal.author, status=403)
+
+        # We now allow a custom title to be set
+        TemplateChain.objects.filter(template=template).update(allow_custom_title=True)
+
+        # Because an entry title is optional, it is still possible to provide an empty value as title.
+        # In this scenario we expect the default title to be set (template name or preset node display name)
+        for val in ['', None]:
+            params = factory.UnlimitedEntryCreationParams(title=val, journal=journal, author=journal.author)
+            resp = api.create(self, 'entries', params=params, user=journal.author)['entry']
+            entry = Entry.objects.get(pk=resp['id'])
+
+            assert not entry.title, 'Entry title remains unset (None or empty string)'
+            assert resp['title'] == template.name, (
+                'The entry title is still serialized based on the template name despite having been passed an empty '
+                'title during creation'
+            )
+
+        title = 'A title'
+        params = factory.UnlimitedEntryCreationParams(title=title, journal=journal, author=journal.author)
+        resp = api.create(self, 'entries', params=params, user=journal.author)['entry']
+        assert resp['title'] == title
+
+    def test_patch_entry_title(self):
+        assignment = factory.Assignment(format__templates=[{'type': Field.TEXT}])
+        template = assignment.format.template_set.first()
+        TemplateChain.objects.filter(template=template).update(allow_custom_title=False)
+        journal = factory.Journal(assignment=assignment, entries__n=0)
+        entry = factory.UnlimitedEntry(node__journal=journal)
+        params = EntrySerializer(entry).data
+        params['pk'] = entry.pk
+
+        # Providing an empty title despite the template setting not allowing a custom title is allowed
+        for val in ['', None]:
+            params['title'] = val
+            resp = api.update(self, 'entries', params=params, user=journal.author)['entry']
+            entry.refresh_from_db()
+
+            assert not entry.title, 'Entry title remains unset (None or empty string)'
+            assert resp['title'] == template.name, (
+                'The entry title is still serialized based on the template name despite having been passed an empty '
+                'title during creation'
+            )
+
+        # A user cannot pass an actual value as title when the template setting does not allow as such
+        params['title'] = 'A value'
+        api.update(self, 'entries', params=params, user=journal.author, status=403)
+
+        # We now allow a custom title to be set
+        TemplateChain.objects.filter(template=template).update(allow_custom_title=True)
+
+        # Because an entry title is optional, it is still possible to provide an empty value as title.
+        # In this scenario we expect the default title to be set (template name or preset node display name)
+        for val in ['', None]:
+            params['title'] = val
+            resp = api.update(self, 'entries', params=params, user=journal.author)['entry']
+            entry.refresh_from_db()
+
+            assert not entry.title, 'Entry title remains unset (None or empty string)'
+            assert resp['title'] == template.name, (
+                'The entry title is still serialized based on the template name despite having been passed an empty '
+                'title during creation'
+            )
+
+        title = 'A value'
+        params['title'] = title
+        resp = api.update(self, 'entries', params=params, user=journal.author)['entry']
+        assert resp['title'] == title
+
     def test_create_invalid_preset_entry(self):
         # Entries cannot be created after lockdate
         create_params = factory.PresetEntryCreationParams(

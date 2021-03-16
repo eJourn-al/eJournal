@@ -669,7 +669,7 @@ export default {
                 + ' Students will not be able to update their journals for this assignment until they visit'
                 + ' the assignment on your LMS at least once.')) {
                 assignmentAPI.update(this.aID, {
-                    active_lti_course: this.newActiveLTICourse,
+                    update_lti_course: this.newActiveLTICourse,
                 })
                     .then(() => {
                         this.$toasted.success('Updated active LTI course')

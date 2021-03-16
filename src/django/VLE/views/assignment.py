@@ -248,9 +248,9 @@ class AssignmentView(viewsets.ViewSet):
 
     @transaction.atomic
     def partial_update(self, request, pk):
-        active_lti_course, lti_id = utils.optional_typed_params(
+        update_lti_course, lti_id = utils.optional_typed_params(
             request.data,
-            (int, 'active_lti_course'),
+            (int, 'update_lti_course'),
             (int, 'lti_id')
         )
         assigned_groups, = utils.optional_params(request.data, 'assigned_groups')
@@ -263,8 +263,8 @@ class AssignmentView(viewsets.ViewSet):
         if assigned_groups is not None:
             handle_assigned_groups_update(request, assignment, assigned_groups)
 
-        if active_lti_course is not None:
-            assignment.set_active_lti_course(Course.objects.get(pk=active_lti_course))
+        if update_lti_course is not None:
+            assignment.set_active_lti_course(Course.objects.get(pk=update_lti_course))
 
         if lti_id is not None:
             course_id, = utils.required_typed_params(request.data, (int, 'course_id'))

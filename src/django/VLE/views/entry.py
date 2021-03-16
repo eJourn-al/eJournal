@@ -64,7 +64,7 @@ class EntryView(viewsets.ViewSet):
                                                                  pk=template.pk).exists()):
             return response.forbidden('Entry template is not available.')
 
-        if title is not None and not template.chain.allow_custom_title:
+        if title and not template.chain.allow_custom_title:
             return response.forbidden('Entry does not allow for a custom title.')
 
         entry_utils.check_fields(template, content_dict)
@@ -125,7 +125,7 @@ class EntryView(viewsets.ViewSet):
             return response.bad_request('You are not allowed to edit locked entries.')
         if len(journal.needs_lti_link) > 0:
             return response.forbidden(journal.outdated_link_warning_msg)
-        if title is not None and not entry.template.chain.allow_custom_title:
+        if title and not entry.template.chain.allow_custom_title:
             return response.forbidden('Entry does not allow for a custom title.')
 
         # Check for required fields
