@@ -2,7 +2,7 @@ import 'flatpickr/dist/flatpickr.css' // eslint-disable-line import/no-extraneou
 import 'flatpickr/dist/themes/material_blue.css' // eslint-disable-line import/no-extraneous-dependencies
 import 'intro.js/introjs.css' // eslint-disable-line import/no-extraneous-dependencies
 import Vue from 'vue'
-import isEqual from 'lodash.isequal'
+import isEqualWith from 'lodash.isequalwith'
 
 import '@/helpers/vue_awesome_icons.js'
 import initBootstrap from '@/helpers/bootstrap.js'
@@ -47,7 +47,13 @@ initGlobalHelpers(Vue)
 /* Checks the store for for permissions according to the current route cID or aID. */
 Vue.prototype.$hasPermission = store.getters['permissions/hasPermission']
 
-Vue.prototype.$_isEqual = isEqual
+/* Checks for object equality, where comparison of values null and '' yields true */
+Vue.prototype.$_isEqual = (obj1, obj2) => isEqualWith(obj1, obj2, (a, b) => {
+    if ((a === null || a === '') && (b === null || b === '')) {
+        return true
+    }
+    return undefined // default comparison should take place
+})
 
 const toApi = new RegExp(`^${CustomEnv.API_URL}`)
 
