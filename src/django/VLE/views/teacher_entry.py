@@ -3,6 +3,8 @@ teacher_entry.py.
 
 In this file are all the entry api requests.
 """
+from django.conf import settings
+from django.db import transaction
 from django.db.models import Max
 from rest_framework import viewsets
 
@@ -85,18 +87,19 @@ class TeacherEntryView(viewsets.ViewSet):
         entry_utils.check_fields(template, content_dict)
         category_ids = Entry.validate_categories(category_ids, assignment)
 
-        teacher_entry = TeacherEntry.objects.create(
-            title=title,
-            show_title_in_timeline=show_title_in_timeline,
-            assignment=assignment,
-            template=template,
-            author=request.user,
-            last_edited_by=request.user
-        )
-        teacher_entry.set_categories(category_ids, request.user)
+        with transaction.atomic():
+            teacher_entry = TeacherEntry.objects.create(
+                title=title,
+                show_title_in_timeline=show_title_in_timeline,
+                assignment=assignment,
+                template=template,
+                author=request.user,
+                last_edited_by=request.user
+            )
+            teacher_entry.set_categories(category_ids, request.user)
 
-        entry_utils.create_entry_content(content_dict, teacher_entry, request.user)
-        self._create_new_entries(teacher_entry, journals, category_ids, request.user)
+            entry_utils.create_entry_content(content_dict, teacher_entry, request.user)
+            self._create_new_entries(teacher_entry, journals, category_ids, request.user)
 
         return response.created({
             'teacher_entry': TeacherEntrySerializer(
@@ -141,33 +144,38 @@ class TeacherEntryView(viewsets.ViewSet):
         deleted_entries = entries.exclude(node__journal__pk__in=map(lambda j: j['journal_id'], journals))
         deleted_entry_journal_ids = list(deleted_entries.values_list('node__journal__pk', flat=True))
         existing_journal_ids = list(entries.values_list('node__journal__pk', flat=True))
-        deleted_entries.delete()
 
-        grading.task_bulk_send_journal_status_to_LMS.delay(deleted_entry_journal_ids)
+        with transaction.atomic():
+            deleted_entries.delete()
 
-        new_journals, existing_journals = [], []
-        for journal in journals:
-            # New entry needs to be created for this journal
-            if journal['journal_id'] not in existing_journal_ids:
-                new_journals.append(journal)
-            # Entry grade may need to be updated.
-            elif journal['grade'] is not None:
-                existing_journals.append(journal)
+            grading.task_bulk_send_journal_status_to_LMS.apply_async(
+                args=[deleted_entry_journal_ids],
+                countdown=settings.WEBSERVER_TIMEOUT,
+            )
 
-        self._create_new_entries(teacher_entry, new_journals, category_ids, request.user)
-        self._update_existing_entries(
-            teacher_entry=teacher_entry,
-            journals_data=existing_journals,
-            new_category_ids=category_ids,
-            existing_category_ids=existing_category_ids,
-            author=request.user,
-        )
+            new_journals, existing_journals = [], []
+            for journal in journals:
+                # New entry needs to be created for this journal
+                if journal['journal_id'] not in existing_journal_ids:
+                    new_journals.append(journal)
+                # Entry grade may need to be updated.
+                elif journal['grade'] is not None:
+                    existing_journals.append(journal)
 
-        if teacher_entry.title != title:
-            teacher_entry.title = title
-            teacher_entry.save()
-        if category_ids != existing_category_ids:
-            teacher_entry.set_categories(category_ids, request.user)
+            self._create_new_entries(teacher_entry, new_journals, category_ids, request.user)
+            self._update_existing_entries(
+                teacher_entry=teacher_entry,
+                journals_data=existing_journals,
+                new_category_ids=category_ids,
+                existing_category_ids=existing_category_ids,
+                author=request.user,
+            )
+
+            if teacher_entry.title != title:
+                teacher_entry.title = title
+                teacher_entry.save()
+            if category_ids != existing_category_ids:
+                teacher_entry.set_categories(category_ids, request.user)
 
         return response.success({
             'teacher_entry': TeacherEntrySerializer(
@@ -249,7 +257,10 @@ class TeacherEntryView(viewsets.ViewSet):
             entry.last_edited = teacher_entry.last_edited
         Entry.objects.bulk_update(entries, ['grade', 'last_edited'])
 
-        grading.task_bulk_send_journal_status_to_LMS.delay([journal.pk for journal in journals])
+        grading.task_bulk_send_journal_status_to_LMS.apply_async(
+            args=[[journal.pk for journal in journals]],
+            countdown=settings.WEBSERVER_TIMEOUT,
+        )
 
     def _update_existing_entries(self, teacher_entry, journals_data, new_category_ids, existing_category_ids, author):
         """
@@ -288,7 +299,10 @@ class TeacherEntryView(viewsets.ViewSet):
             entry.grade_id = entry.newest_grade_id
         Entry.objects.bulk_update(entries, ['grade'])
 
-        grading.task_bulk_send_journal_status_to_LMS.delay(journal_pks)
+        grading.task_bulk_send_journal_status_to_LMS.apply_async(
+            args=[journal_pks],
+            countdown=settings.WEBSERVER_TIMEOUT,
+        )
 
     def _check_teacher_entry_content(self, journals, assignment, is_new=False, teacher_entry=None):
         """Check if all journals that have been selected also have valid content.
