@@ -64,19 +64,19 @@ class TeacherEntryView(viewsets.ViewSet):
             publish_grade -- dict of grade publish state with journal id as keys
             category_ids -- list of category ids that should be linked to the entries
         """
-        title, show_title_in_timeline, assignment_id, template_id, content_dict, journals = utils.required_params(
+        content_dict, journals = utils.required_params(request.data, 'content', 'journals')
+        title, show_title_in_timeline, assignment_id, template_id, category_ids = utils.required_typed_params(
             request.data,
-            'title',
-            'show_title_in_timeline',
-            'assignment_id',
-            'template_id',
-            'content',
-            'journals',
+            (str, 'title'),
+            (bool, 'show_title_in_timeline'),
+            (int, 'assignment_id'),
+            (int, 'template_id'),
+            (int, 'category_ids'),
         )
-        category_ids, = utils.required_typed_params(request.data, (int, 'category_ids'))
 
         assignment = Assignment.objects.get(pk=assignment_id)
         request.user.check_permission('can_post_teacher_entries', assignment)
+
         journals = self._check_teacher_entry_content(journals, assignment, is_new=True)
 
         # Check if the template is available. Preset-only templates are also available for teacher entries.
@@ -131,9 +131,6 @@ class TeacherEntryView(viewsets.ViewSet):
         request.user.check_permission('can_post_teacher_entries', teacher_entry.assignment)
         request.user.check_permission('can_grade', teacher_entry.assignment)
         request.user.check_permission('can_publish_grades', teacher_entry.assignment)
-
-        if title is None or len(title) == 0:
-            return response.bad_request('Title cannot be empty.')
 
         category_ids = Entry.validate_categories(category_ids, teacher_entry.assignment)
         existing_category_ids = set(teacher_entry.categories.values_list('pk', flat=True))

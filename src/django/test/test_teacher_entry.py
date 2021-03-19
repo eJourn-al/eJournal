@@ -382,6 +382,17 @@ class TeacherEntryAPITest(TestCase):
 
         assert serializer.data['title'] != create_params['title'], 'Title should not be shown in timeline'
 
+        for title in ['', None]:
+            params = deepcopy(self.valid_create_params)
+            params['title'] = title
+            api.create(self, 'teacher_entries', params=params, user=self.teacher, status=400)
+
+        params = deepcopy(self.valid_create_params)
+        falsey_but_string_title = '0'
+        params['title'] = falsey_but_string_title
+        resp = api.create(self, 'teacher_entries', params=params, user=self.teacher)['teacher_entry']
+        assert resp['title'] == falsey_but_string_title, 'Falsey title value is no issue'
+
     @override_settings(CELERY_TASK_ALWAYS_EAGER=True, CELERY_TASK_EAGER_PROPAGATES=True)
     def test_get_teacher_entries(self):
         resp = api.create(self, 'teacher_entries', params=self.valid_create_params, user=self.teacher)['teacher_entry']
