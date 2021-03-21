@@ -2,14 +2,12 @@ import enum
 import json
 
 from django.conf import settings
-from django.db.models import Q
 from pylti1p3.contrib.django import DjangoCacheDataStorage, DjangoMessageLaunch
 from pylti1p3.service_connector import ServiceConnector
 
 import VLE.lti1p3 as lti
 # TODO lti: check if SectionsService import is working correctly
 from VLE.lti1p3 import claims, roles
-from VLE.models import Assignment, Course, User
 
 
 class LTI_STATES(enum.Enum):

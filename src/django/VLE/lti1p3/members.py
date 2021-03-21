@@ -1,12 +1,11 @@
 import json
 
 from django.conf import settings
-from django.db.models import Q
 from pylti1p3.names_roles import NamesRolesProvisioningService
 from pylti1p3.service_connector import ServiceConnector
 
 import VLE.lti1p3 as lti
-from VLE.models import Instance, User
+from VLE.models import Instance
 
 
 def is_test_student(member_data):

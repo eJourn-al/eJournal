@@ -9,7 +9,7 @@ from rest_framework.permissions import AllowAny
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
 import VLE.lti1p3 as lti
-from VLE.models import Course, Instance, Journal, User
+from VLE.models import Instance, Journal, User
 from VLE.utils.error_handling import VLEBadRequest
 from VLE.utils.generic_utils import build_url
 

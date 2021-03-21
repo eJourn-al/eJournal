@@ -6,7 +6,7 @@ from django.conf import settings
 import VLE.factory as factory
 import VLE.lti1p3 as lti
 from VLE.lti1p3 import utils
-from VLE.models import Assignment, Course, PresetNode
+from VLE.models import Assignment, PresetNode
 
 
 class Lti1p3AssignmentData(utils.PreparedData):
