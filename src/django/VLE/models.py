@@ -351,7 +351,12 @@ class User(AbstractUser):
     verified_email = models.BooleanField(
         default=False
     )
-    lti_id = models.TextField(
+    lti_1p3_id = models.TextField(
+        null=True,
+        unique=True,
+        blank=True,
+    )
+    lti_1p0_id = models.TextField(
         null=True,
         unique=True,
         blank=True,

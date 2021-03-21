@@ -106,7 +106,7 @@ export default {
         },
         handleAssignment (assignment) {
             this.params.aID = assignment.id
-            this.$store.dispatch('user/populateStore').then(this.goto('assignmentImported'))
+            this.$store.dispatch('user/populateStore').then(this.goto('AssignmentEditor'))
         },
         goto (route) {
             this.$router.push({

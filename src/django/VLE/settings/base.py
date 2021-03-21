@@ -99,7 +99,8 @@ LTI_ROLES = OrderedDict({
     'learner': 'Student',
 })
 LTI_TEST_STUDENT_FULL_NAME = 'Test student'
-
+LTI13 = 'LTI-1p3'
+LTI10 = 'LTI-1p0'
 
 # Celery settings
 CELERY_BROKER_URL = os.environ['BROKER_URL']

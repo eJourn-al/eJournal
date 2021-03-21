@@ -2,7 +2,7 @@ import enum
 
 import jwt
 from django.conf import settings
-from pylti1p3.contrib.django import DjangoCacheDataStorage, DjangoMessageLaunch, DjangoOIDCLogin
+from pylti1p3.contrib.django import DjangoCacheDataStorage, DjangoOIDCLogin
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny
 
@@ -11,22 +11,6 @@ import VLE.utils.generic_utils as utils
 import VLE.utils.responses as response
 from VLE.models import User
 from VLE.utils.error_handling import VLEMissingRequiredKey
-
-
-class ExtendedDjangoMessageLaunch(DjangoMessageLaunch):
-
-    def validate_nonce(self):
-        """
-        Probably it is bug on "https://lti-ri.imsglobal.org":
-        site passes invalid "nonce" value during deep links launch.
-        Because of this in case of iss == http://imsglobal.org just skip nonce validation.
-
-        """
-        iss = self.get_iss()
-        deep_link_launch = self.is_deep_link_launch()
-        if iss == "http://imsglobal.org" and deep_link_launch:
-            return self
-        return super(ExtendedDjangoMessageLaunch, self).validate_nonce()
 
 
 class LTI_STATES(enum.Enum):

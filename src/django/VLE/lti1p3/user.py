@@ -1,6 +1,5 @@
 
 from django.conf import settings
-from django.db.models import Q
 from django.utils import timezone
 
 import VLE.lti1p3 as lti
@@ -9,8 +8,15 @@ from VLE.utils.error_handling import VLEProgrammingError
 
 
 class UserData(lti.utils.PreparedData):
-    def __init__(self, data):
-        self.data = data
+    model = User
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.find_keys = [
+            'sis_id',
+            'username',
+            'email',
+        ]
 
     @property
     def lti_id(self):
@@ -84,29 +90,15 @@ class UserData(lti.utils.PreparedData):
 
     def handle_test_student(self, course=None):
         if not course:
-            course = lti.course.Lti1p3CourseData(self.data).find_in_db()
+            course = self.CourseData(self.data).find_in_db()
         if not course:
             return
 
         User.objects.filter(participation__course=course, is_test_student=True).delete()
 
-    def find_in_db(self):
-        # QUESTION LTI: What should we automatically do with usernames / emails that already exists?
-        # This may be executed in the background, dont want to bother the user
-        # I for now just select the email with that email / username and update the values for that user
-        user_qry = Q(lti_id=self.lti_id)
-        if self.email:
-            user_qry.add(Q(email=self.email), Q.OR)
-        if self.username:
-            user_qry.add(Q(username=self.username), Q.OR)
-        if self.sis_id:
-            user_qry.add(Q(sis_id=self.sis_id), Q.OR)
-
-        return User.objects.filter(user_qry).first()
-
     def create(self, password=None, course=None):
         if not course:
-            course = lti.course.Lti1p3CourseData(self.data).find_in_db()
+            course = self.CourseData(self.data).find_in_db()
 
         if self.is_test_student:
             self.handle_test_student(course=course)
@@ -127,7 +119,7 @@ class UserData(lti.utils.PreparedData):
 
     def update(self, obj=None, course=None):
         if not course:
-            course = lti.course.Lti1p3CourseData(self.data).find_in_db()
+            course = self.CourseData(self.data).find_in_db()
 
         user = obj
         if not user:
@@ -149,10 +141,12 @@ class UserData(lti.utils.PreparedData):
 
 
 class Lti1p3UserData(UserData):
+    CourseData = lti.course.Lti1p3CourseData
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.create_keys = [
-            'lti_id',
+            'lti_1p3_id',
             'sis_id',
             'full_name',
             'profile_picture',
@@ -165,7 +159,7 @@ class Lti1p3UserData(UserData):
         ]
         # QUESTION LTI: are these valid settings?
         self.update_keys = [
-            'lti_id',
+            'lti_1p3_id',
             'sis_id',
             'full_name',
             'profile_picture',
@@ -176,9 +170,10 @@ class Lti1p3UserData(UserData):
             'verified_email',
             'is_teacher',
         ]
+        self.find_keys.append('lti_1p3_id')
 
     @property
-    def lti_id(self):
+    def lti_1p3_id(self):
         return self.data['sub']
 
     @property
@@ -210,11 +205,67 @@ class Lti1p3UserData(UserData):
         return self.data[lti.claims.CUSTOM]['username']
 
 
+class Lti1p0UserData(UserData):
+    CourseData = lti.course.Lti1p0CourseData
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.create_keys = [
+            'lti_1p0_id',
+            'username',
+            'full_name',
+            'profile_picture',
+            # 'roles',
+            'email',
+            'is_test_student',
+            'verified_email',
+            'is_teacher',
+        ]
+        # QUESTION LTI: are these valid settings?
+        self.update_keys = [
+            'lti_1p0_id',
+            'sis_id',
+            'full_name',
+            'profile_picture',
+            # 'roles',
+            'email',
+            'username',
+            # 'is_test_student',
+            'verified_email',
+            'is_teacher',
+        ]
+        self.find_keys.append('lti_1p0_id')
+
+    @property
+    def lti_1p0_id(self):
+        return self.data['user_id']
+
+    @property
+    def username(self):
+        return self.data['custom_username']
+
+    @property
+    def full_name(self):
+        return self.data.get('custom_user_full_name', None)
+
+    @property
+    def profile_picture(self):
+        return self.normalize_profile_picture(self.data.get('custom_user_image', None))
+
+    @property
+    def roles(self):
+        return self.data['ext_roles'].split(',')
+
+    @property
+    def email(self):
+        return self.data.get('custom_user_email', None)
+
+
 class NRSUserData(UserData):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.create_keys = [
-            'lti_id',
+            'lti_1p3_id',
             'sis_id',
             'full_name',
             'profile_picture',
@@ -223,7 +274,7 @@ class NRSUserData(UserData):
         ]
         # QUESTION LTI: are these valid settings?
         self.update_keys = [
-            'lti_id',
+            'lti_1p3_id',
             'sis_id',
             'full_name',
             'profile_picture',
@@ -232,7 +283,7 @@ class NRSUserData(UserData):
         ]
 
     @property
-    def lti_id(self):
+    def lti_1p3_id(self):
         return self.data['user_id']
 
     @property

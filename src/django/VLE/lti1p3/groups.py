@@ -43,8 +43,8 @@ def sync_groups(access_token, course_id):
         existing_student_usernames = group.participation_set.values_list('user__username', flat=True)
         students_to_add = []
         for student in students:
-            print(student)
             student = lti.user.CanvasAPIUserData(student)
+            print(student)
 
             student.create_or_update(
                 update_kwargs={'course': course},

@@ -92,11 +92,15 @@ def make_course_group(name, course, lms_id=None):
 
 def make_assignment(*args, **kwargs):
     """Make a new assignment."""
-    if kwargs.get('format', None) is None:
-        VLE.models.Format.objects.create()
+    format = kwargs.get('format', None)
+    if format is None:
+        format = VLE.models.Format.objects.create()
 
     courses = kwargs.pop('courses', [])
-    assignment = VLE.models.Assignment.objects.create(**kwargs)
+    assignment = VLE.models.Assignment.objects.create(
+        format=format,
+        **kwargs,
+    )
 
     setup_default_assignment_layout(assignment)
 

@@ -17,8 +17,11 @@ def is_test_student(member_data):
 
 def sync_members(course):
     # TODO LTI: move this to a background task & notify user that students are loading in the background
-    # This may take some time: updating / creating all users
-    # TODO LTI: make sure message_launch_data is not needed anymore
+    # This may take some time: updating / creating all users. Say that to frontend
+
+    if not course.names_role_service:  # LTI 1.0 courses cannot sync like this
+        return
+
     instance = Instance.objects.get(pk=1)
     registration = settings.TOOL_CONF.find_registration(instance.iss, client_id=instance.lti_client_id)
     connector = ServiceConnector(registration)

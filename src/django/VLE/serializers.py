@@ -299,8 +299,8 @@ class OwnUserSerializer(serializers.ModelSerializer):
     class Meta:
         model = VLE.models.User
         fields = ('id', 'username', 'full_name', 'email', 'permissions', 'is_test_student',
-                  'lti_id', 'profile_picture', 'is_teacher', 'verified_email', 'is_superuser')
-        read_only_fields = ('lti_id', 'is_teacher', 'is_superuser', 'verified_email', 'username', 'is_test_student')
+                  'lti_1p3_id', 'profile_picture', 'is_teacher', 'verified_email', 'is_superuser')
+        read_only_fields = ('lti_1p3_id', 'is_teacher', 'is_superuser', 'verified_email', 'username', 'is_test_student')
 
     permissions = serializers.SerializerMethodField()
 

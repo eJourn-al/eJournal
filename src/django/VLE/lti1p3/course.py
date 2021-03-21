@@ -1,17 +1,48 @@
 import json
 
-from django.db.models import Q
-
 import VLE.factory as factory
 import VLE.lti1p3 as lti
 from VLE.models import Course
 from VLE.utils.error_handling import VLEBadRequest
 
 
-class Lti1p3CourseData(lti.utils.PreparedData):
-    def __init__(self, data):
+class CourseData(lti.utils.PreparedData):
+    model = Course
+
+    def create(self):
+        course = factory.make_course(**self.create_dict)
+
+        lti.members.sync_members(course)
+
+        return course
+
+    def update(self, obj=None):
+        course = obj
+        if not course:
+            course = self.find_in_db()
+
+        if (
+            course.active_lti_id and course.active_lti_id != self.active_lti_id
+            or course.lms_id and course.lms_id != self.lms_id
+        ):
+            raise VLEBadRequest('Course already linked to LMS.')
+
+        if course.active_lti_id != self.active_lti_id:
+            lti.members.sync_members(course)
+
+        for key in self.update_keys:
+            if getattr(self, key) is not None:
+                setattr(course, key, getattr(self, key))
+
+        course.save()
+
+        return course
+
+
+class Lti1p3CourseData(CourseData):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         # TODO LTI: check if it is possible to update the description / title on the Canvas side
-        self.data = data
         self.create_keys = [
             'name',
             'abbreviation',
@@ -32,6 +63,10 @@ class Lti1p3CourseData(lti.utils.PreparedData):
             # 'active_lti_id',
             'lms_id',
             'names_role_service',
+        ]
+        self.find_keys = [
+            'active_lti_id',
+            'lms_id',
         ]
 
     @property
@@ -66,32 +101,51 @@ class Lti1p3CourseData(lti.utils.PreparedData):
     def names_role_service(self):
         return json.dumps(self.data[lti.claims.NAMESROLES])
 
-    def find_in_db(self):
-        return Course.objects.filter(
-            Q(active_lti_id=self.active_lti_id) |
-            Q(lms_id=self.lms_id)
-        ).first()
 
-    def create(self):
-        course = factory.make_course(**self.create_dict)
-        lti.members.sync_members(course)
-        return course
+class Lti1p0CourseData(CourseData):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.create_keys = [
+            'name',
+            'abbreviation',
+            'startdate',
+            'enddate',
+            'author',
+            'lms_id',
+        ]
+        # QUESTION LTI: are these valid settings?
+        self.update_keys = [
+            'name',
+            'abbreviation',
+            'startdate',
+            'enddate',
+            # 'author', TODO: This is currently the user first opening the course. Should be the real author
+            # 'lms_id',
+        ]
+        self.find_keys = [
+            'lms_id'
+        ]
 
-    def update(self, obj=None):
-        course = obj
-        if not course:
-            course = self.find_in_db()
+    @property
+    def name(self):
+        return self.data['custom_course_name']
 
-        if course.active_lti_id and course.active_lti_id != self.active_lti_id:
-            raise VLEBadRequest('Course already linked to LMS.')
+    @property
+    def abbreviation(self):
+        return self.data.get('context_label', None)
 
-        # TODO LTI: only when new active lti id
-        lti.members.sync_members(course)
+    @property
+    def startdate(self):
+        return self.data.get('custom_course_start', None)
 
-        for key in self.update_keys:
-            if getattr(self, key) is not None:
-                setattr(course, key, getattr(self, key))
+    @property
+    def enddate(self):
+        return self.data.get('custom_course_end', None)
 
-        course.save()
+    @property
+    def author(self):
+        return lti.user.Lti1p0UserData(self.data).find_in_db()
 
-        return course
+    @property
+    def lms_id(self):
+        return self.data.get('custom_course_id', None)

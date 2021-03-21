@@ -1,13 +1,58 @@
 import enum
 import json
 
+import oauth2
+import sentry_sdk
 from django.conf import settings
+from django.db.models import Q
 from pylti1p3.contrib.django import DjangoCacheDataStorage, DjangoMessageLaunch
-from pylti1p3.service_connector import ServiceConnector
+from pylti1p3.exception import LtiException
 
 import VLE.lti1p3 as lti
 # TODO lti: check if SectionsService import is working correctly
 from VLE.lti1p3 import claims, roles
+
+
+class OAuthRequestValidater(object):
+    """OAuth request validater class for Django Requests"""
+
+    def __init__(self, key, secret):
+        """
+        Constructor which creates a consumer object with the given key and
+        secret.
+        """
+        super(OAuthRequestValidater, self).__init__()
+        self.consumer_key = key
+        self.consumer_secret = secret
+
+        self.oauth_server = oauth2.Server()
+        signature_method = oauth2.SignatureMethod_HMAC_SHA1()
+        self.oauth_server.add_signature_method(signature_method)
+        self.oauth_consumer = oauth2.Consumer(self.consumer_key, self.consumer_secret)
+
+    def parse_request(self, request):
+        """
+        Parses a django request to return the method, url, header and post data.
+        """
+        return request.method, request.build_absolute_uri(), request.META, request.POST.dict()
+
+    def is_valid(self, request):
+        """
+        Checks if the signature of the given request is valid based on the
+        consumers secret en key
+        """
+        method, url, head, param = self.parse_request(request)
+        oauth_request = oauth2.Request.from_request(method, url, headers=head, parameters=param)
+        self.oauth_server.verify_request(oauth_request, self.oauth_consumer, {})
+
+    @classmethod
+    def check_signature(cls, key, secret, request):
+        """Validate OAuth request using the python-oauth2 library.
+
+        https://github.com/simplegeo/python-oauth2.
+        """
+        validator = OAuthRequestValidater(key, secret)
+        validator.is_valid(request)
 
 
 class LTI_STATES(enum.Enum):
@@ -27,12 +72,17 @@ class PreparedData(object):
 
     This class can be used to prepare received data from other sources (e.g. LTI).
 
-    data
-    create_keys
-    update_keys
-
-
+    Attributes to set:
+        model - model that the data is preparing for
+        data - the raw data
+        create_keys - model keys to set during creation
+        update_keys - model keys to set during update
+        find_keys - model keys to use to find the model from database
     '''
+
+    def __init__(self, data):
+        self.data = data
+
     @property
     def create_dict(self):
         return {
@@ -47,8 +97,38 @@ class PreparedData(object):
             for key in self.update_keys
         }
 
+    @property
+    def find_or_qry(self):
+        qry = Q()
+        for key in self.find_keys:
+            if getattr(self, key) is not None:
+                qry.add(Q(**{key: getattr(self, key)}), Q.OR)
+
+        return qry
+
+    @property
+    def find_and_qry(self):
+        qry = Q()
+        for key in self.find_keys:
+            qry.add(Q(**{key: getattr(self, key)}), Q.AND)
+
+        return qry
+
     def find_in_db(self):
-        return NotImplemented
+        # Dont search in DB when there are only none values to find the model
+        if not self.find_or_qry:
+            return None
+
+        # QUESTION LTI: what to do for this? Now it selects the first one
+        if self.model.objects.filter(self.find_or_qry).count() > 1:
+            with sentry_sdk.push_scope() as scope:
+                scope.level = 'warning'
+                scope.set_context('data', self.asdict())
+                sentry_sdk.capture_message(
+                    f'During data preperation, multiple {self.model.__name__} instances were found in the database.',
+                )
+
+        return self.model.objects.filter(self.find_or_qry).first()
 
     def create(self):
         return NotImplemented
@@ -81,32 +161,79 @@ class PreparedData(object):
 
 
 class eMessageLaunchData(object):
-    def __init__(self, message_launch_data):
+    def __init__(self, message_launch_data, lti_version):
         self.raw_data = message_launch_data
-        print(json.dumps(self.raw_data, sort_keys=False, indent=4))
-        self.user = lti.user.Lti1p3UserData(message_launch_data)
-        self.course = lti.course.Lti1p3CourseData(message_launch_data)
-        self.assignment = lti.assignment.Lti1p3AssignmentData(message_launch_data)
 
-    def __str__(self):
+        print(json.dumps(self.raw_data, indent=4))
+
+        self.lti_version = lti_version
+        print(self.lti_version)
+
+        if self.lti_version == settings.LTI13:
+            self.user = lti.user.Lti1p3UserData(message_launch_data)
+            self.course = lti.course.Lti1p3CourseData(message_launch_data)
+            self.assignment = lti.assignment.Lti1p3AssignmentData(message_launch_data)
+        else:
+            self.user = lti.user.Lti1p0UserData(message_launch_data)
+            self.course = lti.course.Lti1p0CourseData(message_launch_data)
+            self.assignment = lti.assignment.Lti1p0AssignmentData(message_launch_data)
+
+    def asdict(self):
         user = self.user.asdict()
+
         course = self.course.asdict()
         if course['author']:
             course['author'] = course['author'].pk
+
         assignment = self.assignment.asdict()
+        # TODO LTI: fix course to onlyb PK or sth
         if assignment['courses']:
             assignment['courses'] = []
         if assignment['author']:
             assignment['author'] = assignment['author'].pk
-        return json.dumps({
-            'raw data': self.raw_data,
+
+        return {
             'user': user,
             'course': course,
             'assignment': assignment,
+        }
+
+    def __str__(self):
+        return json.dumps({
+            'raw data': self.raw_data,
+            **self.asdict(),
         }, sort_keys=False, indent=4)
 
 
-class ExtendedDjangoMessageLaunch(DjangoMessageLaunch):
+class eDjangoMessageLaunch(DjangoMessageLaunch):
+    @property
+    def lti_version(self):
+        '''Get the LTI version of the launch.'''
+        return (
+            self._jwt.get('body', {}).get('lti_version') or  # Check if lti version is inside jwt body
+            self._request._request.POST.get('lti_version') or  # Else, check if it might be in POST data
+            settings.LTI13  # Else default to LTI 1.3 (which also does not include lti_version information)
+        )
+
+    def validate_1p0(self):
+        secret = settings.LTI_SECRET
+        key = settings.LTI_KEY
+        try:
+            OAuthRequestValidater.check_signature(key, secret, self._request._request)
+        except (oauth2.Error, ValueError) as e:
+            sentry_sdk.capture_exception(e)
+            raise LtiException(str(e))
+
+        self._validated = True
+
+        return self
+
+    def validate(self, *args, **kwargs):
+        if self.lti_version == settings.LTI10:
+            self._session_service.save_launch_data(self._launch_id, self._jwt['body'])
+            return self.validate_1p0(*args, **kwargs)
+        else:
+            return super().validate(*args, **kwargs)
 
     def validate_nonce(self):
         """
@@ -119,17 +246,36 @@ class ExtendedDjangoMessageLaunch(DjangoMessageLaunch):
         deep_link_launch = self.is_deep_link_launch()
         if iss == "http://imsglobal.org" and deep_link_launch:
             return self
-        return super(ExtendedDjangoMessageLaunch, self).validate_nonce()
-
-    def get_sections(self):
-        """Fetches Canvas' specific sections service for the current launch."""
-        connector = ServiceConnector(self._registration)
-        sections_service = 'http://canvas.docker/api/v1/courses/{}/sections'.format(1)
-        # TODO LTI: should be SectionsService
-        return ServiceConnector(connector, sections_service)
+        return super(eDjangoMessageLaunch, self).validate_nonce()
 
     def get_launch_data(self, *args, **kwargs):
-        return eMessageLaunchData(super().get_launch_data(*args, **kwargs))
+        if self.lti_version == settings.LTI10:
+            if 'body' not in self._jwt:
+                self.set_jwt({'body': self._request._request.POST})
+            if not self._validated and self._auto_validation:
+                self.validate()
+
+        data = super().get_launch_data(*args, **kwargs)
+        return eMessageLaunchData(data, lti_version=self.lti_version)
+
+    @classmethod
+    def from_cache(cls, launch_id, *args, **kwargs):
+        obj = cls(*args, **kwargs)
+        launch_data = obj.get_session_service().get_launch_data(launch_id)
+        print('\n'*10)
+        print(launch_data)
+        obj = obj.set_launch_id(launch_id)\
+            .set_auto_validation(enable=False)\
+            .set_jwt({'body': launch_data})
+
+        if not launch_data:
+            raise LtiException("Launch data not found")
+
+        print(launch_data.get('lti_version', settings.LTI13))
+        if launch_data.get('lti_version', settings.LTI13) == settings.LTI13:
+            return obj.validate_registration()
+
+        return obj
 
 
 def is_teacher_launch(message_launch_data):
@@ -151,7 +297,7 @@ def get_launch_data_from_id(launch_id, request):
 
 def get_launch_from_id(launch_id, request):
     """Return the launch that belongs to the launch ID"""
-    return ExtendedDjangoMessageLaunch.from_cache(
+    return eDjangoMessageLaunch.from_cache(
         launch_id, request, settings.TOOL_CONF, launch_data_storage=DjangoCacheDataStorage()
     )
 

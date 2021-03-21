@@ -152,15 +152,12 @@ def launch_configuration(request):
 @api_view(['POST'])
 @permission_classes((AllowAny, ))
 def launch(request):
-    message_launch = lti.utils.ExtendedDjangoMessageLaunch(
+
+    message_launch = lti.utils.eDjangoMessageLaunch(
         request, settings.TOOL_CONF, launch_data_storage=DjangoCacheDataStorage())
     launch_id = message_launch.get_launch_id()
 
-    # Check if it is an initial assignment setup
-    if message_launch.is_deep_link_launch():
-        # TODO LTI: find out how we can detect if we already are authorized to access these scopes,
-        # if not, request them, else go directly to HttpResponse
-
+    if message_launch.lti_version == settings.LTI13 and message_launch.is_deep_link_launch():
         launch_url = request.build_absolute_uri(reverse('lti_launch'))
         resource = eDeepLinkResource()
         resource.set_url(launch_url)
@@ -182,6 +179,9 @@ def launch(request):
             launch_data.user.create()
 
         # TODO LTI: change to is initialized user or not (cuz lti_id can be set with the roles service)
+        # TODO LTI: also add the check for user alsready exists, but needs to set a password anyway
+        # TODO LTI: also also check if user already exists with valid password, but it has never accessed it through
+        # LTI, and it needs to verify the password
         if not user:
             return handle_no_user_connected_to_launch_data(launch_data, launch_id)
         print('LTI user:', user)
