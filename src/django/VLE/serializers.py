@@ -205,7 +205,7 @@ class UserSerializer(ExtendedModelSerializer):
                 and request_user.participation_set.filter(role__can_add_course_users=True, course=course).exists()):
             return None
 
-        return user.username if user.username != user.lti_id else 'unknown'
+        return user.username if user.username else 'unknown'
 
     def get_role(self, user):
         """Only serialized if course is set in context"""

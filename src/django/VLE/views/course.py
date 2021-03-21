@@ -63,8 +63,8 @@ class CourseView(viewsets.ViewSet):
 
         launch_id, = utils.optional_params(request.data, 'launch_id')
         if launch_id:
-            message_launch = lti.utils.get_launch_from_id(launch_id, request)
-            course = lti.course.create_with_launch_data(message_launch.get_launch_data())
+            launch_data = lti.utils.get_launch_data_from_id(launch_id, request)
+            course = launch_data.course.create()
             return response.created({'course': self.serializer_class(course, many=False).data})
 
         name, abbr = utils.required_params(request.data, 'name', 'abbreviation')
@@ -122,8 +122,8 @@ class CourseView(viewsets.ViewSet):
 
         launch_id, = utils.optional_params(request.data, 'launch_id')
         if launch_id:
-            message_launch = lti.utils.get_launch_data_from_id(launch_id, request)
-            course = lti.course.update_with_launch_data(course, message_launch.get_launch_data())
+            launch_data = lti.utils.get_launch_data_from_id(launch_id, request)
+            course = launch_data.course.update(course=course)
             return response.success({'course': self.serializer_class(course, many=False).data})
 
         request.data['startdate'], request.data['enddate'] = utils.optional_params(request.data, 'startdate', 'enddate')

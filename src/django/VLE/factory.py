@@ -77,17 +77,17 @@ def make_course(*args, **kwargs):
     return course
 
 
-def make_course_group(name, course, lti_id=None):
+def make_course_group(name, course, lms_id=None):
     """Make a new course group.
 
     Arguments:
     name -- name of course group
     course -- course the group belongs to
-    lti_id -- potential lti_id, this is to link the canvas course to the VLE course.
+    lms_id -- potential lms_id, this is to link the canvas course to the VLE course.
     """
     if name is None:
         return None
-    course_group = VLE.models.Group(name=name, course=course, lti_id=lti_id)
+    course_group = VLE.models.Group(name=name, course=course, lms_id=lms_id)
     course_group.save()
     return course_group
 

@@ -22,6 +22,8 @@ def lms_authenticate(request):
     # TODO LTI: do not continuesly re-request integration. Appearently you can extand expeiration date
     # Everytime someone uses FBF, the expiration date gets postponed by 1 hour
     instance = Instance.objects.get(pk=1)
+    action, pk = request.query_params['state'].split('-')
+
     resp = requests.post(instance.auth_token_url, data={
         'grant_type': 'authorization_code',
         'code': request.query_params['code'],
@@ -32,5 +34,8 @@ def lms_authenticate(request):
     response = json.loads(resp.content)
     access_token = response['access_token']
 
-# TODO LTI: return nice display that it is done, and you may close the tab.
-    return JsonResponse(data=lti.groups.sync_groups(access_token))
+    # TODO LTI: return nice display that it is done, and you may close the tab.
+    if action == 'SYNC_GROUPS':
+        return JsonResponse(data=lti.groups.sync_groups(access_token, course_id=pk))
+    else:
+        return JsonResponse(data=['UNKNOWN ACTION, IGNORING'])

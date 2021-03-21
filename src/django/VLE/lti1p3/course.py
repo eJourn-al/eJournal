@@ -1,57 +1,97 @@
 import json
 
+from django.db.models import Q
+
 import VLE.factory as factory
 import VLE.lti1p3 as lti
-from VLE.models import Course, User
+from VLE.models import Course
 from VLE.utils.error_handling import VLEBadRequest
 
 
-def create_with_launch_data(message_launch_data):
-    course = factory.make_course(
-        name=message_launch_data.get(lti.claims.COURSE)['title'],
-        abbreviation=message_launch_data.get(lti.claims.COURSE)['label'],
-        startdate=message_launch_data.get(lti.claims.CUSTOM).get('course_start'),
-        enddate=message_launch_data.get(lti.claims.CUSTOM).get('course_end'),
-        author=User.objects.filter(lti_id=message_launch_data['sub']).first(),
-        active_lti_id=message_launch_data.get(lti.claims.COURSE)['id'],
-        names_role_service=json.dumps(message_launch_data.get(lti.claims.NAMESROLES))
-    )
+class Lti1p3CourseData(lti.utils.PreparedData):
+    def __init__(self, data):
+        # TODO LTI: check if it is possible to update the description / title on the Canvas side
+        self.data = data
+        self.create_keys = [
+            'name',
+            'abbreviation',
+            'startdate',
+            'enddate',
+            'author',
+            'active_lti_id',
+            'lms_id',
+            'names_role_service',
+        ]
+        # QUESTION LTI: are these valid settings?
+        self.update_keys = [
+            'name',
+            'abbreviation',
+            'startdate',
+            'enddate',
+            # 'author', TODO: This is currently the user first opening the course. Should be the real author
+            # 'active_lti_id',
+            'lms_id',
+            'names_role_service',
+        ]
 
-    lti.members.sync_members(course)
-    return course
+    @property
+    def name(self):
+        return self.data[lti.claims.COURSE]['title']
 
+    @property
+    def abbreviation(self):
+        return self.data[lti.claims.COURSE]['label']
 
-def get_and_update_course_with_launch_data(message_launch_data):
-    """Get and update the course connected to the LTI launch data.
+    @property
+    def startdate(self):
+        return self.data[lti.claims.CUSTOM].get('course_start', None)
 
-    If no course is found, it will return None."""
-    try:
-        course = get_with_launch_data(message_launch_data)
-        return update_with_launch_data(course, message_launch_data)
-    except Course.DoesNotExist:
-        return None
+    @property
+    def enddate(self):
+        return self.data[lti.claims.CUSTOM].get('course_end', None)
 
+    @property
+    def author(self):
+        return lti.user.Lti1p3UserData(self.data).find_in_db()
 
-def get_with_launch_data(message_launch_data):
-    return Course.objects.get(active_lti_id=message_launch_data.get(lti.claims.COURSE)['id'])
+    @property
+    def active_lti_id(self):
+        return self.data[lti.claims.COURSE]['id']
 
+    @property
+    def lms_id(self):
+        return self.data[lti.claims.CUSTOM]['course_id']
 
-def update_with_launch_data(course, message_launch_data):
-    """Update course with data from the LTI launch."""
-    # TODO LTI: check if it is possible to update the description / title on the Canvas side
-    # when it is updated in eJournal
-    # course.name = message_launch_data.get(lti.claims.COURSE)['title']
-    # course.description = message_launch_data.get(lti.claims.COURSE)['description']
-    if course.active_lti_id and course.active_lti_id != message_launch_data.get(lti.claims.COURSE)['id']:
-        raise VLEBadRequest('Course already linked to LMS.')
-    if not course.active_lti_id:
-        course.active_lti_id = message_launch_data.get(lti.claims.COURSE)['id']
-        # Only sync members on first launch
-        # TODO LTI: add sync members btn on eJournal to sync later added users
-    lti.members.sync_members(course)
-    course.startdate = message_launch_data.get(lti.claims.CUSTOM).get('course_start', course.startdate)
-    course.enddate = message_launch_data.get(lti.claims.CUSTOM).get('course_end', course.enddate)
-    course.names_role_service = json.dumps(message_launch_data.get(lti.claims.NAMESROLES))
-    course.save()
+    @property
+    def names_role_service(self):
+        return json.dumps(self.data[lti.claims.NAMESROLES])
 
-    return course
+    def find_in_db(self):
+        return Course.objects.filter(
+            Q(active_lti_id=self.active_lti_id) |
+            Q(lms_id=self.lms_id)
+        ).first()
+
+    def create(self):
+        course = factory.make_course(**self.create_dict)
+        lti.members.sync_members(course)
+        return course
+
+    def update(self, obj=None):
+        course = obj
+        if not course:
+            course = self.find_in_db()
+
+        if course.active_lti_id and course.active_lti_id != self.active_lti_id:
+            raise VLEBadRequest('Course already linked to LMS.')
+
+        # TODO LTI: only when new active lti id
+        lti.members.sync_members(course)
+
+        for key in self.update_keys:
+            if getattr(self, key) is not None:
+                setattr(course, key, getattr(self, key))
+
+        course.save()
+
+        return course

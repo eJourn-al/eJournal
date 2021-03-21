@@ -29,32 +29,23 @@ class eDeepLinkResource(DeepLinkResource):
         return dic
 
 
-def check_and_handle_test_student(user, message_launch_data):
-    """Creates a test user if no user is proved and lauch is with test student"""
-    if user or not lti.utils.is_test_student_launch(message_launch_data):
-        return user
-
-    course = Course.objects.filter(active_lti_id=message_launch_data.get(lti.claims.COURSE)['id']).first()
-    if course:
-        User.objects.filter(participation__course=course, is_test_student=True).delete()
-    # TODO: remove all previous test students in course
-    return lti.user.create_with_launch_data(message_launch_data)
-
-
-def handle_no_user_connected_to_launch_data(message_launch_data, launch_id):
-    username = message_launch_data.get(lti.claims.CUSTOM)['username']
-    already_exists = User.objects.filter(username=username).exists()
+def handle_no_user_connected_to_launch_data(launch_data, launch_id):
+    username = launch_data.user.username
+    if username:
+        already_exists = User.objects.filter(username=username).exists()
+    else:
+        already_exists = False
     response_data = {
         'launch_state': lti.utils.LTI_STATES.NO_USER.value,
         'launch_id': launch_id,
         'username_already_exists': already_exists,
-        'name': message_launch_data.get('name', username),
+        'name': launch_data.user.full_name or launch_data.user.username,
         # TODO LTI: add journal & course & assignment id to this list
     }
     return redirect(build_url(settings.BASELINK, 'LtiLogin', response_data))
 
 
-def handle_no_course_connected_to_launch_data(message_launch_data, launch_id, user):
+def handle_no_course_connected_to_launch_data(launch_data, launch_id, user):
     refresh = TokenObtainPairSerializer.get_token(user)
     response_data = {
         'launch_state':
@@ -66,7 +57,7 @@ def handle_no_course_connected_to_launch_data(message_launch_data, launch_id, us
     return redirect(build_url(settings.BASELINK, 'LtiLogin', response_data))
 
 
-def handle_no_assignment_connected_to_launch_data(message_launch_data, launch_id, user, course):
+def handle_no_assignment_connected_to_launch_data(launch_data, launch_id, user, course):
     refresh = TokenObtainPairSerializer.get_token(user)
     response_data = {
         'launch_state':
@@ -79,7 +70,7 @@ def handle_no_assignment_connected_to_launch_data(message_launch_data, launch_id
     return redirect(build_url(settings.BASELINK, 'LtiLogin', response_data))
 
 
-def handle_all_connected_to_launch_data(message_launch_data, launch_id, user, course, assignment, journal, request):
+def handle_all_connected_to_launch_data(launch_data, launch_id, user, course, assignment, journal, request):
     refresh = TokenObtainPairSerializer.get_token(user)
     response_data = {
         'launch_state':
@@ -136,7 +127,7 @@ def launch_configuration(request):
             'public_jwk': {},
             'description': 'eJournal development',
             'custom_fields': {
-                'username': '$User.username',
+                'username': '$User.username',  # NOTE: username is duplicate of $User.login_id
                 'course_id': '$Canvas.course.id',
                 'course_name': '$Canvas.course.name',
                 'course_start': '$Canvas.course.startAt',
@@ -165,10 +156,6 @@ def launch(request):
         request, settings.TOOL_CONF, launch_data_storage=DjangoCacheDataStorage())
     launch_id = message_launch.get_launch_id()
 
-    message_launch_data = message_launch.get_launch_data()
-    import json
-    print(json.dumps(message_launch_data, indent=4, sort_keys=True))
-
     # Check if it is an initial assignment setup
     if message_launch.is_deep_link_launch():
         # TODO LTI: find out how we can detect if we already are authorized to access these scopes,
@@ -183,28 +170,40 @@ def launch(request):
 
         return HttpResponse(html)
 
+    launch_data = message_launch.get_launch_data()
+    print(launch_data)
+
     try:
-        user = lti.user.get_and_update_user_with_launch_data(message_launch_data)
-        user = check_and_handle_test_student(user, message_launch_data)
+        user = launch_data.user.find_in_db()
+        if user:
+            launch_data.user.update()
+        elif launch_data.user.is_test_student:
+            # NOTE: This will also delete older test students
+            launch_data.user.create()
+
         # TODO LTI: change to is initialized user or not (cuz lti_id can be set with the roles service)
         if not user:
-            return handle_no_user_connected_to_launch_data(message_launch_data, launch_id)
+            return handle_no_user_connected_to_launch_data(launch_data, launch_id)
         print('LTI user:', user)
 
-        course = lti.course.get_and_update_course_with_launch_data(message_launch_data)
+        course = launch_data.course.find_in_db()
+        if course:
+            launch_data.course.update()
         if not course:
-            return handle_no_course_connected_to_launch_data(message_launch_data, launch_id, user)
+            return handle_no_course_connected_to_launch_data(launch_data, launch_id, user)
         print('LTI course:', course)
 
-        assignment = lti.assignment.get_and_update_assignment_with_launch_data(message_launch_data)
+        assignment = launch_data.assignment.find_in_db()
+        if assignment:
+            launch_data.assignment.update()
         if not assignment:
-            return handle_no_assignment_connected_to_launch_data(message_launch_data, launch_id, user, course)
+            return handle_no_assignment_connected_to_launch_data(launch_data, launch_id, user, course)
         print('LTI assignment:', assignment)
 
         journal = Journal.objects.filter(authors__user=user, assignment=assignment).first()
         print('LTI journal:', journal)
         return handle_all_connected_to_launch_data(
-            message_launch_data, launch_id, user, course, assignment, journal, request)
+            launch_data, launch_id, user, course, assignment, journal, request)
 
     except KeyError as err:
         raise VLEBadRequest(

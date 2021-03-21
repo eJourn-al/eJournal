@@ -140,7 +140,9 @@ class UserView(viewsets.ViewSet):
         password, = utils.required_params(request.data, 'password')
         if launch_id:
             launch_data = lti.utils.get_launch_data_from_id(launch_id, request)
-            user = lti.user.create_with_launch_data(launch_data, password)
+            user = launch_data.user.create(password=password)
+            # TODO LTI: integrate this with the launch.py so that it also return the correct other data
+            # e.g. call handle_all_connected_to_launch_data
             return response.created({
                 'user': {
                     **OwnUserSerializer(user, context={'user': request.user}).data,
@@ -205,7 +207,7 @@ class UserView(viewsets.ViewSet):
         launch_id, = utils.optional_params(request.data, 'launch_id')
         if launch_id:
             launch_data = lti.utils.get_launch_data_from_id(launch_id, request)
-            user = lti.user.update_with_launch_data(user, launch_data)
+            user = launch_data.user.update()
             return response.success({
                 'user': {
                     **OwnUserSerializer(user, context={'user': request.user}).data,

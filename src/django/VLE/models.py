@@ -324,7 +324,9 @@ class User(AbstractUser):
         max_length=200
     )
     username = CITextField(
+        null=True,
         unique=True,
+        blank=True,
         max_length=150,
     )
     email = CIEmailField(
@@ -340,8 +342,14 @@ class User(AbstractUser):
         unique=True,
         blank=True,
     )
+    sis_id = models.TextField(
+        null=True,
+        unique=True,
+        blank=True,
+    )
     profile_picture = models.TextField(
-        null=True
+        null=True,
+        blank=True,
     )
     is_teacher = models.BooleanField(
         default=False
@@ -904,6 +912,11 @@ class Course(CreateUpdateModel):
         null=True,
     )
 
+    lms_id = models.TextField(
+        null=True,
+        unique=True,
+        blank=True
+    )
     active_lti_id = models.TextField(
         null=True,
         unique=True,
@@ -949,13 +962,13 @@ class Group(CreateUpdateModel):
         on_delete=models.CASCADE
     )
 
-    lti_id = models.TextField(
+    lms_id = models.TextField(
         null=True,
     )
 
     class Meta:
         """Meta data for the model: unique_together."""
-        unique_together = ('lti_id', 'course')
+        unique_together = ('lms_id', 'course')
 
     def to_string(self, user=None):
         if user is None:

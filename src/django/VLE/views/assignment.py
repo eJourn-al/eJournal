@@ -114,12 +114,12 @@ class AssignmentView(viewsets.ViewSet):
         launch_id, = utils.optional_params(request.data, 'launch_id')
         if launch_id:
             launch_data = lti.utils.get_launch_data_from_id(launch_id, request)
-            assignment = lti.assignment.create_with_launch_data(launch_data)
+            assignment = launch_data.assignment.create()
             serializer = AssignmentSerializer(
                 AssignmentSerializer.setup_eager_loading(Assignment.objects.filter(pk=assignment.pk)).get(),
                 context={
                     'user': request.user,
-                    'course': lti.course.get_with_launch_data(launch_data),
+                    'course': launch_data.course.find_in_db(),
                     'serialize_journals': request.user.has_permission('can_grade', assignment),
                 }
             )
@@ -240,8 +240,9 @@ class AssignmentView(viewsets.ViewSet):
         launch_id, = utils.optional_typed_params(request.data, (str, 'launch_id'))
         if launch_id:
             launch_data = lti.utils.get_launch_data_from_id(launch_id, request)
-            course = lti.course.get_with_launch_data(launch_data)
+            course = launch_data.course.find_in_db()
             request.user.check_permission('can_add_assignment', course)
+            # TODO LTI: THIS DOES NOT YET WORK, PLZ FIX
             assignment.add_lti_id(launch_data.get(lti.claims.ASSIGNMENT)['id'], course)
             lti.assignment.update_with_launch_data(assignment, launch_data)
 
@@ -435,8 +436,7 @@ class AssignmentView(viewsets.ViewSet):
         launch_id, = utils.optional_params(request.query_params, 'launch_id')
         if launch_id:
             launch_data = lti.utils.get_launch_data_from_id(launch_id, request)
-            course_lti_id = launch_data.get(lti.claims.COURSE).get('id')
-            lti_course = Course.objects.get(active_lti_id=course_lti_id)
+            lti_course = launch_data.course.find_in_db()
         importable = []
         for course in courses:
             assignments = Assignment.objects.filter(courses=course)
@@ -524,6 +524,7 @@ class AssignmentView(viewsets.ViewSet):
         launch_id, = utils.optional_typed_params(request.data, (str, 'launch_id'))
         if launch_id:
             launch_data = lti.utils.get_launch_data_from_id(launch_id, request)
+            # TODO LTI: THIS DOES NOT YET WORK, PLZ FIX
             assignment_lti_id = launch_data.get(lti.claims.ASSIGNMENT)['id']
             assignment.add_lti_id(assignment_lti_id, course)
             lti.assignment.update_with_launch_data(assignment, launch_data)

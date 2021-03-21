@@ -99,6 +99,18 @@ def optional_typed_params(post, *keys):
 # END: API-POST functions
 
 
+def get_value_from_dict(dic, key_list):
+    '''Return a value from a dictionary by supplying a list of keys to interetly get the last value
+
+    Example:
+    get_value_from_dict({'a': 3}, ['a']) => 3
+    get_value_from_dict({'a': [{}, {'b': 5}]}, ['a', 1, 'b']) => 5
+    '''
+    for key in key_list:
+        dic = dic[key]
+    return dic
+
+
 def get_sorted_nodes(journal):
     """Get sorted nodes.
 

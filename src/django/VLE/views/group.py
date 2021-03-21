@@ -227,7 +227,8 @@ class GroupView(viewsets.ViewSet):
                     url:GET|/api/v1/sections/:id
                 '''.split()),
                 'client_id': instance.api_client_id,
-                'state': 'sync-groups-{}'.format(course_id)
+                # TODO LTI: to course LMS id
+                'state': 'SYNC_GROUPS-{}'.format(course_id)
             }
         )
         print(url)

@@ -17,32 +17,21 @@ def is_test_student(member_data):
 
 
 def sync_members(course):
+    # TODO LTI: move this to a background task & notify user that students are loading in the background
+    # This may take some time: updating / creating all users
     # TODO LTI: make sure message_launch_data is not needed anymore
     instance = Instance.objects.get(pk=1)
     registration = settings.TOOL_CONF.find_registration(instance.iss, client_id=instance.lti_client_id)
     connector = ServiceConnector(registration)
     nrs = NamesRolesProvisioningService(connector, json.loads(course.names_role_service))
+    print('SYNC MEMBERS COURSE: ', course.name)
 
     members = nrs.get_members()
-    # TODO LTI: remove test student if there is a new test student. PREV CODE:
-    # if lti.utils.is_test_student(member):
-    #     User.objects.filter(participation__course=course, is_test_student=True).exclude(pk=user.pk).delete()
+
+    print(json.dumps(members, indent=4, sort_keys=True))
+
     for member_data in members:
-        # Transfer to launch_data standard so we can use the launch data functions
-        member_data['sub'] = member_data['user_id']
-        member_data[lti.claims.ROLES] = member_data['roles']
-        user = User.objects.filter(lti_id=member_data['sub']).first()
-        if user:
-            # TODO LTI: what to do if email already exists?
-            lti.user.get_or_create_participation_with_launch_data(user, member_data, course=course)
-            continue
-
-        # QUESTION LTI: What should be automatically do with usernames / emails that already exists?
-        # This is executed in the background, dont want to bother the user
-        # I for now just select the email with that email / username and update the values for that user
-        user = User.objects.filter(
-            Q(email=member_data['email']) | Q(username=member_data['lis_person_sourcedid'])).first()
-        if user:
-            lti.user.update_with_launch_data(user, member_data, course=course)
-
-        lti.user.create_with_launch_data(member_data, course=course)
+        lti.user.NRSUserData(member_data).create_or_update(
+            update_kwargs={'course': course},
+            create_kwargs={'course': course},
+        )

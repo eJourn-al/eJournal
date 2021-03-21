@@ -1,108 +1,284 @@
+
+from django.conf import settings
+from django.db.models import Q
 from django.utils import timezone
 
 import VLE.lti1p3 as lti
-from VLE.models import Course, Instance, Participation, Role, User
+from VLE.models import Participation, Role, User
+from VLE.utils.error_handling import VLEProgrammingError
 
 
-def _get_username(message_launch_data):
-    # Get the customly provided username. This is used for login at the LMS
-    # If that doesn't exist, get the sourcedid and use that for login purposes as it is often the same
-    if lti.claims.CUSTOM in message_launch_data:
-        return message_launch_data.get(lti.claims.CUSTOM).get('username')
+class UserData(lti.utils.PreparedData):
+    def __init__(self, data):
+        self.data = data
 
-    return message_launch_data.get(
-        # NOTE: this used when called from names_role_service
-        'lis_person_sourcedid',
-        # NOTE: this is used when called from an individual lti launch
-        message_launch_data.get(lti.claims.LIS).get('person_sourcedid')
-    )
-
-
-def _get_profile_picture(message_launch_data, user=None):
-    """Get the profile picture that is set in the message launch.
-
-    If that is the default, return the users profile picture instead.
-    If no user is set, return None."""
-    if message_launch_data.get('picture') == \
-       Instance.objects.get(pk=1).default_lms_profile_picture:
-        return user.profile_picture if user else None
-
-    return message_launch_data.get('picture')
-
-
-def create_with_launch_data(message_launch_data, password=None, course=None):
-    is_test_student = lti.utils.is_test_student_launch(message_launch_data)
-    user = User(
-        username=_get_username(message_launch_data),
-        full_name=message_launch_data['name'],
-        email=message_launch_data.get('email', None),
-        verified_email='email' in message_launch_data,
-        lti_id=message_launch_data['sub'],
-        is_teacher=lti.utils.is_teacher_launch(message_launch_data),
-        is_test_student=is_test_student,
-        profile_picture=_get_profile_picture(message_launch_data)
-    )
-    if password and not is_test_student:
-        user.set_password(password)
-    else:
-        user.set_unusable_password()
-    user.full_clean()
-    user.save()
-
-    get_or_create_participation_with_launch_data(user, message_launch_data, course=course)
-
-    return user
-
-
-def get_and_update_user_with_launch_data(message_launch_data):
-    """Get and update the user connected to the LTI launch data.
-
-    If no user is found, it will return None."""
-    try:
-        user = get_with_launch_data(message_launch_data)
-        return update_with_launch_data(user, message_launch_data)
-    except User.DoesNotExist:
+    @property
+    def lti_id(self):
         return None
 
+    @property
+    def sis_id(self):
+        return None
 
-def get_with_launch_data(message_launch_data):
-    # TODO LTI: check why username was necessary
-    return User.objects.get(lti_id=message_launch_data['sub'])
+    @property
+    def full_name(self):
+        return None
 
+    @property
+    def profile_picture(self):
+        return None
 
-def update_with_launch_data(user, message_launch_data, course=None):
-    """Update user with data from the LTI launch."""
-    # TODO LTI: add to the correct group
-    user.full_name = message_launch_data.get('name', user.full_name)
-    user.username = _get_username(message_launch_data)
-    user.email = message_launch_data.get('email', user.email)
-    user.verified_email = True
-    user.lti_id = message_launch_data.get('sub', user.lti_id)
-    user.is_teacher = lti.utils.is_teacher_launch(message_launch_data)
-    user.profile_picture = _get_profile_picture(message_launch_data)
+    @property
+    def roles(self):
+        return None
 
-    user.last_login = timezone.now()
-    user.save()
+    @property
+    def email(self):
+        return None
 
-    get_or_create_participation_with_launch_data(user, message_launch_data, course=course)
+    @property
+    def username(self):
+        return None
 
-    return user
+    @property
+    def verified_email(self):
+        return bool(self.email)
 
+    @property
+    def is_teacher(self):
+        return any(
+            role in self.roles
+            for role in [lti.roles.TEACHER, lti.roles.ADMIN, lti.roles.ADMIN_INST]
+        )
 
-def get_or_create_participation_with_launch_data(user, message_launch_data, course=None):
-    if not course:
-        course = Course.objects.filter(active_lti_id=message_launch_data.get(lti.claims.COURSE)['id']).first()
+    @property
+    def is_test_student(self):
+        # TODO LTI: this is Canvas specific, should be changed to also work with other LTI hosts
+        return (
+            self.email == ''
+            and self.full_name == 'Test Student'.lower()
+        )
+
+    def normalize_profile_picture(self, picture):
+        # TODO LTI: this is Canvas specific, should be changed to also work with other LTI hosts
+        if not picture or '/avatar-50.png' in picture:
+            return settings.DEFAULT_PROFILE_PICTURE
+
+        return picture
+
+    def create_participation(self, user, course):
+        # TODO LTI: add groups
+        # TODO LTI: should we update roles and or groups?
+        participation = Participation.objects.filter(user=user, course=course).first()
+        if participation:
+            return participation
+
+        return Participation.objects.create(
+            user=user,
+            course=course,
+            role=Role.objects.get(
+                course=course,
+                name=lti.roles.to_ejournal_role(self.roles),
+            ),
+        )
+
+    def handle_test_student(self, course=None):
         if not course:
+            course = lti.course.Lti1p3CourseData(self.data).find_in_db()
+        if not course:
+            return
+
+        User.objects.filter(participation__course=course, is_test_student=True).delete()
+
+    def find_in_db(self):
+        # QUESTION LTI: What should we automatically do with usernames / emails that already exists?
+        # This may be executed in the background, dont want to bother the user
+        # I for now just select the email with that email / username and update the values for that user
+        user_qry = Q(lti_id=self.lti_id)
+        if self.email:
+            user_qry.add(Q(email=self.email), Q.OR)
+        if self.username:
+            user_qry.add(Q(username=self.username), Q.OR)
+        if self.sis_id:
+            user_qry.add(Q(sis_id=self.sis_id), Q.OR)
+
+        return User.objects.filter(user_qry).first()
+
+    def create(self, password=None, course=None):
+        if not course:
+            course = lti.course.Lti1p3CourseData(self.data).find_in_db()
+
+        if self.is_test_student:
+            self.handle_test_student(course=course)
+
+        user = User(**self.create_dict)
+
+        if password and not self.is_test_student:
+            user.set_password(password)
+        else:
+            user.set_unusable_password()
+
+        user.save()
+
+        if course:
+            self.create_participation(user, course=course)
+
+        return user
+
+    def update(self, obj=None, course=None):
+        if not course:
+            course = lti.course.Lti1p3CourseData(self.data).find_in_db()
+
+        user = obj
+        if not user:
+            user = self.find_in_db()
+        if not user:
+            raise VLEProgrammingError('User does not exist, so it cannot be updated')
+
+        for key in self.update_keys:
+            if getattr(self, key) is not None:
+                setattr(user, key, getattr(self, key))
+
+        user.last_login = timezone.now()
+        user.save()
+
+        if course:
+            self.create_participation(user, course=course)
+
+        return user
+
+
+class Lti1p3UserData(UserData):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.create_keys = [
+            'lti_id',
+            'sis_id',
+            'full_name',
+            'profile_picture',
+            # 'roles',
+            'email',
+            'username',
+            'is_test_student',
+            'verified_email',
+            'is_teacher',
+        ]
+        # QUESTION LTI: are these valid settings?
+        self.update_keys = [
+            'lti_id',
+            'sis_id',
+            'full_name',
+            'profile_picture',
+            # 'roles',
+            'email',
+            'username',
+            # 'is_test_student',
+            'verified_email',
+            'is_teacher',
+        ]
+
+    @property
+    def lti_id(self):
+        return self.data['sub']
+
+    @property
+    def sis_id(self):
+        return self.data[lti.claims.LIS]['person_sourcedid']
+
+    @property
+    def full_name(self):
+        return self.data.get('name', None)
+
+    @property
+    def profile_picture(self):
+        return self.normalize_profile_picture(self.data.get('picture', None))
+
+    @property
+    def roles(self):
+        return self.data[lti.claims.ROLES]
+
+    @property
+    def email(self):
+        return self.data.get('email', None)
+
+    @property
+    def username(self):
+        if lti.claims.CUSTOM not in self.data or \
+           'username' not in self.data[lti.claims.CUSTOM]:
             return None
 
-    participation = Participation.objects.filter(user=user, course=course).first()
-    if participation:
-        return participation
+        return self.data[lti.claims.CUSTOM]['username']
 
-    role_name = lti.roles.to_ejournal_role(message_launch_data.get(lti.claims.ROLES, []))
 
-    return Participation.objects.create(
-        user=user,
-        course=course,
-        role=Role.objects.get(course=course, name=role_name),
-    )
+class NRSUserData(UserData):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.create_keys = [
+            'lti_id',
+            'sis_id',
+            'full_name',
+            'profile_picture',
+            # 'roles',
+            'email',
+        ]
+        # QUESTION LTI: are these valid settings?
+        self.update_keys = [
+            'lti_id',
+            'sis_id',
+            'full_name',
+            'profile_picture',
+            # 'roles',
+            'email',
+        ]
+
+    @property
+    def lti_id(self):
+        return self.data['user_id']
+
+    @property
+    def sis_id(self):
+        return self.data.get('lis_person_sourcedid', None)
+
+    @property
+    def full_name(self):
+        return self.data.get('name', None)
+
+    @property
+    def profile_picture(self):
+        return self.normalize_profile_picture(self.data.get('picture', None))
+
+    @property
+    def roles(self):
+        return self.data.get('roles', [])
+
+    @property
+    def email(self):
+        return self.data.get('email', None)
+
+
+class CanvasAPIUserData(UserData):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.create_keys = [
+            'sis_id',
+            'full_name',
+            'username',
+        ]
+        # QUESTION LTI: are these valid settings?
+        self.update_keys = [
+            'sis_id',
+            'full_name',
+            'username',
+        ]
+
+    @property
+    def sis_id(self):
+        return self.data['sis_user_id']
+
+    @property
+    def full_name(self):
+        return self.data.get('name', None)
+
+    @property
+    def username(self):
+        return self.data['login_id']
