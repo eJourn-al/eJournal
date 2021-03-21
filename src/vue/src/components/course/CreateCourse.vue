@@ -50,7 +50,7 @@
                     </reset-wrapper>
                 </b-col>
             </b-row>
-            <hr class="mt-2"/>
+            <hr/>
             <b-button
                 class="float-left orange-button"
                 type="reset"
@@ -97,14 +97,14 @@ export default {
             if (this.form.enddate) {
                 additionalConfig.maxDate = new Date(this.form.enddate)
             }
-            return Object.assign({}, additionalConfig, this.$root.flatPickrConfig)
+            return { ...additionalConfig, ...this.$root.flatPickrConfig }
         },
         endDateConfig () {
             const additionalConfig = {}
             if (this.form.startdate) {
                 additionalConfig.minDate = new Date(this.form.startdate)
             }
-            return Object.assign({}, additionalConfig, this.$root.flatPickrConfig)
+            return { ...additionalConfig, ...this.$root.flatPickrConfig }
         },
     },
     mounted () {

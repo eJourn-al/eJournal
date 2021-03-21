@@ -2,13 +2,12 @@
 
 .btn:not(.btn-link), .btn-secondary:not(.btn-link)
     @extend .theme-shadow
-    border: 1px solid $theme-dark-grey !important
+    border: 1px solid $theme-dark-grey
     position: relative
     background-color: white
     justify-content: center
     display: inline-flex
     align-items: center
-    border: none
     border-radius: 5px
     text-transform: capitalize
     &, svg
@@ -18,7 +17,7 @@
         margin: 5px
     &:hover:not(.no-hover), &.active, &:focus
         background-color: $theme-blue
-        border-color: $theme-blue !important
+        border-color: $theme-blue
         &, svg
             color: white !important
     &.no-hover:hover
@@ -68,6 +67,13 @@
         background-color: $theme-blue
         &:hover:not(.no-hover), &.active, &.fab, &:focus
             background-color: darken($theme-blue, 5%)
+    &.grey-filled-button
+        border-color: $theme-medium-grey !important
+        &, svg
+            color: grey
+        background-color: $theme-medium-grey
+        &:hover:not(.no-hover), &.active, &.fab, &:focus
+            background-color: darken($theme-medium-grey, 20%)
     &.preset-type-button
         width: 75px
         height: 75px

@@ -14,7 +14,7 @@
                 <b-form-input
                     id="form-sentry-feedback-name"
                     v-model="name"
-                    class="theme-input multi-form"
+                    class="theme-input"
                     required
                     placeholder="Jane Doe"
                 />
@@ -28,7 +28,7 @@
                 <b-form-input
                     id="form-sentry-feedback-email"
                     v-model="email"
-                    class="theme-input multi-form"
+                    class="theme-input"
                     type="email"
                     required
                     placeholder="jane@example.com"

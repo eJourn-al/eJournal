@@ -4,11 +4,9 @@ factory.py.
 The factory has all kinds of functions to create entries in the database.
 Sometimes this also supports extra functionallity like adding courses to assignments.
 """
-from datetime import timedelta
-
 import requests
 from django.conf import settings
-from django.utils import timezone
+from django.db import transaction
 
 import VLE.models
 import VLE.validators as validators
@@ -94,17 +92,13 @@ def make_course_group(name, course, lms_id=None):
 
 def make_assignment(*args, **kwargs):
     """Make a new assignment."""
-    format = kwargs.get('format')
-    due_date = kwargs.get('due_date')
-    points_possible = kwargs.get('points_possible')
-    if format is None:
-        if due_date:
-            kwargs['format'] = make_default_format(due_date, points_possible)
-        else:
-            kwargs['format'] = make_default_format(timezone.now() + timedelta(days=365), points_possible)
+    if kwargs.get('format', None) is None:
+        VLE.models.Format.objects.create()
 
     courses = kwargs.pop('courses', [])
     assignment = VLE.models.Assignment.objects.create(**kwargs)
+
+    setup_default_assignment_layout(assignment)
 
     for course in courses:
         assignment.add_course(course)
@@ -134,27 +128,19 @@ def make_lti_groups(course):
             VLE.models.Group.objects.filter(course=course, lti_id=lti_id).update(name=name)
 
 
-def make_default_format(due_date=None, points_possible=10):
-    format = VLE.models.Format()
-    format.save()
-    template = make_entry_template('Entry', format)
-    make_field(template, 'Content', 0, VLE.models.Field.RICH_TEXT, True)
-    if due_date and points_possible and int(points_possible) > 0:
-        make_progress_node(format, due_date, points_possible)
-    return format
+def setup_default_assignment_layout(assignment):
+    template = VLE.models.Template.objects.create(
+        name='Template',
+        format=assignment.format,
+    )
 
-
-def make_progress_node(format, due_date, target):
-    """Make a progress node.
-
-    Arguments:
-    format -- format the node belongs to.
-    due_date -- due_date of the node.
-    """
-    node = VLE.models.PresetNode(
-        type=VLE.models.Node.PROGRESS, due_date=due_date, target=target, format=format, display_name='Progress goal')
-    node.save()
-    return node
+    VLE.models.Field.objects.create(
+        template=template,
+        title='',
+        location=0,
+        type=VLE.models.Field.RICH_TEXT,
+        required=True,
+    )
 
 
 def make_node(journal, entry=None, type=VLE.models.Node.ENTRY, preset=None):
@@ -167,34 +153,26 @@ def make_node(journal, entry=None, type=VLE.models.Node.ENTRY, preset=None):
     return VLE.models.Node.objects.get_or_create(type=type, entry=entry, preset=preset, journal=journal)[0]
 
 
-def make_entry(template, author, node=None):
-    entry = VLE.models.Entry.objects.create(template=template, author=author, node=node)
-    if node:
+def make_entry(template, author, node, category_ids=None, title=None):
+    """NOTE: Only called for single entry creation (not bulk, e.g. teacher entries)"""
+    if not template.chain.allow_custom_categories or category_ids is None:
+        category_ids = list(template.categories.values_list('pk', flat=True))
+
+    if not template.chain.allow_custom_title:
+        title = None
+
+    with transaction.atomic():
+        entry = VLE.models.Entry.objects.create(template=template, author=author, node=node, title=title)
+        entry_category_links = [
+            VLE.models.EntryCategoryLink(entry=entry, category_id=id, author=author)
+            for id in category_ids
+        ]
+        VLE.models.EntryCategoryLink.objects.bulk_create(entry_category_links)
+
         entry.node.entry = entry
         entry.node.save()
+
     return entry
-
-
-def make_entry_template(name, format, preset_only=False):
-    """Make an entry template."""
-    entry_template = VLE.models.Template(name=name, format=format, preset_only=preset_only)
-    entry_template.save()
-    return entry_template
-
-
-def make_field(template, title, loc, type=VLE.models.Field.TEXT, required=True, description=None, options=None):
-    """Make a field."""
-    field = VLE.models.Field(
-        type=type,
-        title=title,
-        location=loc,
-        template=template,
-        required=required,
-        description=description,
-        options=options
-    )
-    field.save()
-    return field
 
 
 def make_content(entry, data, field=None):

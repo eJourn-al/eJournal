@@ -2,9 +2,11 @@ import copy
 import json
 import os
 import test.factory as factory
-from datetime import date, timedelta
+from copy import deepcopy
+from datetime import datetime, timedelta
 from test.utils import api
 from test.utils.generic_utils import equal_models
+from test.utils.performance import QueryContext, assert_num_queries_less_than
 from unittest import mock
 
 from django.conf import settings
@@ -14,11 +16,11 @@ from django.test import TestCase
 from django.utils import timezone
 from faker import Faker
 
-from VLE.models import (Assignment, Comment, Content, Course, Entry, Field, FileContext, Format, Grade, Journal,
-                        JournalImportRequest, Node, PresetNode, TeacherEntry, Template, User)
-from VLE.serializers import EntrySerializer
-from VLE.utils import generic_utils as utils
-from VLE.utils.error_handling import VLEMissingRequiredField, VLEPermissionError
+import VLE.utils.entry_utils as entry_utils
+from VLE.models import (Assignment, Category, Comment, Content, Course, Entry, Field, FileContext, Format, Grade,
+                        Journal, JournalImportRequest, Node, PresetNode, TeacherEntry, Template, TemplateChain, User)
+from VLE.serializers import EntrySerializer, TemplateSerializer
+from VLE.utils.error_handling import VLEBadRequest, VLEMissingRequiredField, VLEPermissionError
 from VLE.validators import validate_entry_content
 
 faker = Faker()
@@ -46,10 +48,11 @@ class EntryAPITest(TestCase):
         fields = Field.objects.filter(template=self.template)
         self.valid_create_params['content'] = {field.id: 'test data' for field in fields}
 
-        # Queries:
-        # Select Entry and related tables 1
-        # Template is selected, but its field set is also serialized 1
-        self.entry_serializer_base_query_count = len(EntrySerializer.prefetch_related) + 1 + 1
+        self.entry_serializer_base_query_count = (
+            1
+            + len(EntrySerializer.prefetch_related)
+            + len(TemplateSerializer.prefetch_related)
+        )
 
     def test_entry_factory(self):
         course_c = Course.objects.count()
@@ -63,9 +66,10 @@ class EntryAPITest(TestCase):
         cont_c = Content.objects.count()
         grade_c = Grade.objects.count()
         template_c = Template.objects.count()
+        category_c = Category.objects.count()
 
         assignment = factory.Assignment(format__templates=[{'type': Field.TEXT}])
-        entry = factory.UnlimitedEntry(node__journal__assignment=assignment, node__journal__entries__n=0)
+        entry = factory.UnlimitedEntry(node__journal__assignment=assignment, node__journal__entries__n=0, categories=1)
         assignment.refresh_from_db()
 
         assert template_c + 1 == Template.objects.count(), \
@@ -83,6 +87,7 @@ class EntryAPITest(TestCase):
         assert field_c + 1 == Field.objects.count(), 'A single field is created'
         assert cont_c + 1 == Content.objects.count(), 'Content is created for the entry with a single field'
         assert grade_c == Grade.objects.count(), 'No grade instances are created for the entry (default ungraded)'
+        assert category_c + 1 == Category.objects.count(), 'A single category is created'
 
         journal = entry.node.journal
         assert Content.objects.filter(entry=entry).exists(), 'Content is created for the generated entry'
@@ -91,14 +96,24 @@ class EntryAPITest(TestCase):
         assert Node.objects.filter(type=Node.ENTRY, journal__assignment=assignment, entry=entry).count() == 1, \
             'An entry node is correctly attached and of the correct type'
         assert entry.grade is None, 'Entry is ungraded by default'
+        assert entry.title is None, 'Entry has no custom title by default'
+        assert entry.categories.first().assignment == assignment
 
         grade = 7
         grade_c = Grade.objects.count()
 
+        category = factory.Category(assignment=assignment)
         entry = factory.UnlimitedEntry(
-            node__journal__assignment=assignment, node__journal__entries__n=0, grade__grade=grade)
+            node__journal__assignment=assignment,
+            node__journal__entries__n=0,
+            grade__grade=grade,
+            categories=[category],
+            title='Custom',
+        )
         assert grade_c + 1 == Grade.objects.count(), 'A single grade instance is created for the grade entry'
         assert entry.grade.grade == grade, 'Deep syntax works for entry grade instance'
+        assert entry.categories.first() == category, 'Passing categories directly works'
+        assert entry.title == 'Custom', 'We can set the title'
 
         assignment = factory.Assignment()
         template_c = Template.objects.count()
@@ -228,7 +243,8 @@ class EntryAPITest(TestCase):
         template = assignment.format.template_set.first()
         journal = factory.Journal(assignment=assignment, entries__n=0)
         n_c = Node.objects.filter(journal=journal).count()
-        entry = factory.PresetEntry(node__journal=journal)
+        deadline = factory.DeadlinePresetNode(format=assignment.format, forced_template=template)
+        entry = factory.PresetEntry(node=journal.node_set.get(preset=deadline))
 
         assert course_c + 1 == Course.objects.count(), 'A single course is created'
         assert a_c + 1 == Assignment.objects.count(), 'A single course and assignment is created'
@@ -257,9 +273,9 @@ class EntryAPITest(TestCase):
         assignment = factory.Assignment(format__templates=[{'type': Field.TEXT}])
         template = assignment.format.template_set.first()
 
-        deadline_preset_node = factory.DeadlinePresetNode(forced_template=template, format=assignment.format)
         journal = factory.Journal(assignment=assignment, entries__n=0)
-        entry = factory.PresetEntry(node__journal=journal, node__preset=deadline_preset_node)
+        deadline_preset_node = factory.DeadlinePresetNode(forced_template=template, format=assignment.format)
+        entry = factory.PresetEntry(node=journal.node_set.get(preset=deadline_preset_node))
         journal = entry.node.journal
         assert journal.node_set.count() == 1, 'Only a single node should be added to the journal'
         assert Node.objects.get(
@@ -267,13 +283,58 @@ class EntryAPITest(TestCase):
             'Correct node type is created, attached to the journal, whose PresetNode links to the correct template'
 
         # Again creating a preset deadline in advance, but now we only specify the format
+        journal = factory.Journal(assignment=assignment, entries__n=0)
         deadline_preset_node = factory.DeadlinePresetNode(format=assignment.format)
         template = deadline_preset_node.forced_template
-        entry = factory.PresetEntry(
-            node__journal__assignment=assignment, node__journal__entries__n=0, node__preset=deadline_preset_node)
+        entry = factory.PresetEntry(node=journal.node_set.get(preset=deadline_preset_node))
 
         assert Node.objects.get(type=Node.ENTRYDEADLINE, journal=journal, preset__forced_template=template), \
             'Correct node type is created, attached to the journal, whose PresetNode links to the correct template'
+
+    def test_add_entry_to_deadline_preset_node(self):
+        assignment = factory.Assignment(format__templates=False)
+        archived_template = factory.Template(format=assignment.format, add_fields=[{'type': Field.TEXT}], archived=True)
+        new_template = factory.Template(
+            format=assignment.format, add_fields=[{'type': Field.TEXT}], chain=archived_template.chain)
+        deadline = factory.DeadlinePresetNode(format=assignment.format, forced_template=new_template)
+        journal = factory.Journal(assignment=assignment, entries__n=0)
+        student = journal.author
+        deadline_node = journal.node_set.get(preset=deadline)
+
+        with self.assertRaises(VLEBadRequest) as context:
+            entry_utils.add_entry_to_deadline_preset_node(deadline_node, archived_template, student)
+        assert 'updated the template' in str(context.exception)
+
+        different_chain_template = factory.Template(format=assignment.format, add_fields=[{'type': Field.TEXT}])
+        with self.assertRaises(VLEBadRequest) as context:
+            entry_utils.add_entry_to_deadline_preset_node(deadline_node, different_chain_template, student)
+        assert 'Provided template is not used by the deadline' in str(context.exception)
+
+        deadline_node.type = 'p'
+        with self.assertRaises(VLEBadRequest) as context:
+            entry_utils.add_entry_to_deadline_preset_node(deadline_node, new_template, student)
+        assert 'Provided deadline type does not support entries' in str(context.exception)
+        deadline_node.type = 'd'
+
+        lock_date = deadline.lock_date
+        deadline.lock_date = datetime.now()
+        deadline.save()
+        deadline_node.refresh_from_db()
+        with self.assertRaises(VLEBadRequest) as context:
+            entry_utils.add_entry_to_deadline_preset_node(deadline_node, new_template, student)
+        assert 'The lock date for this deadline has passed' in str(context.exception)
+        deadline.lock_date = lock_date
+        deadline.save()
+
+        entry = factory.PresetEntry(node=deadline_node)
+        with self.assertRaises(VLEBadRequest) as context:
+            entry_utils.add_entry_to_deadline_preset_node(deadline_node, new_template, student)
+        assert 'Deadline already contains an entry' in str(context.exception)
+        entry.delete()
+        deadline_node.refresh_from_db()
+
+        entry = entry_utils.add_entry_to_deadline_preset_node(deadline_node, new_template, student)
+        assert entry.node == deadline_node, 'Entry creation was succesful'
 
     def test_validate_entry_content(self):
         assignment = factory.Assignment(format__templates=False)
@@ -419,12 +480,13 @@ class EntryAPITest(TestCase):
         # Check if students cannot update journals without required parts filled in
         create_params = self.valid_create_params.copy()
         create_params['content'] = {
-            list(self.valid_create_params['content'])[0]: 'only one field filled',
+            list(self.valid_create_params['content'])[1]: 'only optional field filled',
         }
         api.create(self, 'entries', params=create_params, user=self.student, status=400)
 
         # Check for assignment locked
-        self.group_journal.assignment.lock_date = date.today() - timedelta(1)
+        self.group_journal.assignment.due_date = datetime.now()
+        self.group_journal.assignment.lock_date = datetime.now()
         self.group_journal.assignment.save()
         self.assertRaises(
             VLEPermissionError,
@@ -432,7 +494,7 @@ class EntryAPITest(TestCase):
             Entry.objects.filter(node__journal=self.group_journal).first(),
         )
         api.create(self, 'entries', params=create_params, user=self.student, status=403)
-        self.group_journal.assignment.lock_date = date.today() + timedelta(1)
+        self.group_journal.assignment.lock_date = datetime.today() + timedelta(1)
         self.group_journal.assignment.save()
 
         # Check if template for other assignment wont work
@@ -456,8 +518,153 @@ class EntryAPITest(TestCase):
             'When the active LTI uplink is outdated no more entries can be created.'
         self.group_journal.assignment.active_lti_id = assignment_old_lti_id
         self.group_journal.assignment.save()
+
+        # Cannot set a custom title when the template does not allow it
+        payload = deepcopy(self.valid_create_params)
+        TemplateChain.objects.filter(template=payload['template_id']).update(allow_custom_title=False)
+        title = 'Custom'
+        payload['title'] = title
+        api.create(self, 'entries', params=payload, user=self.student, status=403)
+
+        # But we can do so if the template does allow for a custom title
+        TemplateChain.objects.filter(template=payload['template_id']).update(allow_custom_title=True)
+        resp = api.create(self, 'entries', params=payload, user=self.student)['entry']
+        assert resp['title'] == title, \
+            'It is possible to set a custom entry title if its template allows as such'
+
+        # A custom title can also be set for deadline entries
+        payload = deepcopy(payload)
+        deadline = factory.DeadlinePresetNode(format=self.g_assignment.format, forced_template=self.template)
+        payload['node_id'] = self.group_journal.node_set.get(preset=deadline).pk
+        resp = api.create(self, 'entries', params=payload, user=self.student)['entry']
+        assert resp['title'] == title, \
+            'It is possible to set a custom entry title if its template allows as such, for a deadline entry as well'
+
+        # Check entry categories, fixed categories
+        cat = factory.Category(assignment=self.g_assignment, templates=self.template)
+        payload = deepcopy(self.valid_create_params)
+        payload['category_ids'] = [cat.pk]
+
+        with mock.patch('VLE.models.Entry.validate_categories') as validate_categories_mock:
+            resp = api.create(self, 'entries', params=payload, user=self.student)['entry']
+            validate_categories_mock.assert_called_with(payload['category_ids'], self.g_assignment, self.template)
+        assert resp['categories'][0]['id'] == cat.pk
+        assert all(link.author == self.student for link in cat.entrycategorylink_set.filter(entry__pk=resp['id']))
+
+        # Check entry categories, allowing custom categories
+        cat2 = factory.Category(assignment=self.g_assignment)
+        self.template.chain.allow_custom_categories = True
+        self.template.chain.save()
+        payload = deepcopy(self.valid_create_params)
+        payload['category_ids'] = [cat.pk, cat2.pk]
+        resp = api.create(self, 'entries', params=payload, user=self.student)['entry']
+        entry = Entry.objects.get(pk=resp['id'])
+        assert set(entry.categories.all()) == set([cat, cat2]), (
+            'Entry is succesfully created, including categories which are not all default for the template '
+            'since we allow custom categories'
+        )
+
+        # It should not be possible to add a category on entry creation when the template has no default
+        # categories and allow_custom_categories is disabled
+        self.template.chain.allow_custom_categories = False
+        self.template.chain.save()
+        self.template.categories.set([])
+        payload = deepcopy(self.valid_create_params)
+        payload['category_ids'] = [cat2.pk]
+        api.create(self, 'entries', params=payload, user=self.student, status=400)
+
+        # TODO: Test for entry bound to entrydeadline
         # TODO: Test with file upload
         # TODO: Test added index
+
+    def test_create_entry_title(self):
+        assignment = factory.Assignment(format__templates=[{'type': Field.TEXT}])
+        template = assignment.format.template_set.first()
+        TemplateChain.objects.filter(template=template).update(allow_custom_title=False)
+        journal = factory.Journal(assignment=assignment, entries__n=0)
+
+        # Providing an empty title despite the template setting not allowing a custom title is allowed
+        for val in ['', None]:
+            params = factory.UnlimitedEntryCreationParams(title=val, journal=journal, author=journal.author)
+            resp = api.create(self, 'entries', params=params, user=journal.author)['entry']
+            entry = Entry.objects.get(pk=resp['id'])
+
+            assert not entry.title, 'Entry title remains unset (None or empty string)'
+            assert resp['title'] == template.name, (
+                'The entry title is still serialized based on the template name despite having been passed an empty '
+                'title during creation'
+            )
+
+        # A user cannot pass an actual value as title when the template setting does not allow as such
+        params = factory.UnlimitedEntryCreationParams(title='A title', journal=journal, author=journal.author)
+        api.create(self, 'entries', params=params, user=journal.author, status=403)
+
+        # We now allow a custom title to be set
+        TemplateChain.objects.filter(template=template).update(allow_custom_title=True)
+
+        # Because an entry title is optional, it is still possible to provide an empty value as title.
+        # In this scenario we expect the default title to be set (template name or preset node display name)
+        for val in ['', None]:
+            params = factory.UnlimitedEntryCreationParams(title=val, journal=journal, author=journal.author)
+            resp = api.create(self, 'entries', params=params, user=journal.author)['entry']
+            entry = Entry.objects.get(pk=resp['id'])
+
+            assert not entry.title, 'Entry title remains unset (None or empty string)'
+            assert resp['title'] == template.name, (
+                'The entry title is still serialized based on the template name despite having been passed an empty '
+                'title during creation'
+            )
+
+        title = 'A title'
+        params = factory.UnlimitedEntryCreationParams(title=title, journal=journal, author=journal.author)
+        resp = api.create(self, 'entries', params=params, user=journal.author)['entry']
+        assert resp['title'] == title
+
+    def test_patch_entry_title(self):
+        assignment = factory.Assignment(format__templates=[{'type': Field.TEXT}])
+        template = assignment.format.template_set.first()
+        TemplateChain.objects.filter(template=template).update(allow_custom_title=False)
+        journal = factory.Journal(assignment=assignment, entries__n=0)
+        entry = factory.UnlimitedEntry(node__journal=journal)
+        params = EntrySerializer(entry).data
+        params['pk'] = entry.pk
+
+        # Providing an empty title despite the template setting not allowing a custom title is allowed
+        for val in ['', None]:
+            params['title'] = val
+            resp = api.update(self, 'entries', params=params, user=journal.author)['entry']
+            entry.refresh_from_db()
+
+            assert not entry.title, 'Entry title remains unset (None or empty string)'
+            assert resp['title'] == template.name, (
+                'The entry title is still serialized based on the template name despite having been passed an empty '
+                'title during creation'
+            )
+
+        # A user cannot pass an actual value as title when the template setting does not allow as such
+        params['title'] = 'A value'
+        api.update(self, 'entries', params=params, user=journal.author, status=403)
+
+        # We now allow a custom title to be set
+        TemplateChain.objects.filter(template=template).update(allow_custom_title=True)
+
+        # Because an entry title is optional, it is still possible to provide an empty value as title.
+        # In this scenario we expect the default title to be set (template name or preset node display name)
+        for val in ['', None]:
+            params['title'] = val
+            resp = api.update(self, 'entries', params=params, user=journal.author)['entry']
+            entry.refresh_from_db()
+
+            assert not entry.title, 'Entry title remains unset (None or empty string)'
+            assert resp['title'] == template.name, (
+                'The entry title is still serialized based on the template name despite having been passed an empty '
+                'title during creation'
+            )
+
+        title = 'A value'
+        params['title'] = title
+        resp = api.update(self, 'entries', params=params, user=journal.author)['entry']
+        assert resp['title'] == title
 
     def test_create_invalid_preset_entry(self):
         # Entries cannot be created after lockdate
@@ -478,14 +685,15 @@ class EntryAPITest(TestCase):
         invalid_params = create_params.copy()
         invalid_params['template_id'] = factory.Template(format=self.g_assignment.format).pk
         resp = api.create(self, 'entries', params=invalid_params, user=self.student, status=400)['description']
-        assert 'Invalid template' in resp, \
+        assert 'Provided template is not used by the deadline' in resp, \
             'It should not be possible to create a deadline entry using a template other than the preset\'s template'
 
         # Node must be progress node if 'node_id' is supplied
         node.type = Node.PROGRESS
         node.save()
         resp = api.create(self, 'entries', params=create_params, user=self.student, status=400)['description']
-        assert 'EntryDeadline' in resp, 'You should not be able to create an entry in a PROGRESS node'
+        assert 'Provided deadline type does not support entries' in resp, \
+            'You should not be able to create an entry in a PROGRESS node'
         node.type = Node.ENTRYDEADLINE
         node.save()
 
@@ -637,6 +845,19 @@ class EntryAPITest(TestCase):
         assert entry['last_edited'] != updated_entry['last_edited'], \
             'Last edited should update when entry content changes'
 
+        # Cannot set a custom title when the template does not allow it
+        payload = deepcopy(params)
+        TemplateChain.objects.filter(template=entry['template']['id']).update(allow_custom_title=False)
+        title = 'Custom'
+        payload['title'] = title
+        api.update(self, 'entries', params=payload, user=self.student, status=403)
+
+        # But we can do so if the template does allow for a custom title
+        TemplateChain.objects.filter(template=entry['template']['id']).update(allow_custom_title=True)
+        resp = api.update(self, 'entries', params=payload, user=self.student)['entry']
+        assert resp['title'] == title, \
+            'It is possible to set a custom entry title if its template allows as such'
+
         # Check if last_edited_by gets set to the correct other user
         last_edited = factory.AssignmentParticipation(assignment=self.group_journal.assignment)
         self.group_journal.add_author(last_edited)
@@ -647,10 +868,14 @@ class EntryAPITest(TestCase):
         api.update(self, 'entries', params=params.copy(), user=self.teacher, status=403)
 
         # Check for assignment locked
-        self.group_journal.assignment.lock_date = date.today() - timedelta(1)
+        self.group_journal.assignment.unlock_date = datetime.today() - timedelta(3)
+        self.group_journal.assignment.due_date = datetime.today() - timedelta(2)
+        self.group_journal.assignment.lock_date = datetime.today() - timedelta(1)
         self.group_journal.assignment.save()
         api.update(self, 'entries', params=params.copy(), user=self.student, status=403)
-        self.group_journal.assignment.lock_date = date.today() + timedelta(1)
+        self.group_journal.assignment.unlock_date = datetime.now()
+        self.group_journal.assignment.due_date = datetime.now() + timedelta(weeks=1)
+        self.group_journal.assignment.lock_date = datetime.now() + timedelta(weeks=2)
         self.group_journal.assignment.save()
 
         # Entries can no longer be edited if the LTI link is outdated (new active uplink)
@@ -723,7 +948,9 @@ class EntryAPITest(TestCase):
 
         # Only superusers should be allowed to delete locked entries
         entry = api.create(self, 'entries', params=self.valid_create_params, user=self.student)['entry']
-        self.group_journal.assignment.lock_date = date.today() - timedelta(1)
+        self.group_journal.assignment.unlock_date = datetime.today() - timedelta(3)
+        self.group_journal.assignment.due_date = datetime.today() - timedelta(2)
+        self.group_journal.assignment.lock_date = datetime.today() - timedelta(1)
         self.group_journal.assignment.save()
         api.delete(self, 'entries', params={'pk': entry['id']}, user=self.student, status=403)
         api.delete(self, 'entries', params={'pk': entry['id']}, user=factory.Admin())
@@ -782,7 +1009,7 @@ class EntryAPITest(TestCase):
         assert Node.objects.filter(pk=node_student2.pk).exists(), \
             'Node student 2 exist before deletion of preset'
 
-        utils.delete_presets([{'id': entrydeadline.pk}])
+        entrydeadline.delete()
 
         assert Entry.objects.filter(pk=entry['id']).exists(), \
             'Entry should also exist after deletion of preset'
@@ -820,7 +1047,7 @@ class EntryAPITest(TestCase):
             'All fcs should cascade (comment rt, comment attached files, content rt, content files)'
 
         deadline = factory.DeadlinePresetNode(format=assignment.format)
-        deadline_entry = factory.PresetEntry(node__journal=journal, node__preset=deadline)
+        deadline_entry = factory.PresetEntry(node=journal.node_set.get(preset=deadline))
         deadline_node = journal.node_set.get(type=Node.ENTRYDEADLINE)
         factory.StudentComment(entry=deadline_entry, n_att_files=1, n_rt_files=1)
 
@@ -846,22 +1073,34 @@ class EntryAPITest(TestCase):
         assert not Content.objects.all().exclude(pk__in=all_pre_setup_contents).exists(), \
             'Cascade works properly on bulk delete as well'
 
-    def test_entry_serializer(self):
+    def test_entry_serializer_specific(self):
         grade = 3
         entry = factory.UnlimitedEntry(
             node__journal__assignment__format__templates=[{'type': Field.TEXT}],
-            grade__grade=grade
+            grade__grade=grade,
+            categories=2,
         )
         journal = entry.node.journal
         assignment = journal.assignment
         student = journal.author
         teacher = journal.assignment.author
 
-        with self.assertNumQueries(self.entry_serializer_base_query_count):
+        def add_state(entry):
+            category = factory.Category(assignment=journal.assignment, templates=entry.template)
+            entry.categories.add(category)
+
+        with QueryContext() as context_pre:
             data = EntrySerializer(
-                EntrySerializer.setup_eager_loading(Entry.objects.filter(pk=entry.pk))[0],
+                EntrySerializer.setup_eager_loading(Entry.objects.filter(pk=entry.pk)).get(),
                 context={'user': student}
             ).data
+        add_state(entry)
+        with QueryContext() as context_post:
+            data = EntrySerializer(
+                EntrySerializer.setup_eager_loading(Entry.objects.filter(pk=entry.pk)).get(),
+                context={'user': student}
+            ).data
+        assert len(context_pre) == len(context_post) and len(context_pre) <= self.entry_serializer_base_query_count
 
         assert data['grade']['grade'] == grade
 
@@ -873,11 +1112,19 @@ class EntryAPITest(TestCase):
         )
 
         # Teacher requires one additional query to check can_grade
-        with self.assertNumQueries(self.entry_serializer_base_query_count + 1):
+        expected_queries = self.entry_serializer_base_query_count + 1
+        with QueryContext() as context_pre:
             data = EntrySerializer(
-                EntrySerializer.setup_eager_loading(Entry.objects.filter(pk=entry.pk))[0],
+                EntrySerializer.setup_eager_loading(Entry.objects.filter(pk=entry.pk)).get(),
                 context={'user': teacher}
             ).data
+        add_state(entry)
+        with QueryContext() as context_post:
+            data = EntrySerializer(
+                EntrySerializer.setup_eager_loading(Entry.objects.filter(pk=entry.pk)).get(),
+                context={'user': teacher}
+            ).data
+        assert len(context_pre) == len(context_post) and len(context_pre) <= expected_queries
 
         def check_is_editable():
             entry_without_grade = factory.UnlimitedEntry(node__journal=journal, grade=None)
@@ -888,6 +1135,7 @@ class EntryAPITest(TestCase):
             ).data
             assert data['editable']
 
+            assignment.due_date = timezone.now()
             assignment.lock_date = timezone.now()
             assignment.save()
 
@@ -897,6 +1145,8 @@ class EntryAPITest(TestCase):
             ).data
             assert not data['editable']
 
+            assignment.unlock_date = timezone.now() - timedelta(2)
+            assignment.due_date = timezone.now() - timedelta(1)
             assignment.lock_date = timezone.now() - timedelta(1)
             assignment.save()
             graded_entry = factory.UnlimitedEntry(node__journal=journal, grade__grade=1)
@@ -925,7 +1175,8 @@ class EntryAPITest(TestCase):
             assert data['title'] == entry.template.name, \
                 '''An unlimited entry's title should be the template name.'''
 
-            preset_entry = factory.PresetEntry(node__journal=journal)
+            deadline = factory.DeadlinePresetNode(format=journal.assignment.format)
+            preset_entry = factory.PresetEntry(node=journal.node_set.get(preset=deadline))
             preset_node_display_name = 'Display Name'
             preset_entry.node.preset.display_name = preset_node_display_name
             preset_entry.node.preset.save()
@@ -935,6 +1186,18 @@ class EntryAPITest(TestCase):
             ).data
             assert data['title'] == preset_node_display_name, \
                 '''A preset entry's title should be the display name of the preset node.'''
+
+            custom_title = 'Custom title'
+            preset_entry.title = custom_title
+            preset_entry.save()
+            data = EntrySerializer(
+                EntrySerializer.setup_eager_loading(Entry.objects.filter(pk=preset_entry.pk)).get(),
+                context={'user': teacher}
+            ).data
+            assert data['title'] == custom_title, \
+                '''A student's custom entry title should take precedence over the preset node display name.'''
+            preset_entry.title = None
+            preset_entry.save()
 
             preset_entry.node.preset.delete()
             data = EntrySerializer(
@@ -992,9 +1255,9 @@ class EntryAPITest(TestCase):
         student = journal.author
 
         # The entry serializer query count is invariant to the number of FILE fields.
-        with self.assertNumQueries(self.entry_serializer_base_query_count):
+        with assert_num_queries_less_than(self.entry_serializer_base_query_count):
             data = EntrySerializer(
-                EntrySerializer.setup_eager_loading(Entry.objects.filter(pk=entry.pk))[0],
+                EntrySerializer.setup_eager_loading(Entry.objects.filter(pk=entry.pk)).get(),
                 context={'user': student}
             ).data
 
@@ -1020,7 +1283,7 @@ class EntryAPITest(TestCase):
 
         # Jir requires a can_view_course check
         # Jir requires access to all source assignment's courses to provide the correct abbreviation
-        with self.assertNumQueries(self.entry_serializer_base_query_count + 2):
+        with assert_num_queries_less_than(self.entry_serializer_base_query_count + 2):
             data = EntrySerializer(
                 EntrySerializer.setup_eager_loading(Entry.objects.filter(pk=entry.pk))[0],
                 context={'user': student}
@@ -1031,3 +1294,43 @@ class EntryAPITest(TestCase):
         assert data['jir']['source']['assignment']['name'] == jir.source.assignment.name
         assert data['jir']['source']['assignment']['course']['abbreviation'] == \
             jir.source.assignment.courses.first().abbreviation
+
+    def test_validate_categories(self):
+        assignment = factory.Assignment(format__templates=[{'type': Field.TEXT}])
+        template = assignment.format.template_set.first()
+        cat1 = factory.Category(assignment=assignment, templates=template)
+
+        category_ids = Entry.validate_categories(None, assignment, template)
+        assert not category_ids, 'If no categories are provided, the category_ids should be empty'
+
+        category_ids = list(Category.objects.filter(pk=cat1.pk).values_list('pk', flat=True))
+        category_ids = Entry.validate_categories(category_ids, assignment, template)
+        assert category_ids == set([cat1.pk]), 'If validated, a set of the category pks should be returned'
+
+        # Categories must be part of the provided assignment
+        cat2 = factory.Category(assignment=factory.Assignment())
+        category_ids = list(Category.objects.filter(pk__in=[cat1.pk, cat2.pk]).values_list('pk', flat=True))
+        with self.assertRaises(ValidationError):
+            Entry.validate_categories(category_ids, assignment, template)
+
+        # If the template has fixed categories, the categories must be part of the template
+        cat2 = factory.Category(assignment=factory.Assignment())
+        category_ids = list(Category.objects.filter(pk=cat1.pk).values_list('pk', flat=True))
+        template.categories.set([])
+        assert not template.chain.allow_custom_categories
+        with self.assertRaises(ValidationError):
+            Entry.validate_categories(category_ids, assignment, template)
+
+    def test_entry_add_category(self):
+        category = factory.Category(assignment=self.g_assignment)
+        entry = Entry.objects.filter(node__journal=self.group_journal).first()
+        student = entry.author
+        teacher = self.g_assignment.author
+
+        entry.add_category(category, student)
+        link_student = category.entrycategorylink_set.get(entry=entry, author=student)
+        entry.add_category(category, teacher)
+        link_teacher = category.entrycategorylink_set.get(entry=entry)
+        assert link_student == link_teacher, 'Row can be reused.'
+        assert link_student.author == student == link_teacher.author, \
+            'Author should not be changed if the category was already part of the entry'

@@ -170,7 +170,11 @@
                     <h2 class="theme-h2 multi-form">
                         Manage existing teacher entries
                     </h2>
-                    <b>Note:</b> Changes will not be saved until you click 'save' at the bottom of this window!
+                    <b>Note:</b>
+                    <ul>
+                        <li>Changes will not be saved until you click 'save' at the bottom of this window!</li>
+                        <li>Categories are synchronised with any changes made to the teacher entry.</li>
+                    </ul>
 
                     <hr/>
                     <teacher-entries
@@ -565,7 +569,7 @@ export default {
         /* Check query to see if the LTI submission corresponds to a left journal. Remove query param to prevent
          * showing an alert on subsequent page visits / refreshes. */
         if (this.$route.query.left_journal) {
-            const query = Object.assign({}, this.$route.query)
+            const query = { ...this.$route.query }
             delete query.left_journal
             this.$router.replace({ query })
             this.LTILeftJournal = true
@@ -603,7 +607,7 @@ export default {
                        groups of the user provided that yields journals. */
                     if (!this.getSelfSetGroupFilter && participant && participant.groups) {
                         this.setJournalGroupFilter(participant.groups.filter(
-                            participantGroup => this.groups.some(group => group.id === participantGroup.id)))
+                            (participantGroup) => this.groups.some((group) => group.id === participantGroup.id)))
                     }
                 }
 
@@ -622,7 +626,7 @@ export default {
         },
         handleEdit () {
             this.$router.push({
-                name: 'FormatEdit',
+                name: 'AssignmentEditor',
                 params: {
                     cID: this.cID,
                     aID: this.aID,
@@ -665,7 +669,7 @@ export default {
                 + ' Students will not be able to update their journals for this assignment until they visit'
                 + ' the assignment on your LMS at least once.')) {
                 assignmentAPI.update(this.aID, {
-                    active_lti_course: this.newActiveLTICourse,
+                    update_lti_course: this.newActiveLTICourse,
                 })
                     .then(() => {
                         this.$toasted.success('Updated active LTI course')

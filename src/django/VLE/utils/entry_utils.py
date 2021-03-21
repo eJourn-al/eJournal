@@ -40,20 +40,27 @@ def check_fields(template, content_dict):
             raise VLEMissingRequiredField(field)
 
 
-def add_entry_to_node(node, template, author):
+def add_entry_to_deadline_preset_node(node, template, author, category_ids=None, title=None):
     if not (node.preset and node.preset.forced_template == template):
-        raise VLEBadRequest('Invalid template for preset node.')
+        if (
+            node.preset
+            and node.preset.forced_template.chain == template.chain
+            and template.archived
+        ):
+            raise VLEBadRequest('Your teacher has updated the template for this entry, please reload and try again.')
+        else:
+            raise VLEBadRequest('Provided template is not used by the deadline, please reload and try again.')
 
     if node.type != Node.ENTRYDEADLINE:
-        raise VLEBadRequest('Passed node is not an EntryDeadline node.')
+        raise VLEBadRequest('Provided deadline type does not support entries.')
 
     if node.entry:
-        raise VLEBadRequest('Passed node already contains an entry.')
+        raise VLEBadRequest('Deadline already contains an entry.')
 
     if node.preset.is_locked():
-        raise VLEBadRequest('The lock date for this node has passed.')
+        raise VLEBadRequest('The lock date for this deadline has passed.')
 
-    entry = factory.make_entry(template, author, node)
+    entry = factory.make_entry(template, author, node, category_ids, title)
     node.entry = entry
     node.save()
     return entry

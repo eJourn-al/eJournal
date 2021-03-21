@@ -1,20 +1,12 @@
 <!-- TODO: update and replace all (single) selection fields. -->
 <template>
-    <!-- eslint-disable vue/attribute-hyphenation -->
     <multiselect
         :value="value"
         :label="label"
         :trackBy="trackBy ? trackBy : label"
         :maxHeight="500"
-        :class="{
-            'multiple': multiple,
-            'force-show-placeholder': !isOpen && (!value || !value.length),
-            'show-search': isOpen && searchable,
-            'show-limit': value && value.length,
-        }"
         :options="sortedOptions"
         :multiple="multiple"
-        :limit="multiple ? -1 : 1"
         :closeOnSelect="!multiple"
         :clearOnSelect="false"
         :preselectFirst="false"
@@ -22,29 +14,33 @@
         :preserveSearch="false"
         :showLabels="false"
         :placeholder="(!multiple && value) ? value[label] : placeholder"
+        class="theme-multiselect theme-shadow"
         open-direction="bottom"
         @input="newValue => $emit('input', newValue)"
-        @open="() => { isOpen = true }"
-        @close="() => { isOpen = false }"
-        @select="(e) => $emit('select', e)"
+        @select="(selectedOption, id) => $emit('select', selectedOption, id)"
+        @remove="(removedOption, id) => $emit('remove', removedOption, id)"
     >
-        <span slot="limit">
-            {{ (value && value.length) ? value.length : 'No' }} {{ multiSelectText }}
-        </span>
+        <template slot="tag">
+            {{ '' }}
+        </template>
         <template slot="placeholder">
             {{ placeholder }}
         </template>
         <template slot="noResult">
             Not found
         </template>
-        <icon
-            slot="caret"
-            name="sort"
-            scale="0.8"
-            class="caret multiselect__caret"
-        />
+        <template
+            slot="selection"
+            slot-scope="{ values, search, isOpen }"
+        >
+            <span
+                v-if="values.length && !isOpen"
+                class="multiselect__single"
+            >
+                {{ values.length }} {{ multiSelectText }}
+            </span>
+        </template>
     </multiselect>
-    <!-- eslint-enable vue/attribute-hyphenation -->
 </template>
 
 <script>
@@ -80,11 +76,6 @@ export default {
             default: 'selected',
         },
     },
-    data () {
-        return {
-            isOpen: false,
-        }
-    },
     computed: {
         sortedOptions () {
             if (!Array.isArray(this.options)) return []
@@ -103,96 +94,40 @@ export default {
 }
 </script>
 
+<style src="vue-multiselect/dist/vue-multiselect.min.css"></style>
 <style lang="sass">
-@import '~sass/partials/shadows.sass'
 
-.multiselect
+div.theme-multiselect
     color: $theme-dark-blue
-    .multiselect__tags
-        @extend .theme-shadow
-        -moz-user-select: -moz-none
-        -khtml-user-select: none
-        -webkit-user-select: none
-        -o-user-select: none
-        user-select: none
-        position: relative
-        cursor: default
-        font-size: 1em
-        border-radius: 5px
+    word-wrap: nowrap !important
+    border-radius: 5px
+    &, .multiselect__content-wrapper
         border: 1px solid $theme-dark-grey
-        padding: 0.375rem 0.75rem
-        z-index: 20
-        white-space: nowrap
-        overflow: hidden
-        span
-            display: none
-        .multiselect__placeholder, .multiselect__single
-            display: block
-            color: inherit
-            font-size: inherit
-            line-height: inherit
-            margin: 0px
-            padding: 0px
-        .multiselect__tags-wrap
-            display: none
-        .multiselect__placeholder
-            text-transform: capitalize
-    &:not(.multiple) .multiselect__tags .multiselect__input
-        font-size: inherit
-        line-height: inherit
-        margin: 0px
-        padding: 0px
+    &, .multiselect__content-wrapper, .multiselect__tags
+        border-radius: 5px !important
     &.no-right-radius
-        .multiselect__tags
-            border-top-right-radius: 0 !important
-            border-bottom-right-radius: 0 !important
-    &.show-limit .multiselect__tags span
-        display: inline-block
-    &.show-search.multiple .multiselect__tags
+        border-top-right-radius: 0 !important
+        border-bottom-right-radius: 0 !important
+    .multiselect__tags
         font-size: 1em
-        span
-            display: inline-block
-            position: relative
-            top: 4px
-            font-size: 0.8em
+        border-width: 0px
         input
-            background: rgba(0, 0, 0, 0)
-            position: relative
+            padding: 0px !important
+            &:focus
+                border-width: 0px
+        input, span
             display: block
-            top: -2px
-            left: -4px
-    &.multiple
-        .multiselect__single
-            display: none
+            width: auto
+            max-width: 100%
+            text-overflow: ellipsis
+            white-space: nowrap
+            overflow: hidden
+        .multiselect__placeholder, .multiselect__single
+            color: inherit
     .multiselect__select::before
         border-color: $theme-dark-blue transparent transparent
-    .multiselect__content-wrapper
-        @extend .theme-shadow
-        background-color: white
-        z-index: 1
-        border-radius: 0px 0px 5px 5px !important
-        padding-top: 10px
-        transform: translateY(-10px)
-    &.force-show-placeholder
-        .multiselect__placeholder
-            display: block
-    .multiselect__caret
-        position: absolute
-        right: 10px
-        z-index: 21
-        top: 50%
-        transform: translateY(-50%)
-    &.multiselect--active
-        .multiselect__tags
-            box-shadow: 0 3px 6px rgba(0,0,0,0.16), 0 3px 6px rgba(0,0,0,0.23) !important
-            max-height: 1.575em
-    &.multiselect--above
-        .multiselect__content-wrapper
-            border-radius: 5px 5px 0px 0px !important
-            padding-bottom: 10px
-            padding-top: 0px
-            transform: translateY(10px)
-    span.multiselect__option--selected, span.multiselect__option--selected::after
+    span.multiselect__option--selected, span.multiselect__option--selected::after,
+    span.multiselect__option--highlight, span.multiselect__option--highlight::after
         background: $theme-light-grey !important
         color: $theme-dark-blue
     span.multiselect__option--selected::before
@@ -202,9 +137,4 @@ export default {
         vertical-align: middle
         margin-right: 4px
         color: $theme-blue
-    span.multiselect__option--highlight, span.multiselect__option--highlight::after
-        background: $theme-medium-grey !important
-        color: $theme-dark-blue
 </style>
-
-<style src="vue-multiselect/dist/vue-multiselect.min.css"></style>

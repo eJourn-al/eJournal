@@ -4,7 +4,7 @@ import test.factory
 import factory
 from django.core.exceptions import ValidationError
 
-from VLE.models import Field, Journal, PresetNode
+from VLE.models import Field, Journal, PresetNode, Template
 
 
 def _fc_to_rt_img_element(fc):
@@ -296,3 +296,72 @@ class RichTextPresetNodeDescriptionFileContextFactory(RichTextFileContextFactory
             })
             preset.description = _none_to_str(preset.description) + _fc_to_rt_img_element(self)
             preset.save()
+
+
+class AttachedPresetNodeFileContextFactory(RichTextPresetNodeDescriptionFileContextFactory):
+    """
+    Yields a FC which is attached to a preset node by default.
+    """
+    in_rich_text = False
+    # Order matters, cannot inherit the FileContextFactory file property, the author would be set after.
+    file = factory.django.FileField()
+
+    @factory.post_generation
+    def preset(self, create, extracted, **kwargs):
+        if not create:
+            return
+
+        if isinstance(extracted, PresetNode):
+            if extracted.format.assignment != self.assignment:
+                raise ValidationError('Provided presetnode is not part of the set assignment.')
+
+            extracted.attached_files.add(self)
+        else:
+            preset = test.factory.ProgressPresetNode(**{
+                'forced_template': self.assignment.format.template_set.first(),
+                **kwargs,
+                'format': self.assignment.format,
+            })
+            preset.attached_files.add(self)
+
+
+class RichTextCategoryDescriptionFileContextFactory(RichTextFileContextFactory):
+    """Generates a RT file embedded in the description of a category."""
+    category = factory.SubFactory('test.factory.category.CategoryFactory')
+    author = factory.SelfAttribute('category.author')
+
+    @factory.post_generation
+    def update_category_description(self, create, extracted):
+        if not create:
+            return
+
+        self.category.description = _none_to_str(self.category.description) + _fc_to_rt_img_element(self)
+        self.category.save()
+
+
+class RichTextTemplateTitleDescriptionFileContextFactory(RichTextFileContextFactory):
+    """
+    Generates a RT file embedded in the title description of a template chain.
+
+    Additional Default yields:
+        - Assignment: VLE.models.Assignment, assignment which the FC is linked to.
+        - Author: VLE.models.User, user who created the FileContext, defaults to assignment author.
+    """
+    assignment = factory.SubFactory('test.factory.assignment.AssignmentFactory')
+    author = factory.SelfAttribute('assignment.author')
+
+    @factory.post_generation
+    def template(self, create, extracted, **kwargs):
+        if not create:
+            return
+
+        if isinstance(extracted, Template):
+            if extracted.format.assignment != self.assignment:
+                raise ValidationError('Provided template is not part of the set assignment.')
+
+            extracted.chain.title_description = (
+                _none_to_str(extracted.chain.title_description) + _fc_to_rt_img_element(self)
+            )
+            extracted.chain.save()
+        else:
+            raise ValidationError('Provide a template.')

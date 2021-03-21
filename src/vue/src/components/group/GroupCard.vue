@@ -144,10 +144,10 @@ export default {
     },
     computed: {
         notMembers () {
-            return this.participants.filter(p => !this.members.map(m => m.id).includes(p.id))
+            return this.participants.filter((p) => !this.members.map((m) => m.id).includes(p.id))
         },
         members () {
-            return this.participants.filter(p => p.groups.map(g => g.id).includes(this.group.id))
+            return this.participants.filter((p) => p.groups.map((g) => g.id).includes(this.group.id))
         },
     },
     methods: {

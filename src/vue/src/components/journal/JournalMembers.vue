@@ -142,9 +142,9 @@ export default {
                 journalAPI.kick(this.journal.id, user.id, { responseSuccessToast: true })
                     .then(() => {
                         this.getParticipantsWithoutJournal()
-                        this.authors = this.authors.filter(author => author.user.id !== user.id)
+                        this.authors = this.authors.filter((author) => author.user.id !== user.id)
                         this.journal.author_count = this.authors.length
-                        this.journal.usernames = this.authors.map(author => author.user.username).join(', ')
+                        this.journal.usernames = this.authors.map((author) => author.user.username).join(', ')
                         if (this.journal.author_count === 0 && this.$router.app.$route.name !== 'Assignment') {
                             this.$router.push(this.$root.assignmentRoute(this.assignment))
                         }
@@ -182,7 +182,7 @@ export default {
                     .then((authors) => {
                         this.authors = authors
                         this.journal.author_count = this.authors.length
-                        this.journal.usernames = this.authors.map(author => author.user.username).join(', ')
+                        this.journal.usernames = this.authors.map((author) => author.user.username).join(', ')
                         this.saveRequestInFlight = false
                         this.getParticipantsWithoutJournal()
                         this.participantsToAdd = []

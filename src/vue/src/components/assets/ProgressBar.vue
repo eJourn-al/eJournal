@@ -83,7 +83,7 @@ export default {
     },
     computed: {
         progressPercentage () {
-            return this.zeroIfNull(this.currentPoints / this.totalPoints * 100).toFixed(0)
+            return this.zeroIfNull((this.currentPoints * 100) / this.totalPoints).toFixed(0)
         },
         difference () {
             return Math.round(Math.abs((this.comparePoints - this.currentPoints) * 100)) / 100

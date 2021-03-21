@@ -1,7 +1,14 @@
 <template>
-    <h2 class="theme-h2 mb-2">
-        {{ title }}
-    </h2>
+    <b-row
+        no-gutters
+        class="multi-form"
+    >
+        <span class="theme-h2">
+            {{ title }}
+        </span>
+
+        <slot/>
+    </b-row>
 </template>
 
 <script>

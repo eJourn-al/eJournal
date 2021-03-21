@@ -2,9 +2,11 @@ import 'flatpickr/dist/flatpickr.css' // eslint-disable-line import/no-extraneou
 import 'flatpickr/dist/themes/material_blue.css' // eslint-disable-line import/no-extraneous-dependencies
 import 'intro.js/introjs.css' // eslint-disable-line import/no-extraneous-dependencies
 import Vue from 'vue'
+import isEqualWith from 'lodash.isequalwith'
 
 import '@/helpers/vue_awesome_icons.js'
 import initBootstrap from '@/helpers/bootstrap.js'
+import initGlobalHelpers from '@/helpers/global_mixins.js'
 import initSentry from '@/helpers/sentry.js'
 
 import Icon from 'vue-awesome/components/Icon.vue'
@@ -14,11 +16,17 @@ import flatPickr from 'vue-flatpickr-component'
 
 import connection from '@/api/connection.js'
 
+import { sync } from 'vuex-router-sync'
+
 import App from './App.vue'
 import ResetWrapper from '@/components/assets/ResetWrapper.vue'
 import ThemeSelect from './components/assets/ThemeSelect.vue'
 import router from './router/index.js'
 import store from './store/index.js'
+
+/* Adds a module to the store which is reactive to route parameter changes.
+ * This allows other modules to work reactively with route changes */
+sync(store, router)
 
 Vue.config.productionTip = false
 Vue.use(Toasted, {
@@ -34,9 +42,19 @@ Vue.component('reset-wrapper', ResetWrapper)
 
 initSentry(Vue)
 initBootstrap(Vue)
+initGlobalHelpers(Vue)
 
 /* Checks the store for for permissions according to the current route cID or aID. */
 Vue.prototype.$hasPermission = store.getters['permissions/hasPermission']
+
+/* Checks for object equality, where comparison of values null and '' yields true */
+Vue.prototype.$_isEqual = (obj1, obj2) => isEqualWith(obj1, obj2, (a, b) => {
+    if ((a === null || a === '') && (b === null || b === '')) {
+        return true
+    }
+    return undefined // default comparison should take place
+})
+
 const toApi = new RegExp(`^${CustomEnv.API_URL}`)
 
 /* eslint-disable */
@@ -66,7 +84,7 @@ new Vue({
     store,
     components: { App },
     data: {
-        colors: ['border-pink', 'border-purple', 'border-yellow', 'border-blue'],
+        borderColors: ['border-pink', 'border-purple', 'border-yellow', 'border-blue'],
         previousPage: null,
         windowWidth: 0,
         maxFileSizeBytes: 10485760,
@@ -122,7 +140,7 @@ new Vue({
     },
     methods: {
         getBorderClass (id) {
-            return this.colors[id % this.colors.length]
+            return this.borderColors[id % this.borderColors.length]
         },
         beautifyDate (date, displayDate = true, displayTime = true) {
             if (!date) {
@@ -154,7 +172,7 @@ new Vue({
 
             if (this.$hasPermission('can_view_all_journals', 'assignment', assignment.id)) {
                 if (!assignment.is_published && !assignment.is_group_assignment) { // Teacher not published route
-                    route.name = 'FormatEdit'
+                    route.name = 'AssignmentEditor'
                 } else { // Teacher published route
                     route.name = 'Assignment'
                 }
@@ -183,6 +201,6 @@ new Vue({
                 ([key, value]) => ((key.indexOf('assignment') >= 0) && value.can_grade))
         },
     },
-    render: h => h(App),
+    render: (h) => h(App),
     template: '<App/>',
 }).$mount('#app')

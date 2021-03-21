@@ -9,6 +9,7 @@ import shutil
 import uuid
 
 from django.conf import settings
+from django.core.files.base import ContentFile
 
 import VLE.models
 import VLE.utils.error_handling
@@ -64,10 +65,16 @@ def compress_all_user_data(user, extra_data_dict=None, archive_extension='zip'):
     return archive_ouput_path, '{}.{}'.format(archive_name, archive_extension)
 
 
+# NOTE: when updating this list of parameters, update it in the functions: establish_file, establish_rich_text,
+# _set_file_context and inside the functions establish_file&establish_rich_text where _set_file_context is called.
 def _set_file_context(
-    fc, assignment=None, journal=None, content=None, comment=None, preset_node=None, in_rich_text=False
-    # NOTE: when updating this list of parameters, update it in the functions: establish_file, establish_rich_text,
-    # _set_file_context and inside the functions establish_file&establish_rich_text where _set_file_context is called.
+    fc,
+    assignment=None,
+    journal=None,
+    content=None,
+    comment=None,
+    category=None,
+    in_rich_text=False,
 ):
     if comment:
         journal = comment.entry.node.journal
@@ -78,13 +85,11 @@ def _set_file_context(
             journal = content.entry.node.journal
     if journal:
         assignment = journal.assignment
-    if preset_node:
-        assignment = preset_node.format.assignment
 
     fc.comment = comment
     fc.content = content
     fc.journal = journal
-    fc.preset_node = preset_node
+    fc.category = category
     fc.assignment = assignment
     fc.is_temp = False
     fc.in_rich_text = in_rich_text
@@ -116,11 +121,18 @@ def _move_newly_established_file_context_to_permanent_location(fc):
     os.rename(initial_path, str(new_path))
 
 
+# NOTE: when updating this list of parameters, update it in the functions: establish_file, establish_rich_text,
+# _set_file_context and inside the functions establish_file&establish_rich_text where _set_file_context is called.
 def establish_file(
-    author, file_context=None, identifier=None, assignment=None, journal=None, content=None, comment=None,
-    preset_node=None, in_rich_text=False
-    # NOTE: when updating this list of parameters, update it in the functions: establish_file, establish_rich_text,
-    # _set_file_context and inside the functions establish_file&establish_rich_text where _set_file_context is called.
+    author,
+    file_context=None,
+    identifier=None,
+    assignment=None,
+    journal=None,
+    content=None,
+    comment=None,
+    category=None,
+    in_rich_text=False,
 ):
     """Sets the context of a temporary file, and moves it to a permanent location."""
     if isinstance(file_context, VLE.models.FileContext):
@@ -142,7 +154,7 @@ def establish_file(
         journal=journal,
         content=content,
         comment=comment,
-        preset_node=preset_node
+        category=category,
     )
     _move_newly_established_file_context_to_permanent_location(file_context)
 
@@ -166,8 +178,45 @@ def get_temp_files_from_rich_text(rich_text):
     return get_files_from_rich_text(rich_text).filter(is_temp=True)
 
 
+def copy_assignment_related_rt_files(rich_text, user, assignment=None, category=None):
+    """
+    Creates a new copy for each of the rich text files, replacing old references with a new one.
+
+    Returns modified rich_text containing references to the newly copied files.
+    """
+    if rich_text is None:
+        return None
+
+    for old_access_id in get_access_ids_from_rich_text(rich_text):
+        old_fc = VLE.models.FileContext.objects.get(access_id=old_access_id)
+
+        copied_fc = VLE.models.FileContext.objects.create(
+            file=ContentFile(old_fc.file.file.read(), name=old_fc.file_name),
+            file_name=old_fc.file_name,
+            author=user,
+            is_temp=False,
+            in_rich_text=True,
+            assignment=assignment if assignment else old_fc.assignment,
+            category=category if category else old_fc.category,
+            content=old_fc.content,
+            comment=old_fc.comment,
+            journal=old_fc.journal,
+        )
+
+        rich_text = rich_text.replace(old_access_id, copied_fc.access_id)
+
+    return rich_text
+
+
 def establish_rich_text(
-    author, rich_text, assignment=None, journal=None, content=None, comment=None, preset_node=None, in_rich_text=True
+    author,
+    rich_text,
+    assignment=None,
+    journal=None,
+    content=None,
+    comment=None,
+    category=None,
+    in_rich_text=True,
     # NOTE: when updating this list of parameters, update it in the functions: establish_file, establish_rich_text,
     # _set_file_context and inside the functions establish_file&establish_rich_text where _set_file_context is called.
 ):
@@ -179,6 +228,6 @@ def establish_rich_text(
             journal=journal,
             content=content,
             comment=comment,
-            preset_node=preset_node,
-            in_rich_text=in_rich_text
+            category=category,
+            in_rich_text=in_rich_text,
         )

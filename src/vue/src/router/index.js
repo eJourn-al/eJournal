@@ -85,36 +85,36 @@ const router = new Router({
         path: '/Home/Course/:cID',
         name: 'Course',
         component: Course,
-        props: route => ({
+        props: (route) => ({
             cID: Number.parseInt(route.params.cID, 10),
         }),
     }, {
         path: '/Home/Course/:cID/CourseEdit',
         name: 'CourseEdit',
         component: () => import(/* webpackChunkName: 'course-edit' */ '@/views/CourseEdit.vue'),
-        props: route => ({
+        props: (route) => ({
             cID: Number.parseInt(route.params.cID, 10),
         }),
     }, {
         path: '/Home/Course/:cID/CourseEdit/UserRoleConfiguration',
         name: 'UserRoleConfiguration',
         component: () => import(/* webpackChunkName: 'role-config' */ '@/views/UserRoleConfiguration.vue'),
-        props: route => ({
+        props: (route) => ({
             cID: Number.parseInt(route.params.cID, 10),
         }),
     }, {
         path: '/Home/Course/:cID/Assignment/:aID',
         name: 'Assignment',
         component: Assignment,
-        props: route => ({
+        props: (route) => ({
             cID: Number.parseInt(route.params.cID, 10),
             aID: Number.parseInt(route.params.aID, 10),
         }),
     }, {
-        path: '/Home/Course/:cID/Assignment/:aID/Format',
-        name: 'FormatEdit',
-        component: () => import(/* webpackChunkName: 'format-edit' */ '@/views/FormatEdit.vue'),
-        props: route => ({
+        path: '/Home/Course/:cID/Assignment/:aID/AssignmentEditor',
+        name: 'AssignmentEditor',
+        component: () => import(/* webpackChunkName: 'format-edit' */ '@/views/AssignmentEditor.vue'),
+        props: (route) => ({
             cID: Number.parseInt(route.params.cID, 10),
             aID: Number.parseInt(route.params.aID, 10),
         }),
@@ -122,7 +122,7 @@ const router = new Router({
         path: '/Home/Course/:cID/Assignment/:aID/Journal/New',
         name: 'JoinJournal',
         component: () => import(/* webpackChunkName: 'join-journal' */ '@/views/JoinJournal.vue'),
-        props: route => ({
+        props: (route) => ({
             cID: Number.parseInt(route.params.cID, 10),
             aID: Number.parseInt(route.params.aID, 10),
         }),
@@ -130,7 +130,7 @@ const router = new Router({
         path: '/Home/Course/:cID/Assignment/:aID/Journal/:jID',
         name: 'Journal',
         component: Journal,
-        props: route => ({
+        props: (route) => ({
             cID: Number.parseInt(route.params.cID, 10),
             aID: Number.parseInt(route.params.aID, 10),
             jID: Number.parseInt(route.params.jID, 10),
@@ -211,6 +211,19 @@ router.beforeEach((to, from, next) => {
                 next({ name: 'Login' })
             })
     } else { next() }
+})
+
+router.afterEach((to, from) => {
+    if ('aID' in to.params) {
+        store.dispatch('assignment/retrieve', { id: to.params.aID })
+        store.dispatch('presetNode/list', { aID: to.params.aID })
+        store.dispatch('category/list', { aID: to.params.aID })
+        store.dispatch('template/list', { aID: to.params.aID })
+
+        if ('aID' in from.params && parseInt(to.params.aID, 10) !== parseInt(from.params.aID, 10)) {
+            store.commit('category/CLEAR_FILTERED_CATEGORIES')
+        }
+    }
 })
 
 export default router

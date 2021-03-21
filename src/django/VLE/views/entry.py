@@ -36,10 +36,16 @@ class EntryView(viewsets.ViewSet):
             template_id -- the template id to create the entry with
             node_id -- optional: the node to bind the entry to (only for entrydeadlines)
             content -- the list of {tag, data} tuples to bind data to a template field.
+            category_ids -- list of category ids the entry should be associated with
         """
         journal_id, template_id, content_dict = utils.required_params(
             request.data, 'journal_id', 'template_id', 'content')
-        node_id, = utils.optional_params(request.data, 'node_id')
+        node_id, category_ids, title = utils.optional_typed_params(
+            request.data,
+            (int, 'node_id'),
+            (int, 'category_ids'),
+            (str, 'title'),
+        )
 
         journal = Journal.objects.get(pk=journal_id, authors__user=request.user)
         assignment = journal.assignment
@@ -58,16 +64,20 @@ class EntryView(viewsets.ViewSet):
                                                                  pk=template.pk).exists()):
             return response.forbidden('Entry template is not available.')
 
+        if title and not template.chain.allow_custom_title:
+            return response.forbidden('Entry does not allow for a custom title.')
+
         entry_utils.check_fields(template, content_dict)
+        category_ids = Entry.validate_categories(category_ids, assignment, template)
 
         # Deadline entry
         if node_id:
             node = Node.objects.get(pk=node_id, journal=journal)
-            entry = entry_utils.add_entry_to_node(node, template, request.user)
+            entry = entry_utils.add_entry_to_deadline_preset_node(node, template, request.user, category_ids, title)
         # Unlimited entry
         else:
             node = factory.make_node(journal)
-            entry = factory.make_entry(template, request.user, node)
+            entry = factory.make_entry(template, request.user, node, category_ids, title)
 
         entry_utils.create_entry_content(content_dict, entry, request.user)
         # Notify teacher on new entry
@@ -96,9 +106,9 @@ class EntryView(viewsets.ViewSet):
             bad_request -- when there is invalid data in the request
         On success:
             success -- with the new entry data
-
         """
         content_dict, = utils.required_params(request.data, 'content')
+        title, = utils.optional_typed_params(request.data, (str, 'title'))
         entry_id, = utils.required_typed_params(kwargs, (int, 'pk'))
         entry = Entry.objects.get(pk=entry_id)
         journal = Journal.objects.get(node__entry=entry)
@@ -116,6 +126,8 @@ class EntryView(viewsets.ViewSet):
             return response.bad_request('You are not allowed to edit locked entries.')
         if len(journal.needs_lti_link) > 0:
             return response.forbidden(journal.outdated_link_warning_msg)
+        if title and not entry.template.chain.allow_custom_title:
+            return response.forbidden('Entry does not allow for a custom title.')
 
         # Check for required fields
         entry_utils.check_fields(entry.template, content_dict)
@@ -168,6 +180,7 @@ class EntryView(viewsets.ViewSet):
         grading.task_journal_status_to_LMS.delay(journal.pk)
         entry.last_edited_by = request.user
         entry.last_edited = timezone.now()
+        entry.title = title
         entry.save()
 
         return response.success({'entry': serialize.EntrySerializer(entry, context={'user': request.user}).data})

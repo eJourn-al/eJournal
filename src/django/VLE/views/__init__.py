@@ -1,11 +1,11 @@
 from rest_framework import routers
 
 from VLE.views.assignment import AssignmentView
+from VLE.views.category import CategoryView
 from VLE.views.comment import CommentView
 from VLE.views.course import CourseView
 from VLE.views.entry import EntryView
 from VLE.views.file import FileView
-from VLE.views.format import FormatView
 from VLE.views.grade import GradeView
 from VLE.views.group import GroupView
 from VLE.views.instance import InstanceView
@@ -15,8 +15,10 @@ from VLE.views.member import MemberView
 from VLE.views.node import NodeView
 from VLE.views.participation import ParticipationView
 from VLE.views.preferences import PreferencesView
+from VLE.views.preset_node import PresetNodeView
 from VLE.views.role import RoleView
 from VLE.views.teacher_entry import TeacherEntryView
+from VLE.views.template import TemplateView
 from VLE.views.user import UserView
 
 router = routers.DefaultRouter()
@@ -34,9 +36,11 @@ router.register(r'preferences', PreferencesView, basename='preferences')
 router.register(r'journals', JournalView, basename='journal')
 router.register(r'entries', EntryView, basename='entry')
 router.register(r'grades', GradeView, basename='grades')
-router.register(r'formats', FormatView, basename='format')
 router.register(r'files', FileView, basename='file')
 router.register(r'teacher_entries', TeacherEntryView, basename='teacher_entry')
 router.register(r'journal_import_request', JournalImportRequestView, basename='journal_import_request')
+router.register(r'categories', CategoryView, basename='categories')
+router.register(r'templates', TemplateView, basename='template')
+router.register(r'preset_nodes', PresetNodeView, basename='preset_node')
 
 urlpatterns = router.urls

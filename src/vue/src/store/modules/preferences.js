@@ -5,29 +5,29 @@ import store from '@/store/index.js'
 
 const getters = {
     // Stored user preferences.
-    saved: state => state.saved,
+    saved: (state) => state.saved,
 
-    journalImportRequestButtonSetting: state => state.journalImportRequestButtonSetting,
-    dismissedJIRs: state => state.dismissedJIRs,
+    journalImportRequestButtonSetting: (state) => state.journalImportRequestButtonSetting,
+    dismissedJIRs: (state) => state.dismissedJIRs,
 
     // Search filters.
-    todoSortBy: state => state.todo.sortBy,
-    todoFilterOwnGroups: state => state.todo.filterOwnGroups,
-    journalSortAscending: state => state.journal.sortAscending,
-    journalGroupFilter: state => state.journal.groupFilter,
-    journalSelfSetGroupFilter: state => state.journal.selfSetGroupFilter,
-    journalSearchValue: state => state.journal.searchValue,
-    journalSortBy: state => state.journal.sortBy,
-    journalAID: state => state.journal.aID,
-    courseMembersSortAscending: state => state.courseMembers.sortAscending,
-    courseMembersViewEnrolled: state => state.courseMembers.viewEnrolled,
-    courseMembersGroupFilter: state => state.courseMembers.groupFilter,
-    courseMembersSearchValue: state => state.courseMembers.searchValue,
-    courseMembersSortBy: state => state.courseMembers.sortBy,
-    assignmentOverviewSortAscending: state => state.assignmentOverview.sortAscending,
-    assignmentOverviewSearchValue: state => state.assignmentOverview.searchValue,
-    assignmentOverviewSortBy: state => state.assignmentOverview.sortBy,
-    assignmentOverviewFilterOwnGroups: state => state.assignmentOverview.filterOwnGroups,
+    todoSortBy: (state) => state.todo.sortBy,
+    todoFilterOwnGroups: (state) => state.todo.filterOwnGroups,
+    journalSortAscending: (state) => state.journal.sortAscending,
+    journalGroupFilter: (state) => state.journal.groupFilter,
+    journalSelfSetGroupFilter: (state) => state.journal.selfSetGroupFilter,
+    journalSearchValue: (state) => state.journal.searchValue,
+    journalSortBy: (state) => state.journal.sortBy,
+    journalAID: (state) => state.journal.aID,
+    courseMembersSortAscending: (state) => state.courseMembers.sortAscending,
+    courseMembersViewEnrolled: (state) => state.courseMembers.viewEnrolled,
+    courseMembersGroupFilter: (state) => state.courseMembers.groupFilter,
+    courseMembersSearchValue: (state) => state.courseMembers.searchValue,
+    courseMembersSortBy: (state) => state.courseMembers.sortBy,
+    assignmentOverviewSortAscending: (state) => state.assignmentOverview.sortAscending,
+    assignmentOverviewSearchValue: (state) => state.assignmentOverview.searchValue,
+    assignmentOverviewSortBy: (state) => state.assignmentOverview.sortBy,
+    assignmentOverviewFilterOwnGroups: (state) => state.assignmentOverview.filterOwnGroups,
 }
 
 const mutations = {
@@ -35,7 +35,7 @@ const mutations = {
         state.saved = preferences
     },
     [types.CHANGE_PREFERENCES] (state, preferences) {
-        const responseSuccessToast = !Object.keys(preferences).some(key => [
+        const responseSuccessToast = !Object.keys(preferences).some((key) => [
             'hide_version_alert',
             'grade_button_setting',
             'comment_button_setting',

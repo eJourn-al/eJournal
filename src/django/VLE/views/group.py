@@ -233,3 +233,19 @@ class GroupView(viewsets.ViewSet):
         )
         print(url)
         return response.success({'redirect_uri': url})
+
+    def assigned_groups(self, request):
+        course_id, assignment_id = utils.required_typed_params(
+            request.query_params,
+            (int, 'course_id'),
+            (int, 'assignment_id'),
+        )
+
+        course = Course.objects.get(pk=course_id)
+        assignment = Assignment.objects.get(pk=assignment_id)
+
+        request.user.check_permission('can_edit_assignment', assignment)
+
+        return response.success({
+            'assigned_groups': GroupSerializer(assignment.assigned_groups.filter(course=course), many=True).data
+        })

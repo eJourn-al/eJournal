@@ -32,6 +32,7 @@ USER_MAX_TOTAL_STORAGE_BYTES = 100 * MiB
 USER_MAX_EMAIL_ATTACHMENT_BYTES = USER_MAX_FILE_SIZE_BYTES
 DATA_UPLOAD_MAX_MEMORY_SIZE = USER_MAX_FILE_SIZE_BYTES
 
+# Format follow by our frontend date and datetime pickers
 ALLOWED_DATE_FORMAT = '%Y-%m-%d'
 ALLOWED_DATETIME_FORMAT = '%Y-%m-%dT%H:%M:%S'
 
@@ -113,6 +114,10 @@ CELERY_ACCEPT_CONTENT = ['application/json']
 CELERY_RESULT_SERIALIZER = 'json'
 CELERY_TASK_SERIALIZER = 'json'
 DJANGO_CELERY_BEAT_TZ_AWARE = False
+
+
+# Webserver settings
+WEBSERVER_TIMEOUT = 60
 
 
 # Read for webserver, r + w for django

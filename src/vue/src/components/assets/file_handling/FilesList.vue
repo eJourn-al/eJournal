@@ -1,7 +1,7 @@
 <template>
     <span>
         <div
-            v-if="files.length > 0"
+            v-if="files && files.length > 0"
             class="file-list multi-form round-border p-2"
         >
             <div

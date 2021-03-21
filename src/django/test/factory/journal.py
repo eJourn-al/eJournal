@@ -56,6 +56,20 @@ class JournalFactory(BaseJournalFactory):
     def entries(self, create, extracted, **kwargs):
         _entries(self, create, extracted, **kwargs)
 
+    @factory.post_generation
+    def create_missing_preset_nodes(self, create, extracted, **kwargs):
+        if not create:
+            return
+
+        VLE.models.Node.objects.bulk_create([
+            VLE.models.Node(
+                type=preset.type,
+                entry=None,
+                preset=preset,
+                journal=self
+            ) for preset in self.assignment.format.presetnode_set.exclude(node__journal=self)
+        ])
+
 
 class LtiJournalFactory(BaseJournalFactory):
     """

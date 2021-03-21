@@ -164,7 +164,6 @@
                 Upload a spreadsheet to import new users to eJournal. Please adhere to the following format, with each
                 new user on a new row. <b>Note:</b> no headers shall be present in the file.
 
-
                 <table
                     class="mt-2 mb-2 full-width border"
                 >
@@ -342,7 +341,7 @@ export default {
                             }
 
                             // Only import rows for which at least one column has a value.
-                            if (Object.values(userRow).some(value => value)) {
+                            if (Object.values(userRow).some((value) => value)) {
                                 importedUsersToInvite.push(userRow)
                             }
                         })

@@ -119,7 +119,7 @@ export default {
             this.form.groupName = ''
         },
         deleteGroup (group) {
-            this.groups = this.groups.filter(g => g.id !== group.id)
+            this.groups = this.groups.filter((g) => g.id !== group.id)
         },
         updateGroup (participants, group) {
             this.participants = participants
@@ -128,7 +128,7 @@ export default {
         removeMember (member, group) {
             this.participants.forEach((participant) => {
                 if (participant.id === member.id) {
-                    participant.groups = participant.groups.filter(g => g.id !== group.id)
+                    participant.groups = participant.groups.filter((g) => g.id !== group.id)
                 }
             })
         },

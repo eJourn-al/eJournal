@@ -8,22 +8,36 @@
                 v-if="$hasPermission('can_grade')"
                 class="grade-section sticky"
             >
-                <b-form-input
-                    v-model="grade.grade"
-                    type="number"
-                    class="theme-input"
-                    size="2"
-                    autofocus
-                    placeholder="0"
-                    min="0.0"
-                />
-                <b-button
-                    v-if="$hasPermission('can_view_grade_history')"
-                    class="grade-history-button float-right"
-                    @click="showGradeHistory"
-                >
-                    <icon name="history"/>
-                </b-button>
+                <b-input-group>
+                    <template
+                        v-if="usingDefaultGrade && defaultGrade === grade.grade"
+                        #prepend
+                    >
+                        <b-input-group-text
+                            v-b-tooltip="'Default grade: not saved'"
+                            class="text-white"
+                        >
+                            <icon name="exclamation"/>
+                        </b-input-group-text>
+                    </template>
+
+                    <b-form-input
+                        v-model="grade.grade"
+                        type="number"
+                        class="theme-input"
+                        size="2"
+                        autofocus
+                        placeholder="0"
+                        min="0.0"
+                    />
+                    <b-button
+                        v-if="$hasPermission('can_view_grade_history')"
+                        class="grade-history-button float-right"
+                        @click="showGradeHistory"
+                    >
+                        <icon name="history"/>
+                    </b-button>
+                </b-input-group>
                 <dropdown-button
                     :selectedOption="this.$store.getters['preferences/saved'].grade_button_setting"
                     :options="{
@@ -65,8 +79,17 @@
                 :content="entryNode.entry.content"
                 :edit="false"
             />
+
+            <entry-categories
+                :id="`entry-${entryNode.entry.id}-entry-categories`"
+                :entry="entryNode.entry"
+                :create="false"
+                :template="entryNode.entry.template"
+                :categories="entryNode.entry.categories"
+            />
+
             <div class="full-width timestamp">
-                <hr class="full-width"/>
+                <hr/>
                 <template
                     v-if="(new Date(entryNode.entry.last_edited).getTime() - new Date(entryNode.entry.creation_date)
                         .getTime()) / 1000 < 3"
@@ -147,7 +170,7 @@
                 </b-table>
                 <div v-else>
                     <b>No grades available</b>
-                    <hr class="m-0 mb-1"/>
+                    <hr/>
                     This entry has not yet been graded.
                 </div>
             </b-card>
@@ -169,6 +192,7 @@
 </template>
 
 <script>
+import EntryCategories from '@/components/category/EntryCategories.vue'
 import EntryTitle from '@/components/entry/EntryTitle.vue'
 import comments from '@/components/entry/Comments.vue'
 import dropdownButton from '@/components/assets/DropdownButton.vue'
@@ -180,6 +204,7 @@ export default {
         comments,
         dropdownButton,
         entryFields,
+        EntryCategories,
         EntryTitle,
     },
     props: ['entryNode', 'journal', 'assignment'],
@@ -196,32 +221,43 @@ export default {
         gradePublished () {
             return this.entryNode.entry && this.entryNode.entry.grade && this.entryNode.entry.grade.published
         },
+        defaultGrade () {
+            if (this.entryNode.entry && this.entryNode.entry.template.default_grade !== null) {
+                return this.entryNode.entry.template.default_grade
+            } else {
+                return null
+            }
+        },
+        usingDefaultGrade () {
+            return this.defaultGrade && !this.entryNode.entry.grade
+        },
     },
     watch: {
-        entryNode () {
+        entryNode: 'setGrade',
+    },
+    created () {
+        this.setGrade()
+    },
+    methods: {
+        changeButtonOption (option) {
+            this.$store.commit('preferences/CHANGE_PREFERENCES', { grade_button_setting: option })
+        },
+        setGrade () {
+            /* Work with a local grade object, so the entryNode.grade is our original */
             if (this.entryNode.entry && this.entryNode.entry.grade) {
-                this.grade = this.entryNode.entry.grade
+                this.grade.grade = this.entryNode.entry.grade.grade
+                this.grade.published = this.entryNode.entry.grade.published
+            } else if (this.usingDefaultGrade) {
+                this.grade = {
+                    grade: this.defaultGrade,
+                    published: false,
+                }
             } else {
                 this.grade = {
                     grade: '',
                     published: false,
                 }
             }
-        },
-    },
-    created () {
-        if (this.entryNode.entry && this.entryNode.entry.grade) {
-            this.grade = this.entryNode.entry.grade
-        } else {
-            this.grade = {
-                grade: '',
-                published: false,
-            }
-        }
-    },
-    methods: {
-        changeButtonOption (option) {
-            this.$store.commit('preferences/CHANGE_PREFERENCES', { grade_button_setting: option })
         },
         commitGrade (option) {
             if (this.grade.grade !== '') {

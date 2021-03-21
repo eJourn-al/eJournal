@@ -2,7 +2,7 @@ import * as types from '../constants/mutation-types.js'
 
 const getters = {
     // Assignment data.
-    assignmentParticipantsWithoutJournal: state => state.assignmentParticipantsWithoutJournal,
+    assignmentParticipantsWithoutJournal: (state) => state.assignmentParticipantsWithoutJournal,
 }
 
 const mutations = {

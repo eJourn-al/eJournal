@@ -17,7 +17,7 @@
                     :content="comment.text"
                 />
                 <files-list :files="comment.files"/>
-                <hr class="full-width"/>
+                <hr/>
                 <b>{{ comment.author.full_name }}</b>
                 <icon
                     v-if="comment.can_edit"
@@ -197,7 +197,7 @@ export default {
                 commentAPI.create({
                     entry_id: this.eID,
                     text: this.comment.text,
-                    files: this.comment.files.map(f => f.id),
+                    files: this.comment.files.map((f) => f.id),
                     published: option === 'p' || option === 'g',
                 })
                     .then((comment) => {
@@ -212,7 +212,7 @@ export default {
             this.saveRequestInFlight = true
             commentAPI.update(this.comment.id, {
                 text: this.comment.text,
-                files: this.comment.files.map(c => c.id),
+                files: this.comment.files.map((c) => c.id),
                 published: this.comment.published,
             })
                 .then((comment) => {

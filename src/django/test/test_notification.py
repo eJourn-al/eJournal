@@ -152,7 +152,10 @@ class NotificationTest(TestCase):
         journal = factory.Journal(entries__n=0)
         notifications_before = list(Notification.objects.all().values_list('pk', flat=True))
 
-        factory.PresetEntry(node__journal=journal, node__journal__entries_n=0)
+        template = journal.assignment.format.template_set.first()
+        deadline = factory.DeadlinePresetNode(forced_template=template, format=journal.assignment.format)
+        node = journal.node_set.get(preset=deadline)
+        factory.PresetEntry(node=node)
         new_notifactions = Notification.objects.all().exclude(pk__in=notifications_before)
         assert new_notifactions.count() == 2, '1 new notification is created for entry, and 1 for new deadline'
         assert new_notifactions.filter(type=Notification.NEW_ENTRY).exists()
@@ -263,7 +266,11 @@ class NotificationTest(TestCase):
 
         # "2" new grades for student, 1 new entry for teacher, 1 course & assignment membership for student
         entry = factory.Grade(entry__node__journal=journal).entry
-        factory.DeadlinePresetNode(format=journal.assignment.format)
+        factory.DeadlinePresetNode(
+            format=journal.assignment.format,
+            due_date=datetime.datetime.now() + datetime.timedelta(days=3),
+            lock_date=datetime.datetime.now() + datetime.timedelta(days=5),
+        )
 
         factory.StudentComment(entry=entry, author=student)
         factory.StudentComment(entry=entry, author=student)  # 2 new comments for teacher
@@ -312,6 +319,7 @@ class NotificationTest(TestCase):
         assert len(mail.outbox) != before_len_mailbox, \
             'After verification, notification should be send'
 
+    @override_settings(CELERY_TASK_ALWAYS_EAGER=True)
     def test_dont_send_empty_course_in_digest(self):
         author = factory.Teacher(
             preferences={
@@ -353,6 +361,7 @@ class NotificationTest(TestCase):
         assert n.assignment is None
         assert n.course == course
 
+    @override_settings(CELERY_TASK_ALWAYS_EAGER=True)
     def test_notifications_generated_via_factories(self):
         course = factory.Course()
         journal = factory.Journal(entries__n=0, assignment__courses=[course])
@@ -381,6 +390,7 @@ class NotificationTest(TestCase):
         Notification.objects.get(
             type=Notification.NEW_ENTRY, user=teacher, entry=entry2, course=course, assignment=assignment)
 
+    @override_settings(CELERY_TASK_ALWAYS_EAGER=True)
     def test_batched_notifications_are_returned_by_send_digest_notifications(self):
         daily = {preference['name']: Preferences.DAILY for _, preference in Notification.TYPES.items()}
 
@@ -396,6 +406,7 @@ class NotificationTest(TestCase):
         assert batched_entry_notification1.pk in result['sent_notifications'][teacher.pk]
         assert batched_entry_notification2.pk in result['sent_notifications'][teacher.pk]
 
+    @override_settings(CELERY_TASK_ALWAYS_EAGER=True)
     def test_error_during_digest_email_send(self):
         daily = {preference['name']: Preferences.DAILY for _, preference in Notification.TYPES.items()}
 
@@ -421,6 +432,7 @@ class NotificationTest(TestCase):
             assert Notification.objects.filter(user=student, sent=False).count() \
                 == len(result['failed_notifications'][student.pk]), 'Student notifications remain and are unsent.'
 
+    @override_settings(CELERY_TASK_ALWAYS_EAGER=True)
     def test_do_not_create_unwanted_notifications(self):
         own_group = factory.Teacher(preferences__group_only_notifications=True)
         entry = factory.UnlimitedEntry(node__journal__assignment__author=own_group)

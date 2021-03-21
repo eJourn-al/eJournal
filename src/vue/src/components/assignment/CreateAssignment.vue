@@ -64,7 +64,7 @@ export default {
             } else if (this.form.lockDate) {
                 additionalConfig.maxDate = new Date(this.form.lockDate)
             }
-            return Object.assign({}, additionalConfig, this.$root.flatPickrTimeConfig)
+            return { ...additionalConfig, ...this.$root.flatPickrTimeConfig }
         },
         dueDateConfig () {
             const additionalConfig = {}
@@ -74,7 +74,7 @@ export default {
             if (this.form.lockDate) {
                 additionalConfig.maxDate = new Date(this.form.lockDate)
             }
-            return Object.assign({}, additionalConfig, this.$root.flatPickrTimeConfig)
+            return { ...additionalConfig, ...this.$root.flatPickrTimeConfig }
         },
         lockDateConfig () {
             const additionalConfig = {}
@@ -83,7 +83,7 @@ export default {
             } else if (this.form.unlockDate) {
                 additionalConfig.minDate = new Date(this.form.unlockDate)
             }
-            return Object.assign({}, additionalConfig, this.$root.flatPickrTimeConfig)
+            return { ...additionalConfig, ...this.$root.flatPickrTimeConfig }
         },
     },
     mounted () {
@@ -99,13 +99,17 @@ export default {
         } else {
             this.form.course_id = this.$route.params.cID
         }
-        this.reset = Object.assign({}, this.form)
+        this.reset = { ...this.form }
     },
     methods: {
         onSubmit () {
-            if (this.$refs.assignmentDetails && !this.$refs.assignmentDetails.validateDetails()) {
+            const validBaseData = this.$refs.assignmentDetails.validateData()
+            const validDateData = this.$refs.assignmentDetails.$refs.assignmentDetailsDates.validateData()
+
+            if (!(validBaseData && validDateData)) {
                 return
             }
+
             assignmentAPI.create(this.form)
                 .then((assignment) => {
                     this.$emit('handleAction', assignment.id)
@@ -120,11 +124,12 @@ export default {
                 evt.preventDefault()
             }
             /* Reset form values */
-            this.form.name = ''
+            this.form.name = null
             this.form.description = ''
             /* Due to defensive programming, resetting the rich text content does not work directly */
             this.$refs.assignmentDetails.$refs['text-editor-assignment-edit-description'].clearContent()
-            this.form.course_id = ''
+            this.form.course_id = this.$route.params.cID
+            this.form.is_published = null
             this.form.points_possible = null
             this.form.unlock_date = null
             this.form.due_date = null

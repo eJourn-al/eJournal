@@ -9,7 +9,6 @@ from dateutil.relativedelta import relativedelta
 from django.test import TestCase
 from django.utils import timezone
 
-import VLE.utils.generic_utils as utils
 from VLE.models import (AssignmentParticipation, Comment, Content, Entry, Field, FileContext, Journal,
                         JournalImportRequest, Node, PresetNode)
 from VLE.serializers import JournalImportRequestSerializer
@@ -162,7 +161,7 @@ class JournalImportRequestTest(TestCase):
         unrelated_approved_jir = factory.JournalImportRequest(
             author=student, state=JournalImportRequest.APPROVED_INC_GRADES)
 
-        utils.remove_jirs_on_user_remove_from_jounal(student, team_a_assign_b)
+        team_a_assign_b.remove_jirs_on_user_remove_from_jounal(student)
 
         assert JournalImportRequest.objects.filter(pk=shared_pending_jir.pk).exists(), \
             'If a group member leaves and made an import requests from a shared assignment, the JIR should persist'
@@ -252,9 +251,13 @@ class JournalImportRequestTest(TestCase):
                 'assignment_target_id': target_journal.assignment.pk}
 
         # You cannot create a JIR for a locked assignment
+        target_assignment.unlock_date = timezone.now() - relativedelta(seconds=1)
+        target_assignment.due_date = timezone.now() - relativedelta(seconds=1)
         target_assignment.lock_date = timezone.now() - relativedelta(seconds=1)
         target_assignment.save()
         api.create(self, 'journal_import_request', params=data, user=student, status=400)
+        target_assignment.lock_date = timezone.now() + relativedelta(days=1)
+        target_assignment.due_date = timezone.now() + relativedelta(days=1)
         target_assignment.lock_date = timezone.now() + relativedelta(days=1)
         target_assignment.save()
 
@@ -350,7 +353,10 @@ class JournalImportRequestTest(TestCase):
         factory.StudentComment(entry=entry1, published=True)
         factory.TeacherComment(entry=entry1, published=False)
         factory.TeacherComment(entry=entry1, published=True)
-        factory.PresetEntry(node__journal=source_journal)
+
+        template = source_assignment.format.template_set.first()
+        deadline = factory.DeadlinePresetNode(format=source_assignment.format, forced_template=template)
+        factory.PresetEntry(node=source_journal.node_set.get(preset=deadline))
         factory.ProgressPresetNode(format=source_journal.assignment.format)
 
         pre_import_entry_count = Entry.objects.filter(node__journal=jir.target).count()
@@ -403,7 +409,10 @@ class JournalImportRequestTest(TestCase):
         entry = Entry.objects.get(node__journal=source_journal)
         factory.StudentComment(entry=entry, published=True)
         factory.TeacherComment(entry=entry, published=True)
-        factory.PresetEntry(node__journal=source_journal)
+
+        template = source_assignment.format.template_set.first()
+        deadline = factory.DeadlinePresetNode(format=source_assignment.format, forced_template=template)
+        factory.PresetEntry(node=source_journal.node_set.get(preset=deadline))
         factory.ProgressPresetNode(format=source_journal.assignment.format)
 
         pre_source_journal_resp = api.get(self, 'journals', params={'pk': jir.source.pk}, user=course.author)['journal']

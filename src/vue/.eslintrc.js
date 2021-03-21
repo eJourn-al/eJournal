@@ -17,6 +17,7 @@ module.exports = {
         'sort-imports-es6-autofix',
     ],
     rules: {
+        'arrow-parens': ['error', 'always'],
         'generator-star-spacing': 'off',
         'import/no-cycle': 'off',
         'no-console': process.env.NODE_ENV === 'production' ? 'error' : 'off',
@@ -48,7 +49,7 @@ module.exports = {
         'vue/html-indent': ['error', 4],
         'vue/require-prop-types': 'off', // Do not demand component property types
         'vue/script-indent': 'off', // clash with base eslint for some edge cases
-        'vue/attribute-hyphenation': ['error', 'never'], // allow component properties as camelCase
+        'vue/attribute-hyphenation': 'off',
         'import/extensions': ['error', 'ignorePackages'],
         'space-before-function-paren': ['error', 'always'],
         'max-len': ['error', { 'code': 120 }],
@@ -66,6 +67,9 @@ module.exports = {
             'ignoreCase': false,
             'ignoreMemberSort': false,
             'memberSyntaxSortOrder': ['none', 'all', 'multiple', 'single']
+        }],
+        'object-curly-newline': ['error', {
+            'ObjectExpression': { 'consistent': true, 'minProperties': 5 },
         }],
     },
     settings: {

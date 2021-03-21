@@ -69,7 +69,7 @@ export default {
             settings: {
                 aliases: {
                     Home: 'Courses',
-                    FormatEdit: 'Assignment Editor',
+                    AssignmentEditor: 'Assignment Editor',
                     CourseEdit: 'Course Editor',
                     AdminPanel: 'Admin Panel',
                     AssignmentsOverview: 'Assignments',
@@ -126,7 +126,7 @@ export default {
         },
         // If any are still missing display names (not in cache), request the names and set them in cache
         fillCache () {
-            const crumbsMissingDisplayName = this.crumbs.filter(crumb => !crumb.displayName)
+            const crumbsMissingDisplayName = this.crumbs.filter((crumb) => !crumb.displayName)
 
             // Incrementally build request
             const request = {}

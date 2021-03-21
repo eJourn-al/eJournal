@@ -188,7 +188,7 @@ export default {
             return this.essentialPermissions[role] && this.essentialPermissions[role].includes(permission)
         },
         getIndex (role) {
-            return this.roleConfig.findIndex(p => p.name === role)
+            return this.roleConfig.findIndex((p) => p.name === role)
         },
         callocRoleObject (role) {
             /* Initialises a role object with the given name, the pages cID
@@ -255,15 +255,15 @@ export default {
             }
         },
         deleteRoleLocalConfig (role) {
-            let i = this.roleConfig.findIndex(p => p.name === role)
+            let i = this.roleConfig.findIndex((p) => p.name === role)
             this.roleConfig.splice(i, 1)
-            i = this.roles.findIndex(p => p === role)
+            i = this.roles.findIndex((p) => p === role)
             this.roles.splice(i, 1)
         },
         deleteRoleServerLoadedConfig (role) {
-            let i = this.originalRoleConfig.findIndex(p => p.name === role)
+            let i = this.originalRoleConfig.findIndex((p) => p.name === role)
             this.originalRoleConfig.splice(i, 1)
-            i = this.defaultRoles.findIndex(p => p === role)
+            i = this.defaultRoles.findIndex((p) => p === role)
             this.defaultRoles.splice(i, 1)
         },
         checkPermission () {

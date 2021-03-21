@@ -90,14 +90,14 @@ export default {
             if (this.course.enddate) {
                 additionalConfig.maxDate = new Date(this.course.enddate)
             }
-            return Object.assign({}, additionalConfig, this.$root.flatPickrTimeConfig)
+            return { ...additionalConfig, ...this.$root.flatPickrTimeConfig }
         },
         endDateConfig () {
             const additionalConfig = {}
             if (this.course.startdate) {
                 additionalConfig.minDate = new Date(this.course.startdate)
             }
-            return Object.assign({}, additionalConfig, this.$root.flatPickrTimeConfig)
+            return { ...additionalConfig, ...this.$root.flatPickrTimeConfig }
         },
     },
     methods: {
