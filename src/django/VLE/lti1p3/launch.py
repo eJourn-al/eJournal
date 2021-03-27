@@ -195,7 +195,14 @@ def launch(request):
 
         assignment = launch_data.assignment.find_in_db()
         if assignment:
-            launch_data.assignment.update()
+            # QUESTION: before:
+            # When an assignment is linked to multiple courses through the LMS, it would update to the
+            # variables set by the last visited LMS assignment.
+            # now:
+            # I now changed it to only update it, if the assignment is also the actual active lti assignment.
+            # Is this a good change?
+            if assignment.active_lti_id == launch_data.assignment.active_lti_id:
+                launch_data.assignment.update()
         if not assignment:
             return handle_no_assignment_connected_to_launch_data(launch_data, launch_id, user, course)
         print('LTI assignment:', assignment)

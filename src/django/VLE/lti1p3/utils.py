@@ -10,8 +10,8 @@ from pylti1p3.contrib.django import DjangoCacheDataStorage, DjangoMessageLaunch
 from pylti1p3.exception import LtiException
 
 import VLE.lti1p3 as lti
+
 # TODO lti: check if SectionsService import is working correctly
-from VLE.lti1p3 import claims, roles
 
 
 class DatetimeEncoder(json.JSONEncoder):

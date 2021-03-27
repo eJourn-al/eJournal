@@ -1,3 +1,5 @@
+# TODO LTI: add test where it first connects assignment from course 1, then  from course 2, then see if course 1 again
+# has a valid setup
 import json
 
 from dateutil.parser import parse
@@ -67,6 +69,17 @@ class AssignmentData(utils.PreparedData):
                 setattr(assignment, key, getattr(self, key))
 
         assignment.save()
+
+        return assignment
+
+    def find_in_db(self, *args, **kwargs):
+        assignment = super().find_in_db(*args, **kwargs)
+        if assignment:
+            return assignment
+
+        # If it is not found by the default find keys, also check if the lti_id_set contains the active lti id
+        # This is useful when an assignment is linked to multiple courses, with only the other assignment as active
+        assignment = Assignment.objects.filter(lti_id_set__contains=[self.active_lti_id]).first()
 
         return assignment
 
