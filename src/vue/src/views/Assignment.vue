@@ -193,7 +193,7 @@
                 size="lg"
                 hideFooter
                 noEnforceFocus
-                @show="newActiveLTICourse = assignment.active_lti_course.cID"
+                @show="newActiveLTICourse = assignment.active_lti_course.course_id"
                 @hide="newActiveLTICourse = null"
             >
                 <b-card class="no-hover">
@@ -217,13 +217,12 @@
                         </option>
                     </b-form-select>
 
-                    <b class="text-red">Warning:</b> After changing this option, students will not be
-                    able to update their journals for this assignment until they visit the assignment
-                    on your LMS at least once.<br/>
+                    <b class="text-red">Warning:</b> After changing this option, students might need to visit the
+                    assignment through the LMS at least once before they can continue working on their journals.<br/>
                     <hr/>
                     <b-button
                         class="green-button d-block float-right"
-                        :class="{'input-disabled': assignment.active_lti_course.cID === newActiveLTICourse}"
+                        :class="{'input-disabled': assignment.active_lti_course.course_id === newActiveLTICourse}"
                         @click="saveNewActiveLTICourse"
                     >
                         <icon name="save"/>
@@ -666,8 +665,8 @@ export default {
         },
         saveNewActiveLTICourse () {
             if (window.confirm('Are you sure you want to change the active LTI course for grade passback?'
-                + ' Students will not be able to update their journals for this assignment until they visit'
-                + ' the assignment on your LMS at least once.')) {
+                + ' Students might need to visit the assignment through the LMS at least once before they can'
+                + ' continue working on their journals.')) {
                 assignmentAPI.update(this.aID, {
                     update_lti_course: this.newActiveLTICourse,
                 })
