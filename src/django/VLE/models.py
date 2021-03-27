@@ -45,9 +45,10 @@ class CreateUpdateModel(models.Model):
 
 class Instance(CreateUpdateModel):
     """Global settings for the running instance."""
+    CANVAS = 'Canvas'
     SUPPORTED_LMS = {
         None: None,
-        'Canvas': {
+        CANVAS: {
             'iss': 'https://canvas.instructure.com',
             'auth_login_url': '{lms_url}/api/lti/authorize_redirect',
             'auth_token_url': '{lms_url}/login/oauth2/token',
@@ -903,8 +904,10 @@ class Course(CreateUpdateModel):
     - author: the creator of the course.
     - abbreviation: a max three letter abbreviation of the course name.
     - startdate: the date that the course starts.
-    - active_lti_id: (optional) the active VLE id of the course linked through LTI which receives grade updates.
-    - lti_id_set: (optional) the set of VLE lti_id_set which permit basic access.
+    - lti_id: (optional) the active LTI id of the course linked through LTI which receives grade updates.
+    - lms_id: (optional) the active LMS id of the course linked through LTI which receives grade updates.
+    - names_role_service: (lti 1.3) the service that allows us to get the user's names / roles from the course
+    - assignment_lti_id_set: these are the LTI assignments that belong to this course.
     """
 
     name = models.TextField()
@@ -926,7 +929,6 @@ class Course(CreateUpdateModel):
         through_fields=('course', 'user'),
     )
 
-    # TODO LTI: migrate to datetime field
     startdate = models.DateTimeField(
         null=True,
     )
@@ -939,7 +941,7 @@ class Course(CreateUpdateModel):
         unique=True,
         blank=True
     )
-    active_lti_id = models.TextField(
+    lti_id = models.TextField(
         null=True,
         unique=True,
         blank=True,
@@ -948,7 +950,6 @@ class Course(CreateUpdateModel):
         null=True,
     )
 
-    # These LTI assignments belong to this course.
     assignment_lti_id_set = ArrayField(
         models.TextField(),
         default=list,
@@ -959,7 +960,17 @@ class Course(CreateUpdateModel):
             self.assignment_lti_id_set.append(lti_id)
 
     def has_lti_link(self):
-        return self.active_lti_id is not None
+        return bool(self.lti_versions)
+
+    @property
+    def lti_versions(self):
+        versions = []
+        if self.lti_id:
+            versions.append(settings.LTI13)
+        elif self.lms_id:
+            versions.append(settings.LTI10)
+
+        return versions
 
     def to_string(self, user=None):
         if user is None:

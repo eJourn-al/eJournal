@@ -145,6 +145,7 @@ def get_lti_params_from_jwt(request):
     }})
 
 
+# TODO LTI: check if this needs to be removed or not
 @api_view(['POST'])
 @permission_classes((AllowAny, ))
 def update_lti_groups(request):
@@ -161,55 +162,6 @@ def update_lti_groups(request):
         return response.success()
     else:
         return response.bad_request('Course not found.')
-
-    #
-    # lineitem = message_launch_data.get(claims.GRADES).get('lineitem')
-    # lineitems = message_launch_data.get(claims.GRADES).get('lineitems')
-    # course_lti_id = message_launch_data.get(claims.COURSE).get('id')
-    # user_id = message_launch_data.get('sub')
-    # instance_name = message_launch_data.get(claims.TOOL).get('name')
-    #
-    # if not message_launch.has_ags():
-    #     raise LTIError(
-    #      'We do not have the required services for grading or retrieving assignment data. Please contact an admin.')
-    #
-    # ags = message_launch.get_ags()
-    # print('\n\n\nLINEITEMS\n\n', ags.find_lineitem_by_id(lineitem), '\n\n')
-    # print('\n\n\nLINEITEMS\n\n', ags.get_lineitems(), '\n\n')
-    # if not message_launch.has_nrps():
-    #     raise LTIError('We are unable to get the the members from the course. Please contact an admin.')
-    #
-    # nrps = message_launch.get_nrps()
-    # print(nrps.get_members())
-    # return HttpResponse('<body>done</body>')
-
-    # user = lti.get_user_lti(params)
-    # user = handle_test_student(user, params)
-    #
-    # params['exp'] = datetime.datetime.utcnow() + datetime.timedelta(minutes=15)
-    # lti_params = encode_lti_params(params)
-    #
-    # try:
-    #     if user is None:
-    #         query = QueryDict(mutable=True)
-    #         query['state'] = LTI_STATES.NO_USER.value
-    #         query['lti_params'] = lti_params
-    #         query['username'] = params['custom_username']
-    #         query['username_already_exists'] = User.objects.filter(username=params['custom_username']).exists()
-    #         query['full_name'] = params.get('custom_user_full_name', None)
-    #     else:
-    #         refresh = TokenObtainPairSerializer.get_token(user)
-    #         user.last_login = timezone.now()
-    #         user.save()
-    #         query = QueryDict.fromkeys(['lti_params'], lti_params, mutable=True)
-    #         query['jwt_access'] = str(refresh.access_token)
-    #         query['jwt_refresh'] = str(refresh)
-    #         query['state'] = LTI_STATES.LOGGED_IN.value
-    # except KeyError as err:
-    #     query = QueryDict.fromkeys(['state'], LTI_STATES.KEY_ERR.value, mutable=True)
-    #     query['description'] = 'The request is missing the following parameter: {0}.'.format(err)
-    #
-    # return redirect(lti.create_lti_query_link(query))
 
 
 def get_launch_url(request):

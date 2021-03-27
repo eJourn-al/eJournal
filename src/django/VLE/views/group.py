@@ -166,6 +166,12 @@ class GroupView(viewsets.ViewSet):
         course = Course.objects.get(pk=course_id)
         check_can_view_groups(request.user, course)
 
+        if settings.LTI10 not in course.lti_versions:
+            msg = 'This option is not available for this Course.'
+            if settings.LTI13 in course.lti_versions and Instance.objects.get(pk=1).lms_name == Instance.CANVAS:
+                msg += ' Try to sync with Canvas instead.'
+            return response.bad_request(msg)
+
         factory.make_lti_groups(course)
 
         queryset = Group.objects.filter(course=course)

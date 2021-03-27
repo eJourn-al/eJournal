@@ -63,7 +63,8 @@ def make_course(*args, **kwargs):
     """Create a course."""
     course = VLE.models.Course.objects.create(**kwargs)
 
-    if course.has_lti_link():
+    if settings.LTI10 in course.lti_versions and \
+       VLE.models.Instance.objects.get(pk=1).lms_name == VLE.models.Instance.CANVAS:
         make_lti_groups(course)
 
     # Student, TA and Teacher role are created on course creation as is saves check for lti.
@@ -112,7 +113,7 @@ def make_assignment(*args, **kwargs):
 
 def get_lti_groups_with_name(course):
     """Get a mapping of group LTI id to group name using the DN API"""
-    dn_groups = requests.get(settings.GROUP_API.format(course.active_lti_id)).json()
+    dn_groups = requests.get(settings.GROUP_API.format(course.lms_id)).json()
     lti_groups = {}
     if isinstance(dn_groups, list):
         for group in dn_groups:
@@ -125,11 +126,11 @@ def get_lti_groups_with_name(course):
 
 def make_lti_groups(course):
     groups = get_lti_groups_with_name(course)
-    for lti_id, name in groups.items():
-        if not VLE.models.Group.objects.filter(course=course, lti_id=lti_id).exists():
-            make_course_group(name, course, lti_id)
+    for lms_id, name in groups.items():
+        if not VLE.models.Group.objects.filter(course=course, lms_id=lms_id).exists():
+            make_course_group(name, course, lms_id)
         else:
-            VLE.models.Group.objects.filter(course=course, lti_id=lti_id).update(name=name)
+            VLE.models.Group.objects.filter(course=course, lms_id=lms_id).update(name=name)
 
 
 def setup_default_assignment_layout(assignment):

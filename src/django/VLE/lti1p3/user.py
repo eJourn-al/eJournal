@@ -52,10 +52,7 @@ class UserData(lti.utils.PreparedData):
 
     @property
     def is_teacher(self):
-        return any(
-            role in self.roles
-            for role in [lti.roles.TEACHER, lti.roles.ADMIN, lti.roles.ADMIN_INST]
-        )
+        return lti.roles.to_ejournal_role_name(self.roles) == 'Teacher'
 
     @property
     def is_test_student(self):
@@ -84,7 +81,7 @@ class UserData(lti.utils.PreparedData):
             course=course,
             role=Role.objects.get(
                 course=course,
-                name=lti.roles.to_ejournal_role(self.roles),
+                name=lti.roles.to_ejournal_role_name(self.roles),
             ),
         )
 

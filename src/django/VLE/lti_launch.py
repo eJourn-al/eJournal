@@ -125,7 +125,7 @@ def update_lti_course_if_exists(request, user, role):
     3. Add groups to the user
     """
     course_lti_id = request.get('custom_course_id', None)
-    course = Course.objects.filter(active_lti_id=course_lti_id)
+    course = Course.objects.filter(lti_id=course_lti_id)
     if course_lti_id is None or not course.exists():
         return None
 

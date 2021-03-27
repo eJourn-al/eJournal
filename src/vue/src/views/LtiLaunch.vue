@@ -65,8 +65,7 @@ export default {
         }
     },
     mounted () {
-        if (this.launchState === this.states.lacking_permissions_to_setup_assignment
-            || this.launchState === this.states.lacking_permissions_to_setup_course) {
+        if (this.launchState === this.states.notSetup) {
             this.$router.push({
                 name: 'NotSetup',
                 query: this.$route.query,

@@ -186,7 +186,7 @@ class GroupAPITest(TestCase):
         api.get(self, 'members', params={'group_id': self.group.pk}, user=factory.Student(), status=403)
 
     def test_group_api(self):
-        course = factory.Course(active_lti_id='6068')
+        course = factory.Course(lms_id='6068')
         nfac.make_lti_groups(course)
         assert Group.objects.filter(course=course).count() > 0
         before_count = Group.objects.filter(course=course).count()

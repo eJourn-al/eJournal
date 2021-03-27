@@ -22,12 +22,14 @@ class CourseData(lti.utils.PreparedData):
             course = self.find_in_db()
 
         if (
-            course.active_lti_id and course.active_lti_id != self.active_lti_id
-            or course.lms_id and course.lms_id != self.lms_id
+            # LTI 1.3
+            hasattr(self, 'lti_id') and course.lti_id and course.lti_id != self.lti_id
+            # LTI 1.0
+            or hasattr(self, 'lms_id') and course.lms_id and course.lms_id != self.lms_id
         ):
             raise VLEBadRequest('Course already linked to LMS.')
 
-        if course.active_lti_id != self.active_lti_id:
+        if hasattr(self, 'lti_id') and course.lti_id != self.lti_id:
             lti.members.sync_members(course)
 
         for key in self.update_keys:
@@ -49,7 +51,7 @@ class Lti1p3CourseData(CourseData):
             'startdate',
             'enddate',
             'author',
-            'active_lti_id',
+            'lti_id',
             'lms_id',
             'names_role_service',
         ]
@@ -60,42 +62,42 @@ class Lti1p3CourseData(CourseData):
             'startdate',
             'enddate',
             # 'author', TODO: This is currently the user first opening the course. Should be the real author
-            # 'active_lti_id',
+            # 'lti_id',
             'lms_id',
             'names_role_service',
         ]
         self.find_keys = [
-            'active_lti_id',
+            'lti_id',
             'lms_id',
         ]
 
     @property
     def name(self):
-        return self.data[lti.claims.COURSE]['title']
+        return self.to_str(self.data[lti.claims.COURSE]['title'])
 
     @property
     def abbreviation(self):
-        return self.data[lti.claims.COURSE]['label']
+        return self.to_str(self.data[lti.claims.COURSE]['label'])
 
     @property
     def startdate(self):
-        return self.data[lti.claims.CUSTOM].get('course_start', None)
+        return self.to_datetime(self.data[lti.claims.CUSTOM].get('course_start', None))
 
     @property
     def enddate(self):
-        return self.data[lti.claims.CUSTOM].get('course_end', None)
+        return self.to_datetime(self.data[lti.claims.CUSTOM].get('course_end', None))
 
     @property
     def author(self):
         return lti.user.Lti1p3UserData(self.data).find_in_db()
 
     @property
-    def active_lti_id(self):
-        return self.data[lti.claims.COURSE]['id']
+    def lti_id(self):
+        return self.to_str(self.data[lti.claims.COURSE]['id'])
 
     @property
     def lms_id(self):
-        return self.data[lti.claims.CUSTOM]['course_id']
+        return self.to_str(self.data[lti.claims.CUSTOM]['course_id'])
 
     @property
     def names_role_service(self):
@@ -128,19 +130,19 @@ class Lti1p0CourseData(CourseData):
 
     @property
     def name(self):
-        return self.data['custom_course_name']
+        return self.to_str(self.data['custom_course_name'])
 
     @property
     def abbreviation(self):
-        return self.data.get('context_label', None)
+        return self.to_str(self.data.get('context_label', None))
 
     @property
     def startdate(self):
-        return self.data.get('custom_course_start', None)
+        return self.to_datetime(self.data.get('custom_course_start', None))
 
     @property
     def enddate(self):
-        return self.data.get('custom_course_end', None)
+        return self.to_datetime(self.data.get('custom_course_end', None))
 
     @property
     def author(self):
@@ -148,4 +150,4 @@ class Lti1p0CourseData(CourseData):
 
     @property
     def lms_id(self):
-        return self.data.get('custom_course_id', None)
+        return self.to_str(self.data.get('custom_course_id', None))

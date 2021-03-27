@@ -37,6 +37,7 @@
                         Create
                     </b-button>
                 </b-form>
+                <!-- TODO LTI: only visible when its lti 1.0 course with UvA instance -->
                 <b-button
                     v-if="course.lti_linked"
                     class="lti-sync multi-form mr-2"
@@ -46,6 +47,7 @@
                     <icon name="sync-alt"/>
                     Sync from DataNose
                 </b-button>
+                <!-- TODO LTI: only visible when its lti 1.3 course with Canvas -->
                 <b-button
                     v-if="course.lti_linked"
                     class="lti-sync multi-form mr-2"
@@ -53,7 +55,7 @@
                     @click.prevent.stop="getLMSGroups()"
                 >
                     <icon name="sync-alt"/>
-                    Sync from LMS
+                    Sync from Canvas
                 </b-button>
             </b-card>
         </div>

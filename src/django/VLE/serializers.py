@@ -691,7 +691,10 @@ class AssignmentSerializer(ExtendedModelSerializer, EagerLoadingMixin):
         if self.context['user'].can_view(assignment):
             course = assignment.get_active_lti_course()
             if course:
-                return {'cID': course.pk, 'name': course.name}
+                return {
+                    'course_id': course.pk,
+                    'name': course.name,
+                }
         return None
 
     def get_lti_courses(self, assignment):

@@ -65,7 +65,7 @@
             noEnforceFocus
         >
             <link-assignment
-                :linkableAssignments="assignments"
+                :linkableAssignments="linkableAssignments"
                 @assignmentLinked="(assignment) => $emit('assignmentLinked', assignment)"
             />
         </b-modal>
@@ -92,6 +92,7 @@ export default {
     data () {
         return {
             assignments: [],
+            linkableAssignments: [],
             loadingAssignments: true,
         }
     },
@@ -99,6 +100,12 @@ export default {
         assignmentAPI.getImportable({ launch_id: this.$route.query.launch_id }).then((assignments) => {
             if (assignments.length) {
                 this.assignments = assignments
+                this.linkableAssignments = assignments.slice()
+                for (let i = 0; i < this.linkableAssignments.length; i++) {
+                    this.linkableAssignments[i].assignments = this.linkableAssignments[i].assignments.filter(
+                        (assignment) => !assignment.active_lti_course
+                        || assignment.active_lti_course.course_id !== (this.$route.query.course_id || this.page.cID))
+                }
                 this.loadingAssignments = false
             } else {
                 this.createAssignment()

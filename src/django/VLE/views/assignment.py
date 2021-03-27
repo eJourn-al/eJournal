@@ -279,9 +279,9 @@ class AssignmentView(viewsets.ViewSet):
             launch_data = lti.utils.get_launch_data_from_id(launch_id, request)
             course = launch_data.course.find_in_db()
             request.user.check_permission('can_add_assignment', course)
-            # TODO LTI: THIS DOES NOT YET WORK, PLZ FIX
-            assignment.add_lti_id(launch_data.get(lti.claims.ASSIGNMENT)['id'], course)
-            lti.assignment.update_with_launch_data(assignment, launch_data)
+            assignment.add_lti_id(launch_data.assignment.active_lti_id, course)
+            # QUESTION: after a link, do we want to update the assignment variables, if so uncomment:
+            # launch_data.assignment.update(obj=assignment)
 
         serializer = AssignmentSerializer(
             assignment, data=request.data, context={'user': request.user, 'course': course}, partial=True)
@@ -469,8 +469,10 @@ class AssignmentView(viewsets.ViewSet):
         """Get all assignments that a user can import a format from.
 
         Returns a list of tuples consisting of courses and importable assignments."""
-        courses = Course.objects.filter(participation__user=request.user.id,
-                                        participation__role__can_edit_assignment=True)
+        courses = Course.objects.filter(
+            participation__user=request.user.id,
+            participation__role__can_edit_assignment=True,
+        )
         launch_id, = utils.optional_params(request.query_params, 'launch_id')
         if launch_id:
             launch_data = lti.utils.get_launch_data_from_id(launch_id, request)
@@ -505,7 +507,7 @@ class AssignmentView(viewsets.ViewSet):
         launch_id, = utils.optional_typed_params(request.data, (str, 'launch_id'))
         if launch_id:
             launch_data = lti.utils.get_launch_data_from_id(launch_id, request)
-            course = Course.objects.get(active_lti_id=launch_data.get(lti.claims.COURSE)['id'])
+            course = launch_data.course.find_in_db()
         else:
             course_id, = utils.required_typed_params(request.data, (int, 'course_id'))
             course = Course.objects.get(pk=course_id)
@@ -588,10 +590,8 @@ class AssignmentView(viewsets.ViewSet):
         launch_id, = utils.optional_typed_params(request.data, (str, 'launch_id'))
         if launch_id:
             launch_data = lti.utils.get_launch_data_from_id(launch_id, request)
-            # TODO LTI: THIS DOES NOT YET WORK, PLZ FIX
-            assignment_lti_id = launch_data.get(lti.claims.ASSIGNMENT)['id']
-            assignment.add_lti_id(assignment_lti_id, course)
-            lti.assignment.update_with_launch_data(assignment, launch_data)
+            assignment.add_lti_id(launch_data.assignment.active_lti_id, course)
+            launch_data.assignment.update(obj=assignment)
 
         # Update author also
         assignment.author = request.user

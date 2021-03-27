@@ -3,6 +3,7 @@ import json
 
 import oauth2
 import sentry_sdk
+from dateutil import parser
 from django.conf import settings
 from django.db.models import Q
 from pylti1p3.contrib.django import DjangoCacheDataStorage, DjangoMessageLaunch
@@ -11,6 +12,14 @@ from pylti1p3.exception import LtiException
 import VLE.lti1p3 as lti
 # TODO lti: check if SectionsService import is working correctly
 from VLE.lti1p3 import claims, roles
+
+
+class DatetimeEncoder(json.JSONEncoder):
+    def default(self, obj):
+        try:
+            return super(DatetimeEncoder, obj).default(obj)
+        except TypeError:
+            return str(obj)
 
 
 class OAuthRequestValidater(object):
@@ -82,6 +91,26 @@ class PreparedData(object):
 
     def __init__(self, data):
         self.data = data
+
+    def to_datetime(self, string):
+        if not string:
+            return None
+        return parser.parse(string)
+
+    def to_float(self, string):
+        if not string:
+            return None
+        return float(string)
+
+    def to_str(self, string):
+        if not string:
+            return None
+        return str(string)
+
+    def to_bool(self, string):
+        if not string:
+            return None
+        return bool(string)
 
     @property
     def create_dict(self):
@@ -157,14 +186,14 @@ class PreparedData(object):
         }
 
     def __str__(self):
-        return json.dumps(self.asdict(), sort_keys=False, indent=4)
+        return json.dumps(self.asdict(), sort_keys=False, indent=4, cls=DatetimeEncoder)
 
 
 class eMessageLaunchData(object):
     def __init__(self, message_launch_data, lti_version):
         self.raw_data = message_launch_data
 
-        print(json.dumps(self.raw_data, indent=4))
+        print(json.dumps(self.raw_data, indent=4, cls=DatetimeEncoder))
 
         self.lti_version = lti_version
         print(self.lti_version)
@@ -202,7 +231,7 @@ class eMessageLaunchData(object):
         return json.dumps({
             'raw data': self.raw_data,
             **self.asdict(),
-        }, sort_keys=False, indent=4)
+        }, sort_keys=False, indent=4, cls=DatetimeEncoder)
 
 
 class eDjangoMessageLaunch(DjangoMessageLaunch):
@@ -262,8 +291,6 @@ class eDjangoMessageLaunch(DjangoMessageLaunch):
     def from_cache(cls, launch_id, *args, **kwargs):
         obj = cls(*args, **kwargs)
         launch_data = obj.get_session_service().get_launch_data(launch_id)
-        print('\n'*10)
-        print(launch_data)
         obj = obj.set_launch_id(launch_id)\
             .set_auto_validation(enable=False)\
             .set_jwt({'body': launch_data})
@@ -271,23 +298,10 @@ class eDjangoMessageLaunch(DjangoMessageLaunch):
         if not launch_data:
             raise LtiException("Launch data not found")
 
-        print(launch_data.get('lti_version', settings.LTI13))
         if launch_data.get('lti_version', settings.LTI13) == settings.LTI13:
             return obj.validate_registration()
 
         return obj
-
-
-def is_teacher_launch(message_launch_data):
-    launch_roles = message_launch_data.get(claims.ROLES, [])
-    return any(role in launch_roles for role in [roles.TEACHER, roles.ADMIN, roles.ADMIN_INST])
-
-
-def is_test_student_launch(message_launch_data):
-    return (
-        message_launch_data.get('email', '') == ''
-        and message_launch_data.get('name', '').lower() == 'Test Student'.lower()  # TODO: make instance variable
-    )
 
 
 def get_launch_data_from_id(launch_id, request):

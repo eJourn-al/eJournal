@@ -160,7 +160,7 @@ class CourseView(viewsets.ViewSet):
             else:
                 if assignment.active_lti_id:
                     new_lti_connected_course = assignment.courses.exclude(
-                        pk=course.pk).exclude(active_lti_id=None).order_by('-startdate').first()
+                        pk=course.pk).exclude(lti_id=None, lms_id=None).order_by('-startdate').first()
                     assignment.lti_id_set.remove(assignment.active_lti_id)
                     if new_lti_connected_course:
                         assignment.active_lti_id = assignment.get_lti_id_from_course(new_lti_connected_course)
@@ -192,9 +192,12 @@ class CourseView(viewsets.ViewSet):
         if not (request.user.is_teacher or request.user.is_superuser):
             return response.forbidden("You are not allowed to get linkable courses.")
 
-        unlinked_courses = Course.objects.filter(participation__user=request.user.id,
-                                                 participation__role__can_edit_course_details=True,
-                                                 participation__role__can_add_assignment=True,
-                                                 active_lti_id=None)
+        unlinked_courses = Course.objects.filter(
+            participation__user=request.user.id,
+            participation__role__can_edit_course_details=True,
+            participation__role__can_add_assignment=True,
+            lti_id=None,
+            lms_id=None,
+        )
         serializer = serialize.CourseSerializer(unlinked_courses, many=True)
         return response.success({'courses': serializer.data})

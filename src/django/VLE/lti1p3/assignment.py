@@ -13,7 +13,12 @@ class AssignmentData(utils.PreparedData):
     model = Assignment
 
     def create(self):
-        return factory.make_assignment(**self.create_dict)
+        assignment = factory.make_assignment(**self.create_dict)
+
+        # TODO LTI: fix courses[0] when the courses is improved as well
+        assignment.add_lti_id(self.active_lti_id, self.courses[0])
+
+        return assignment
 
     def update(self, obj=None):
         assignment = obj
@@ -72,7 +77,6 @@ class Lti1p3AssignmentData(AssignmentData):
         # TODO LTI: check if it is possible to update the description / title on the Canvas side
         self.create_keys = [
             'name',
-            'description',
             'author',
             'active_lti_id',
             'points_possible',
@@ -86,7 +90,6 @@ class Lti1p3AssignmentData(AssignmentData):
         # QUESTION LTI: are these valid settings?
         self.update_keys = [
             'name',
-            'description',
             # 'author', TODO: This is currently the user first opening the course. Should be the real author
             # 'active_lti_id',
             # 'points_possible',
@@ -103,11 +106,7 @@ class Lti1p3AssignmentData(AssignmentData):
 
     @property
     def name(self):
-        return self.data[lti.claims.ASSIGNMENT]['title']
-
-    @property
-    def description(self):
-        return self.data[lti.claims.ASSIGNMENT].get('description', None)
+        return self.to_str(self.data[lti.claims.ASSIGNMENT]['title'])
 
     @property
     def author(self):
@@ -115,27 +114,27 @@ class Lti1p3AssignmentData(AssignmentData):
 
     @property
     def active_lti_id(self):
-        return self.data[lti.claims.ASSIGNMENT]['id']
+        return self.to_str(self.data[lti.claims.ASSIGNMENT]['id'])
 
     @property
     def points_possible(self):
-        return self.data[lti.claims.CUSTOM]['assignment_points']
+        return self.to_float(self.data[lti.claims.CUSTOM]['assignment_points'])
 
     @property
     def is_published(self):
-        return self.data[lti.claims.CUSTOM]['assignment_publish']
+        return self.to_bool(self.data[lti.claims.CUSTOM]['assignment_publish'])
 
     @property
     def unlock_date(self):
-        return self.data[lti.claims.CUSTOM].get('assignment_unlock', None)
+        return self.to_datetime(self.data[lti.claims.CUSTOM].get('assignment_unlock', None))
 
     @property
     def due_date(self):
-        return self.data[lti.claims.CUSTOM].get('assignment_due', None)
+        return self.to_datetime(self.data[lti.claims.CUSTOM].get('assignment_due', None))
 
     @property
     def lock_date(self):
-        return self.data[lti.claims.CUSTOM].get('assignment_lock', None)
+        return self.to_datetime(self.data[lti.claims.CUSTOM].get('assignment_lock', None))
 
     @property
     def courses(self):
@@ -153,7 +152,7 @@ class Lti1p0AssignmentData(AssignmentData):
         self.create_keys = [
             'name',
             'author',
-            'active_lti_id',
+            'active_lti_id',  # NOTE: we use active_lti_id for both LTI 1.0 and LTI 1.3 as they cannot coincide
             'points_possible',
             'is_published',
             'unlock_date',
@@ -179,7 +178,7 @@ class Lti1p0AssignmentData(AssignmentData):
 
     @property
     def name(self):
-        return self.data['custom_assignment_title']
+        return self.to_str(self.data['custom_assignment_title'])
 
     @property
     def author(self):
@@ -187,27 +186,27 @@ class Lti1p0AssignmentData(AssignmentData):
 
     @property
     def active_lti_id(self):
-        return self.data['custom_assignment_id']
+        return self.to_str(self.data['custom_assignment_id'])
 
     @property
     def points_possible(self):
-        return self.data.get('custom_assignment_points', None)
+        return self.to_float(self.data.get('custom_assignment_points', None))
 
     @property
     def is_published(self):
-        return self.data.get('assignment_publish', True)
+        return self.to_bool(self.data.get('assignment_publish', True))
 
     @property
     def unlock_date(self):
-        return self.data.get('custom_assignment_unlock', None)
+        return self.to_datetime(self.data.get('custom_assignment_unlock', None))
 
     @property
     def due_date(self):
-        return self.data.get('custom_assignment_due', None)
+        return self.to_datetime(self.data.get('custom_assignment_due', None))
 
     @property
     def lock_date(self):
-        return self.data.get('custom_assignment_lock', None)
+        return self.to_datetime(self.data.get('custom_assignment_lock', None))
 
     @property
     def courses(self):
