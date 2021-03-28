@@ -88,6 +88,8 @@ new Vue({
         previousPage: null,
         windowWidth: 0,
         maxFileSizeBytes: 10485760,
+        maxFileSizeLabel: '10 MB',
+        maxFileNameLength: 128,
         maxEmailFileSizeBytes: 10485760,
         flatPickrTimeConfig: {
             enableTime: true,
@@ -130,7 +132,6 @@ new Vue({
         store.dispatch('connection/setupConnectionInterceptors', { connection: connection.conn })
         store.dispatch('connection/setupConnectionInterceptors',
             { connection: connection.connRefresh, isRefresh: true })
-        store.dispatch('connection/setupConnectionInterceptors', { connection: connection.connUpFile })
         store.dispatch('connection/setupConnectionInterceptors', { connection: connection.connDownFile })
 
         window.addEventListener('resize', () => {
