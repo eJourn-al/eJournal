@@ -279,9 +279,11 @@ class AssignmentView(viewsets.ViewSet):
             launch_data = lti.utils.get_launch_data_from_id(launch_id, request)
             course = launch_data.course.find_in_db()
             request.user.check_permission('can_add_assignment', course)
+            # Seperatly add the lti id to the assignment, as it is normally only done on creation, not every update
             assignment.add_lti_id(launch_data.assignment.active_lti_id, course)
-            # QUESTION: after a link, do we want to update the assignment variables, if so uncomment:
-            # launch_data.assignment.update(obj=assignment)
+            # NOTE: after a link, we update the assignment variables, this causes updates with the assignment
+            # name, due/lock date, assignments_grades_service
+            launch_data.assignment.update(obj=assignment)
 
         serializer = AssignmentSerializer(
             assignment, data=request.data, context={'user': request.user, 'course': course}, partial=True)

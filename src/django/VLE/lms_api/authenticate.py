@@ -2,7 +2,8 @@ import json
 
 import requests
 from django.conf import settings
-from django.http import JsonResponse
+from django.http import HttpResponse
+from django.template.loader import get_template
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny
 
@@ -34,8 +35,8 @@ def lms_authenticate(request):
     response = json.loads(resp.content)
     access_token = response['access_token']
 
-    # TODO LTI: return nice display that it is done, and you may close the tab.
     if action == 'SYNC_GROUPS':
-        return JsonResponse(data=lti.groups.sync_groups(access_token, course_id=pk))
+        lti.groups.sync_groups(access_token, course_id=pk)
+        return HttpResponse(get_template('succes_tab.html').render(request=request))
     else:
-        return JsonResponse(data=['UNKNOWN ACTION, IGNORING'])
+        return HttpResponse(get_template('wrong_tab.html').render(request=request))

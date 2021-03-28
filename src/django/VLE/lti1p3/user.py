@@ -3,7 +3,8 @@ from django.conf import settings
 from django.utils import timezone
 
 import VLE.lti1p3 as lti
-from VLE.models import Participation, Role, User
+from VLE import factory
+from VLE.models import Group, Participation, Role, User
 from VLE.utils.error_handling import VLEProgrammingError
 
 
@@ -56,34 +57,81 @@ class UserData(lti.utils.PreparedData):
 
     @property
     def is_test_student(self):
-        # TODO LTI: this is Canvas specific, should be changed to also work with other LTI hosts
+        # TODO EXPANSION: this is Canvas specific, should be changed to also work with other LTI hosts
         return (
             self.email == ''
             and self.full_name == 'Test Student'.lower()
         )
 
     def normalize_profile_picture(self, picture):
-        # TODO LTI: this is Canvas specific, should be changed to also work with other LTI hosts
+        # TODO EXPANSION: this is Canvas specific, should be changed to also work with other LTI hosts
         if not picture or '/avatar-50.png' in picture:
             return settings.DEFAULT_PROFILE_PICTURE
 
         return picture
 
-    def create_participation(self, user, course):
-        # TODO LTI: add groups
-        # TODO LTI: should we update roles and or groups?
-        participation = Participation.objects.filter(user=user, course=course).first()
-        if participation:
-            return participation
+    def add_groups_if_not_exists(self, participation):
+        """Add the lti groups to a participant.
 
-        return Participation.objects.create(
-            user=user,
-            course=course,
-            role=Role.objects.get(
+        This will only be done if there are no other groups already bound to the participant.
+        """
+        def get_name_from_lms_id(lms_id, group_names, i):
+            if lms_id in group_names:
+                return group_names[lms_id]
+            elif lms_id.isnumeric() and int(lms_id) in group_names:
+                return group_names[int(lms_id)]
+            else:
+                return 'Group {:d}'.format(n_groups + i + 1)
+
+        group_ids = [str(g) for g in self.groups]
+
+        # Get all existing groups passed by lti that are also in the course
+        groups = Group.objects.filter(lms_id__in=group_ids, course=participation.course)
+        # Get all to-be-created groups
+        non_existing_group_ids = set(group_ids) - set(group.lms_id for group in groups)
+        # Get the groups of the course which the user is not participating in
+        non_participating_groups = groups.exclude(pk__in=participation.groups.all())
+
+        # Create new groups
+        if non_existing_group_ids:
+            group_names = factory.get_lti_groups_with_name(participation.course)
+            n_groups = Group.objects.filter(course=participation.course).count()
+
+            new_groups = [
+                Group(
+                    name=get_name_from_lms_id(lms_id, group_names, i),
+                    course=participation.course,
+                    lms_id=lms_id
+                )
+                for i, lms_id in enumerate(non_existing_group_ids)
+            ]
+            new_groups = Group.objects.bulk_create(new_groups)
+        else:
+            new_groups = []
+
+        # Add missing newly-created and existing groups
+        if new_groups or non_participating_groups:
+            participation.groups.add(*new_groups, *non_participating_groups)
+
+        return participation.groups
+
+    def create_participation(self, user, course):
+        # QUESTION: should we also update the user role and/or groups?
+        participation = Participation.objects.filter(user=user, course=course).first()
+        if not participation:
+            participation = Participation.objects.create(
+                user=user,
                 course=course,
-                name=lti.roles.to_ejournal_role_name(self.roles),
-            ),
-        )
+                role=Role.objects.get(
+                    course=course,
+                    name=lti.roles.to_ejournal_role_name(self.roles),
+                ),
+            )
+
+        if hasattr(self, 'groups'):
+            self.add_groups_if_not_exists(participation)
+
+        return participation
 
     def handle_test_student(self, course=None):
         if not course:
@@ -148,6 +196,7 @@ class Lti1p3UserData(UserData):
             'full_name',
             'profile_picture',
             # 'roles',
+            # 'groups',
             'email',
             'username',
             'is_test_student',
@@ -161,6 +210,7 @@ class Lti1p3UserData(UserData):
             'full_name',
             'profile_picture',
             # 'roles',
+            # 'groups',
             'email',
             'username',
             # 'is_test_student',
@@ -194,6 +244,10 @@ class Lti1p3UserData(UserData):
         return self.data.get('email', None)
 
     @property
+    def groups(self):
+        return self.data[lti.claims.CUSTOM].get('section_ids', '').split(',')
+
+    @property
     def username(self):
         if lti.claims.CUSTOM not in self.data or \
            'username' not in self.data[lti.claims.CUSTOM]:
@@ -213,6 +267,7 @@ class Lti1p0UserData(UserData):
             'full_name',
             'profile_picture',
             # 'roles',
+            # 'groups',
             'email',
             'is_test_student',
             'verified_email',
@@ -225,6 +280,7 @@ class Lti1p0UserData(UserData):
             'full_name',
             'profile_picture',
             # 'roles',
+            # 'groups',
             'email',
             'username',
             # 'is_test_student',
@@ -252,6 +308,10 @@ class Lti1p0UserData(UserData):
     @property
     def roles(self):
         return self.data['ext_roles'].split(',')
+
+    @property
+    def groups(self):
+        return self.data.get('custom_section_id', '').split(',')
 
     @property
     def email(self):

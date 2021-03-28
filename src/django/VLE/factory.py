@@ -113,6 +113,13 @@ def make_assignment(*args, **kwargs):
 
 def get_lti_groups_with_name(course):
     """Get a mapping of group LTI id to group name using the DN API"""
+
+    # TODO EXPANSION: If the instance is not specificly the UvA, do not execute this request
+
+    # It requires lms id to be set
+    if settings.LTI10 not in course.lti_versions:
+        return []
+
     dn_groups = requests.get(settings.GROUP_API.format(course.lms_id)).json()
     lti_groups = {}
     if isinstance(dn_groups, list):
@@ -121,12 +128,12 @@ def get_lti_groups_with_name(course):
                 lti_groups[int(group['CanvasSectionID'])] = group['Name']
             except (ValueError, KeyError):
                 continue
+
     return lti_groups
 
 
 def make_lti_groups(course):
-    groups = get_lti_groups_with_name(course)
-    for lms_id, name in groups.items():
+    for lms_id, name in get_lti_groups_with_name(course).items():
         if not VLE.models.Group.objects.filter(course=course, lms_id=lms_id).exists():
             make_course_group(name, course, lms_id)
         else:

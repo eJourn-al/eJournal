@@ -9,10 +9,14 @@ from VLE.utils.error_handling import VLEBadRequest
 class CourseData(lti.utils.PreparedData):
     model = Course
 
-    def create(self):
+    def create(self, sync_members=True, create_paticipation=True):
         course = factory.make_course(**self.create_dict)
 
-        lti.members.sync_members(course)
+        if sync_members:
+            lti.members.sync_members(course)
+
+        if create_paticipation:
+            lti.user.Lti1p3UserData(self.data).create_participation(course=course)
 
         return course
 
@@ -44,7 +48,6 @@ class CourseData(lti.utils.PreparedData):
 class Lti1p3CourseData(CourseData):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # TODO LTI: check if it is possible to update the description / title on the Canvas side
         self.create_keys = [
             'name',
             'abbreviation',

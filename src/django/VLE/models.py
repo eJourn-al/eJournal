@@ -5,6 +5,7 @@ Database file
 """
 import os
 import random
+import re
 import string
 from datetime import datetime
 
@@ -118,7 +119,12 @@ class Instance(CreateUpdateModel):
 
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)
-        # TODO LTI: validate that lms_url is http://[url] without a slash at the end
+        if self.lms_url:
+            self.lms_url = self.lms_url.strip()
+            # TODO LTI test this
+            if not re.match(r'^https?://[^/]*$', self.lms_url):
+                raise ValidationError('The LMS URL should be as follows: "http(s)://example.com". No leading "/".')
+
         if self.iss:
             settings.TOOL_CONF.update_config(instance=self)
 
@@ -1929,8 +1935,12 @@ class JournalQuerySet(models.QuerySet):
         """
         return self.annotate(
             needs_lti_link=Case(
-                # If assignment is LTI1.3 there is no need for lti link
-                When(Q(assignment__assignments_grades_service__isnull=False), then=[]),
+                When(
+                    # If assignment is LTI1.3 (assignments_grades_service exists)
+                    Q(assignment__assignments_grades_service__isnull=False),
+                    # TODO LTI: Then check if the user is also in the course from the LTI1.3 assignment
+                    then=[],
+                ),
                 default=ArrayAgg(
                     'authors__user__full_name',
                     filter=Q(authors__sourcedid__isnull=True, assignment__active_lti_id__isnull=False),

@@ -8,7 +8,7 @@ import datetime
 import test.factory as factory
 import time
 from test.utils import api
-from test.utils.lti import get_new_lti_id, get_signature, lti_launch_response_to_access_token
+from test.utils.lti import encode_lti_params, get_new_lti_id, get_signature, lti_launch_response_to_access_token
 
 import oauth2
 from django.conf import settings
@@ -147,7 +147,7 @@ def get_jwt(obj, request_body={}, timestamp=None, nonce=None,
     if timestamp is None:
         timestamp = str(int(time.time()))
     request = create_request(request_body, timestamp, nonce, delete_field, to_lti_launch=False)
-    jwt_params = lti_view.encode_lti_params(request)
+    jwt_params = encode_lti_params(request)
     response = api.post(obj, url, params={'jwt_params': jwt_params},  user=user, status=status, access=access)
     if response_msg:
         if 'description' in response:

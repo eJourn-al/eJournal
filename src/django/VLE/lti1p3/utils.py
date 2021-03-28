@@ -215,9 +215,8 @@ class eMessageLaunchData(object):
             course['author'] = course['author'].pk
 
         assignment = self.assignment.asdict()
-        # TODO LTI: fix course to onlyb PK or sth
         if assignment['courses']:
-            assignment['courses'] = []
+            assignment['courses'] = [course.pk for course in assignment['courses']]
         if assignment['author']:
             assignment['author'] = assignment['author'].pk
 

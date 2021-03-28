@@ -26,7 +26,7 @@ from rest_framework_simplejwt.views import TokenRefreshView, TokenVerifyView
 
 from VLE.lms_api import authenticate
 from VLE.lti1p3 import launch
-from VLE.views import common, email, lti, user
+from VLE.views import common, email, user
 
 urlpatterns = [
     url(r'^admin/', admin.site.urls),
@@ -46,12 +46,8 @@ urlpatterns = [
     # Launch from LMS, verifies jwt credentials and redirects to front end lti_launch point of entry
     path('lti/launch/', launch.launch, name='lti_launch'),
     path('lti/configure/', launch.launch_configuration, name='lti_launch_configuration'),
-    url(r'^lti/login/$', lti.lti_login, name='lti_login'),
+    url(r'^lti/login/$', launch.lti_login, name='lti_login'),
     url(r'^lms/authenticate/$', authenticate.lms_authenticate, name='lms_api_authenticate'),
-
-    # Launch from our front end
-    path('get_lti_params_from_jwt/', lti.get_lti_params_from_jwt, name='get_lti_params_from_jwt'),
-    path('update_lti_groups/', lti.update_lti_groups, name='update_lti_groups'),
 
     path('names/<int:course_id>/<int:assignment_id>/<int:journal_id>/', common.names, name='names'),
 ] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)

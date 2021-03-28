@@ -1,11 +1,11 @@
 import time
 from urllib import parse
 
+import jwt
 import oauth2
 from django.conf import settings
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
-import VLE.views.lti as lti_view
 from VLE.models import User
 
 BASE_PARAMS = {
@@ -16,6 +16,10 @@ BASE_PARAMS = {
     'lti_message_type': 'basic-lti-launch-request',
     'lti_version': 'LTI-1p0',
 }
+
+
+def encode_lti_params(jwt_params):
+    return jwt.encode(jwt_params, settings.SECRET_KEY, algorithm='HS256').decode('utf-8')
 
 
 def get_signature(request):
@@ -52,7 +56,7 @@ def gen_jwt_params(params={}, user=None):
     else:
         req['oauth_signature'] = get_signature(req)
 
-    return {'jwt_params': lti_view.encode_lti_params(req)}
+    return {'jwt_params': encode_lti_params(req)}
 
 
 def get_new_lti_id():

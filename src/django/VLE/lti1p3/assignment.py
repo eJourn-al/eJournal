@@ -87,7 +87,6 @@ class AssignmentData(utils.PreparedData):
 class Lti1p3AssignmentData(AssignmentData):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # TODO LTI: check if it is possible to update the description / title on the Canvas side
         self.create_keys = [
             'name',
             'author',
@@ -172,6 +171,7 @@ class Lti1p0AssignmentData(AssignmentData):
             'due_date',
             'lock_date',
             'courses',
+            'assignments_grades_service',
         ]
         # QUESTION LTI: are these valid settings?
         self.update_keys = [
@@ -184,6 +184,10 @@ class Lti1p0AssignmentData(AssignmentData):
             'due_date',
             'lock_date',
             # 'courses',  TODO LTI: check how we wanna handle this? Maybe we can just manually add it when linking
+            # NOTE: we also update the assignments_grades_service because when switching from LTI 1.3 to LTI 1.0, we
+            # do not want to keep the LTI 1.3 information left in the assignment. It can be re-added later when
+            # switching back to LTI 1.3
+            'assignments_grades_service',
         ]
         self.find_keys = [
             'active_lti_id',
@@ -224,3 +228,7 @@ class Lti1p0AssignmentData(AssignmentData):
     @property
     def courses(self):
         return [lti.course.Lti1p0CourseData(self.data).find_in_db()]
+
+    @property
+    def assignments_grades_service(self):
+        return None

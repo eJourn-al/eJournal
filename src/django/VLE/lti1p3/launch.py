@@ -2,7 +2,7 @@ from django.conf import settings
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import redirect
 from django.urls import reverse
-from pylti1p3.contrib.django import DjangoCacheDataStorage
+from pylti1p3.contrib.django import DjangoCacheDataStorage, DjangoOIDCLogin
 from pylti1p3.deep_link_resource import DeepLinkResource
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny
@@ -89,7 +89,7 @@ def handle_all_connected_to_launch_data(launch_data, launch_id, user, course, as
 @api_view(['GET'])
 @permission_classes((AllowAny, ))
 def launch_configuration(request):
-    if Instance.objects.get(pk=1).lms_name == 'Canvas':
+    if Instance.objects.get(pk=1).lms_name == Instance.CANVAS:
         return JsonResponse({
             'title': 'eJournal',
             'scopes': [
@@ -215,3 +215,21 @@ def launch(request):
     except KeyError as err:
         raise VLEBadRequest(
             '{} is missing. Please contact the system administrator or support@ejournal.app'.format(err.args[0]))
+
+
+def get_launch_url(request):
+    target_link_uri = request.POST.get('target_link_uri', request.GET.get('target_link_uri'))
+    if not target_link_uri:
+        raise Exception('Missing "target_link_uri" param')
+    return target_link_uri
+
+
+@api_view(['POST', 'GET'])
+@permission_classes((AllowAny, ))
+def lti_login(request):
+    oidc_login = DjangoOIDCLogin(request, settings.TOOL_CONF, launch_data_storage=DjangoCacheDataStorage())
+    target_link_uri = get_launch_url(request)
+    a = oidc_login\
+        .enable_check_cookies()\
+        .redirect(target_link_uri)
+    return a

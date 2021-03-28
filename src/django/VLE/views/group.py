@@ -188,7 +188,7 @@ class GroupView(viewsets.ViewSet):
             'login/oauth2/auth',
             {
                 'response_type': 'code',
-                'redirect_uri': build_url(settings.API_URL, 'lms/authenticate/'),  # TODO LTI: change to API_URL
+                'redirect_uri': build_url(settings.API_URL, 'lms/authenticate/'),
                 'scope': ' '.join('''
                     url:GET|/api/v1/courses/:course_id/students
                     url:GET|/api/v1/courses/:course_id/sections
@@ -233,11 +233,9 @@ class GroupView(viewsets.ViewSet):
                     url:GET|/api/v1/sections/:id
                 '''.split()),
                 'client_id': instance.api_client_id,
-                # TODO LTI: to course LMS id
                 'state': 'SYNC_GROUPS-{}'.format(course_id)
             }
         )
-        print(url)
         return response.success({'redirect_uri': url})
 
     def assigned_groups(self, request):

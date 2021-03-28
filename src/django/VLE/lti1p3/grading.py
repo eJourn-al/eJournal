@@ -32,7 +32,6 @@ class eGrade(Grade):
 
 # https://www.imsglobal.org/spec/lti-ags/v2p0#gradingprogress
 class GradeProgress(object):
-    # TODO LTI: add finished states
     NO_SUBMISSION = 'NotReady'
     NEEDS_GRADING = 'PendingManual'
     DONE_GRADING = 'Pending'
@@ -53,7 +52,6 @@ class GradeProgress(object):
 
 # https://www.imsglobal.org/spec/lti-ags/v2p0#activityprogress
 class ActivityProgress(object):
-    # TODO LTI: add finished states
     NO_SUBMISSION = 'Initialized'
     HAS_SUBMISSIONS = 'Submitted'
     FINISHED = 'Completed'
@@ -64,9 +62,14 @@ class ActivityProgress(object):
             return cls.NO_SUBMISSION
         else:
             return cls.HAS_SUBMISSIONS
+        # QUESTION: do we ever want to send a "finished" state? this technically should mean that the user
+        # is NEVER able to send any update anymore.
+        # That said, Canvas does not follow the specifications precicely, and we are still able to send other states
+        # after the finished state.
 
 
 def send_grade(assignment_participation, ags=None):
+    # TODO LTI: also add grading service for LTI 1.1
     instance = Instance.objects.get(pk=1)
 
     journal = assignment_participation.journal
@@ -84,7 +87,6 @@ def send_grade(assignment_participation, ags=None):
         connector = ServiceConnector(registration)
         ags = AssignmentsGradesService(connector, json.loads(assignment.assignments_grades_service))
 
-    # TODO LTI: change local IP to own IP
     print(timestamp.strftime('%Y-%m-%dT%H:%M:%S+00:00'))
     grade.set_score_given(journal.grade)
     grade.set_score_maximum(assignment.points_possible)
