@@ -290,7 +290,7 @@ export default {
                 this.uploading += 1
                 this.$emit('startedUploading')
                 auth.uploadFile('files', formData)
-                    .then((response) => { success(response.data.download_url) })
+                    .then((response) => { success(response.data.file.download_url) })
                     .catch(() => { failure('File upload failed') })
                     .finally(() => {
                         this.uploading -= 1
