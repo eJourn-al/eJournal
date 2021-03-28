@@ -1939,6 +1939,10 @@ class JournalQuerySet(models.QuerySet):
                     # If assignment is LTI1.3 (assignments_grades_service exists)
                     Q(assignment__assignments_grades_service__isnull=False),
                     # TODO LTI: Then check if the user is also in the course from the LTI1.3 assignment
+                    # This case happens when an assignment:
+                    # - is linked to both LTI 1.0 and LTI 1.3,
+                    # - the active course is LTI 1.3
+                    # - the student visits from the non active (LTI 1.0) course
                     then=[],
                 ),
                 default=ArrayAgg(
