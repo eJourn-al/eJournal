@@ -48,7 +48,9 @@ class FileView(viewsets.ViewSet):
             in_rich_text='in_rich_text' in request.POST
         )
 
-        return response.created(FileSerializer(file, context={'user': request.user}).data)
+        return response.created({
+            'file': FileSerializer(file, context={'user': request.user}).data,
+        })
 
     @action(['get'], detail=True)
     def access_id(self, request, pk):

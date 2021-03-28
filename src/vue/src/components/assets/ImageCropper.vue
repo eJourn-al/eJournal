@@ -76,8 +76,7 @@ export default {
             this.$toasted.error('Invalid file type. Please choose an image.')
         },
         onFileSizeExceed () {
-            this.$toasted.error(
-                `The picture exceeds the maximum file size of ${this.$root.maxFileSizeBytes} bytes.`)
+            this.$toasted.error(`The picture exceeds the maximum file size of ${this.$root.maxFileSizeLabel}.`)
         },
         savePicture () {
             this.$emit('newPicture', this.croppa.generateDataUrl('image/png'))

@@ -7,12 +7,6 @@ const conn = axios.create()
 // An instance without refresh interceptor
 const connRefresh = axios.create()
 
-const connUpFile = axios.create({
-    headers: {
-        'Content-Type': 'multipart/form-data',
-    },
-})
-
 const connDownFile = axios.create({
     responseType: 'arraybuffer',
     headers: {
@@ -31,7 +25,6 @@ const connSentry = axios.create({
 export default {
     conn,
     connRefresh,
-    connUpFile,
     connDownFile,
     connSentry,
 }

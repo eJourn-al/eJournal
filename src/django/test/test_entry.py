@@ -19,7 +19,7 @@ from faker import Faker
 import VLE.utils.entry_utils as entry_utils
 from VLE.models import (Assignment, Category, Comment, Content, Course, Entry, Field, FileContext, Format, Grade,
                         Journal, JournalImportRequest, Node, PresetNode, TeacherEntry, Template, TemplateChain, User)
-from VLE.serializers import EntrySerializer, TemplateSerializer
+from VLE.serializers import EntrySerializer, FileSerializer, TemplateSerializer
 from VLE.utils.error_handling import VLEBadRequest, VLEMissingRequiredField, VLEPermissionError
 from VLE.validators import validate_entry_content
 
@@ -908,6 +908,25 @@ class EntryAPITest(TestCase):
 
         # Check if a published entry cannot be unpublished
         api.create(self, 'grades', params={'entry_id': entry['id'], 'published': False}, user=self.teacher, status=400)
+
+    def test_update_entry_file_field(self):
+        file_template = factory.Template(format=self.g_assignment.format, add_fields=[{'type': Field.FILE}])
+        file_field = file_template.field_set.first()
+        entry = factory.UnlimitedEntry(node__journal=self.group_journal, template=file_template)
+        file_content = entry.content_set.first()
+
+        new_fc = factory.TempFileContext(author=self.student)
+        params = {
+            'pk': entry.pk,
+            'journal_id': self.group_journal.pk,
+            'content': {file_field.pk: FileSerializer(new_fc).data}
+        }
+        updated_entry_resp = api.update(self, 'entries', params=params, user=self.student)['entry']
+
+        file_content.refresh_from_db()
+        assert int(file_content.data) == new_fc.pk, 'Entry file content is updated to match the new file'
+        assert updated_entry_resp['content'][str(file_field.pk)]['id'] == new_fc.pk, \
+            'The updated entry serializes the new file correctly'
 
     def test_destroy_entry(self):
         # Only a student can delete their own entry

@@ -508,10 +508,10 @@ class TeacherEntryAPITest(TestCase):
         pre_crash_entries = all_to_dict(Entry)
         pre_crash_grades = all_to_dict(Grade)
         pre_crash_comments = all_to_dict(Comment)
-        pre_crash_fcs = list(FileContext.objects.values_list('pk', flat=True))
+        pre_crash_fcs = set(FileContext.objects.values_list('pk', flat=True))
 
         data = factory.TeacherEntryCreationParams(assignment=assignment)
-        temp_files = list(FileContext.objects.filter(author=teacher, is_temp=True).values_list('pk', flat=True))
+        temp_files = set(FileContext.objects.filter(author=teacher, is_temp=True).values_list('pk', flat=True))
 
         def check_db_state_after_exception(self, raise_exception_for):
             with mock.patch(raise_exception_for, side_effect=Exception()):
@@ -523,8 +523,8 @@ class TeacherEntryAPITest(TestCase):
             assert all([equal_models(pre, post) for pre, post in zip_equal(pre_crash_entries, all_to_dict(Entry))])
             assert all([equal_models(pre, post) for pre, post in zip_equal(pre_crash_grades, all_to_dict(Grade))])
             assert all([equal_models(pre, post) for pre, post in zip_equal(pre_crash_comments, all_to_dict(Comment))])
-            assert list(FileContext.objects.exclude(pk__in=temp_files).values_list('pk', flat=True)) == pre_crash_fcs
-            assert list(FileContext.objects.filter(author=teacher, is_temp=True).values_list('pk', flat=True)) \
+            assert set(FileContext.objects.exclude(pk__in=temp_files).values_list('pk', flat=True)) == pre_crash_fcs
+            assert set(FileContext.objects.filter(author=teacher, is_temp=True).values_list('pk', flat=True)) \
                 == temp_files, \
                 'Teacher can reuse earlier uploaded temporary files, despite a crash occurring'
 
