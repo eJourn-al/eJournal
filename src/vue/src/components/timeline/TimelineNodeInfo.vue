@@ -5,7 +5,7 @@
 
 <template>
     <span
-        :class="{'selected': selected}"
+        :class="{'selected': node === currentNode}"
         class="node-info"
     >
         <span
@@ -23,7 +23,7 @@
         </span>
 
         <category-display
-            :id="`timeline-node-${node.nID}-categories`"
+            :id="`timeline-node-${node.id}-categories`"
             :categories="nodeCategories"
             :compact="true"
         />
@@ -46,12 +46,19 @@ export default {
     components: {
         CategoryDisplay,
     },
-    props: ['node', 'selected'],
+    props: {
+        node: {
+            type: Object,
+            required: true,
+        },
+    },
     computed: {
         ...mapGetters({
             assignment: 'assignment/assignment',
             isPresetNodeDirty: 'assignmentEditor/isPresetNodeDirty',
             isAssignmentDetailsDirty: 'assignmentEditor/isAssignmentDetailsDirty',
+            currentNode: 'timeline/currentNode',
+            endNode: 'timeline/endNode',
         }),
         nodeTitle () {
             if (this.node.entry) {
@@ -84,6 +91,8 @@ export default {
                 return this.node.entry.creation_date
             } else if (this.node.due_date) {
                 return this.node.due_date
+            } else if (this.node === this.endNode) {
+                return this.assignment.due_date
             } else {
                 return null
             }

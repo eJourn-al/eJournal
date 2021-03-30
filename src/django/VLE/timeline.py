@@ -57,7 +57,7 @@ def get_add_node(journal):
     """
     return {
         'type': Node.ADDNODE,
-        'nID': -1,
+        'id': -1,
         'templates': TemplateSerializer(
             TemplateSerializer.setup_eager_loading(
                 journal.assignment.format.template_set.filter(
@@ -80,7 +80,7 @@ def get_entry_node(journal, node, user):
 
     return {
         'type': node.type,
-        'nID': node.id,
+        'id': node.id,
         'jID': journal.pk,
         'entry': entry_data,
     } if node else None
@@ -98,7 +98,7 @@ def get_deadline(journal, node, user):
 
     node_data = {
         'type': node.type,
-        'nID': node.id,
+        'id': node.id,
         'jID': journal.pk,
         'entry': entry_data,
         'deleted_preset': node.preset is None
@@ -131,7 +131,7 @@ def get_progress(journal, node):
         'display_name': node.preset.display_name,
         'description': node.preset.description,
         'type': node.type,
-        'nID': node.id,
+        'id': node.id,
         'jID': journal.pk,
         'due_date': node.preset.due_date,
         'target': node.preset.target,

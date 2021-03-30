@@ -8,10 +8,8 @@
             </bread-crumb>
             <timeline
                 v-if="!loadingNodes"
-                :selected="currentNode"
                 :nodes="nodes"
                 :assignment="assignment"
-                @select-node="selectNode"
             />
         </template>
 
@@ -21,24 +19,20 @@
                     - {{ journal.name }}
                 </template>
             </bread-crumb>
-            <b-alert
+
+            <user-missing-lti-link-warning
                 v-if="!loadingNodes && journal.needs_lti_link.length > 0 && assignment.active_lti_course"
-                show
-            >
-                <b>Warning:</b> You cannot update this journal until
-                {{ assignment.is_group_assignment ? 'all group members' : 'you' }}
-                visit the assignment though the LMS (Canvas) course
-                '{{ assignment.active_lti_course.name }}' at least once.
-            </b-alert>
+                :assignment="assignment"
+                :journal="journal"
+            />
+
             <load-wrapper :loading="loadingNodes">
-                <template
-                    v-if="nodes[currentNode] && nodes[currentNode].type == 'a'"
-                >
+                <template v-if="currentNode.type === addNodeSymbol">
                     <h4 class="theme-h4 mb-2 d-block">
                         <span>New entry</span>
                     </h4>
                     <b-form-select
-                        v-if="nodes[currentNode].templates.length > 1"
+                        v-if="currentNode.templates.length > 1"
                         v-model="selectedTemplate"
                         class="theme-select mb-2"
                     >
@@ -49,7 +43,7 @@
                             Select a template
                         </option>
                         <option
-                            v-for="template in nodes[currentNode].templates"
+                            v-for="template in currentNode.templates"
                             :key="template.id"
                             :value="template"
                         >
@@ -57,44 +51,43 @@
                         </option>
                     </b-form-select>
                 </template>
+
                 <journal-start-card
-                    v-if="currentNode === -1"
+                    v-if="currentNode === startNode"
                     :assignment="assignment"
                 />
                 <journal-end-card
-                    v-else-if="currentNode >= nodes.length"
+                    v-else-if="currentNode === endNode"
                     :assignment="assignment"
                 />
                 <progress-node
-                    v-else-if="nodes[currentNode].type == 'p'"
-                    :currentNode="nodes[currentNode]"
+                    v-else-if="currentNode.type == 'p'"
+                    :currentNode="currentNode"
                     :nodes="nodes"
                     :bonusPoints="journal.bonus_points"
                 />
                 <b-card
-                    v-else-if="nodes[currentNode].type == 'd' && !nodes[currentNode].entry
+                    v-else-if="currentNode.type == 'd' && !currentNode.entry
                         && currentNodeIsLocked"
                     :class="$root.getBorderClass($route.params.cID)"
                     class="no-hover"
                 >
                     <h2 class="theme-h2 mb-2">
-                        {{ nodes[currentNode].template.name }}
+                        {{ currentNode.template.name }}
                     </h2>
                     <hr class="full-width"/>
                     <b>This preset is locked. You cannot submit an entry at the moment.</b><br/>
                     {{ deadlineRange }}
                 </b-card>
                 <entry
-                    v-else-if="(nodes[currentNode].type == 'd' || nodes[currentNode].type == 'e'
-                        || nodes[currentNode].type == 'a') && currentTemplate"
+                    v-else-if="currentTemplate && ['d', 'e', 'a'].includes(currentNode.type)"
                     ref="entry"
                     :class="{'input-disabled': !loadingNodes && journal.needs_lti_link.length > 0
                         && assignment.active_lti_course}"
                     :template="currentTemplate"
                     :assignment="assignment"
-                    :node="nodes[currentNode]"
-                    :create="nodes[currentNode].type == 'a' || (nodes[currentNode].type == 'd'
-                        && !nodes[currentNode].entry)"
+                    :node="currentNode"
+                    :create="currentNode.type == 'a' || (currentNode.type == 'd' && !currentNode.entry)"
                     @entry-deleted="removeCurrentEntry"
                     @entry-posted="entryPosted"
                 />
@@ -137,9 +130,9 @@
 
             <transition name="fade">
                 <b-button
-                    v-if="addIndex > -1 && currentNode !== addIndex"
+                    v-if="addNodeExists && currentNode.type !== addNodeSymbol"
                     class="fab"
-                    @click="currentNode = addIndex"
+                    @click="setCurrentNode(nodes.find((node) => node.type === addNodeSymbol))"
                 >
                     <icon
                         name="plus"
@@ -154,6 +147,7 @@
 <script>
 import Entry from '@/components/entry/Entry.vue'
 import TimelineLayout from '@/components/columns/TimelineLayout.vue'
+import UserMissingLtiLinkWarning from '@/components/journal/UserMissingLtiLinkWarning.vue'
 
 import breadCrumb from '@/components/assets/BreadCrumb.vue'
 import journalDetails from '@/components/journal/JournalDetails.vue'
@@ -167,6 +161,8 @@ import timeline from '@/components/timeline/Timeline.vue'
 import assignmentAPI from '@/api/assignment.js'
 import journalAPI from '@/api/journal.js'
 
+import { mapGetters, mapMutations } from 'vuex'
+
 export default {
     components: {
         breadCrumb,
@@ -179,11 +175,11 @@ export default {
         journalEndCard,
         journalDetails,
         journalImportModal,
+        UserMissingLtiLinkWarning,
     },
     props: ['cID', 'aID', 'jID'],
     data () {
         return {
-            currentNode: -1,
             nodes: [],
             journal: null,
             assignment: null,
@@ -192,12 +188,18 @@ export default {
         }
     },
     computed: {
-        addIndex () {
-            return this.nodes.findIndex((node) => node.type === 'a')
+        ...mapGetters({
+            currentNode: 'timeline/currentNode',
+            startNode: 'timeline/startNode',
+            addNodeSymbol: 'timeline/addNodeSymbol', // Add node is serialized by the backend
+            endNode: 'timeline/endNode',
+        }),
+        addNodeExists () {
+            return this.nodes.findIndex((node) => node.type === this.addNodeSymbol) !== -1
         },
         deadlineRange () {
-            const unlockDate = this.$root.beautifyDate(this.nodes[this.currentNode].unlock_date)
-            const lockDate = this.$root.beautifyDate(this.nodes[this.currentNode].lock_date)
+            const unlockDate = this.$root.beautifyDate(this.currentNode.unlock_date)
+            const lockDate = this.$root.beautifyDate(this.currentNode.lock_date)
 
             if (unlockDate && lockDate) {
                 return `Available from ${unlockDate} until ${lockDate}`
@@ -214,30 +216,30 @@ export default {
             let unlockDate = currentDate
             let lockDate = currentDate
 
-            if (!this.nodes[this.currentNode]) {
+            if (!this.currentNode) {
                 return false
             }
 
-            if (this.nodes[this.currentNode].unlock_date) {
-                unlockDate = new Date(this.nodes[this.currentNode].unlock_date)
+            if (this.currentNode.unlock_date) {
+                unlockDate = new Date(this.currentNode.unlock_date)
             }
 
-            if (this.nodes[this.currentNode].lock_date) {
-                lockDate = new Date(this.nodes[this.currentNode].lock_date)
+            if (this.currentNode.lock_date) {
+                lockDate = new Date(this.currentNode.lock_date)
             }
 
             return currentDate < unlockDate || lockDate < currentDate
         },
         currentTemplate () {
-            if (this.nodes[this.currentNode].entry && this.nodes[this.currentNode].entry.template) {
+            if (this.currentNode.entry && this.currentNode.entry.template) {
                 // Existing entry.
-                return this.nodes[this.currentNode].entry.template
-            } else if (this.nodes[this.currentNode].template) {
+                return this.currentNode.entry.template
+            } else if (this.currentNode.template) {
                 // Preset node.
-                return this.nodes[this.currentNode].template
-            } else if (this.nodes[this.currentNode].templates && this.nodes[this.currentNode].templates.length === 1) {
+                return this.currentNode.template
+            } else if (this.currentNode.templates && this.currentNode.templates.length === 1) {
                 // Add node with only one unlimited template available.
-                return this.nodes[this.currentNode].templates[0]
+                return this.currentNode.templates[0]
             }
 
             // Add node with multiple choices: select from dropdown.
@@ -245,6 +247,9 @@ export default {
         },
     },
     created () {
+        this.setCurrentNode(this.startNode)
+        this.pushNodeNavigationGuard(this.safeToLeave)
+
         assignmentAPI.get(this.aID, this.cID, { customErrorToast: 'Error while loading assignment data.' })
             .then((assignment) => {
                 this.assignment = assignment
@@ -260,44 +265,45 @@ export default {
                     if (results.length > 1) {
                         this.nodes = results[1]
                         if (this.$route.query.nID !== undefined) {
-                            this.currentNode = this.findEntryNode(parseInt(this.$route.query.nID, 10))
+                            const nID = parseInt(this.$route.query.nID, 10)
+                            const nodeToSelect = this.nodes.find((node) => node.id === nID)
+                            this.setCurrentNode(nodeToSelect || this.startNode)
                         }
                     }
                     this.loadingNodes = false
                 })
             })
     },
+    beforeDestroy () {
+        this.removeNodeNavigationGuard(this.safeToLeave)
+    },
     methods: {
+        ...mapMutations({
+            setCurrentNode: 'timeline/SET_CURRENT_NODE',
+            pushNodeNavigationGuard: 'timeline/PUSH_NODE_NAVIGATION_GUARD',
+            removeNodeNavigationGuard: 'timeline/REMOVE_NODE_NAVIGATION_GUARD',
+        }),
         removeCurrentEntry () {
-            if (this.nodes[this.currentNode].type === 'd') {
-                this.nodes[this.currentNode].entry = null
-                this.currentNode = 0
+            if (this.currentNode.type === 'd') {
+                this.currentNode.entry = null
             } else {
-                this.nodes.splice(this.currentNode, 1)
+                this.nodes = this.nodes.filter((node) => node !== this.currentNode)
             }
-        },
-        selectNode (selectedNode) {
-            if (selectedNode !== this.currentNode && this.safeToLeave()) {
-                this.currentNode = selectedNode
-            }
+
+            this.setCurrentNode(this.startNode)
         },
         entryPosted (data) {
             this.nodes = data.nodes
             this.loadingNodes = false
-            this.currentNode = data.added
+            this.setCurrentNode(this.nodes[data.added])
             this.selectedTemplate = null
         },
-        findEntryNode (nodeID) {
-            for (let i = 0; i < this.nodes.length; i++) {
-                if (this.nodes[i].nID === nodeID) {
-                    return i
-                }
-            }
-            return 0
-        },
         safeToLeave () {
-            return !this.$refs.entry || this.$refs.entry.safeToLeave()
+            return (
+                !this.$refs.entry
+                || this.$refs.entry.safeToLeave()
                 || window.confirm('Progress will not be saved if you leave. Do you wish to continue?')
+            )
         },
     },
 }

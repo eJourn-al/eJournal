@@ -74,7 +74,7 @@
                 :node="entryNode"
             />
             <entry-fields
-                :nodeID="entryNode.nID"
+                :nodeID="entryNode.id"
                 :template="entryNode.entry.template"
                 :content="entryNode.entry.content"
                 :edit="false"
@@ -271,7 +271,9 @@ export default {
                     },
                     { customSuccessToast },
                 )
-                    .then(() => {
+                    .then((entry) => {
+                        this.grade = entry.grade
+                        this.entryNode.entry.grade = entry.grade
                         this.$emit('check-grade')
                     })
             } else {

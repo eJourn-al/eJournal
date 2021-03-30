@@ -65,7 +65,7 @@ export default {
             let tempProgress = this.bonusPoints
 
             this.nodes.some((node) => {
-                if (node.nID === this.currentNode.nID) { return true }
+                if (node.id === this.currentNode.id) { return true }
 
                 if (node.type === 'e' || node.type === 'd') {
                     if (node.entry && node.entry.grade && node.entry.grade.published

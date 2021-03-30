@@ -28,9 +28,37 @@
 </template>
 
 <script>
+import { mapGetters } from 'vuex'
+
 export default {
-    props: ['node', 'selected', 'edit'],
+    props: {
+        node: {
+            required: true,
+            type: Object,
+        },
+    },
     computed: {
+        ...mapGetters({
+            currentNode: 'timeline/currentNode',
+            endNode: 'timeline/endNode',
+            assignment: 'assignment/assignment',
+        }),
+        selected () {
+            return (
+                this.node === this.currentNode
+                || (
+                    this.node && this.currentNode
+                    && this.node.id && this.currentNode.id
+                    && this.node.id === this.currentNode.id
+                )
+            )
+        },
+        /* Boolean used to indicate the assignment is being edited, new preset nodes can be inserted
+         * which will not yet be saved / have an id.
+         * Entries are created one at a time and are always inserted after save (with id) */
+        workingWithPresetNodes () {
+            return this.$route.name === 'AssignmentEditor'
+        },
         nodeClass () {
             return {
                 'enc-start': this.node.type === 's',
@@ -80,7 +108,7 @@ export default {
             case 'needs_publishing':
                 return 'Awaiting publishment'
             case 'add':
-                if (this.edit) {
+                if (this.workingWithPresetNodes) {
                     return 'Add new preset'
                 } else {
                     return 'Add new entry'
@@ -127,7 +155,7 @@ export default {
     methods: {
         dueDateHasPassed () {
             const currentDate = new Date()
-            const dueDate = new Date(this.node.due_date)
+            const dueDate = new Date((this.node === this.endNode) ? this.assignment.due_date : this.node.due_date)
 
             return currentDate > dueDate
         },
@@ -148,7 +176,7 @@ export default {
                 return 'end'
             } else if (this.node.type === 'a') {
                 return 'add'
-            } else if (this.edit || this.node.type === 'p') {
+            } else if (this.workingWithPresetNodes || this.node.type === 'p') {
                 return ''
             }
 

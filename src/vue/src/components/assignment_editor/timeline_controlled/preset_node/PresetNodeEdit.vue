@@ -283,7 +283,7 @@ export default {
 
             if (this.edit) {
                 this.update({ data: this.presetNode, aID: this.$route.params.aID })
-                    .then(() => { this.presetNodeUpdated({ presetNode: this.presetNode }) })
+                    .then((presetNode) => { this.presetNodeUpdated({ presetNode }) })
             } else {
                 this.create({ data: this.presetNode, aID: this.$route.params.aID })
                     .then((createdPresetNode) => {
