@@ -33,6 +33,9 @@ def sync_members(course):
     print(json.dumps(members, indent=4, sort_keys=True))
 
     for member_data in members:
+        # QUESTION: we can also exclude 'Inactive' members. Is that preferred?
+        # if member.get('status', 'Active') == 'Inactive':
+        #     continue
         lti.user.NRSUserData(member_data).create_or_update(
             update_kwargs={'course': course},
             create_kwargs={'course': course},

@@ -82,6 +82,7 @@ def handle_all_connected_to_launch_data(launch_data, launch_id, user, course, as
         'assignment_id': assignment.id,
         # Go directly to journal if it is a submission url, i.e. the gradebook or student launch
         'journal_id': request.query_params.get('submission', journal.pk if journal else ''),
+        'left_journal': request.query_params.get('left_journal', False),
     }
     return redirect(build_url(settings.BASELINK, 'LtiLogin', response_data))
 
@@ -208,6 +209,14 @@ def launch(request):
         print('LTI assignment:', assignment)
 
         journal = Journal.objects.filter(authors__user=user, assignment=assignment).first()
+        if journal:
+            author = journal.authors.get(user=user)
+            # TODO LTI: only update if sth actually changed
+            if launch_data.lti_version == settings.LTI10 and \
+               launch_data.assignment.active_lti_id == assignment.active_lti_id:
+                author.grade_url = launch_data.user.grade_url
+                author.sourcedid = launch_data.user.sourcedid
+                author.save()
         print('LTI journal:', journal)
         return handle_all_connected_to_launch_data(
             launch_data, launch_id, user, course, assignment, journal, request)

@@ -49,7 +49,7 @@ SILKY_PYTHON_PROFILER_RESULT_PATH = '/'
 
 # If this is True, all tasks will be executed locally by blocking until the task returns.
 # TODO implement a testing environment, which does use background workers moving closer to production.
-CELERY_TASK_ALWAYS_EAGER = False
+CELERY_TASK_ALWAYS_EAGER = True
 
 DATABASES = {
     'default': {

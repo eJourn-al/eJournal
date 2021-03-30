@@ -1637,6 +1637,14 @@ class Assignment(CreateUpdateModel):
         course.add_assignment_lti_id(lti_id)
         course.save()
 
+    def is_lti13_version(self):
+        # NOTE: if this function were to change, also change the needs_lti_link annotation
+        return bool(self.assignments_grades_service)
+
+    def is_lti10_version(self):
+        # LTI 1.0 is when active lti id is set, and it is not LTI 1.3
+        return not self.is_lti13_version() and self.active_lti_id
+
     def can_be_unpublished(self):
         return not self.has_entries()
 
@@ -1933,25 +1941,30 @@ class JournalQuerySet(models.QuerySet):
         Annotates for each journal linked to an lti assignment (active lti id is not None)
         the full name as array of the users who do not have a sourcedid set as `needs_lti_link`
         """
-        return self.annotate(
-            needs_lti_link=Case(
-                When(
-                    # If assignment is LTI1.3 (assignments_grades_service exists)
-                    Q(assignment__assignments_grades_service__isnull=False),
-                    # TODO LTI: Then check if the user is also in the course from the LTI1.3 assignment
-                    # This case happens when an assignment:
-                    # - is linked to both LTI 1.0 and LTI 1.3,
-                    # - the active course is LTI 1.3
-                    # - the student visits from the non active (LTI 1.0) course
-                    then=[],
-                ),
-                default=ArrayAgg(
-                    'authors__user__full_name',
-                    filter=Q(authors__sourcedid__isnull=True, assignment__active_lti_id__isnull=False),
-                    distinct=True,
-                )
-            )
-        )
+        return self.annotate(needs_lti_link=ArrayAgg(
+            'authors__user__full_name',
+            filter=Q(authors__sourcedid__isnull=True, assignment__active_lti_id__isnull=False),
+            distinct=True,
+        ))
+        # return self.annotate(
+        #     needs_lti_link=Case(
+        #         When(
+        #             # If assignment is LTI1.3 (assignments_grades_service exists)
+        #             Q(assignment__assignments_grades_service__isnull=False),
+        #             # TODO LTI: Then check if the user is also in the course from the LTI1.3 assignment
+        #             # This case happens when an assignment:
+        #             # - is linked to both LTI 1.0 and LTI 1.3,
+        #             # - the active course is LTI 1.3
+        #             # - the student visits from the non active (LTI 1.0) course
+        #             then=[],
+        #         ),
+        #         default=ArrayAgg(
+        #             'authors__user__full_name',
+        #             filter=Q(authors__sourcedid__isnull=True, assignment__active_lti_id__isnull=False),
+        #             distinct=True,
+        #         )
+        #     )
+        # )
 
     def annotate_name(self):
         """
@@ -2169,7 +2182,7 @@ class Journal(CreateUpdateModel):
         return user \
             and self.authors.filter(user=user).exists() \
             and user.has_permission('can_have_journal', self.assignment) \
-            and not len(self.needs_lti_link) > 0 \
+            and not (self.needs_lti_link and len(self.needs_lti_link) > 0) \
             and self.assignment.format.template_set.filter(archived=False, preset_only=False).exists()
 
     def generate_missing_nodes(self, create=True):

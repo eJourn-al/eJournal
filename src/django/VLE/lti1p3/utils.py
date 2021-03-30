@@ -215,8 +215,6 @@ class eMessageLaunchData(object):
             course['author'] = course['author'].pk
 
         assignment = self.assignment.asdict()
-        if assignment['courses']:
-            assignment['courses'] = [course.pk for course in assignment['courses']]
         if assignment['author']:
             assignment['author'] = assignment['author'].pk
 

@@ -84,6 +84,7 @@ class Emails:
 EMAILS = Emails()
 
 
+# TODO LTI: move this to instance variables. Also needs a UI
 # LTI settings
 LTI_SECRET = os.environ['LTI_SECRET']
 LTI_KEY = os.environ['LTI_KEY']
@@ -179,7 +180,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     # 'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    # 'VLE.utils.error_handling.ErrorMiddleware',
+    'VLE.utils.error_handling.ErrorMiddleware',
     'csp.middleware.CSPMiddleware',
 ]
 

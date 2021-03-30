@@ -56,6 +56,14 @@ class UserData(lti.utils.PreparedData):
         return lti.roles.to_ejournal_role_name(self.roles) == 'Teacher'
 
     @property
+    def grade_url(self):
+        return self.data.get('lis_outcome_service_url', None)
+
+    @property
+    def sourcedid(self):
+        return self.data.get('lis_result_sourcedid', None)
+
+    @property
     def is_test_student(self):
         # TODO EXPANSION: this is Canvas specific, should be changed to also work with other LTI hosts
         return (
@@ -115,7 +123,7 @@ class UserData(lti.utils.PreparedData):
 
         return participation.groups
 
-    def create_participation(self, user, course):
+    def create_or_update_participation(self, user, course):
         # QUESTION: should we also update the user role and/or groups?
         participation = Participation.objects.filter(user=user, course=course).first()
         if not participation:
@@ -127,6 +135,13 @@ class UserData(lti.utils.PreparedData):
                     name=lti.roles.to_ejournal_role_name(self.roles),
                 ),
             )
+        else:
+            if lti.roles.to_ejournal_role_name(self.roles) != participation.role.name:
+                participation.role = Role.objects.get(
+                    course=course,
+                    name=lti.roles.to_ejournal_role_name(self.roles),
+                )
+                participation.save()
 
         if hasattr(self, 'groups'):
             self.add_groups_if_not_exists(participation)
@@ -158,7 +173,7 @@ class UserData(lti.utils.PreparedData):
         user.save()
 
         if course:
-            self.create_participation(user, course=course)
+            self.create_or_update_participation(user, course=course)
 
         return user
 
@@ -180,7 +195,7 @@ class UserData(lti.utils.PreparedData):
         user.save()
 
         if course:
-            self.create_participation(user, course=course)
+            self.create_or_update_participation(user, course=course)
 
         return user
 
@@ -307,7 +322,10 @@ class Lti1p0UserData(UserData):
 
     @property
     def roles(self):
-        return self.data['ext_roles'].split(',')
+        roles = []
+        roles += self.data.get('ext_roles', '').split(',')
+        roles += self.data.get('roles', '').split(',')
+        return roles
 
     @property
     def groups(self):
