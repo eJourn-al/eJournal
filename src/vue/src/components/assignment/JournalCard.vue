@@ -82,7 +82,7 @@
         </b-row>
         <slot/>
         <div
-            v-if="assignment.is_group_assignment && $hasPermission('can_manage_journals')"
+            v-if="assignment.is_group_assignment"
             class="expand-controls full-width text-center"
             @click.prevent.stop="expanded = !expanded"
         >
@@ -149,6 +149,15 @@ export default {
 
             return badges
         },
+    },
+    created () {
+        if (
+            this.assignment.is_group_assignment
+            && this.$hasPermission('can_have_journal')
+            && this.journal.author_count > 0
+        ) {
+            this.expanded = true
+        }
     },
     methods: {
         journalDeleted () {
