@@ -168,7 +168,8 @@ class GroupView(viewsets.ViewSet):
 
         if settings.LTI10 not in course.lti_versions:
             msg = 'This option is not available for this Course.'
-            if settings.LTI13 in course.lti_versions and Instance.objects.get_or_create(pk=1)[0].lms_name == Instance.CANVAS:
+            if settings.LTI13 in course.lti_versions and \
+               Instance.objects.get_or_create(pk=1)[0].lms_name == Instance.CANVAS:
                 msg += ' Try to sync with Canvas instead.'
             return response.bad_request(msg)
 

@@ -17,7 +17,7 @@ from rest_framework.settings import api_settings
 import VLE.factory as creation_factory
 import VLE.permissions as permissions
 import VLE.validators as validators
-from VLE.models import Instance, Preferences, Role, User
+from VLE.models import Preferences, Role, User
 from VLE.serializers import UserSerializer, prefetched_objects
 
 

@@ -4,7 +4,6 @@ test_lti_launch.py.
 Test lti launch.
 """
 
-import datetime
 import test.factory as factory
 import time
 from test.utils.lti import get_new_lti_id, get_signature, lti_launch_response_to_access_token
@@ -14,7 +13,7 @@ from django.conf import settings
 from django.test import RequestFactory, TestCase
 
 import VLE.lti1p3 as lti
-from VLE.models import Course, Group, Instance, Journal, Participation, User, access_gen
+from VLE.models import Group, Instance, Journal, User, access_gen
 
 REQUEST = {
     # Authentication data
