@@ -39,7 +39,7 @@ class UserFactory(factory.django.DjangoModelFactory):
 
 
 class LtiStudentFactory(UserFactory):
-    lti_1p3_id = factory.Sequence(lambda x: "id{}".format(x))
+    lti_1p0_id = factory.Sequence(lambda x: "id{}".format(x))
 
 
 class TestUserFactory(LtiStudentFactory):
@@ -58,7 +58,7 @@ class TeacherFactory(UserFactory):
 
 
 class LtiTeacherFactory(TeacherFactory):
-    lti_1p3_id = factory.Sequence(lambda x: "id{}".format(x))
+    lti_1p0_id = factory.Sequence(lambda x: "id{}".format(x))
 
 
 class AdminFactory(UserFactory):

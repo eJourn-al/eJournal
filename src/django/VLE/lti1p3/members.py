@@ -22,11 +22,10 @@ def sync_members(course):
     if not course.names_role_service:  # LTI 1.0 courses cannot sync like this
         return
 
-    instance = Instance.objects.get(pk=1)
+    instance = Instance.objects.get_or_create(pk=1)[0]
     registration = settings.TOOL_CONF.find_registration(instance.iss, client_id=instance.lti_client_id)
     connector = ServiceConnector(registration)
     nrs = NamesRolesProvisioningService(connector, json.loads(course.names_role_service))
-    print('SYNC MEMBERS COURSE: ', course.name)
 
     members = nrs.get_members()
 

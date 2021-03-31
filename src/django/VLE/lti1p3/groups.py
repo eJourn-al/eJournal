@@ -6,7 +6,7 @@ from VLE.models import Course, Group, Instance, Participation
 
 
 def sync_groups(access_token, course_id):
-    instance = Instance.objects.get(pk=1)
+    instance = Instance.objects.get_or_create(pk=1)[0]
     course = Course.objects.get(pk=course_id)
     url = f'{instance.lms_url}/api/v1/courses/{course.lms_id}/sections'
     groups = json.loads(utils.api_request(url, access_token).content)

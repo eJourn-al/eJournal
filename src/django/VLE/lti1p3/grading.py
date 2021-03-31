@@ -32,7 +32,6 @@ class GradePassBackRequest(object):
         self.timestamp = str(e_grade.get_timestamp())
         self.author = e_grade.get_author()
         self.score = str(e_grade.get_score_percentage())
-        print(self.score)
         self.result_data = e_grade.get_result_data()
 
     @classmethod
@@ -311,8 +310,6 @@ class eGrade(Grade):
         if self.get_extra_claims() is not None:
             data.update(self.get_extra_claims())
 
-        print(data)
-
         return json.dumps({k: v for k, v in data.items() if v is not None})
 
 
@@ -354,7 +351,7 @@ def send_grade(author, ags=None, left_journal=False, journal=None):
 
     if author.assignment.is_lti13_version():
         if not ags:
-            instance = Instance.objects.get(pk=1)
+            instance = Instance.objects.get_or_create(pk=1)[0]
             registration = settings.TOOL_CONF.find_registration(instance.iss, client_id=instance.lti_client_id)
             connector = ServiceConnector(registration)
             ags = AssignmentsGradesService(connector, json.loads(author.assignment.assignments_grades_service))

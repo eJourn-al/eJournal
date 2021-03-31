@@ -31,7 +31,7 @@ def get_user_lti(request):
         user = users.first()
         set_sentry_user_scope(user)
         if 'custom_user_image' in request and \
-           Instance.objects.get(pk=1).default_lms_profile_picture not in request['custom_user_image']:
+           Instance.objects.get_or_create(pk=1)[0].default_lms_profile_picture not in request['custom_user_image']:
             user.profile_picture = request['custom_user_image']
             user.save()
 

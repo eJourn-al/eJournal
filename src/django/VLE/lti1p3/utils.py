@@ -51,7 +51,9 @@ class OAuthRequestValidater(object):
         consumers secret en key
         """
         method, url, head, param = self.parse_request(request)
+        # print(method, url, head, param)
         oauth_request = oauth2.Request.from_request(method, url, headers=head, parameters=param)
+        # print(oauth_request)
         self.oauth_server.verify_request(oauth_request, self.oauth_consumer, {})
 
     @classmethod
@@ -88,6 +90,7 @@ class PreparedData(object):
         update_keys - model keys to set during update
         find_keys - model keys to use to find the model from database
     '''
+    _db_obj = None
 
     def __init__(self, data):
         self.data = data
@@ -143,7 +146,10 @@ class PreparedData(object):
 
         return qry
 
-    def find_in_db(self):
+    def find_in_db(self, force_from_db=False):
+        if self._db_obj and not force_from_db:
+            return self._db_obj
+
         # Dont search in DB when there are only none values to find the model
         if not self.find_or_qry:
             return None
@@ -157,7 +163,10 @@ class PreparedData(object):
                     f'During data preperation, multiple {self.model.__name__} instances were found in the database.',
                 )
 
-        return self.model.objects.filter(self.find_or_qry).first()
+        # Store in model, so it is cached later on
+        self._db_obj = self.model.objects.filter(self.find_or_qry).first()
+
+        return self._db_obj
 
     def create(self):
         return NotImplemented
@@ -181,22 +190,27 @@ class PreparedData(object):
         return {
             **self.create_dict,
             **self.update_dict,
+            **{
+                key: getattr(self, key)
+                for key in self.debug_keys
+            },
             'create_keys': self.create_keys,
             'update_keys': self.update_keys,
+            'find_keys': self.find_keys,
+            'in_database': bool(self.find_in_db()),
         }
 
     def __str__(self):
-        return json.dumps(self.asdict(), sort_keys=False, indent=4, cls=DatetimeEncoder)
+        return json.dumps({
+            self.asdict()
+        }, sort_keys=False, indent=4, cls=DatetimeEncoder)
 
 
 class eMessageLaunchData(object):
     def __init__(self, message_launch_data, lti_version):
         self.raw_data = message_launch_data
 
-        print(json.dumps(self.raw_data, indent=4, cls=DatetimeEncoder))
-
         self.lti_version = lti_version
-        print(self.lti_version)
 
         if self.lti_version == settings.LTI13:
             self.user = lti.user.Lti1p3UserData(message_launch_data)
@@ -217,6 +231,8 @@ class eMessageLaunchData(object):
         assignment = self.assignment.asdict()
         if assignment['author']:
             assignment['author'] = assignment['author'].pk
+        if assignment['connected_course']:
+            assignment['connected_course'] = assignment['connected_course'].pk
 
         return {
             'user': user,
@@ -242,6 +258,7 @@ class eDjangoMessageLaunch(DjangoMessageLaunch):
         )
 
     def validate_1p0(self):
+        # print('VALIDATING', self._request._request)
         secret = settings.LTI_SECRET
         key = settings.LTI_KEY
         try:
@@ -278,8 +295,8 @@ class eDjangoMessageLaunch(DjangoMessageLaunch):
         if self.lti_version == settings.LTI10:
             if 'body' not in self._jwt:
                 self.set_jwt({'body': self._request._request.POST})
-            if not self._validated and self._auto_validation:
-                self.validate()
+            # if not self._validated and self._auto_validation:
+            self.validate()
 
         data = super().get_launch_data(*args, **kwargs)
         return eMessageLaunchData(data, lti_version=self.lti_version)

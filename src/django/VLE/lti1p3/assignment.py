@@ -17,6 +17,13 @@ class AssignmentData(utils.PreparedData):
     _connected_course = None
     _author = None
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        self.debug_keys = [
+            'connected_course',
+        ]
+
     def create(self):
         if not self.connected_course:
             raise LtiException('Could not find the connected course, please check if the course already exists')
@@ -136,7 +143,11 @@ class Lti1p3AssignmentData(AssignmentData):
     @property
     def author(self):
         if not self._author:
-            self._author = lti.user.Lti1p3UserData(self.data).find_in_db()
+            assignment = self.find_in_db()
+            if assignment:
+                self._author = assignment.author
+            else:
+                self._author = lti.user.Lti1p3UserData(self.data).find_in_db()
 
         return self._author
 
@@ -218,7 +229,11 @@ class Lti1p0AssignmentData(AssignmentData):
     @property
     def author(self):
         if not self._author:
-            self._author = lti.user.Lti1p0UserData(self.data).find_in_db()
+            assignment = self.find_in_db()
+            if assignment:
+                self._author = assignment.author
+            else:
+                self._author = lti.user.Lti1p0UserData(self.data).find_in_db()
 
         return self._author
 

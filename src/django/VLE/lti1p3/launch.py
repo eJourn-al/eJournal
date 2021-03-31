@@ -2,6 +2,7 @@ from django.conf import settings
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import redirect
 from django.urls import reverse
+from django.utils.datastructures import MultiValueDictKeyError
 from pylti1p3.contrib.django import DjangoCacheDataStorage, DjangoOIDCLogin
 from pylti1p3.deep_link_resource import DeepLinkResource
 from rest_framework.decorators import api_view, permission_classes
@@ -49,7 +50,8 @@ def handle_no_course_connected_to_launch_data(launch_data, launch_id, user):
     refresh = TokenObtainPairSerializer.get_token(user)
     response_data = {
         'launch_state':
-            lti.utils.LTI_STATES.NO_COURSE.value if user.is_teacher else lti.utils.LTI_STATES.NOT_SETUP.value,
+            lti.utils.LTI_STATES.NO_COURSE.value if launch_data.course.author == user else
+            lti.utils.LTI_STATES.NOT_SETUP.value,
         'launch_id': launch_id,
         'jwt_access': str(refresh.access_token),
         'jwt_refresh': str(refresh),
@@ -61,7 +63,8 @@ def handle_no_assignment_connected_to_launch_data(launch_data, launch_id, user, 
     refresh = TokenObtainPairSerializer.get_token(user)
     response_data = {
         'launch_state':
-            lti.utils.LTI_STATES.NO_ASSIGNMENT.value if user.is_teacher else lti.utils.LTI_STATES.NOT_SETUP.value,
+            lti.utils.LTI_STATES.NO_ASSIGNMENT.value if launch_data.course.author == user else
+            lti.utils.LTI_STATES.NOT_SETUP.value,
         'launch_id': launch_id,
         'jwt_access': str(refresh.access_token),
         'jwt_refresh': str(refresh),
@@ -80,17 +83,21 @@ def handle_all_connected_to_launch_data(launch_data, launch_id, user, course, as
         'jwt_refresh': str(refresh),
         'course_id': course.id,
         'assignment_id': assignment.id,
-        # Go directly to journal if it is a submission url, i.e. the gradebook or student launch
-        'journal_id': request.query_params.get('submission', journal.pk if journal else ''),
         'left_journal': request.query_params.get('left_journal', False),
     }
+    # Go directly to journal if it is a submission url, i.e. the gradebook or student launch
+    if 'submission' in request.query_params:
+        response_data['journal_id'] = request.query_params['submission']
+    elif journal:
+        response_data['journal_id'] = journal.pk
+
     return redirect(build_url(settings.BASELINK, 'LtiLogin', response_data))
 
 
 @api_view(['GET'])
 @permission_classes((AllowAny, ))
 def launch_configuration(request):
-    if Instance.objects.get(pk=1).lms_name == Instance.CANVAS:
+    if Instance.objects.get_or_create(pk=1)[0].lms_name == Instance.CANVAS:
         return JsonResponse({
             'title': 'eJournal',
             'scopes': [
@@ -153,31 +160,30 @@ def launch_configuration(request):
 @api_view(['POST'])
 @permission_classes((AllowAny, ))
 def launch(request):
-
-    message_launch = lti.utils.eDjangoMessageLaunch(
-        request, settings.TOOL_CONF, launch_data_storage=DjangoCacheDataStorage())
-    launch_id = message_launch.get_launch_id()
-
-    if message_launch.lti_version == settings.LTI13 and message_launch.is_deep_link_launch():
-        launch_url = request.build_absolute_uri(reverse('lti_launch'))
-        resource = eDeepLinkResource()
-        resource.set_url(launch_url)
-        resource.set_scope('*')
-
-        html = message_launch.get_deep_link().output_response_form([resource])
-
-        return HttpResponse(html)
-
-    launch_data = message_launch.get_launch_data()
-    print(launch_data)
-
     try:
+        message_launch = lti.utils.eDjangoMessageLaunch(
+            request, settings.TOOL_CONF, launch_data_storage=DjangoCacheDataStorage())
+        launch_id = message_launch.get_launch_id()
+
+        if message_launch.lti_version == settings.LTI13 and message_launch.is_deep_link_launch():
+            launch_url = request.build_absolute_uri(reverse('lti_launch'))
+            resource = eDeepLinkResource()
+            resource.set_url(launch_url)
+            resource.set_scope('*')
+
+            html = message_launch.get_deep_link().output_response_form([resource])
+
+            return HttpResponse(html)
+
+        launch_data = message_launch.get_launch_data()
+        print(launch_data)
+
         user = launch_data.user.find_in_db()
         if user:
-            launch_data.user.update()
-        elif launch_data.user.is_test_student:
+            user = launch_data.user.update()
+        elif launch_data.user.is_test_student and not launch_data.user.find_in_db():
             # NOTE: This will also delete older test students
-            launch_data.user.create()
+            user = launch_data.user.create()
 
         # TODO LTI: change to is initialized user or not (cuz lti_id can be set with the roles service)
         # TODO LTI: also add the check for user alsready exists, but needs to set a password anyway
@@ -189,7 +195,7 @@ def launch(request):
 
         course = launch_data.course.find_in_db()
         if course:
-            launch_data.course.update()
+            course = launch_data.course.update()
         if not course:
             return handle_no_course_connected_to_launch_data(launch_data, launch_id, user)
         print('LTI course:', course)
@@ -203,7 +209,7 @@ def launch(request):
             # I now changed it to only update it, if the assignment is also the actual active lti assignment.
             # Is this a good change?
             if assignment.active_lti_id == launch_data.assignment.active_lti_id:
-                launch_data.assignment.update()
+                assignment = launch_data.assignment.update()
         if not assignment:
             return handle_no_assignment_connected_to_launch_data(launch_data, launch_id, user, course)
         print('LTI assignment:', assignment)
@@ -221,7 +227,7 @@ def launch(request):
         return handle_all_connected_to_launch_data(
             launch_data, launch_id, user, course, assignment, journal, request)
 
-    except KeyError as err:
+    except (KeyError, MultiValueDictKeyError) as err:
         raise VLEBadRequest(
             '{} is missing. Please contact the system administrator or support@ejournal.app'.format(err.args[0]))
 

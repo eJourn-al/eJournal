@@ -8,7 +8,7 @@ class eToolConfJsonFile(ToolConfJsonFile):
         pass
         # if not instance:
         #     from VLE.models import Instance
-        #     instance = Instance.objects.get(pk=1)
+        #     instance = Instance.objects.get_or_create(pk=1)[0]
 
         # if not iss:
         #     iss = instance.iss

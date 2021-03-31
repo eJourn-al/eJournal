@@ -18,7 +18,7 @@ class TestMigration0064(MigratorTestCase):
         """Run the test itself."""
         User = self.new_state.apps.get_model('VLE', 'User')
         Instance = self.new_state.apps.get_model('VLE', 'Instance')
-        pf = Instance.objects.get_or_create(pk=1)[0].default_lms_profile_picture
+        pf = Instance.objects.get_or_create(pk=1, defaults={'lms_name': 'Canvas'})[0].default_lms_profile_picture,
 
         assert not User.objects.filter(profile_picture__icontains=pf).exists()
         assert User.objects.filter(profile_picture=settings.DEFAULT_PROFILE_PICTURE).exists()

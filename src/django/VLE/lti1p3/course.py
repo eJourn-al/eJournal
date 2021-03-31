@@ -8,6 +8,11 @@ from VLE.utils.error_handling import VLEBadRequest
 
 class CourseData(lti.utils.PreparedData):
     model = Course
+    _author = None
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.debug_keys = []
 
     def create(self, sync_members=True, create_paticipation=True):
         course = factory.make_course(**self.create_dict)
@@ -64,7 +69,7 @@ class Lti1p3CourseData(CourseData):
             'abbreviation',
             'startdate',
             'enddate',
-            # 'author', TODO: This is currently the user first opening the course. Should be the real author
+            # 'author',
             # 'lti_id',
             'lms_id',
             'names_role_service',
@@ -92,7 +97,25 @@ class Lti1p3CourseData(CourseData):
 
     @property
     def author(self):
-        return lti.user.Lti1p3UserData(self.data).find_in_db()
+        if not self._author:
+            course = self.find_in_db()
+            # If course already exists, that should also be the author
+            if course:
+                self._author = course.author
+            else:
+                # If it doesnt exists, consider the user in the dataparams as the author
+                # IFF the user has a teacher role
+                # NOT if the user is already a teacher, as a platform teacher from 1 course
+                # does not have to be a teacher in this course
+                # TODO LTI: platform wide teachers are still considered teacher. This should not be the case
+                user_data = lti.user.Lti1p3UserData(self.data)
+                print(user_data.role_name)
+                print(user_data.roles)
+                if user_data.role_name == 'Teacher':
+                    self._author = user_data.find_in_db()
+
+        print('AUTHOR', self._author)
+        return self._author
 
     @property
     def lti_id(self):
@@ -124,7 +147,7 @@ class Lti1p0CourseData(CourseData):
             'abbreviation',
             'startdate',
             'enddate',
-            # 'author', TODO: This is currently the user first opening the course. Should be the real author
+            # 'author',
             # 'lms_id',
         ]
         self.find_keys = [
@@ -149,8 +172,26 @@ class Lti1p0CourseData(CourseData):
 
     @property
     def author(self):
-        return lti.user.Lti1p0UserData(self.data).find_in_db()
+        if not self._author:
+            course = self.find_in_db()
+            # If course already exists, that should also be the author
+            if course:
+                self._author = course.author
+            else:
+                # If it doesnt exists, consider the user in the dataparams as the author
+                # IFF the user has a teacher role
+                # NOT if the user is already a teacher, as a platform teacher from 1 course
+                # does not have to be a teacher in this course
+                # TODO LTI: platform wide teachers are still considered teacher. This should not be the case
+                user_data = lti.user.Lti1p0UserData(self.data)
+                print(user_data.role_name)
+                print(user_data.roles)
+                if user_data.role_name == 'Teacher':
+                    self._author = user_data.find_in_db()
+
+        print('AUTHOR', self._author)
+        return self._author
 
     @property
     def lms_id(self):
-        return self.to_str(self.data.get('custom_course_id', None))
+        return self.to_str(self.data['custom_course_id'])

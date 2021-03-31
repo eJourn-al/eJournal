@@ -12,9 +12,22 @@ import VLE.models
 import VLE.validators as validators
 
 
-def make_user(username, password=None, email=None, lti_id=None, profile_picture=settings.DEFAULT_PROFILE_PICTURE,
-              is_superuser=False, is_teacher=False, full_name=None, verified_email=False, is_staff=False,
-              is_test_student=False, is_active=True, save=True):
+def make_user(
+    username,
+    password=None,
+    email=None,
+    lti_1p3_id=None,
+    lti_1p0_id=None,
+    profile_picture=settings.DEFAULT_PROFILE_PICTURE,
+    is_superuser=False,
+    is_teacher=False,
+    full_name=None,
+    verified_email=False,
+    is_staff=False,
+    is_test_student=False,
+    is_active=True,
+    save=True
+):
     """Create a user.
 
     Arguments:
@@ -26,9 +39,19 @@ def make_user(username, password=None, email=None, lti_id=None, profile_picture=
     is_superuser -- if the user needs all permissions, set this true (default: False)
     """
     user = VLE.models.User(
-        username=username, email=email, lti_id=lti_id, is_superuser=is_superuser, is_teacher=is_teacher,
-        verified_email=verified_email, is_staff=is_staff, full_name=full_name, profile_picture=profile_picture,
-        is_test_student=is_test_student, is_active=is_active)
+        username=username,
+        email=email,
+        lti_1p3_id=lti_1p3_id,
+        lti_1p0_id=lti_1p0_id,
+        is_superuser=is_superuser,
+        is_teacher=is_teacher,
+        verified_email=verified_email,
+        is_staff=is_staff,
+        full_name=full_name,
+        profile_picture=profile_picture,
+        is_test_student=is_test_student,
+        is_active=is_active,
+    )
 
     if is_test_student or not is_active:
         user.set_unusable_password()
@@ -64,7 +87,7 @@ def make_course(*args, **kwargs):
     course = VLE.models.Course.objects.create(**kwargs)
 
     if settings.LTI10 in course.lti_versions and \
-       VLE.models.Instance.objects.get(pk=1).lms_name == VLE.models.Instance.CANVAS:
+       VLE.models.Instance.objects.get_or_create(pk=1)[0].lms_name == VLE.models.Instance.CANVAS:
         make_lti_groups(course)
 
     # Student, TA and Teacher role are created on course creation as is saves check for lti.

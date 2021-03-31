@@ -8,7 +8,7 @@ from test.utils import api
 
 from django.test import TestCase
 
-import VLE.lti_grade_passback as lti_grade
+import VLE.lti1p3.grading as lti_grade
 import VLE.tasks.beats.lti as lti_beats
 from VLE.models import Entry, Journal
 from VLE.utils import grading

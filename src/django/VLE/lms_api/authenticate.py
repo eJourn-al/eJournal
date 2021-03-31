@@ -22,7 +22,7 @@ def lms_authenticate(request):
     """
     # TODO LTI: do not continuesly re-request integration. Appearently you can extand expeiration date
     # Everytime someone uses FBF, the expiration date gets postponed by 1 hour
-    instance = Instance.objects.get(pk=1)
+    instance = Instance.objects.get_or_create(pk=1)[0]
     action, pk = request.query_params['state'].split('-')
 
     resp = requests.post(instance.auth_token_url, data={

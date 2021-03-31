@@ -18,6 +18,10 @@ class UserData(lti.utils.PreparedData):
             'username',
             'email',
         ]
+        self.debug_keys = [
+            'roles',
+            'role_name',
+        ]
 
     @property
     def lti_id(self):
@@ -53,7 +57,21 @@ class UserData(lti.utils.PreparedData):
 
     @property
     def is_teacher(self):
-        return lti.roles.to_ejournal_role_name(self.roles) == 'Teacher'
+        # NOTE: from tests: Teacher should stay teacher, even when roles change
+        # If role is teacher, return true
+        if self.role_name == 'Teacher':
+            return True
+
+        # Else if user already exists, return the currect flag
+        if self.find_in_db():
+            return self.find_in_db().is_teacher
+
+        # By default user should not get the teacher role
+        return False
+
+    @property
+    def role_name(self):
+        return lti.roles.to_ejournal_role_name(self.roles)
 
     @property
     def grade_url(self):
@@ -67,8 +85,8 @@ class UserData(lti.utils.PreparedData):
     def is_test_student(self):
         # TODO EXPANSION: this is Canvas specific, should be changed to also work with other LTI hosts
         return (
-            self.email == ''
-            and self.full_name == 'Test Student'.lower()
+            not self.email
+            and self.full_name.lower() == settings.LTI_TEST_STUDENT_FULL_NAME.lower()
         )
 
     def normalize_profile_picture(self, picture):
@@ -132,18 +150,19 @@ class UserData(lti.utils.PreparedData):
                 course=course,
                 role=Role.objects.get(
                     course=course,
-                    name=lti.roles.to_ejournal_role_name(self.roles),
+                    name=self.role_name,
                 ),
             )
         else:
-            if lti.roles.to_ejournal_role_name(self.roles) != participation.role.name:
+            if self.role_name != participation.role.name:
                 participation.role = Role.objects.get(
                     course=course,
-                    name=lti.roles.to_ejournal_role_name(self.roles),
+                    name=self.role_name,
                 )
                 participation.save()
 
         if hasattr(self, 'groups'):
+            print(self.groups)
             self.add_groups_if_not_exists(participation)
 
         return participation
@@ -154,7 +173,10 @@ class UserData(lti.utils.PreparedData):
         if not course:
             return
 
-        User.objects.filter(participation__course=course, is_test_student=True).delete()
+        users = User.objects.filter(participation__course=course, is_test_student=True)
+        if self.find_in_db():
+            users = users.exclude(pk=self.find_in_db().pk)
+        print(users.delete())
 
     def create(self, password=None, course=None):
         if not course:
@@ -171,7 +193,6 @@ class UserData(lti.utils.PreparedData):
             user.set_unusable_password()
 
         user.save()
-
         if course:
             self.create_or_update_participation(user, course=course)
 
@@ -186,6 +207,9 @@ class UserData(lti.utils.PreparedData):
             user = self.find_in_db()
         if not user:
             raise VLEProgrammingError('User does not exist, so it cannot be updated')
+
+        if self.is_test_student:
+            self.handle_test_student(course=course)
 
         for key in self.update_keys:
             if getattr(self, key) is not None:
@@ -260,7 +284,10 @@ class Lti1p3UserData(UserData):
 
     @property
     def groups(self):
-        return self.data[lti.claims.CUSTOM].get('section_ids', '').split(',')
+        # Because ''.split(',') => ['']
+        if self.data.get('custom_section_id', ''):
+            return self.data.get('custom_section_id', '').split(',')
+        return []
 
     @property
     def username(self):
@@ -323,13 +350,17 @@ class Lti1p0UserData(UserData):
     @property
     def roles(self):
         roles = []
-        roles += self.data.get('ext_roles', '').split(',')
-        roles += self.data.get('roles', '').split(',')
+        if self.data.get('ext_roles', ''):
+            roles += self.data.get('ext_roles', '').split(',')
+        if self.data.get('roles', ''):
+            roles += self.data.get('roles', '').split(',')
         return roles
 
     @property
     def groups(self):
-        return self.data.get('custom_section_id', '').split(',')
+        if self.data.get('custom_section_id', ''):
+            return self.data.get('custom_section_id', '').split(',')
+        return []
 
     @property
     def email(self):

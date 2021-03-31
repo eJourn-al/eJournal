@@ -60,8 +60,8 @@ def gen_jwt_params(params={}, user=None):
 
 
 def get_new_lti_id():
-    user = User.objects.exclude(lti_id=None).latest('lti_id')
-    return '1' if not (user or user.lti_id) else '{}{}'.format(user.lti_id, 1)
+    user = User.objects.exclude(lti_1p0_id=None).latest('lti_1p0_id')
+    return '1' if not (user or user.lti_1p0_id) else '{}{}'.format(user.lti_1p0_id, 1)
 
 
 def get_access_token(user):
