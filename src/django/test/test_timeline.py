@@ -56,7 +56,7 @@ class TimelineTests(TestCase):
             data = timeline.get_add_node(journal)
 
         assert data['type'] == VLE.models.Node.ADDNODE
-        assert data['nID'] == -1
+        assert data['id'] == -1
 
     def test_get_entry_node(self):
         entry = factory.UnlimitedEntry(node__journal__assignment__format__templates=[{'type': Field.TEXT}])
@@ -69,7 +69,7 @@ class TimelineTests(TestCase):
             data = timeline.get_entry_node(journal, node, student)
 
         assert data['type'] == node.type
-        assert data['nID'] == node.id
+        assert data['id'] == node.id
         assert data['jID'] == journal.pk
 
     def test_get_progress(self):
@@ -85,7 +85,7 @@ class TimelineTests(TestCase):
 
         assert data['description'] == node.preset.description
         assert data['type'] == node.type
-        assert data['nID'] == node.pk
+        assert data['id'] == node.pk
         assert data['jID'] == node.journal.pk
         assert data['due_date'] == node.preset.due_date
         assert data['target'] == node.preset.target
@@ -106,7 +106,7 @@ class TimelineTests(TestCase):
 
         assert data['description'] == node.preset.description
         assert data['type'] == node.type
-        assert data['nID'] == node.id
+        assert data['id'] == node.id
         assert data['jID'] == journal.pk
         assert data['unlock_date'] == node.preset.unlock_date
         assert data['due_date'] == node.preset.due_date

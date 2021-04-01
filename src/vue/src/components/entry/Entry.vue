@@ -64,7 +64,7 @@
                 :template="template"
                 :content="newEntryContent"
                 :edit="edit || create"
-                :nodeID="node ? node.nID : -1"
+                :nodeID="node ? node.id : -1"
                 @uploading-file="uploadingFiles ++"
                 @finished-uploading-file="uploadingFiles --"
             />
@@ -245,22 +245,24 @@ export default {
                     .then((entry) => {
                         this.node.entry = entry
                         this.edit = false
-                        this.requestInFlight = false
                     })
-                    .catch(() => {
-                        this.requestInFlight = false
-                    })
+                    .finally(() => { this.requestInFlight = false })
             }
+        },
+        clearDraft () {
+            this.edit = false
+            this.title = null
+            this.newEntryContent = {}
         },
         deleteEntry () {
             if (window.confirm('Are you sure that you want to delete this entry?')) {
                 this.requestInFlight = true
                 entryAPI.delete(this.node.entry.id, { customSuccessToast: 'Entry successfully deleted.' })
                     .then((data) => {
-                        this.requestInFlight = false
+                        this.clearDraft()
                         this.$emit('entry-deleted', data)
                     })
-                    .catch(() => { this.requestInFlight = false })
+                    .finally(() => { this.requestInFlight = false })
             }
         },
         createEntry () {
@@ -277,15 +279,15 @@ export default {
                     journal_id: this.$route.params.jID,
                     template_id: this.template.id,
                     content: this.newEntryContent,
-                    node_id: this.node && this.node.nID > 0 ? this.node.nID : null,
+                    node_id: this.node && this.node.id > 0 ? this.node.id : null,
                     category_ids: categoryIds,
                     title: this.template.allow_custom_title ? this.title : null,
                 }, { customSuccessToast: 'Entry successfully posted.' })
                     .then((data) => {
-                        this.requestInFlight = false
+                        this.clearDraft()
                         this.$emit('entry-posted', data)
                     })
-                    .catch(() => { this.requestInFlight = false })
+                    .finally(() => { this.requestInFlight = false })
             }
         },
         checkRequiredFields () {
@@ -299,8 +301,10 @@ export default {
         safeToLeave () {
             // It is safe to leave the entry if it is not currently being edited AND if no content for an entry to be
             // created is provided.
-            return !this.edit && !(
-                this.create && this.template.field_set.some((field) => this.newEntryContent[field.id]))
+            return (
+                !this.edit
+                && !(this.create && this.template.field_set.some((field) => this.newEntryContent[field.id]))
+            )
         },
     },
 }

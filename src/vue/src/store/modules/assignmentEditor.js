@@ -50,8 +50,6 @@ const getters = {
     selectedPresetNode: (state) => state.selectedPresetNode,
     newPresetNodeDraft: (state) => state.newPresetNodeDraft,
 
-    selectedTimelineElementIndex: (state) => state.selectedTimelineElementIndex,
-
     isAssignmentDetailsDirty: (state) => (original) => (
         state.assignmentDetailsDraft && !Vue.prototype.$_isEqual(state.assignmentDetailsDraft, original)
     ),
@@ -199,11 +197,7 @@ const mutations = {
         state.selectedTemplate = null
     },
 
-    SET_TIMELINE_ELEMENT_INDEX (state, { index }) {
-        state.selectedTimelineElementIndex = index
-    },
-    SELECT_TIMELINE_ELEMENT (state, { timelineElementIndex, mode = editSymbol }) {
-        state.selectedTimelineElementIndex = timelineElementIndex
+    SELECT_TIMELINE_ELEMENT (state, { mode = editSymbol }) {
         state.activeComponent = state.activeComponentOptions.timeline
         state.activeComponentMode = mode
     },
@@ -254,15 +248,12 @@ const mutations = {
     CLEAR_ACTIVE_COMPONENT (state) {
         state.activeComponentMode = state.activeComponentModeOptions.read
         state.activeComponent = state.activeComponentOptions.timeline
-        state.selectedTimelineElementIndex = -1
     },
     CLEAR_DRAFT (state, { drafts, obj }) {
         Vue.delete(drafts, obj.id)
     },
 
     RESET (state) {
-        state.selectedTimelineElementIndex = -1
-
         state.assignmentDetailsDraft = null
 
         state.selectedCategory = null
@@ -291,23 +282,22 @@ const actions = {
 
         if (fromPresetNode) {
             const presetNodes = context.rootGetters['presetNode/assignmentPresetNodes']
-            let timelineElementIndex
+            let timelineElement
 
             if (fromPresetNode.id === -1) {
-                timelineElementIndex = presetNodes.length /* Add node should be selected */
+                timelineElement = context.rootGetters['timeline/addNode']
             } else {
-                timelineElementIndex = presetNodes.findIndex((elem) => elem.id === fromPresetNode.id)
+                timelineElement = presetNodes.find((elem) => elem.id === fromPresetNode.id)
             }
 
-            const presetNodeExists = timelineElementIndex !== -1
-
-            if (presetNodeExists) {
+            if (timelineElement) {
                 fromPresetNode.template = template
 
                 context.dispatch(
                     'timelineElementSelected',
-                    { timelineElementIndex, mode: context.state.activeComponentModeOptions.edit },
+                    { element: timelineElement, mode: context.state.activeComponentModeOptions.edit },
                 )
+                context.commit('timeline/SET_CURRENT_NODE', timelineElement, { root: true })
             } else {
                 context.commit('SELECT_TEMPLATE', { template })
             }
@@ -323,7 +313,7 @@ const actions = {
             context.commit('CLEAR_SELECTED_CATEGORY')
 
             if (context.state.activeComponent === context.state.activeComponentOptions.category) {
-                context.commit('CLEAR_ACTIVE_COMPONENT')
+                context.dispatch('clearActiveComponent')
             }
         }
     },
@@ -332,7 +322,7 @@ const actions = {
             context.commit('CLEAR_SELECTED_PRESET_NODE')
 
             if (context.state.activeComponent === context.state.activeComponentOptions.timeline) {
-                context.commit('CLEAR_ACTIVE_COMPONENT')
+                context.dispatch('clearActiveComponent')
             }
         }
     },
@@ -343,7 +333,7 @@ const actions = {
             context.commit('CLEAR_SELECTED_TEMPLATE')
 
             if (context.state.activeComponent === context.state.activeComponentOptions.template) {
-                context.commit('CLEAR_ACTIVE_COMPONENT')
+                context.dispatch('clearActiveComponent')
             }
         }
     },
@@ -356,6 +346,9 @@ const actions = {
     presetNodeUpdated (context, { presetNode }) {
         context.commit('CLEAR_DRAFT', { drafts: context.state.presetNodeDrafts, obj: presetNode })
         context.commit('SELECT_PRESET_NODE', { presetNode })
+
+        /* The updated presetNode is a new object freshly serialized backend, this needs to be propagated */
+        context.commit('timeline/SET_CURRENT_NODE', presetNode, { root: true })
     },
     templateUpdated (context, { updatedTemplate, oldTemplateId }) {
         context.commit('CLEAR_DRAFT', { drafts: context.state.templateDrafts, obj: { id: oldTemplateId } })
@@ -363,22 +356,20 @@ const actions = {
         context.commit('PROPAGATE_DRAFT_TEMPLATE_PRESET_NODE_UPDATE', { updatedTemplate, oldTemplateId })
         context.commit('SELECT_TEMPLATE', { template: updatedTemplate })
     },
+    timelineElementSelected (context, { element, mode = editSymbol }) {
+        context.commit('SELECT_TIMELINE_ELEMENT', { mode })
 
-    timelineElementSelected (context, { timelineElementIndex, mode = editSymbol }) {
-        context.commit('SELECT_TIMELINE_ELEMENT', { timelineElementIndex, mode })
-
-        const presetNodes = context.rootGetters['presetNode/assignmentPresetNodes']
-
-        /* Actual preset node selected */
-        if (timelineElementIndex >= 0 && timelineElementIndex < presetNodes.length) {
-            context.commit('SELECT_PRESET_NODE', { presetNode: presetNodes[timelineElementIndex] })
-        /* Add node is selected */
-        } else if (timelineElementIndex === presetNodes.length) {
-            context.commit('CREATE_PRESET_NODE')
-        /* End or start of assignment is selected */
-        } else {
+        if (
+            element === context.rootGetters['timeline/startNode']
+            || element === context.rootGetters['timeline/endNode']
+        ) {
             const originalAssignment = context.rootGetters['assignment/assignment']
             context.commit('SELECT_ASSIGNMENT_DETAILS', { originalAssignment })
+        } else if (element === context.rootGetters['timeline/addNode']) {
+            context.commit('CREATE_PRESET_NODE')
+        /* Actual preset node selected */
+        } else {
+            context.commit('SELECT_PRESET_NODE', { presetNode: element })
         }
     },
 
@@ -386,11 +377,7 @@ const actions = {
         context.commit('CLEAR_NEW_PRESET_NODE_DRAFT')
         context.commit('SELECT_PRESET_NODE', { presetNode })
 
-        const presetNodes = context.rootGetters['presetNode/assignmentPresetNodes']
-        context.commit(
-            'SET_TIMELINE_ELEMENT_INDEX',
-            { index: presetNodes.findIndex((elem) => elem.id === presetNode.id) },
-        )
+        context.commit('timeline/SET_CURRENT_NODE', presetNode, { root: true })
     },
 
     cancelCategoryEdit (context, { category }) {
@@ -413,6 +400,11 @@ const actions = {
 
         context.commit('CLEAR_DRAFT', { drafts: context.state.templateDrafts, obj: template })
         context.commit('SELECT_TEMPLATE', { template: originalTemplate })
+    },
+
+    clearActiveComponent (context) {
+        context.commit('CLEAR_ACTIVE_COMPONENT')
+        context.commit('timeline/SET_CURRENT_NODE', context.rootGetters['timeline/startNode'], { root: true })
     },
 
     confirmIfDirty (context) {
@@ -495,8 +487,6 @@ export default {
             edit: editSymbol,
         },
         activeComponentMode: readSymbol,
-
-        selectedTimelineElementIndex: -1, /* See timeline.vue for mapping (due for refactor). */
 
         assignmentDetailsDraft: null,
 

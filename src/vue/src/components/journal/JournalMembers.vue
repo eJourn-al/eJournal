@@ -32,7 +32,7 @@
             class="member"
         >
             <div
-                v-if="(author.user.username == $store.getters['user/username'] && !journal.locked) ||
+                v-if="(author.user.id === $store.getters['user/uID'] && !journal.locked) ||
                     $hasPermission('can_manage_journals')"
                 class="float-right"
                 @click="$hasPermission('can_manage_journals') ? kickFromJournal(author.user) : leaveJournal()"
