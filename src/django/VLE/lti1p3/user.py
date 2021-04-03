@@ -1,11 +1,11 @@
-
 from django.conf import settings
+from django.db.utils import IntegrityError
 from django.utils import timezone
 
 import VLE.lti1p3 as lti
 from VLE import factory
 from VLE.models import Group, Participation, Role, User
-from VLE.utils.error_handling import VLEProgrammingError
+from VLE.utils.error_handling import VLEBadRequest, VLEProgrammingError
 
 
 class UserData(lti.utils.PreparedData):
@@ -176,9 +176,12 @@ class UserData(lti.utils.PreparedData):
         users = User.objects.filter(participation__course=course, is_test_student=True)
         if self.find_in_db():
             users = users.exclude(pk=self.find_in_db().pk)
-        print(users.delete())
+        print('DELETED USERS', users.delete())
 
     def create(self, password=None, course=None):
+        if not self.is_test_student and self.find_in_db():
+            raise VLEBadRequest('User already exists')
+
         if not course:
             course = self.CourseData(self.data).find_in_db()
 
@@ -216,7 +219,10 @@ class UserData(lti.utils.PreparedData):
                 setattr(user, key, getattr(self, key))
 
         user.last_login = timezone.now()
-        user.save()
+        try:
+            user.save()
+        except IntegrityError:
+            raise VLEBadRequest('User already exists')
 
         if course:
             self.create_or_update_participation(user, course=course)

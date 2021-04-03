@@ -158,7 +158,10 @@ class PreparedData(object):
         if self.model.objects.filter(self.find_or_qry).count() > 1:
             with sentry_sdk.push_scope() as scope:
                 scope.level = 'warning'
-                scope.set_context('data', self.asdict())
+                try:
+                    scope.set_context('data', self.asdict())
+                except Exception:
+                    pass
                 sentry_sdk.capture_message(
                     f'During data preperation, multiple {self.model.__name__} instances were found in the database.',
                 )
@@ -295,8 +298,8 @@ class eDjangoMessageLaunch(DjangoMessageLaunch):
         if self.lti_version == settings.LTI10:
             if 'body' not in self._jwt:
                 self.set_jwt({'body': self._request._request.POST})
-            # if not self._validated and self._auto_validation:
-            self.validate()
+            if not self._validated and self._auto_validation:
+                self.validate()
 
         data = super().get_launch_data(*args, **kwargs)
         return eMessageLaunchData(data, lti_version=self.lti_version)

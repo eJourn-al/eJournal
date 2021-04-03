@@ -206,6 +206,7 @@ class UserView(viewsets.ViewSet):
         user = User.objects.get(pk=pk)
         launch_id, = utils.optional_params(request.data, 'launch_id')
         if launch_id:
+            # TODO LTI: password needs to be updated
             launch_data = lti.utils.get_launch_data_from_id(launch_id, request)
             user = launch_data.user.update()
             return response.success({

@@ -10,6 +10,7 @@ import VLE.factory as factory
 import VLE.lti1p3 as lti
 from VLE.lti1p3 import utils
 from VLE.models import Assignment, PresetNode
+from VLE.utils.error_handling import VLEBadRequest
 
 
 class AssignmentData(utils.PreparedData):
@@ -25,6 +26,8 @@ class AssignmentData(utils.PreparedData):
         ]
 
     def create(self):
+        if self.find_in_db():
+            raise VLEBadRequest('Assignment already exists')
         if not self.connected_course:
             raise LtiException('Could not find the connected course, please check if the course already exists')
 

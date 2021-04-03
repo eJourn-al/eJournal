@@ -15,6 +15,8 @@ class CourseData(lti.utils.PreparedData):
         self.debug_keys = []
 
     def create(self, sync_members=True, create_paticipation=True):
+        if self.find_in_db():
+            raise VLEBadRequest('Course already exists')
         course = factory.make_course(**self.create_dict)
 
         if sync_members:
