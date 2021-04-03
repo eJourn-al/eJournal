@@ -43,11 +43,14 @@ class CourseData(lti.utils.PreparedData):
         if hasattr(self, 'lti_id') and course.lti_id != self.lti_id:
             lti.members.sync_members(course)
 
+        changed = False
         for key in self.update_keys:
             if getattr(self, key) is not None:
+                changed = True
                 setattr(course, key, getattr(self, key))
 
-        course.save()
+        if changed:
+            course.save()
 
         return course
 

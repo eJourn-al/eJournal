@@ -32,7 +32,6 @@ class AssignmentData(utils.PreparedData):
             raise LtiException('Could not find the connected course, please check if the course already exists')
 
         assignment = factory.make_assignment(**self.create_dict, courses=[self.connected_course])
-        # TODO LTI: fix courses[0] when the courses is improved as well
         assignment.add_lti_id(self.active_lti_id, self.connected_course)
 
         return assignment
@@ -79,14 +78,16 @@ class AssignmentData(utils.PreparedData):
         if not assignment.can_be_unpublished():
             update_keys.remove('is_published')
 
+        changed = False
         for key in update_keys:
             # assignments_grades_service we DO want to update even when None
             # This is for the cases where we switch from LTI 1.3 to an LTI 1.0 assignment
             if getattr(self, key) is not None or key == 'assignments_grades_service':
+                changed = True
                 setattr(assignment, key, getattr(self, key))
 
-        # TODO LTI: only update if sth actually changed (also for course & user)
-        assignment.save()
+        if changed:
+            assignment.save()
 
         if self.connected_course:
             # add_course already checks that a course wont be added twice, no need to do it here

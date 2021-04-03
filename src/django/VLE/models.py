@@ -1955,7 +1955,7 @@ class JournalQuerySet(models.QuerySet):
         #             # This case happens when an assignment:
         #             # - is linked to both LTI 1.0 and LTI 1.3,
         #             # - the active course is LTI 1.3
-        #             # - the student visits from the non active (LTI 1.0) course
+        #             # - the student is only a participant from the non active (LTI 1.0) course
         #             then=[],
         #         ),
         #         default=ArrayAgg(
