@@ -1,5 +1,7 @@
 import json
 
+from django.conf import settings
+
 import VLE.factory as factory
 import VLE.lti1p3 as lti
 from VLE.models import Course
@@ -17,13 +19,16 @@ class CourseData(lti.utils.PreparedData):
     def create(self, sync_members=True, create_paticipation=True):
         if self.find_in_db():
             raise VLEBadRequest('Course already exists')
-        course = factory.make_course(**self.create_dict)
+        course = factory.make_course(**self.create_dict())
 
         if sync_members:
             lti.members.sync_members(course)
 
         if create_paticipation:
-            lti.user.Lti1p3UserData(self.data).create_participation(course=course)
+            if settings.LTI13 in course.lti_versions:
+                lti.user.Lti1p3UserData(self.data).create_or_update_participation(course=course)
+            else:
+                lti.user.Lti1p0UserData(self.data).create_or_update_participation(course=course)
 
         return course
 
@@ -40,6 +45,7 @@ class CourseData(lti.utils.PreparedData):
         ):
             raise VLEBadRequest('Course already linked to LMS.')
 
+        # Only sync members when there is a change in LTI 1.3 course
         if hasattr(self, 'lti_id') and course.lti_id != self.lti_id:
             lti.members.sync_members(course)
 
@@ -105,7 +111,7 @@ class Lti1p3CourseData(CourseData):
         if not self._author:
             course = self.find_in_db()
             # If course already exists, that should also be the author
-            if course:
+            if course and course.author:
                 self._author = course.author
             else:
                 # If it doesnt exists, consider the user in the dataparams as the author
@@ -114,12 +120,9 @@ class Lti1p3CourseData(CourseData):
                 # does not have to be a teacher in this course
                 # TODO LTI: platform wide teachers are still considered teacher. This should not be the case
                 user_data = lti.user.Lti1p3UserData(self.data)
-                print(user_data.role_name)
-                print(user_data.roles)
                 if user_data.role_name == 'Teacher':
                     self._author = user_data.find_in_db()
 
-        print('AUTHOR', self._author)
         return self._author
 
     @property
@@ -189,12 +192,9 @@ class Lti1p0CourseData(CourseData):
                 # does not have to be a teacher in this course
                 # TODO LTI: platform wide teachers are still considered teacher. This should not be the case
                 user_data = lti.user.Lti1p0UserData(self.data)
-                print(user_data.role_name)
-                print(user_data.roles)
                 if user_data.role_name == 'Teacher':
                     self._author = user_data.find_in_db()
 
-        print('AUTHOR', self._author)
         return self._author
 
     @property

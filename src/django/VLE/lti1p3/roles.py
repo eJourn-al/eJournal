@@ -24,6 +24,8 @@ TA = [
 
 
 def to_ejournal_role_name(roles):
+    if not roles:
+        return 'Student'
     if any(role in TEACHER for role in roles):
         return 'Teacher'
     elif any(role in TA for role in roles):

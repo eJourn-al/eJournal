@@ -71,7 +71,10 @@ class UserData(lti.utils.PreparedData):
 
     @property
     def role_name(self):
-        return lti.roles.to_ejournal_role_name(self.roles)
+        if hasattr(self, 'roles'):
+            return lti.roles.to_ejournal_role_name(self.roles)
+        else:
+            return 'Student'
 
     @property
     def grade_url(self):
@@ -141,7 +144,13 @@ class UserData(lti.utils.PreparedData):
 
         return participation.groups
 
-    def create_or_update_participation(self, user, course):
+    def create_or_update_participation(self, user=None, course=None):
+        if user is None:
+            user = self.find_in_db()
+        if course is None:
+            course = self.CourseData(self.data).find_in_db()
+        if not (user and course):
+            return None
         # QUESTION: should we also update the user role and/or groups?
         participation = Participation.objects.filter(user=user, course=course).first()
         if not participation:
@@ -188,7 +197,7 @@ class UserData(lti.utils.PreparedData):
         if self.is_test_student:
             self.handle_test_student(course=course)
 
-        user = User(**self.create_dict)
+        user = User(**self.create_dict())
 
         if password and not self.is_test_student:
             user.set_password(password)
@@ -197,7 +206,7 @@ class UserData(lti.utils.PreparedData):
 
         user.save()
         if course:
-            self.create_or_update_participation(user, course=course)
+            self.create_or_update_participation(user=user, course=course)
 
         return user
 
@@ -225,7 +234,7 @@ class UserData(lti.utils.PreparedData):
             raise VLEBadRequest('User already exists')
 
         if course:
-            self.create_or_update_participation(user, course=course)
+            self.create_or_update_participation(user=user, course=course)
 
         return user
 
@@ -426,6 +435,7 @@ class CanvasAPIUserData(UserData):
             'sis_id',
             'full_name',
             'username',
+            'profile_picture',
         ]
         # QUESTION LTI: are these valid settings?
         self.update_keys = [
@@ -436,7 +446,7 @@ class CanvasAPIUserData(UserData):
 
     @property
     def sis_id(self):
-        return self.data['sis_user_id']
+        return self.get_required(self.data, 'sis_user_id')
 
     @property
     def full_name(self):
@@ -444,4 +454,8 @@ class CanvasAPIUserData(UserData):
 
     @property
     def username(self):
-        return self.data['login_id']
+        return self.get_required(self.data, 'login_id')
+
+    @property
+    def profile_picture(self):
+        return settings.DEFAULT_PROFILE_PICTURE

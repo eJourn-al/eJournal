@@ -23,10 +23,7 @@ class eDeepLinkResource(DeepLinkResource):
 
     def to_dict(self):
         dic = super().to_dict()
-        dic = {
-            'scope': self._scope,
-            **dic,
-        }
+        dic['scope'] = self._scope
         return dic
 
 

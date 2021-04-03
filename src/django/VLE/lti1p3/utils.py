@@ -10,6 +10,7 @@ from pylti1p3.contrib.django import DjangoCacheDataStorage, DjangoMessageLaunch
 from pylti1p3.exception import LtiException
 
 import VLE.lti1p3 as lti
+from VLE.utils.error_handling import VLEMissingRequiredKey
 
 # TODO lti: check if SectionsService import is working correctly
 
@@ -115,19 +116,42 @@ class PreparedData(object):
             return None
         return bool(string)
 
-    @property
-    def create_dict(self):
-        return {
-            key: getattr(self, key)
-            for key in self.create_keys
-        }
+    def get_required(self, obj, key):
+        if key not in obj:
+            raise VLEMissingRequiredKey(key)
+        return obj[key]
 
-    @property
-    def update_dict(self):
-        return {
-            key: getattr(self, key)
-            for key in self.update_keys
-        }
+    def create_dict(self, debug=False):
+        if not debug:
+            return {
+                key: getattr(self, key)
+                for key in self.create_keys
+            }
+
+        dic = {}
+        for key in self.create_keys:
+            try:
+                dic[key] = getattr(self, key)
+            except VLEMissingRequiredKey:
+                dic[key] = 'MISSING REQUIRED KEY'
+
+        return dic
+
+    def update_dict(self, debug=False):
+        if not debug:
+            return {
+                key: getattr(self, key)
+                for key in self.update_keys
+            }
+
+        dic = {}
+        for key in self.update_keys:
+            try:
+                dic[key] = getattr(self, key)
+            except VLEMissingRequiredKey:
+                dic[key] = 'MISSING REQUIRED KEY'
+
+        return dic
 
     @property
     def find_or_qry(self):
@@ -189,24 +213,30 @@ class PreparedData(object):
 
         return self.create(*create_args, **create_kwargs)
 
-    def asdict(self):
-        return {
-            **self.create_dict,
-            **self.update_dict,
-            **{
-                key: getattr(self, key)
-                for key in self.debug_keys
-            },
+    def asdict(self, debug=False):
+        try:
+            in_db = bool(self.find_in_db())
+        except VLEMissingRequiredKey:
+            in_db = 'UNKNOWN'
+
+        dic = {
+            **self.create_dict(debug=debug),
+            **self.update_dict(debug=debug),
             'create_keys': self.create_keys,
             'update_keys': self.update_keys,
             'find_keys': self.find_keys,
-            'in_database': bool(self.find_in_db()),
+            'in_database': in_db,
         }
+        if debug:
+            dic['debug_keys'] = {
+                key: getattr(self, key)
+                for key in self.debug_keys
+            }
+
+        return dic
 
     def __str__(self):
-        return json.dumps({
-            self.asdict()
-        }, sort_keys=False, indent=4, cls=DatetimeEncoder)
+        return json.dumps(self.asdict(debug=True), sort_keys=False, indent=4, cls=DatetimeEncoder)
 
 
 class eMessageLaunchData(object):
@@ -234,7 +264,7 @@ class eMessageLaunchData(object):
         assignment = self.assignment.asdict()
         if assignment['author']:
             assignment['author'] = assignment['author'].pk
-        if assignment['connected_course']:
+        if hasattr(assignment, 'connected_course') and assignment['connected_course']:
             assignment['connected_course'] = assignment['connected_course'].pk
 
         return {

@@ -104,7 +104,6 @@ def gen_jwt_params(params={}, user=None, course=None, assignment=None, is_teache
 
     request = RequestFactory().post('http://127.0.0.1:8000/lti/launch', req)
     resp = lti.launch.launch(request)
-    print(req)
     return {'launch_id': resp.url.split('launch_id=')[-1].split('&')[0]}, req
 
 

@@ -31,7 +31,7 @@ class AssignmentData(utils.PreparedData):
         if not self.connected_course:
             raise LtiException('Could not find the connected course, please check if the course already exists')
 
-        assignment = factory.make_assignment(**self.create_dict, courses=[self.connected_course])
+        assignment = factory.make_assignment(**self.create_dict(), courses=[self.connected_course])
         assignment.add_lti_id(self.active_lti_id, self.connected_course)
 
         return assignment

@@ -496,8 +496,10 @@ class User(AbstractUser):
         return self.username + " (" + str(self.pk) + ")"
 
     def save(self, *args, **kwargs):
-        if not self.email and not self.is_test_student:
-            raise ValidationError('A legitimate user requires an email adress.')
+        # NOTE: we no longer check for this, users should also be able to have no email
+        # This is because we do not always receive the email adress from all the users through all the endpoints
+        # if not self.email and not self.is_test_student:
+        #     raise ValidationError('A legitimate user requires an email adress.')
 
         if self._state.adding:
             if self.is_test_student and settings.LTI_TEST_STUDENT_FULL_NAME.lower() != self.full_name.lower():

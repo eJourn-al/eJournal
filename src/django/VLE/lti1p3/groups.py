@@ -1,8 +1,11 @@
 import json
 
+import sentry_sdk
+
 import VLE.lti1p3 as lti
 from VLE.lms_api import utils
 from VLE.models import Course, Group, Instance, Participation
+from VLE.utils.error_handling import VLEMissingRequiredKey
 
 
 def sync_groups(access_token, course_id):
@@ -40,14 +43,23 @@ def sync_groups(access_token, course_id):
         existing_student_usernames = group.participation_set.values_list('user__username', flat=True)
         students_to_add = []
         for student in students:
-            student = lti.user.CanvasAPIUserData(student)
+            try:
+                student = lti.user.CanvasAPIUserData(student)
 
-            student.create_or_update(
-                update_kwargs={'course': course},
-                create_kwargs={'course': course},
-            )
-            if student.username not in existing_student_usernames:
-                students_to_add.append(student)
+                student.create_or_update(
+                    update_kwargs={'course': course},
+                    create_kwargs={'course': course},
+                )
+                if student.username not in existing_student_usernames:
+                    students_to_add.append(student)
+            except VLEMissingRequiredKey as exception:
+                with sentry_sdk.push_scope() as scope:
+                    scope.level = 'info'
+                    try:
+                        scope.set_context('user', student.as_dict())
+                    except Exception:
+                        pass
+                    sentry_sdk.capture_exception(exception)
 
         group.participation_set.add(
             *Participation.objects.filter(user__username__in=[

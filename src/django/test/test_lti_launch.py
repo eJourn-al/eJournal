@@ -348,7 +348,6 @@ class LtiLaunchTest(TestCase):
         test_student = User.objects.get(lti_1p0_id=test_user_params['user_id'])
         assert test_student.is_test_student, 'A new test user should be created and flagged accordingly.'
         total_users = User.objects.count()
-        print(User.objects.values('lti_1p0_id'))
 
         get_jwt(
             self, user=test_student, status=200, access=lti_launch_response_to_access_token(resp),
@@ -378,8 +377,6 @@ class LtiLaunchTest(TestCase):
             response_value=lti.utils.LTI_STATES.FINISH_STUDENT.value,
             assert_msg='With a course and assign linked, a reused test student should be forwarded to finish state.'
         )
-
-        print(User.objects.values('lti_1p0_id', 'is_test_student'))
 
         assert total_users == User.objects.count(), 'Launching and relaunching should create no additional users.'
 
@@ -469,7 +466,6 @@ class LtiLaunchTest(TestCase):
         assignment = factory.LtiAssignment(courses=[course])
         test_student = factory.TestUser()
         group_count = Group.objects.filter(course=course).count()
-        print(Group.objects.filter(course=course).values('name'))
         get_jwt(
             self, url='update_lti_groups',
             user=self.student, status=404,
@@ -489,7 +485,6 @@ class LtiLaunchTest(TestCase):
             },
             response_msg='',
             assert_msg='With valid params it should response successfully')
-        print(Group.objects.filter(course=course).values('name'))
         assert group_count == Group.objects.filter(course=course).count(), \
             'No new groups should be created, if no supplied'
         get_jwt(

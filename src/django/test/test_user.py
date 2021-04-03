@@ -216,7 +216,6 @@ class UserAPITest(TestCase):
 
         # Standard LTI user creation
         lti_launch_id, lti_params = gen_jwt_params(to_launch_id=True)
-        print(lti_launch_id)
         api.create(self, 'users', params={
             **user_params,
             **lti_launch_id,
@@ -229,7 +228,6 @@ class UserAPITest(TestCase):
         lti_launch_id, lti_params = gen_jwt_params({
             'custom_user_image': 'https://www.ejournal.app/img/ejournal-logo-white.83c3aad1.svg',
         }, to_launch_id=True)
-        print(lti_launch_id)
         api.create(self, 'users', params={
             **user_params,
             **lti_launch_id,
