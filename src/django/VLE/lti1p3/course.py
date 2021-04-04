@@ -22,7 +22,7 @@ class CourseData(lti.utils.PreparedData):
         course = factory.make_course(**self.create_dict())
 
         if sync_members:
-            lti.members.sync_members(course)
+            lti.members.sync_members.delay(course.pk)
 
         if create_paticipation:
             if settings.LTI13 in course.lti_versions:
@@ -47,7 +47,7 @@ class CourseData(lti.utils.PreparedData):
 
         # Only sync members when there is a change in LTI 1.3 course
         if hasattr(self, 'lti_id') and course.lti_id != self.lti_id:
-            lti.members.sync_members(course)
+            lti.members.sync_members.delay(course.pk)
 
         changed = False
         for key in self.update_keys:
@@ -178,12 +178,14 @@ class Lti1p0CourseData(CourseData):
     def enddate(self):
         return self.to_datetime(self.data.get('custom_course_end', None))
 
+    # TODO LTI: combine these function, but it requires to set the LTI type
+    # Detecte dfrom the received data iso just straight from the course / assignment
     @property
     def author(self):
         if not self._author:
             course = self.find_in_db()
             # If course already exists, that should also be the author
-            if course:
+            if course and course.author:
                 self._author = course.author
             else:
                 # If it doesnt exists, consider the user in the dataparams as the author

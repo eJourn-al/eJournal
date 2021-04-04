@@ -9,6 +9,7 @@ from rest_framework import viewsets
 from rest_framework.decorators import action
 
 import VLE.factory as factory
+import VLE.lti1p3 as lti
 import VLE.utils.generic_utils as utils
 import VLE.utils.responses as response
 from VLE.models import Assignment, Course, Group, Instance, Journal, Participation
@@ -182,7 +183,13 @@ class GroupView(viewsets.ViewSet):
 
     @action(['get'], detail=False)
     def LMS(self, request):
+        # TODO LTI: restrict access
+        # TODO LTI: add access token when received
         course_id, = utils.required_typed_params(request.query_params, (int, 'course_id'))
+        # Access_token already exists, can immidiatly request the groups
+        if request.user.access_token:
+            return lti.groups.sync_groups(request.user.access_token, course_id=course_id)
+
         instance = Instance.objects.get_or_create(pk=1)[0]
         url = build_url(
             instance.lms_url,
@@ -190,55 +197,14 @@ class GroupView(viewsets.ViewSet):
             {
                 'response_type': 'code',
                 'redirect_uri': build_url(settings.API_URL, 'lms/authenticate/'),
-                'scope': ' '.join('''
-                    url:GET|/api/v1/courses/:course_id/students
-                    url:GET|/api/v1/courses/:course_id/sections
-                    url:GET|/api/v1/courses
-                    url:GET|/api/v1/courses/:id
-                    url:GET|/api/v1/courses/:course_id/settings
-                    url:GET|/api/v1/courses/:course_id/recent_students
-                    url:GET|/api/v1/courses/:course_id/users
-                    url:GET|/api/v1/courses/:course_id/search_users
-                    url:GET|/api/v1/courses/:course_id/users/:id
-                    url:GET|/api/v1/courses/:course_id/content_share_users
-                    url:GET|/api/v1/courses/:course_id/activity_stream
-                    url:GET|/api/v1/courses/:course_id/activity_stream/summary
-                    url:GET|/api/v1/courses/:course_id/todo
-                    url:GET|/api/v1/courses/:course_id/course_copy/:id
-                    url:GET|/api/v1/users/:user_id/courses
-                    url:GET|/api/v1/courses/:course_id/effective_due_dates
-                    url:GET|/api/v1/courses/:course_id/permissions
-                    url:GET|/api/v1/courses/:course_id/student_view_student
-                    url:GET|/api/v1/accounts/:account_id/courses/:id
-                    url:GET|/api/v1/users/self/activity_stream
-                    url:GET|/api/v1/users/activity_stream
-                    url:GET|/api/v1/users/self/activity_stream/summary
-                    url:GET|/api/v1/users/self/todo
-                    url:GET|/api/v1/users/self/todo_item_count
-                    url:GET|/api/v1/users/self/upcoming_events
-                    url:GET|/api/v1/users/:user_id/missing_submissions
-                    url:GET|/api/v1/accounts/:account_id/users
-                    url:GET|/api/v1/users/:id
-                    url:GET|/api/v1/users/:id/settings
-                    url:GET|/api/v1/users/:id/colors
-                    url:GET|/api/v1/users/:id/colors/:asset_string
-                    url:GET|/api/v1/users/:id/dashboard_positions
-                    url:GET|/api/v1/users/:id/graded_submissions
-                    url:GET|/api/v1/users/:user_id/custom_data(/*scope)
-                    url:GET|/api/v1/users/:user_id/page_views
-                    url:GET|/api/v1/users/:user_id/profile
-                    url:GET|/api/v1/users/:user_id/avatars
-                    url:GET|/api/v1/users/self/course_nicknames
-                    url:GET|/api/v1/users/self/course_nicknames/:course_id
-                    url:GET|/api/v1/courses/:course_id/sections/:id
-                    url:GET|/api/v1/sections/:id
-                '''.split()),
+                'scope': settings.CANVAS_API_SCOPES,
                 'client_id': instance.api_client_id,
                 'state': 'SYNC_GROUPS-{}'.format(course_id)
             }
         )
         return response.success({'redirect_uri': url})
 
+    @action(['get'], detail=False)
     def assigned_groups(self, request):
         course_id, assignment_id = utils.required_typed_params(
             request.query_params,

@@ -1,11 +1,12 @@
 import json
 
+from celery import shared_task
 from django.conf import settings
 from pylti1p3.names_roles import NamesRolesProvisioningService
 from pylti1p3.service_connector import ServiceConnector
 
 import VLE.lti1p3 as lti
-from VLE.models import Instance
+from VLE.models import Course, Instance
 
 
 def is_test_student(member_data):
@@ -15,9 +16,11 @@ def is_test_student(member_data):
     )
 
 
-def sync_members(course):
-    # TODO LTI: move this to a background task & notify user that students are loading in the background
-    # This may take some time: updating / creating all users. Say that to frontend
+@shared_task
+def sync_members(course_pk):
+    course = Course.objects.get(pk=course_pk)
+    # TODO LTI: notify user that students are loading in the background
+    # "This may take some time: updating / creating all users." Say that to frontend
 
     # LTI 1.0 courses cannot sync
     if settings.LTI13 not in course.lti_versions:

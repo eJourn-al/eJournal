@@ -121,7 +121,7 @@ class Instance(CreateUpdateModel):
         super().save(*args, **kwargs)
         if self.lms_url:
             self.lms_url = self.lms_url.strip()
-            # TODO LTI test this
+            # TODO LTI: test this
             if not re.match(r'^https?://[^/]*$', self.lms_url):
                 raise ValidationError('The LMS URL should be as follows: "http(s)://example.com". No leading "/".')
 
@@ -369,6 +369,12 @@ class User(AbstractUser):
         blank=True,
     )
     sis_id = models.TextField(
+        null=True,
+        unique=True,
+        blank=True,
+    )
+    # Used for the Canvas API
+    access_token = models.TextField(
         null=True,
         unique=True,
         blank=True,
@@ -1952,30 +1958,30 @@ class JournalQuerySet(models.QuerySet):
         Annotates for each journal linked to an lti assignment (active lti id is not None)
         the full name as array of the users who do not have a sourcedid set as `needs_lti_link`
         """
-        return self.annotate(needs_lti_link=ArrayAgg(
-            'authors__user__full_name',
-            filter=Q(authors__sourcedid__isnull=True, assignment__active_lti_id__isnull=False),
-            distinct=True,
-        ))
-        # return self.annotate(
-        #     needs_lti_link=Case(
-        #         When(
-        #             # If assignment is LTI1.3 (assignments_grades_service exists)
-        #             Q(assignment__assignments_grades_service__isnull=False, assignment__active_lti_id__isnull=False),
-        #             # TODO LTI: Then check if the user is also in the course from the LTI1.3 assignment
-        #             # This case happens when an assignment:
-        #             # - is linked to both LTI 1.0 and LTI 1.3,
-        #             # - the active course is LTI 1.3
-        #             # - the student is only a participant from the non active (LTI 1.0) course
-        #             then=[],
-        #         ),
-        #         default=ArrayAgg(
-        #             'authors__user__full_name',
-        #             filter=Q(authors__sourcedid__isnull=True, assignment__active_lti_id__isnull=False),
-        #             distinct=True,
-        #         )
-        #     )
-        # )
+        # return self.annotate(needs_lti_link=ArrayAgg(
+        #     'authors__user__full_name',
+        #     filter=Q(authors__sourcedid__isnull=True, assignment__active_lti_id__isnull=False),
+        #     distinct=True,
+        # ))
+        return self.annotate(
+            needs_lti_link=Case(
+                When(
+                    # If assignment is LTI1.3 (assignments_grades_service exists)
+                    Q(assignment__assignments_grades_service__isnull=False, assignment__active_lti_id__isnull=False),
+                    # TODO LTI: Then check if the user is also in the course from the LTI1.3 assignment
+                    # This case happens when an assignment:
+                    # - is linked to both LTI 1.0 and LTI 1.3,
+                    # - the active course is LTI 1.3
+                    # - the student is only a participant from the non active (LTI 1.0) course
+                    then=[],
+                ),
+                default=ArrayAgg(
+                    'authors__user__full_name',
+                    filter=Q(authors__sourcedid__isnull=True, assignment__active_lti_id__isnull=False),
+                    distinct=True,
+                )
+            )
+        )
 
     def annotate_name(self):
         """

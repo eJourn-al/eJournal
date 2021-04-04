@@ -89,7 +89,7 @@ class GradeView(viewsets.ViewSet):
 
         if published:
             Comment.objects.filter(entry=entry).update(published=True)
-        lti.grading.task_send_grade.delay(author_pks=journal.values_list('authors__pk', flat=True))
+        lti.grading.task_send_grade.delay(author_pks=list(journal.authors.values_list('pk', flat=True)))
 
         return response.created({
             'entry': EntrySerializer(

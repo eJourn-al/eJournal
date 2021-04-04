@@ -8,7 +8,7 @@ from rest_framework.permissions import AllowAny
 
 import VLE.utils.responses as response
 from VLE.models import Instance
-from VLE.serializers import InstanceSerializer
+from VLE.serializers import InstanceSerializer, InstanceUpdateSerializer
 
 
 class InstanceView(viewsets.ViewSet):
@@ -43,7 +43,7 @@ class InstanceView(viewsets.ViewSet):
 
         instance = Instance.objects.get_or_create(pk=1)[0]
 
-        serializer = InstanceSerializer(instance, data=request.data, context={'user': request.user}, partial=True)
+        serializer = InstanceUpdateSerializer(instance, data=request.data, context={'user': request.user}, partial=True)
         if not serializer.is_valid():
             return response.bad_request()
         serializer.save()

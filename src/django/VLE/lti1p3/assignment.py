@@ -127,7 +127,7 @@ class Lti1p3AssignmentData(AssignmentData):
         # QUESTION LTI: are these valid settings?
         self.update_keys = [
             'name',
-            # 'author', TODO: This is currently the user first opening the course. Should be the real author
+            # 'author',
             # 'active_lti_id',
             # 'points_possible',
             'is_published',
@@ -144,14 +144,24 @@ class Lti1p3AssignmentData(AssignmentData):
     def name(self):
         return self.to_str(self.data[lti.claims.ASSIGNMENT]['title'])
 
+    # TODO LTI: combine these function, but it requires to set the LTI type
+    # Detecte dfrom the received data iso just straight from the course / assignment
     @property
     def author(self):
         if not self._author:
             assignment = self.find_in_db()
-            if assignment:
+            # If assignment already exists, that should also be the author
+            if assignment and assignment.author:
                 self._author = assignment.author
             else:
-                self._author = lti.user.Lti1p3UserData(self.data).find_in_db()
+                # If it doesnt exists, consider the user in the dataparams as the author
+                # IFF the user has a teacher role
+                # NOT if the user is already a teacher, as a platform teacher from 1 assignment
+                # does not have to be a teacher in this assignment
+                # TODO LTI: platform wide teachers are still considered teacher. This should not be the case
+                user_data = lti.user.Lti1p3UserData(self.data)
+                if user_data.role_name == 'Teacher':
+                    self._author = user_data.find_in_db()
 
         return self._author
 
@@ -195,7 +205,6 @@ class Lti1p3AssignmentData(AssignmentData):
 class Lti1p0AssignmentData(AssignmentData):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # TODO LTI: check if it is possible to update the description / title on the Canvas side
         self.create_keys = [
             'name',
             'author',
@@ -230,14 +239,24 @@ class Lti1p0AssignmentData(AssignmentData):
     def name(self):
         return self.to_str(self.data['custom_assignment_title'])
 
+    # TODO LTI: combine these function, but it requires to set the LTI type
+    # Detecte dfrom the received data iso just straight from the course / assignment
     @property
     def author(self):
         if not self._author:
             assignment = self.find_in_db()
-            if assignment:
+            # If assignment already exists, that should also be the author
+            if assignment and assignment.author:
                 self._author = assignment.author
             else:
-                self._author = lti.user.Lti1p0UserData(self.data).find_in_db()
+                # If it doesnt exists, consider the user in the dataparams as the author
+                # IFF the user has a teacher role
+                # NOT if the user is already a teacher, as a platform teacher from 1 assignment
+                # does not have to be a teacher in this assignment
+                # TODO LTI: platform wide teachers are still considered teacher. This should not be the case
+                user_data = lti.user.Lti1p0UserData(self.data)
+                if user_data.role_name == 'Teacher':
+                    self._author = user_data.find_in_db()
 
         return self._author
 

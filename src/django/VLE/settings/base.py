@@ -184,6 +184,14 @@ MIDDLEWARE = [
     'csp.middleware.CSPMiddleware',
 ]
 
+CANVAS_API_SCOPES = ' '.join('''
+    url:GET|/api/v1/courses/:course_id/students
+    url:GET|/api/v1/courses/:course_id/sections
+    url:GET|/api/v1/courses/:course_id/users
+    url:GET|/api/v1/courses/:course_id/users/:id
+    url:GET|/api/v1/sections/:id
+'''.split())
+
 ROOT_URLCONF = 'VLE.urls'
 
 TEMPLATES = [

@@ -20,7 +20,7 @@ def lms_authenticate(request):
         status: this specifies the data to retrieve and the context to retrieve it with
         code: code used to retrieve the access_token
     """
-    # TODO LTI: do not continuesly re-request integration. Appearently you can extand expeiration date
+    # TODO LTI: do not continuesly re-request integration. Appearently you can expand expeiration date
     # Everytime someone uses FBF, the expiration date gets postponed by 1 hour
     instance = Instance.objects.get_or_create(pk=1)[0]
     action, pk = request.query_params['state'].split('-')

@@ -8,6 +8,7 @@ from VLE.models import Course, Group, Instance, Participation
 from VLE.utils.error_handling import VLEMissingRequiredKey
 
 
+# TODO LTI: to background task
 def sync_groups(access_token, course_id):
     instance = Instance.objects.get_or_create(pk=1)[0]
     course = Course.objects.get(pk=course_id)
@@ -21,11 +22,12 @@ def sync_groups(access_token, course_id):
         course=course
     ).values_list('lms_id', flat=True))
 
-    # Create new groups
+    # Create new groups and update the name of existing groups
     new_groups = []
+    update_name_groups = {}
     for group in groups:
         if str(group['id']) in existing_group_lms_ids:
-            # TODO LTI: update group names
+            update_name_groups[group['id']] = group['name']
             continue  # Group already exists, ignore creation
         new_groups.append(
             Group(
@@ -35,6 +37,10 @@ def sync_groups(access_token, course_id):
             )
         )
     Group.objects.bulk_create(new_groups)
+    update_groups = Group.objects.filter(lms_id__in=update_name_groups.keys())
+    for group in update_groups:
+        group.name = update_name_groups[group.lms_id]
+    Group.objects.bulk_update(update_groups, ['name'])
 
     for group, students in zip(
         Group.objects.filter(lms_id__in=[g['id'] for g in groups]),

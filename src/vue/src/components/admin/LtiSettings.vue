@@ -181,10 +181,10 @@
                     Client secret
                 </h2>
                 <b-input
-                    v-model="instance.api_client_secret"
+                    v-model="apiClientSecret"
                     class="theme-input multi-form"
                     type="text"
-                    placeholder="Client secret"
+                    :placeholder="instance.has_client_secret ? '[unchanged]' : 'Client secret'"
                 />
                 <b-button
                     class="add-button float-right"
@@ -206,6 +206,7 @@ export default {
     data () {
         return {
             instance: null,
+            apiClientSecret: null,
             configuredToolStep: 0,
             maxSteps: 6,
             lmsNames: [
@@ -234,6 +235,9 @@ export default {
     },
     methods: {
         save () {
+            if (this.apiClientSecret !== null) {
+                this.instance.api_client_secret = this.apiClientSecret
+            }
             instanceAPI.update(this.instance, { customSuccessToast: 'Updated settings' })
                 .then((instance) => { this.instance = instance })
         },

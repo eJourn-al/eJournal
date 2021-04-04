@@ -81,7 +81,7 @@ class EntryView(viewsets.ViewSet):
 
         entry_utils.create_entry_content(content_dict, entry, request.user)
         # Notify teacher on new entry
-        lti.grading.task_send_grade.delay(author_pks=journal.values_list('authors__pk', flat=True))
+        lti.grading.task_send_grade.delay(author_pks=list(journal.authors.values_list('pk', flat=True)))
 
         return response.created({
             'added': entry_utils.get_node_index(journal, node, request.user),
@@ -177,7 +177,7 @@ class EntryView(viewsets.ViewSet):
                 file_handling.establish_file(request.user, file_context=fc, content=old_content,
                                              in_rich_text=old_content.field.type == Field.RICH_TEXT)
 
-        lti.grading.task_send_grade.delay(author_pks=journal.values_list('authors__pk', flat=True))
+        lti.grading.task_send_grade.delay(author_pks=list(journal.authors.values_list('pk', flat=True)))
         entry.last_edited_by = request.user
         entry.last_edited = timezone.now()
         entry.title = title

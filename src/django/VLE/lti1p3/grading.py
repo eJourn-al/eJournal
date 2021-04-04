@@ -179,6 +179,10 @@ class eGrade(Grade):
         if not journal:
             journal = author.journal
 
+        # Journal is not annotated, so annotate it
+        if not hasattr(journal, 'grade'):
+            journal = Journal.objects.get(pk=journal.pk)
+
         self._journal = journal
         self._assignment = author.assignment
         self._course = self._assignment.get_active_course(author.user)
@@ -388,14 +392,17 @@ def send_grade(authors, left_journal=False, journal=None):
     grades = _get_grades(authors, left_journal=left_journal, journal=journal)
     result = []
     for lti_10_grade in grades.pop(settings.LTI10, []):
+        print('LTI 1.0', lti_10_grade)
         result.append(GradePassBackRequest(lti_10_grade).send_grade_to_lms())
 
     for grade_service, grades in grades.items():
+        print('LTI 1.3', grade_service)
         instance = Instance.objects.get_or_create(pk=1)[0]
         registration = settings.TOOL_CONF.find_registration(instance.iss, client_id=instance.lti_client_id)
         connector = ServiceConnector(registration)
         ags = AssignmentsGradesService(connector, json.loads(grade_service))
         for grade in grades:
+            print(grade)
             # TODO LTI: Might raise LtiException when grading goes wrong, handle this
             result.append(ags.put_grade(grade))
 

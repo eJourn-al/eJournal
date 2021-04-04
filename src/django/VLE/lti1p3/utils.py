@@ -284,6 +284,8 @@ class eDjangoMessageLaunch(DjangoMessageLaunch):
     @property
     def lti_version(self):
         '''Get the LTI version of the launch.'''
+        print(self._jwt.get('body', {}).get('lti_version'))
+        print(self._request._request.POST.get('lti_version'))
         return (
             self._jwt.get('body', {}).get('lti_version') or  # Check if lti version is inside jwt body
             self._request._request.POST.get('lti_version') or  # Else, check if it might be in POST data

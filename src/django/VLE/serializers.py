@@ -89,15 +89,37 @@ class ExtendedModelSerializer(serializers.ModelSerializer):
 
 
 class InstanceSerializer(serializers.ModelSerializer):
+    has_client_secret = serializers.SerializerMethodField()
+
     class Meta:
         model = VLE.models.Instance
         fields = (
             # Platform settings
             'allow_standalone_registration', 'name',
             # LMS settings
-            'lms_name', 'lms_url', 'api_client_id', 'api_client_secret', 'lti_client_id', 'lti_deployment_ids',
+            'lms_name', 'lms_url', 'api_client_id',
+            'has_client_secret', 'lti_client_id', 'lti_deployment_ids',
         )
         read_only_fields = ()
+
+    # TODO LTI: test if this is working properly
+    def get_has_client_secret(self, instance):
+        if instance.api_client_secret:
+            return True
+
+        return False
+
+
+class InstanceUpdateSerializer(InstanceSerializer):
+    class Meta:
+        model = VLE.models.Instance
+        fields = (
+            # Platform settings
+            'allow_standalone_registration', 'name',
+            # LMS settings
+            'lms_name', 'lms_url', 'api_client_id', 'has_client_secret',
+            'api_client_secret', 'lti_client_id', 'lti_deployment_ids',
+        )
 
 
 class RoleSerializer(serializers.ModelSerializer):
@@ -375,7 +397,7 @@ class GroupSerializer(serializers.ModelSerializer):
 class AssignmentParticipationSerializer(serializers.ModelSerializer, EagerLoadingMixin):
     class Meta:
         model = VLE.models.AssignmentParticipation
-        fields = ('id', 'journal', 'assignment', 'user', 'needs_lti_link')
+        fields = ('id', 'journal', 'assignment', 'user')
         read_only_fields = ('journal', 'assignment',)
 
     select_related = [
@@ -384,7 +406,6 @@ class AssignmentParticipationSerializer(serializers.ModelSerializer, EagerLoadin
     ]
 
     user = UserSerializer(read_only=True)
-    needs_lti_link = serializers.BooleanField()
 
 
 class ParticipationSerializer(serializers.ModelSerializer, EagerLoadingMixin):
