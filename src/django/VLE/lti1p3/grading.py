@@ -2,12 +2,13 @@ import json
 import xml.etree.cElementTree as ET
 
 import oauth2
+from celery import shared_task
 from django.conf import settings
 from pylti1p3.assignments_grades import AssignmentsGradesService
 from pylti1p3.grade import Grade
 from pylti1p3.service_connector import ServiceConnector
 
-from VLE.models import Counter, Instance
+from VLE.models import AssignmentParticipation, Counter, Instance, Journal
 
 
 class GradePassBackRequest(object):
@@ -342,25 +343,63 @@ class TeacherGrade(eGrade):
         return timestamp.isoformat()
 
 
-def send_grade(author, ags=None, left_journal=False, journal=None):
-    grades = [StudentGrade(author, left_journal=left_journal, journal=journal)]
-    # LTI 1.3 cannot have both a TODO for teacher and grade for student.
-    # This means that we only send a TODO to the teacher for LTI 1.0
-    if author.assignment.is_lti10_version() and not left_journal and journal.require_grade_action_nodes.exists():
-        grades.append(TeacherGrade(author, send_score=False, left_journal=left_journal, journal=journal))
+def _get_grades(authors, left_journal=False, journal=None):
+    '''Get all the grades with attached the lti version'''
+    grades = {}
+    for author in authors:
+        # Skip asignments without lti link
+        if not author.assignment.has_lti_link():
+            continue
 
-    if author.assignment.is_lti13_version():
-        if not ags:
-            instance = Instance.objects.get_or_create(pk=1)[0]
-            registration = settings.TOOL_CONF.find_registration(instance.iss, client_id=instance.lti_client_id)
-            connector = ServiceConnector(registration)
-            ags = AssignmentsGradesService(connector, json.loads(author.assignment.assignments_grades_service))
-        # Might raise LtiException when grading goes wrong
-        return [ags.put_grade(grade) for grade in grades]
+        is_lti_10 = author.assignment.is_lti10_version()
+        if is_lti_10:
+            key = settings.LTI10
+        else:
+            key = author.assignment.assignments_grades_service
 
-    if author.assignment.is_lti10_version():
-        return [GradePassBackRequest(grade).send_grade_to_lms() for grade in grades]
+        if key not in grades:
+            grades[key] = []
 
+        grades[key].append(
+            StudentGrade(author, left_journal=left_journal, journal=author.journal or journal)
+        )
+
+        # LTI 1.3 cannot have both a todo for teacher and grade for student.
+        # This means that (if graded) we only send a todo to the teacher for LTI 1.0
+        if is_lti_10 and not left_journal and author.journal.require_grade_action_nodes.exists():
+            grades[key].append(
+                TeacherGrade(author, send_score=False, left_journal=left_journal, journal=author.journal or journal)
+            )
+
+    return grades
+
+
+@shared_task
+def task_send_grade(author_pk=None, author_pks=[], left_journal=False, journal_pk=None):
+    return send_grade(
+        AssignmentParticipation.objects.filter(pk__in=author_pks + [author_pk]),
+        left_journal=left_journal,
+        journal=Journal.objects.get(pk=journal_pk) if journal_pk is not None else None,
+    )
+
+
+def send_grade(authors, left_journal=False, journal=None):
+    assert not left_journal or journal, 'When a user leaves a journal, journal param should be set'
+    grades = _get_grades(authors, left_journal=left_journal, journal=journal)
+    result = []
+    for lti_10_grade in grades.pop(settings.LTI10, []):
+        result.append(GradePassBackRequest(lti_10_grade).send_grade_to_lms())
+
+    for grade_service, grades in grades.items():
+        instance = Instance.objects.get_or_create(pk=1)[0]
+        registration = settings.TOOL_CONF.find_registration(instance.iss, client_id=instance.lti_client_id)
+        connector = ServiceConnector(registration)
+        ags = AssignmentsGradesService(connector, json.loads(grade_service))
+        for grade in grades:
+            # TODO LTI: Might raise LtiException when grading goes wrong, handle this
+            result.append(ags.put_grade(grade))
+
+    return result
     # TODO LTI: sentry notification when grading fails. And more verbose & alligned (LTI1.1/1.3) responses
     # if not successful:
     #     with push_scope() as scope:

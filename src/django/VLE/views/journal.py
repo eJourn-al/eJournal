@@ -190,8 +190,7 @@ class JournalView(viewsets.ViewSet):
             req_data.pop('bonus_points', None)
             journal.bonus_points = bonus_points
             journal.save()
-            lti.grading.send_grade(journal.authors)  # TODO LTI: check if this works
-            # grading.task_journal_status_to_LMS.delay(journal.pk)
+            lti.grading.task_send_grade.delay(author_pks=list(journal.authors.all().values_list('pk', flat=True)))
             return response.success({'journal': JournalSerializer(journal, context={'user': request.user}).data})
 
         name, author_limit, image = utils.optional_typed_params(request.data, (str, 'name'), (int, 'author_limit'),
@@ -272,7 +271,7 @@ class JournalView(viewsets.ViewSet):
 
         author = AssignmentParticipation.objects.get(assignment=journal.assignment, user=request.user)
         journal.add_author(author)
-        grading.task_author_status_to_LMS.delay(journal.pk, author.pk)
+        lti.grading.task_send_grade.delay(author_pk=author.pk)
 
         return response.success({
             'journal': JournalSerializer(Journal.objects.get(pk=journal.pk), context={'user': request.user}).data
@@ -334,10 +333,11 @@ class JournalView(viewsets.ViewSet):
             if Journal.objects.filter(assignment=journal.assignment, authors__user=user).exists():
                 return response.bad_request('{} is already a member of another journal.'.format(user.full_name))
 
-        for user in users:
-            author = AssignmentParticipation.objects.get(assignment=journal.assignment, user=user)
-            journal.add_author(author)
-            grading.task_author_status_to_LMS.delay(journal.pk, author.pk)
+        author_pks = [
+            journal.add_author(AssignmentParticipation.objects.get(assignment=journal.assignment, user=user)).pk
+            for user in users
+        ]
+        lti.grading.task_send_grade.delay(author_pks=author_pks)
 
         return response.success({
             'authors': AssignmentParticipationSerializer(
@@ -365,7 +365,7 @@ class JournalView(viewsets.ViewSet):
         author = AssignmentParticipation.objects.get(user=request.user, journal=journal)
         journal.remove_author(author)
 
-        grading.task_author_status_to_LMS.delay(journal.pk, author.pk, left_journal=True)
+        lti.grading.task_send_grade.delay(author_pk=author.pk, journal_pk=journal.pk, left_journal=True)
         return response.success(description='Successfully removed from the journal.')
 
     @action(['patch'], detail=True)
@@ -392,7 +392,7 @@ class JournalView(viewsets.ViewSet):
         author = AssignmentParticipation.objects.get(user=user, journal=journal)
         journal.remove_author(author)
 
-        grading.task_author_status_to_LMS.delay(journal.pk, author.pk, left_journal=True)
+        lti.grading.task_send_grade.delay(author_pk=author.pk, journal_pk=journal, left_journal=True)
         return response.success(description='Successfully removed {} from the journal.'.format(author.user.full_name))
 
     @action(['patch'], detail=True)
@@ -431,7 +431,7 @@ class JournalView(viewsets.ViewSet):
 
     def publish(self, request, journal):
         grading.publish_all_journal_grades(journal, request.user)
-        grading.task_journal_status_to_LMS.delay(journal.pk)
+        lti.grading.task_send_grade.delay(author_pks=list(journal.authors.all().values_list('pk', flat=True)))
 
         return response.success({
             'journal': JournalSerializer(Journal.objects.get(pk=journal.pk), context={'user': request.user}).data

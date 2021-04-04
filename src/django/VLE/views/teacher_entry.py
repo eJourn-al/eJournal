@@ -8,11 +8,13 @@ from django.db import transaction
 from django.db.models import Max
 from rest_framework import viewsets
 
+import VLE.lti1p3 as lti
 import VLE.utils.generic_utils as utils
 import VLE.utils.responses as response
-from VLE.models import Assignment, Entry, EntryCategoryLink, Grade, Journal, Node, TeacherEntry, Template
+from VLE.models import (Assignment, AssignmentParticipation, Entry, EntryCategoryLink, Grade, Journal, Node,
+                        TeacherEntry, Template)
 from VLE.serializers import TeacherEntrySerializer
-from VLE.utils import entry_utils, grading
+from VLE.utils import entry_utils
 from VLE.utils.error_handling import VLEBadRequest
 
 
@@ -139,14 +141,16 @@ class TeacherEntryView(viewsets.ViewSet):
 
         entries = Entry.objects.filter(teacher_entry=teacher_entry)
         deleted_entries = entries.exclude(node__journal__pk__in=map(lambda j: j['journal_id'], journals))
-        deleted_entry_journal_ids = list(deleted_entries.values_list('node__journal__pk', flat=True))
+        deleted_entry_author_ids = list(deleted_entries.values_list('node__journal__authors__pk', flat=True))
         existing_journal_ids = list(entries.values_list('node__journal__pk', flat=True))
 
         with transaction.atomic():
             deleted_entries.delete()
 
-            grading.task_bulk_send_journal_status_to_LMS.apply_async(
-                args=[deleted_entry_journal_ids],
+            lti.grading.task_send_grade.apply_async(
+                kwargs={
+                    'author_ids': deleted_entry_author_ids
+                },
                 countdown=settings.WEBSERVER_TIMEOUT,
             )
 
@@ -254,8 +258,10 @@ class TeacherEntryView(viewsets.ViewSet):
             entry.last_edited = teacher_entry.last_edited
         Entry.objects.bulk_update(entries, ['grade', 'last_edited'])
 
-        grading.task_bulk_send_journal_status_to_LMS.apply_async(
-            args=[[journal.pk for journal in journals]],
+        lti.grading.task_send_grade.apply_async(
+            kwargs={
+                'author_ids': AssignmentParticipation.objects.filter(journal__in=journals).values_list('pk', flat=True)
+            },
             countdown=settings.WEBSERVER_TIMEOUT,
         )
 
@@ -296,8 +302,11 @@ class TeacherEntryView(viewsets.ViewSet):
             entry.grade_id = entry.newest_grade_id
         Entry.objects.bulk_update(entries, ['grade'])
 
-        grading.task_bulk_send_journal_status_to_LMS.apply_async(
-            args=[journal_pks],
+        lti.grading.task_send_grade.apply_async(
+            kwargs={
+                'author_ids': AssignmentParticipation.objects.filter(
+                    journal__in=journal_pks).values_list('pk', flat=True)
+            },
             countdown=settings.WEBSERVER_TIMEOUT,
         )
 

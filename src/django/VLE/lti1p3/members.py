@@ -19,8 +19,8 @@ def sync_members(course):
     # TODO LTI: move this to a background task & notify user that students are loading in the background
     # This may take some time: updating / creating all users. Say that to frontend
 
-    if not course.names_role_service:  # LTI 1.0 courses cannot sync like this
-        print('NAHHHH')
+    # LTI 1.0 courses cannot sync
+    if settings.LTI13 not in course.lti_versions:
         return
 
     instance = Instance.objects.get_or_create(pk=1)[0]
@@ -29,8 +29,6 @@ def sync_members(course):
     nrs = NamesRolesProvisioningService(connector, json.loads(course.names_role_service))
 
     members = nrs.get_members()
-
-    print('MEMBERS', json.dumps(members, indent=4, sort_keys=True))
 
     for member_data in members:
         # QUESTION: we can also exclude 'Inactive' members. Is that preferred?

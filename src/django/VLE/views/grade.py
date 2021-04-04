@@ -7,6 +7,7 @@ from rest_framework import viewsets
 from rest_framework.decorators import action
 
 import VLE.factory as factory
+import VLE.lti1p3 as lti
 import VLE.utils.generic_utils as utils
 import VLE.utils.grading as grading
 import VLE.utils.responses as response
@@ -88,7 +89,7 @@ class GradeView(viewsets.ViewSet):
 
         if published:
             Comment.objects.filter(entry=entry).update(published=True)
-        grading.task_journal_status_to_LMS.delay(journal.pk)
+        lti.grading.task_send_grade.delay(author_pks=journal.values_list('authors__pk', flat=True))
 
         return response.created({
             'entry': EntrySerializer(
@@ -108,6 +109,6 @@ class GradeView(viewsets.ViewSet):
         journals = Journal.objects.filter(assignment=assignment, unpublished__gt=0).distinct()
         for journal in journals:
             grading.publish_all_journal_grades(journal, request.user)
-        grading.task_bulk_send_journal_status_to_LMS.delay(list(journals.values_list('pk', flat=True)))
+        lti.grading.task_send_grade.delay(author_pks=list(journals.values_list('authors__pk', flat=True)))
 
         return response.success()

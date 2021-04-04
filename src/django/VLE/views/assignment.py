@@ -22,9 +22,9 @@ import VLE.utils.generic_utils as utils
 import VLE.utils.import_utils as import_utils
 import VLE.utils.responses as response
 import VLE.validators as validators
-from VLE.models import Assignment, Course, Group, Journal, PresetNode, Template, User
+from VLE.models import Assignment, AssignmentParticipation, Course, Group, Journal, PresetNode, Template, User
 from VLE.serializers import AssignmentSerializer, CourseSerializer, SmallAssignmentSerializer, TeacherEntrySerializer
-from VLE.utils import file_handling, grading
+from VLE.utils import file_handling
 from VLE.utils.error_handling import VLEMissingRequiredKey, VLEParamWrongType
 from VLE.utils.file_handling import copy_assignment_related_rt_files
 
@@ -462,7 +462,10 @@ class AssignmentView(viewsets.ViewSet):
         for j, b in bonuses.items():
             j.bonus_points = b
             j.save()
-        grading.task_bulk_send_journal_status_to_LMS.delay([journal.pk for journal in bonuses.keys()])
+        lti.grading.task_send_grade.delay(
+            author_ids=AssignmentParticipation.objects.filter(
+                journal__in=[journal.pk for journal in bonuses.keys()]).values_list('pk', flat=True)
+        )
 
         return response.success()
 

@@ -1639,13 +1639,22 @@ class Assignment(CreateUpdateModel):
         course.add_assignment_lti_id(lti_id)
         course.save()
 
+    @property
+    def lti_version(self):
+        if self.is_lti13_version():
+            return settings.LTI13
+        elif self.is_lti10_version():
+            return settings.LTI10
+
+        return None
+
     def is_lti13_version(self):
-        # NOTE: if this function were to change, also change the needs_lti_link annotation
-        return bool(self.assignments_grades_service)
+        # NOTE: if you change this, also change JournalQuerySet.annotate_needs_lti_link
+        return bool(self.assignments_grades_service) and self.has_lti_link()
 
     def is_lti10_version(self):
-        # LTI 1.0 is when active lti id is set, and it is not LTI 1.3
-        return not self.is_lti13_version() and self.active_lti_id
+        # NOTE: if you change this, also change JournalQuerySet.annotate_needs_lti_link
+        return not self.is_lti13_version() and self.has_lti_link()
 
     def can_be_unpublished(self):
         return not self.has_entries()
@@ -1952,7 +1961,7 @@ class JournalQuerySet(models.QuerySet):
         #     needs_lti_link=Case(
         #         When(
         #             # If assignment is LTI1.3 (assignments_grades_service exists)
-        #             Q(assignment__assignments_grades_service__isnull=False),
+        #             Q(assignment__assignments_grades_service__isnull=False, assignment__active_lti_id__isnull=False),
         #             # TODO LTI: Then check if the user is also in the course from the LTI1.3 assignment
         #             # This case happens when an assignment:
         #             # - is linked to both LTI 1.0 and LTI 1.3,
@@ -2093,6 +2102,7 @@ class Journal(CreateUpdateModel):
         # save of the journal. This should obviously be validation first then change DB state.
         self.authors.add(author)
         self.save()
+        return author
 
     def remove_author(self, author):
         self.authors.remove(author)

@@ -1,11 +1,11 @@
 from rest_framework import viewsets
 
+import VLE.lti1p3 as lti
 import VLE.utils.generic_utils as utils
 import VLE.utils.import_utils as import_utils
 import VLE.utils.responses as response
 from VLE.models import Assignment, Entry, Journal, JournalImportRequest, Node
 from VLE.serializers import JournalImportRequestSerializer
-from VLE.utils import grading
 
 
 class JournalImportRequestView(viewsets.ViewSet):
@@ -95,7 +95,7 @@ class JournalImportRequestView(viewsets.ViewSet):
             raise e
 
         if jir_action == jir.APPROVED_INC_GRADES:
-            grading.task_journal_status_to_LMS.delay(jir.target.pk)
+            lti.grading.task_send_grade.delay(author_pks=jir.target.values_list('authors__pk', flat=True))
 
         jir.save()
 

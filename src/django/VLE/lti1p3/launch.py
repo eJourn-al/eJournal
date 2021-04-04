@@ -88,6 +88,8 @@ def handle_all_connected_to_launch_data(launch_data, launch_id, user, course, as
     elif journal:
         response_data['journal_id'] = journal.pk
 
+    # TODO LTI: send grade back to LTI if working
+
     return redirect(build_url(settings.BASELINK, 'LtiLogin', response_data))
 
 

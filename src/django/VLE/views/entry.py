@@ -7,6 +7,7 @@ from django.utils import timezone
 from rest_framework import viewsets
 
 import VLE.factory as factory
+import VLE.lti1p3 as lti
 import VLE.serializers as serialize
 import VLE.timeline as timeline
 import VLE.utils.entry_utils as entry_utils
@@ -14,7 +15,6 @@ import VLE.utils.file_handling as file_handling
 import VLE.utils.generic_utils as utils
 import VLE.utils.responses as response
 from VLE.models import Entry, Field, FileContext, Journal, Node, Template
-from VLE.utils import grading
 
 
 class EntryView(viewsets.ViewSet):
@@ -81,7 +81,7 @@ class EntryView(viewsets.ViewSet):
 
         entry_utils.create_entry_content(content_dict, entry, request.user)
         # Notify teacher on new entry
-        grading.task_journal_status_to_LMS.delay(journal.pk)
+        lti.grading.task_send_grade.delay(author_pks=journal.values_list('authors__pk', flat=True))
 
         return response.created({
             'added': entry_utils.get_node_index(journal, node, request.user),
@@ -177,7 +177,7 @@ class EntryView(viewsets.ViewSet):
                 file_handling.establish_file(request.user, file_context=fc, content=old_content,
                                              in_rich_text=old_content.field.type == Field.RICH_TEXT)
 
-        grading.task_journal_status_to_LMS.delay(journal.pk)
+        lti.grading.task_send_grade.delay(author_pks=journal.values_list('authors__pk', flat=True))
         entry.last_edited_by = request.user
         entry.last_edited = timezone.now()
         entry.title = title
