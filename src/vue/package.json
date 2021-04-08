@@ -23,6 +23,7 @@
     "exceljs": "^3.8.2",
     "file-saver": "^2.0.2",
     "intro.js": "^2.9.3",
+    "kaltura-client": "^16.14.0",
     "lodash.isequalwith": "^4.4.0",
     "tinymce": "^5.2.0",
     "vue": "^2.6.11",

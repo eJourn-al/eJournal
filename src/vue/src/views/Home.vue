@@ -6,6 +6,8 @@
             slot="main-content-column"
             :loading="loadingCourses"
         >
+            <kaltura/>
+
             <div v-if="courses.length > 0">
                 <div
                     v-for="c in courses"
@@ -71,6 +73,8 @@
 </template>
 
 <script>
+import Kaltura from '@/components/assets/file_handling/Kaltura.vue'
+
 import breadCrumb from '@/components/assets/BreadCrumb.vue'
 import contentColumns from '@/components/columns/ContentColumns.vue'
 import createCourse from '@/components/course/CreateCourse.vue'
@@ -89,6 +93,7 @@ export default {
         mainCard,
         createCourse,
         deadlineDeck,
+        Kaltura,
     },
     data () {
         return {
