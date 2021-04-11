@@ -216,12 +216,14 @@ class LtiLaunchTest(TestCase):
     def test_lti_launch_multiple_roles(self):
         lti_launch(
             request_body={
-                'roles': 'Extra,urn:lti:role:ims/lis/Instructor',
+                'roles': 'Extra,urn:lti:instrole:ims/lis/Instructor',
                 'user_id': self.student.lti_id
             },
             response_value=lti_view.LTI_STATES.LOGGED_IN.value,
             assert_msg='With only institution wide teacher role (no context teacher) student should not become teacher',
         )
+        assert not User.objects.get(lti_id=self.student.lti_id).is_teacher, \
+            'Student should not become a teacher when loggin in with only institution wide Instructor role'
 
         lti_launch(
             request_body={
