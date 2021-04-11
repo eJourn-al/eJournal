@@ -187,6 +187,12 @@ class UserData(lti.utils.PreparedData):
             users = users.exclude(pk=self.find_in_db().pk)
         print('DELETED USERS', users.delete())
 
+    def do_password(self, user, password):
+        if password and not self.is_test_student:
+            user.set_password(password)
+        else:
+            user.set_unusable_password()
+
     def create(self, password=None, course=None):
         if not self.is_test_student and self.find_in_db():
             raise VLEBadRequest('User already exists')
@@ -198,19 +204,14 @@ class UserData(lti.utils.PreparedData):
             self.handle_test_student(course=course)
 
         user = User(**self.create_dict())
-
-        if password and not self.is_test_student:
-            user.set_password(password)
-        else:
-            user.set_unusable_password()
-
+        self.do_password(user, password)
         user.save()
         if course:
             self.create_or_update_participation(user=user, course=course)
 
         return user
 
-    def update(self, obj=None, course=None):
+    def update(self, obj=None, password=None, course=None):
         if not course:
             course = self.CourseData(self.data).find_in_db()
 
@@ -228,6 +229,7 @@ class UserData(lti.utils.PreparedData):
                 setattr(user, key, getattr(self, key))
 
         user.last_login = timezone.now()
+        self.do_password(user, password)
         try:
             user.save()
         except IntegrityError:

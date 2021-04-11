@@ -47,8 +47,8 @@ class InstanceView(viewsets.ViewSet):
         if not serializer.is_valid():
             return response.bad_request()
         serializer.save()
-
-        return response.success({'instance': serializer.data})
+        instance.refresh_from_db()
+        return response.success({'instance': InstanceSerializer(instance).data})
 
     def get_permissions(self):
         if self.request.path == '/instance/0/' and self.request.method == 'GET':

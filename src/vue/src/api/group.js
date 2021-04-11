@@ -38,8 +38,12 @@ export default {
     getLMS (cID, connArgs = auth.DEFAULT_CONN_ARGS) {
         return auth.get('groups/LMS', { course_id: cID }, connArgs)
             .then((response) => {
-                console.log(response)
-                window.open(response.data.redirect_uri, '_blank')
+                if (typeof response.data === 'object' && response.data !== null) {
+                    window.open(response.data.redirect_uri, '_blank')
+                } else {
+                    const win = window.open('', '_blank')
+                    win.document.body.innerHTML = response.data
+                }
             })
     },
 

@@ -10,7 +10,7 @@ import VLE.factory as factory
 import VLE.lti1p3 as lti
 from VLE.lti1p3 import utils
 from VLE.models import Assignment, PresetNode
-from VLE.utils.error_handling import VLEBadRequest
+from VLE.utils.error_handling import VLEBadRequest, VLEProgrammingError
 
 
 class AssignmentData(utils.PreparedData):
@@ -20,6 +20,8 @@ class AssignmentData(utils.PreparedData):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        if 'user_data' in kwargs:
+            self._user_data = kwargs['user_data']
 
         self.debug_keys = [
             'connected_course',
@@ -109,6 +111,37 @@ class AssignmentData(utils.PreparedData):
 
         return assignment
 
+    @property
+    def user_data(self):
+        if self._user_data:
+            return self._user_data
+        elif self.lti_version == settings.LTI13:
+            self._user_data = lti.user.Lti1p3UserData(self.data)
+        elif self.lti_version == settings.LTI10:
+            self._user_data = lti.user.Lti1p0UserData(self.data)
+        else:
+            raise VLEProgrammingError('A valid lti_version should be supplied to access user data')
+
+        return self._user_data
+
+    @property
+    def author(self):
+        if not self._author:
+            assignment = self.find_in_db()
+            # If assignment already exists, that should also be the author
+            if assignment and assignment.author:
+                self._author = assignment.author
+            else:
+                # If it doesnt exists, consider the user in the dataparams as the author
+                # IFF the user has a teacher role
+                # NOT if the user is already a teacher, as a platform teacher from 1 assignment
+                # does not have to be a teacher in this assignment
+                # TODO LTI: platform wide teachers are still considered teacher. This should not be the case
+                if self.user_data.role_name == 'Teacher':
+                    self._author = self.user_data.find_in_db()
+
+        return self._author
+
 
 class Lti1p3AssignmentData(AssignmentData):
     def __init__(self, *args, **kwargs):
@@ -143,27 +176,6 @@ class Lti1p3AssignmentData(AssignmentData):
     @property
     def name(self):
         return self.to_str(self.data[lti.claims.ASSIGNMENT]['title'])
-
-    # TODO LTI: combine these function, but it requires to set the LTI type
-    # Detecte dfrom the received data iso just straight from the course / assignment
-    @property
-    def author(self):
-        if not self._author:
-            assignment = self.find_in_db()
-            # If assignment already exists, that should also be the author
-            if assignment and assignment.author:
-                self._author = assignment.author
-            else:
-                # If it doesnt exists, consider the user in the dataparams as the author
-                # IFF the user has a teacher role
-                # NOT if the user is already a teacher, as a platform teacher from 1 assignment
-                # does not have to be a teacher in this assignment
-                # TODO LTI: platform wide teachers are still considered teacher. This should not be the case
-                user_data = lti.user.Lti1p3UserData(self.data)
-                if user_data.role_name == 'Teacher':
-                    self._author = user_data.find_in_db()
-
-        return self._author
 
     @property
     def active_lti_id(self):
@@ -219,7 +231,7 @@ class Lti1p0AssignmentData(AssignmentData):
         # QUESTION LTI: are these valid settings?
         self.update_keys = [
             'name',
-            # 'author', TODO: This is currently the user first opening the course. Should be the real author
+            # 'author',
             # 'active_lti_id',
             # 'points_possible',
             'is_published',
@@ -238,27 +250,6 @@ class Lti1p0AssignmentData(AssignmentData):
     @property
     def name(self):
         return self.to_str(self.data['custom_assignment_title'])
-
-    # TODO LTI: combine these function, but it requires to set the LTI type
-    # Detecte dfrom the received data iso just straight from the course / assignment
-    @property
-    def author(self):
-        if not self._author:
-            assignment = self.find_in_db()
-            # If assignment already exists, that should also be the author
-            if assignment and assignment.author:
-                self._author = assignment.author
-            else:
-                # If it doesnt exists, consider the user in the dataparams as the author
-                # IFF the user has a teacher role
-                # NOT if the user is already a teacher, as a platform teacher from 1 assignment
-                # does not have to be a teacher in this assignment
-                # TODO LTI: platform wide teachers are still considered teacher. This should not be the case
-                user_data = lti.user.Lti1p0UserData(self.data)
-                if user_data.role_name == 'Teacher':
-                    self._author = user_data.find_in_db()
-
-        return self._author
 
     @property
     def active_lti_id(self):

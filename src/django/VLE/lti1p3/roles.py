@@ -8,6 +8,8 @@ ADMIN = [
     'http://purl.imsglobal.org/vocab/lis/v2/membership#Administrator',
 ]
 
+# TODO LTI: instrole teacher should defenitly not be equal to normal role teacher, see BKO
+
 TEACHER = [
     'http://purl.imsglobal.org/vocab/lis/v2/membership#Instructor',
     'urn:lti:instrole:ims/lis/Instructor',

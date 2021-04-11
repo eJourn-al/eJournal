@@ -106,7 +106,7 @@ export default {
             groupAPI.getDataNose(this.course.id, { customSuccessToast: 'Successfully syncronized from DataNose.' })
         },
         getLMSGroups () {
-            groupAPI.getLMS(this.course.id, { customSuccessToast: 'Successfully syncronized from DataNose.' })
+            groupAPI.getLMS(this.course.id)
         },
         createUserGroup () {
             groupAPI.create({ name: this.form.groupName, course_id: this.course.id, lti_id: this.course.lti_id },

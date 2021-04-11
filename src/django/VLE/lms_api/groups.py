@@ -8,12 +8,13 @@ from VLE.models import Course, Group, Instance, Participation
 from VLE.utils.error_handling import VLEMissingRequiredKey
 
 
-# TODO LTI: to background task
 def sync_groups(access_token, course_id):
     instance = Instance.objects.get_or_create(pk=1)[0]
     course = Course.objects.get(pk=course_id)
     url = f'{instance.lms_url}/api/v1/courses/{course.lms_id}/sections'
-    groups = json.loads(utils.api_request(url, access_token).content)
+    groups = json.loads(utils.api_request(url, access_token, params={
+        'include[]': ['students', 'total_students'],
+    }).content)
     group_lms_ids = set(group['id'] for group in groups)
 
     # Get all existing groups passed by lms that are also in the course
@@ -27,17 +28,18 @@ def sync_groups(access_token, course_id):
     update_name_groups = {}
     for group in groups:
         if str(group['id']) in existing_group_lms_ids:
-            update_name_groups[group['id']] = group['name']
+            update_name_groups[str(group['id'])] = group['name']
             continue  # Group already exists, ignore creation
         new_groups.append(
             Group(
                 name=group['name'],
                 course=course,
-                lms_id=group['id'],
+                lms_id=str(group['id']),
             )
         )
     Group.objects.bulk_create(new_groups)
     update_groups = Group.objects.filter(lms_id__in=update_name_groups.keys())
+    print(update_name_groups, update_groups)
     for group in update_groups:
         group.name = update_name_groups[group.lms_id]
     Group.objects.bulk_update(update_groups, ['name'])

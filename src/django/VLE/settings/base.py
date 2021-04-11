@@ -184,6 +184,10 @@ MIDDLEWARE = [
     'csp.middleware.CSPMiddleware',
 ]
 
+
+CANVAS_API_ACTIONS = {
+    'SYNC_GROUPS': 'SYNC_GROUPS',
+}
 CANVAS_API_SCOPES = ' '.join('''
     url:GET|/api/v1/courses/:course_id/students
     url:GET|/api/v1/courses/:course_id/sections

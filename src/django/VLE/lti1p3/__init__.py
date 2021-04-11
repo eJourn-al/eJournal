@@ -2,7 +2,6 @@ import VLE.lti1p3.assignment  # noqa: F401
 import VLE.lti1p3.claims  # noqa: F401
 import VLE.lti1p3.course  # noqa: F401
 import VLE.lti1p3.grading  # noqa: F401
-import VLE.lti1p3.groups  # noqa: F401
 import VLE.lti1p3.launch  # noqa: F401
 import VLE.lti1p3.members  # noqa: F401
 import VLE.lti1p3.roles  # noqa: F401

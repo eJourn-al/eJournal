@@ -1,4 +1,5 @@
 from django.conf import settings
+from django.contrib.auth.hashers import is_password_usable
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import redirect
 from django.urls import reverse
@@ -10,7 +11,7 @@ from rest_framework.permissions import AllowAny
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
 import VLE.lti1p3 as lti
-from VLE.models import Instance, Journal, User
+from VLE.models import Instance, Journal
 from VLE.utils.error_handling import VLEBadRequest
 from VLE.utils.generic_utils import build_url
 
@@ -28,18 +29,16 @@ class eDeepLinkResource(DeepLinkResource):
 
 
 def handle_no_user_connected_to_launch_data(launch_data, launch_id):
-    username = launch_data.user.username
-    if username:
-        already_exists = User.objects.filter(username=username).exists()
-    else:
-        already_exists = False
     response_data = {
         'launch_state': lti.utils.LTI_STATES.NO_USER.value,
         'launch_id': launch_id,
-        'username_already_exists': already_exists,
+        'username_already_exists': bool(launch_data.user.find_in_db()),
         'name': launch_data.user.full_name or launch_data.user.username,
-        # TODO LTI: add journal & course & assignment id to this list
     }
+    if launch_data.course.find_in_db():
+        response_data['course_id'] = launch_data.course.find_in_db().pk
+    if launch_data.assignment.find_in_db():
+        response_data['assignment_id'] = launch_data.assignment.find_in_db().pk
     return redirect(build_url(settings.BASELINK, 'LtiLogin', response_data))
 
 
@@ -74,7 +73,8 @@ def handle_all_connected_to_launch_data(launch_data, launch_id, user, course, as
     refresh = TokenObtainPairSerializer.get_token(user)
     response_data = {
         'launch_state':
-            lti.utils.LTI_STATES.FINISH_TEACHER.value if user.is_teacher else lti.utils.LTI_STATES.FINISH_STUDENT.value,
+            lti.utils.LTI_STATES.FINISH_TEACHER.value if launch_data.user.role_name == 'Teacher' else
+            lti.utils.LTI_STATES.FINISH_STUDENT.value,
         'launch_id': launch_id,
         'jwt_access': str(refresh.access_token),
         'jwt_refresh': str(refresh),
@@ -88,7 +88,7 @@ def handle_all_connected_to_launch_data(launch_data, launch_id, user, course, as
     elif journal:
         response_data['journal_id'] = journal.pk
 
-    # TODO LTI: send grade back to LTI if working
+    # TODO LTI: send grade back to LTI if newly connected user / new grade url & sourcedid
 
     return redirect(build_url(settings.BASELINK, 'LtiLogin', response_data))
 
@@ -153,7 +153,7 @@ def launch_configuration(request):
             'oidc_initiation_url': settings.LTI_LOGIN_URL
         })
     else:
-        return None  # TODO LTI: responses.bad_request('No LMS was selected')
+        return None  # LTI TODO: responses.bad_request('No LMS was selected')
 
 
 @api_view(['POST'])
@@ -178,30 +178,41 @@ def launch(request):
         print(launch_data)
 
         user = launch_data.user.find_in_db()
-        if user:
-            user = launch_data.user.update()
-        elif launch_data.user.is_test_student and not launch_data.user.find_in_db():
-            # NOTE: This will also delete older test students
+        if launch_data.user.is_test_student and not user:
+            # NOTE: This will also delete other test students of the same course
             user = launch_data.user.create()
 
-        # TODO LTI: change to is initialized user or not (cuz lti_id can be set with the roles service)
-        # TODO LTI: also add the check for user alsready exists, but needs to set a password anyway
-        # TODO LTI: also also check if user already exists with valid password, but it has never accessed it through
-        # LTI, and it needs to verify the password
-        if not user:
+        # NOTE: user should see no_user_connected in one of three scenario's:
+        if (
+            # - User does not exist on the platform yet
+            not user or
+            # - User is already create (e.g. through Canvas API) and now needs to set password
+            (not user.is_test_student and is_password_usable(user.password)) or
+            # - User already exists on the platform with a valid password but never accessed eJournal through an LMS
+            #   Then he needs to verify that he knowns the password he set on eJournal
+            #   NOTE: in the case where lti_1p3_id is already set, yet the user never accessed it through LMS
+            #   we accept that the user is the real user, and he doesnt need to verify anything. This check was
+            #   mostly to prevent cases where LMS user would have the same username as a different eJournal user
+            (not user.lti_1p0_id and not user.lti_1p3_id)
+        ):
             return handle_no_user_connected_to_launch_data(launch_data, launch_id)
+
+        if user:
+            user = launch_data.user.update()
+
         print('LTI user:', user)
 
         course = launch_data.course.find_in_db()
         if course:
             course = launch_data.course.update()
-        if not course:
+        else:
             return handle_no_course_connected_to_launch_data(launch_data, launch_id, user)
         print('LTI course:', course)
 
         assignment = launch_data.assignment.find_in_db()
         if assignment:
-            # QUESTION: before:
+            # QUESTION LTI:
+            # before:
             # When an assignment is linked to multiple courses through the LMS, it would update to the
             # variables set by the last visited LMS assignment.
             # now:
@@ -209,7 +220,7 @@ def launch(request):
             # Is this a good change?
             if assignment.active_lti_id == launch_data.assignment.active_lti_id:
                 assignment = launch_data.assignment.update()
-        if not assignment:
+        else:
             return handle_no_assignment_connected_to_launch_data(launch_data, launch_id, user, course)
         print('LTI assignment:', assignment)
 

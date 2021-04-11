@@ -5,7 +5,7 @@ from django.conf import settings
 import VLE.factory as factory
 import VLE.lti1p3 as lti
 from VLE.models import Course
-from VLE.utils.error_handling import VLEBadRequest
+from VLE.utils.error_handling import VLEBadRequest, VLEProgrammingError
 
 
 class CourseData(lti.utils.PreparedData):
@@ -14,6 +14,9 @@ class CourseData(lti.utils.PreparedData):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        if 'user_data' in kwargs:
+            self._user_data = kwargs['user_data']
+
         self.debug_keys = []
 
     def create(self, sync_members=True, create_paticipation=True):
@@ -25,10 +28,7 @@ class CourseData(lti.utils.PreparedData):
             lti.members.sync_members.delay(course.pk)
 
         if create_paticipation:
-            if settings.LTI13 in course.lti_versions:
-                lti.user.Lti1p3UserData(self.data).create_or_update_participation(course=course)
-            else:
-                lti.user.Lti1p0UserData(self.data).create_or_update_participation(course=course)
+            self.user_data.create_or_update_participation(course=course)
 
         return course
 
@@ -59,6 +59,36 @@ class CourseData(lti.utils.PreparedData):
             course.save()
 
         return course
+
+    @property
+    def user_data(self):
+        if self._user_data:
+            return self._user_data
+        elif self.lti_version == settings.LTI13:
+            self._user_data = lti.user.Lti1p3UserData(self.data)
+        elif self.lti_version == settings.LTI10:
+            self._user_data = lti.user.Lti1p0UserData(self.data)
+        else:
+            raise VLEProgrammingError('A valid lti_version should be supplied to access user data')
+
+        return self._user_data
+
+    @property
+    def author(self):
+        if not self._author:
+            course = self.find_in_db()
+            # If course already exists, that should also be the author
+            if course and course.author:
+                self._author = course.author
+            else:
+                # If it doesnt exists, consider the user in the dataparams as the author
+                # IFF the user has a teacher role
+                # NOT if the user is already a teacher, as a platform teacher from 1 course
+                # does not have to be a teacher in this course
+                if self.user_data.role_name == 'Teacher':
+                    self._author = self.user_data.find_in_db()
+
+        return self._author
 
 
 class Lti1p3CourseData(CourseData):
@@ -105,25 +135,6 @@ class Lti1p3CourseData(CourseData):
     @property
     def enddate(self):
         return self.to_datetime(self.data[lti.claims.CUSTOM].get('course_end', None))
-
-    @property
-    def author(self):
-        if not self._author:
-            course = self.find_in_db()
-            # If course already exists, that should also be the author
-            if course and course.author:
-                self._author = course.author
-            else:
-                # If it doesnt exists, consider the user in the dataparams as the author
-                # IFF the user has a teacher role
-                # NOT if the user is already a teacher, as a platform teacher from 1 course
-                # does not have to be a teacher in this course
-                # TODO LTI: platform wide teachers are still considered teacher. This should not be the case
-                user_data = lti.user.Lti1p3UserData(self.data)
-                if user_data.role_name == 'Teacher':
-                    self._author = user_data.find_in_db()
-
-        return self._author
 
     @property
     def lti_id(self):
@@ -177,27 +188,6 @@ class Lti1p0CourseData(CourseData):
     @property
     def enddate(self):
         return self.to_datetime(self.data.get('custom_course_end', None))
-
-    # TODO LTI: combine these function, but it requires to set the LTI type
-    # Detecte dfrom the received data iso just straight from the course / assignment
-    @property
-    def author(self):
-        if not self._author:
-            course = self.find_in_db()
-            # If course already exists, that should also be the author
-            if course and course.author:
-                self._author = course.author
-            else:
-                # If it doesnt exists, consider the user in the dataparams as the author
-                # IFF the user has a teacher role
-                # NOT if the user is already a teacher, as a platform teacher from 1 course
-                # does not have to be a teacher in this course
-                # TODO LTI: platform wide teachers are still considered teacher. This should not be the case
-                user_data = lti.user.Lti1p0UserData(self.data)
-                if user_data.role_name == 'Teacher':
-                    self._author = user_data.find_in_db()
-
-        return self._author
 
     @property
     def lms_id(self):

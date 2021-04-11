@@ -9,13 +9,12 @@ from rest_framework import viewsets
 from rest_framework.decorators import action
 
 import VLE.factory as factory
-import VLE.lti1p3 as lti
+import VLE.lms_api as lms_api
 import VLE.utils.generic_utils as utils
 import VLE.utils.responses as response
 from VLE.models import Assignment, Course, Group, Instance, Journal, Participation
 from VLE.serializers import GroupSerializer
 from VLE.utils.error_handling import VLEPermissionError
-from VLE.utils.generic_utils import build_url
 
 
 def check_can_view_groups(user, course):
@@ -183,26 +182,23 @@ class GroupView(viewsets.ViewSet):
 
     @action(['get'], detail=False)
     def LMS(self, request):
-        # TODO LTI: restrict access
-        # TODO LTI: add access token when received
         course_id, = utils.required_typed_params(request.query_params, (int, 'course_id'))
-        # Access_token already exists, can immidiatly request the groups
-        if request.user.access_token:
-            return lti.groups.sync_groups(request.user.access_token, course_id=course_id)
+        course = Course.objects.get(pk=course_id)
+        check_can_view_groups(request.user, course)
 
-        instance = Instance.objects.get_or_create(pk=1)[0]
-        url = build_url(
-            instance.lms_url,
-            'login/oauth2/auth',
-            {
-                'response_type': 'code',
-                'redirect_uri': build_url(settings.API_URL, 'lms/authenticate/'),
-                'scope': settings.CANVAS_API_SCOPES,
-                'client_id': instance.api_client_id,
-                'state': 'SYNC_GROUPS-{}'.format(course_id)
-            }
+        if settings.LTI13 not in course.lti_versions:
+            msg = 'This option is not available for this Course.'
+            # TODO EXPANSION: This is UvA specific, and should be removed when expanding
+            if settings.LTI11 in course.lti_versions and \
+               Instance.objects.get_or_create(pk=1)[0].lms_name == Instance.CANVAS:
+                msg += ' Try to sync with DataNose instead.'
+            return response.bad_request(msg)
+
+        return lms_api.utils.do_lms_api_action(
+            request.user,
+            settings.CANVAS_API_ACTIONS['SYNC_GROUPS'],
+            course_id,
         )
-        return response.success({'redirect_uri': url})
 
     @action(['get'], detail=False)
     def assigned_groups(self, request):

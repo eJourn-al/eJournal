@@ -12,8 +12,6 @@ from pylti1p3.exception import LtiException
 import VLE.lti1p3 as lti
 from VLE.utils.error_handling import VLEMissingRequiredKey
 
-# TODO lti: check if SectionsService import is working correctly
-
 
 class DatetimeEncoder(json.JSONEncoder):
     def default(self, obj):
@@ -93,8 +91,9 @@ class PreparedData(object):
     '''
     _db_obj = None
 
-    def __init__(self, data):
+    def __init__(self, data, lti_version=None):
         self.data = data
+        self.lti_version = lti_version
 
     def to_datetime(self, string):
         if not string:

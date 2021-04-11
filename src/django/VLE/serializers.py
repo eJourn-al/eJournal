@@ -94,6 +94,7 @@ class InstanceSerializer(serializers.ModelSerializer):
     class Meta:
         model = VLE.models.Instance
         fields = (
+            'id',
             # Platform settings
             'allow_standalone_registration', 'name',
             # LMS settings
@@ -102,7 +103,6 @@ class InstanceSerializer(serializers.ModelSerializer):
         )
         read_only_fields = ()
 
-    # TODO LTI: test if this is working properly
     def get_has_client_secret(self, instance):
         if instance.api_client_secret:
             return True
