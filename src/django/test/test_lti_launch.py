@@ -246,6 +246,18 @@ class LtiLaunchTest(TestCase):
         assert User.objects.get(lti_id=self.student.lti_id).is_teacher, \
             'Teacher should stay teacher when roles change'
 
+    def test_lti_launch_content_developer(self):
+        lti_launch(
+            request_body={
+                'roles': 'Extra,urn:lti:role:ims/lis/ContentDeveloper',
+                'user_id': self.student.lti_id
+            },
+            response_value=lti_view.LTI_STATES.LOGGED_IN.value,
+            assert_msg='With a user_id the user should login',
+        )
+        assert User.objects.get(lti_id=self.student.lti_id).is_teacher, \
+            'Student should become a teacher when loggin in with content developer role'
+
     def test_lti_launch_unknown_role(self):
         lti_launch(
             request_body={
@@ -577,6 +589,34 @@ class LtiLaunchTest(TestCase):
                 'custom_assignment_id': assignment.active_lti_id},
             response_value=lti_view.LTI_STATES.FINISH_T.value,
             assert_msg='When after assignment is created it should return the FINISH_T state for teachers')
+
+    def test_get_lti_params_from_jwt_journal_ta(self):
+        course = factory.LtiCourse(author=self.teacher, name=REQUEST['custom_course_name'])
+        assignment = factory.LtiAssignment(
+            author=self.teacher, courses=[course], name=REQUEST['custom_assignment_title'])
+        get_jwt(
+            self, user=self.student, status=200,
+            request_body={
+                'user_id': self.student.lti_id,
+                'roles': 'urn:lti:role:ims/lis/TeachingAssistant',
+                'custom_course_id': course.active_lti_id,
+                'custom_assignment_id': assignment.active_lti_id},
+            response_value=lti_view.LTI_STATES.FINISH_T.value,
+            assert_msg='When after assignment is created it should return the FINISH_T state for teaching assistents')
+
+    def test_get_lti_params_from_jwt_journal_mentor(self):
+        course = factory.LtiCourse(author=self.teacher, name=REQUEST['custom_course_name'])
+        assignment = factory.LtiAssignment(
+            author=self.teacher, courses=[course], name=REQUEST['custom_assignment_title'])
+        get_jwt(
+            self, user=self.student, status=200,
+            request_body={
+                'user_id': self.student.lti_id,
+                'roles': 'urn:lti:role:ims/lis/Mentor',
+                'custom_course_id': course.active_lti_id,
+                'custom_assignment_id': assignment.active_lti_id},
+            response_value=lti_view.LTI_STATES.FINISH_T.value,
+            assert_msg='When after assignment is created it should return the FINISH_T state for mentors')
 
     def test_get_lti_params_from_jwt_journal_student(self):
         course = factory.LtiCourse(author=self.teacher, name=REQUEST['custom_course_name'])
