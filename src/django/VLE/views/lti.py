@@ -224,6 +224,9 @@ def lti_launch(request):
         else:
             refresh = TokenObtainPairSerializer.get_token(user)
             user.last_login = timezone.now()
+            if 'custom_user_email' in params and params['custom_user_email']:
+                user.email = params['custom_user_email']
+                user.verified_email = True
             user.save()
             query = QueryDict.fromkeys(['lti_params'], lti_params, mutable=True)
             query['jwt_access'] = str(refresh.access_token)

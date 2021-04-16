@@ -213,6 +213,22 @@ class LtiLaunchTest(TestCase):
         assert old_last_login != User.objects.get(pk=self.student.pk).last_login, \
             'Last login should be updated'
 
+    def test_lti_launch_user_update_email(self):
+        old_last_login = self.student.last_login
+        old_email = self.student.email
+        lti_launch(
+            request_body={
+                'user_id': self.student.lti_id,
+                'custom_user_email': 'NEW' + self.student.email
+            },
+            response_value=lti_view.LTI_STATES.LOGGED_IN.value,
+            assert_msg='With a user_id the user should login',
+        )
+        assert old_email != User.objects.get(pk=self.student.pk).email, \
+            'Email should be updated'
+        assert old_last_login != User.objects.get(pk=self.student.pk).last_login, \
+            'Last login should be updated'
+
     def test_lti_launch_multiple_roles(self):
         lti_launch(
             request_body={
