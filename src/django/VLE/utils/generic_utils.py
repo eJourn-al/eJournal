@@ -117,3 +117,35 @@ def base64ToContentFile(string, filename):
     mimetype = matches[0]
     extension = guess_extension(mimetype)
     return ContentFile(base64.b64decode(matches[1]), name='{}{}'.format(filename, extension))
+
+
+def gen_url(node=None, journal=None, assignment=None, course=None, user=None):
+    """Generate the corresponding frontend url to the supplied object.
+
+    Works for: node, journal, assignment, and course
+    User needs to be added if no course is supplied, this is to get the correct course.
+    """
+    if not (node or journal or assignment or course):
+        raise VLE.utils.error_handling.VLEProgrammingError('(gen_url) no object was supplied.')
+
+    if journal is None and node is not None:
+        journal = node.journal
+    if assignment is None and journal is not None:
+        assignment = journal.assignment
+    if course is None and assignment is not None:
+        if user is None:
+            raise VLE.utils.error_handling.VLEProgrammingError(
+                '(gen_url) if course is not supplied, user needs to be supplied.')
+        course = assignment.get_active_course(user)
+        if course is None:
+            raise VLE.utils.error_handling.VLEParticipationError(assignment, user)
+
+    url = '{}/Home/Course/{}'.format(settings.BASELINK, course.pk)
+    if assignment:
+        url += '/Assignment/{}'.format(assignment.pk)
+        if journal:
+            url += '/Journal/{}'.format(journal.pk)
+            if node:
+                url += '?nID={}'.format(node.pk)
+
+    return url

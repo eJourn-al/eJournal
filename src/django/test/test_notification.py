@@ -9,12 +9,13 @@ from django.test import TestCase
 from django.test.utils import override_settings
 
 import VLE.factory
-from VLE.models import JournalImportRequest, Notification, Preferences, Role, User, gen_url
+from VLE.models import JournalImportRequest, Notification, Preferences, Role, User
 from VLE.permissions import get_supervisors_of
 from VLE.tasks.beats.notifications import send_digest_notifications
 from VLE.tasks.email import send_push_notification
 from VLE.tasks.notifications import generate_new_entry_notifications
 from VLE.utils.error_handling import VLEParticipationError, VLEProgrammingError
+from VLE.utils.generic_utils import gen_url
 
 
 class NotificationTest(TestCase):
