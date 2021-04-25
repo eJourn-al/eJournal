@@ -347,8 +347,15 @@ class PreferencesSerializer(serializers.ModelSerializer):
             'upcoming_deadline_reminder',
             # Hidden preferences
             'show_format_tutorial', 'hide_version_alert', 'grade_button_setting', 'comment_button_setting',
+            'hide_past_deadlines_of_assignments',
         )
         read_only_fields = ('user',)
+
+    hide_past_deadlines_of_assignments = serializers.PrimaryKeyRelatedField(
+        many=True,
+        read_only=False,
+        queryset=VLE.models.Assignment.objects.all(),
+    )
 
 
 class CourseSerializer(serializers.ModelSerializer):
