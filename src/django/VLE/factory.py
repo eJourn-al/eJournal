@@ -208,8 +208,8 @@ def make_node(journal, entry=None, type=VLE.models.Node.ENTRY, preset=None):
 def make_entry(template, author, node, category_ids=None, title=None):
     params = {}
 
-    if template.chain.allow_custom_title:
-        params['title'] = title
+    if not template.chain.allow_custom_title:
+        title = None
 
     if not template.chain.allow_custom_categories or category_ids is None:
         params['category_ids'] = list(template.categories.values_list('pk', flat=True))
@@ -217,7 +217,7 @@ def make_entry(template, author, node, category_ids=None, title=None):
         params['category_ids'] = category_ids
 
     # NOTE: because we use a custom variable (category_ids) we have to call the save function seperatly
-    entry = VLE.models.Entry(template=template, author=author, node=node)
+    entry = VLE.models.Entry(template=template, author=author, node=node, title=title)
     entry.save(**params)
     return entry
 
