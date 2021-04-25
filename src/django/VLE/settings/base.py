@@ -85,17 +85,26 @@ EMAILS = Emails()
 LTI_SECRET = os.environ['LTI_SECRET']
 LTI_KEY = os.environ['LTI_KEY']
 ROLES = OrderedDict({
-    'Teacher': ['urn:lti:role:ims/lis/instructor', 'urn:lti:role:ims/lis/contentdeveloper', 'administrator'],
-    'TA': ['urn:lti:role:ims/lis/mentor', 'urn:lti:role:ims/lis/teachingassistant'],
-    'Student': ['learner']
+    'Teacher': [
+        'urn:lti:role:ims/lis/instructor',
+        'urn:lti:role:ims/lis/contentdeveloper',
+        'urn:lti:role:ims/lis/administrator',
+    ],
+    'TA': [
+        'urn:lti:role:ims/lis/mentor',
+        'urn:lti:role:ims/lis/teachingassistant',
+    ],
+    'Student': [
+        'urn:lti:role:ims/lis/learner',
+    ]
 })
 LTI_ROLES = OrderedDict({
     'urn:lti:role:ims/lis/instructor': 'Teacher',
     'urn:lti:role:ims/lis/contentdeveloper': 'Teacher',
-    'administrator': 'Teacher',
+    'urn:lti:role:ims/lis/administrator': 'Teacher',
     'urn:lti:role:ims/lis/mentor': 'TA',
     'urn:lti:role:ims/lis/teachingassistant': 'TA',
-    'learner': 'Student',
+    'urn:lti:role:ims/lis/learner': 'Student',
 })
 LTI_TEST_STUDENT_FULL_NAME = 'Test student'
 

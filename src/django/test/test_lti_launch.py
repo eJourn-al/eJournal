@@ -277,7 +277,7 @@ class LtiLaunchTest(TestCase):
     def test_lti_launch_unknown_role(self):
         lti_launch(
             request_body={
-                'roles': 'urn:lti:instrole:ims/lis/Administrator',
+                'roles': 'urn:lti:role:ims/lis/Administrator',
                 'user_id': self.student.lti_id
             },
             response_value=lti_view.LTI_STATES.LOGGED_IN.value,
@@ -287,7 +287,7 @@ class LtiLaunchTest(TestCase):
     def test_lti_launch_wrong_signature(self):
         lti_launch(
             request_body={
-                'roles': 'urn:lti:instrole:ims/lis/Administrator',
+                'roles': 'urn:lti:role:ims/lis/Administrator',
                 'user_id': get_new_lti_id(),
                 'oauth_signature': 'invalid'
             },
@@ -770,7 +770,7 @@ class LtiLaunchTest(TestCase):
             self, user=self.student, status=200,
             request_body={
                 'user_id': self.student.lti_id,
-                'roles': 'Learner,Administrator'},
+                'roles': 'Learner,urn:lti:role:ims/lis/Administrator'},
             response_value=lti_view.LTI_STATES.NEW_COURSE.value,
             assert_msg='When a student tries to create a new course, with also a new Administrator role, \
                         it should grand its permissions')
