@@ -58,4 +58,8 @@ export default {
     validateYouTubeUrlWithVideoID (url) {
         return Boolean(genericUtils.parseYouTubeVideoID(url))
     },
+
+    validateKalturaEmbedCode (code) {
+        return Boolean(genericUtils.praseSrcFromKalturaEmbedCode(code))
+    },
 }
