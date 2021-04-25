@@ -4,7 +4,7 @@ import test.utils.generic_utils
 from copy import deepcopy
 from test.utils import api
 from test.utils.generic_utils import check_equality_of_imported_file_context, equal_models
-from test.utils.performance import QueryContext, assert_num_queries_less_than
+from test.utils.performance import QueryContext
 from unittest import mock
 
 import pytest
@@ -1359,10 +1359,13 @@ class AssignmentAPITest(TestCase):
         assert not Entry.objects.get(pk=grade_other_journal.entry.pk).grade.published, \
             'grades not in assignment should not be published'
 
-        for _ in range(10):
+        # Now check if the query amount doesnt change if there are more grades to be published
+        for _ in range(3):
             factory.Grade(published=False, entry__node__journal=journal)
+        # Also from other journals
+        factory.Grade(published=False, entry__node__journal__assignment=journal.assignment)
 
-        with assert_num_queries_less_than(len(queries_for_publishing_one_grade) + 1, verbose=True):
+        with self.assertNumQueries(len(queries_for_publishing_one_grade)):
             api.patch(
                 self,
                 'grades/publish_all_assignment_grades',
