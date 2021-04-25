@@ -31,21 +31,35 @@
                         pill
                         class="filter-button"
                         :class="{
-                            'blue-filled-button': filteredCategories.length > 0,
-                            'grey-filled-button': filteredCategories.length === 0,
+                            'blue-filled-button': optionsActive,
+                            'grey-filled-button': !optionsActive,
                         }"
                     >
-                        <icon name="eye"/>
-                        Filter
+                        <icon name="cog"/>
+                        Options
                     </b-button>
                 </template>
+
+                <div
+                    v-if="nodesHoldPastDeadlines"
+                    class="extra-filter-options-container"
+                >
+                    <b-form-checkbox
+                        v-if="nodesHoldPastDeadlines"
+                        v-model="hidePastDeadlines"
+                        @change="filterNodes"
+                    >
+                        Hide past deadlines
+                    </b-form-checkbox>
+                </div>
+
                 <category-select
                     v-model="filteredCategories"
                     :options="$store.getters['category/assignmentCategories']"
                     :multiple="true"
                     :searchable="true"
                     :multiSelectText="`${filteredCategories.length > 1 ? 'categories' : 'category'}`"
-                    @input="filterByCategory"
+                    @input="filterNodes"
                 />
             </b-dropdown>
 
@@ -97,6 +111,8 @@ import CategoryDisplay from '../category/CategoryDisplay.vue'
 import CategorySelect from '@/components/category/CategorySelect.vue'
 import TimelineNodes from '@/components/timeline/TimelineNodes.vue'
 
+import comparison from '@/utils/comparison.js'
+
 import { mapGetters, mapMutations } from 'vuex'
 
 export default {
@@ -126,17 +142,39 @@ export default {
             assignmentHasCategories: 'category/assignmentHasCategories',
             currentNode: 'timeline/currentNode',
             startNode: 'timeline/startNode',
+            addNodeSymbol: 'timeline/addNodeSymbol',
         }),
         filteredCategories: {
             set (value) { this.$store.commit('timeline/SET_FILTERED_CATEGORIES', value) },
             get () { return this.$store.getters['timeline/filteredCategories'] },
+        },
+        hidePastDeadlines: {
+            set (value) {
+                this.$store.commit(
+                    'preferences/SET_HIDE_PAST_DEADLINES',
+                    { hidePastDeadlines: value, aID: this.assignment.id },
+                )
+            },
+            get () { return this.$store.getters['preferences/hidePastDeadlines'] },
+        },
+        nodesHoldPastDeadlines () {
+            return this.nodes.some((node) => (
+                (node.type === 'd' || node.type === 'p')
+                && comparison.nodeDueDateHasPassed(node, this.assignment)
+            ))
+        },
+        optionsActive () {
+            return (
+                this.filteredCategories.length > 0
+                || this.hidePastDeadlines
+            )
         },
     },
     watch: {
         /* Nodes can be added or removed from the parent (e.g. delete or add)
          * Just filter the new nodes again to remain synced */
         nodes () {
-            this.filterByCategory(this.filteredCategories)
+            this.filterNodes()
         },
     },
     created () {
@@ -150,6 +188,7 @@ export default {
             setCurrentNode: 'timeline/SET_CURRENT_NODE',
         }),
         hasCategory (categories, filters) {
+            if (!filters.length) { return true }
             return categories.some((category) => filters.find(
                 (filteredCategory) => category.id === filteredCategory.id),
             )
@@ -193,29 +232,50 @@ export default {
                 return node
             })
 
-            this.filterByCategory(this.filteredCategories)
+            this.filterNodes()
+        },
+        includeEntry (entry) {
+            return this.hasCategory(entry.categories, this.filteredCategories)
+        },
+        includeEntryDeadline (node) {
+            let include = true
+
+            if (node.template.categories) {
+                include = include && this.hasCategory(node.template.categories, this.filteredCategories)
+            }
+
+            if (this.hidePastDeadlines) {
+                include = include && !comparison.nodeDueDateHasPassed(node, this.assignment)
+            }
+
+            return include
+        },
+        includeProgressDeadline (node) {
+            if (this.hidePastDeadlines) {
+                return !comparison.nodeDueDateHasPassed(node, this.assignment)
+            }
+
+            return true
         },
         /* If a node was selected which is no longer part of the filtered nodes, selects the start of the assignment. */
-        filterByCategory (filters) {
-            if (!filters.length) {
-                this.filteredNodes = this.nodes
-            } else {
-                this.filteredNodes = this.nodes.filter((node) => {
-                    if (node.type === 'e') {
-                        return this.hasCategory(node.entry.categories, filters)
-                    } else if (node.type === 'd') {
-                        if ('entry' in node && node.entry) {
-                            return this.hasCategory(node.entry.categories, filters)
-                        /* Deadline without entry, filter on template categories */
-                        } else if (node.template.categories) {
-                            return this.hasCategory(node.template.categories, filters)
-                        }
-                    } else if (node.type === 'a' || node.type === 'p') {
-                        return true
+        filterNodes () {
+            this.filteredNodes = this.nodes.filter((node) => {
+                if (node.type === 'e') {
+                    return this.includeEntry(node.entry)
+                } else if (node.type === 'd') {
+                    if ('entry' in node && node.entry) {
+                        return this.includeEntry(node.entry)
+                    /* Deadline without entry */
+                    } else {
+                        return this.includeEntryDeadline(node)
                     }
-                    return false
-                })
-            }
+                } else if (node.type === 'p') {
+                    return this.includeProgressDeadline(node)
+                } else if (node.type === this.addNodeSymbol) {
+                    return true
+                }
+                return false
+            })
 
             if (!this.hasNode(this.filteredNodes, this.currentNode)) {
                 this.setCurrentNode(this.startNode)
@@ -253,6 +313,9 @@ export default {
         .multiselect--active .multiselect__content-wrapper
             box-shadow: none
             position: relative
+
+    .extra-filter-options-container
+        padding: 0.5em
 
 #timeline-toggle
     display: none

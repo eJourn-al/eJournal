@@ -28,6 +28,8 @@
 </template>
 
 <script>
+import comparison from '@/utils/comparison.js'
+
 import { mapGetters } from 'vuex'
 
 export default {
@@ -153,22 +155,6 @@ export default {
         },
     },
     methods: {
-        dueDateHasPassed () {
-            const currentDate = new Date()
-            const dueDate = new Date((this.node === this.endNode) ? this.assignment.due_date : this.node.due_date)
-
-            return currentDate > dueDate
-        },
-        lockDateHasPassed () {
-            if (!this.node.lock_date) {
-                return false
-            }
-
-            const currentDate = new Date()
-            const lockDate = new Date(this.node.lock_date)
-
-            return currentDate > lockDate
-        },
         nodeState () {
             if (this.node.type === 's') {
                 return 'start'
@@ -185,11 +171,11 @@ export default {
 
             if (entry && entry.grade && entry.grade.published) {
                 return 'graded'
-            } else if (!entry && this.lockDateHasPassed()) {
+            } else if (!entry && comparison.nodeLockDateHasPassed(this.node)) {
                 return 'failed'
-            } else if (!entry && this.dueDateHasPassed()) {
+            } else if (!entry && comparison.nodeDueDateHasPassed(this.node, this.assignment)) {
                 return 'overdue'
-            } else if (!entry && !this.dueDateHasPassed()) {
+            } else if (!entry && !comparison.nodeDueDateHasPassed(this.node, this.assignment)) {
                 return 'empty'
             } else if (!isGrader && entry && !entry.grade) {
                 return 'awaiting_grade'
