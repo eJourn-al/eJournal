@@ -14,7 +14,7 @@ from VLE.utils.error_handling import VLEBadRequest, VLEMissingRequiredField
 
 def get_node_index(journal, node, user):
     for i, result_node in enumerate(timeline.get_nodes(journal, user)):
-        if result_node['nID'] == node.id:
+        if result_node['id'] == node.id:
             return i
 
 

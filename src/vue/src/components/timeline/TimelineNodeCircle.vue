@@ -28,9 +28,39 @@
 </template>
 
 <script>
+import comparison from '@/utils/comparison.js'
+
+import { mapGetters } from 'vuex'
+
 export default {
-    props: ['node', 'selected', 'edit'],
+    props: {
+        node: {
+            required: true,
+            type: Object,
+        },
+    },
     computed: {
+        ...mapGetters({
+            currentNode: 'timeline/currentNode',
+            endNode: 'timeline/endNode',
+            assignment: 'assignment/assignment',
+        }),
+        selected () {
+            return (
+                this.node === this.currentNode
+                || (
+                    this.node && this.currentNode
+                    && this.node.id && this.currentNode.id
+                    && this.node.id === this.currentNode.id
+                )
+            )
+        },
+        /* Boolean used to indicate the assignment is being edited, new preset nodes can be inserted
+         * which will not yet be saved / have an id.
+         * Entries are created one at a time and are always inserted after save (with id) */
+        workingWithPresetNodes () {
+            return this.$route.name === 'AssignmentEditor'
+        },
         nodeClass () {
             return {
                 'enc-start': this.node.type === 's',
@@ -80,7 +110,7 @@ export default {
             case 'needs_publishing':
                 return 'Awaiting publishment'
             case 'add':
-                if (this.edit) {
+                if (this.workingWithPresetNodes) {
                     return 'Add new preset'
                 } else {
                     return 'Add new entry'
@@ -125,22 +155,6 @@ export default {
         },
     },
     methods: {
-        dueDateHasPassed () {
-            const currentDate = new Date()
-            const dueDate = new Date(this.node.due_date)
-
-            return currentDate > dueDate
-        },
-        lockDateHasPassed () {
-            if (!this.node.lock_date) {
-                return false
-            }
-
-            const currentDate = new Date()
-            const lockDate = new Date(this.node.lock_date)
-
-            return currentDate > lockDate
-        },
         nodeState () {
             if (this.node.type === 's') {
                 return 'start'
@@ -148,7 +162,7 @@ export default {
                 return 'end'
             } else if (this.node.type === 'a') {
                 return 'add'
-            } else if (this.edit || this.node.type === 'p') {
+            } else if (this.workingWithPresetNodes || this.node.type === 'p') {
                 return ''
             }
 
@@ -157,11 +171,11 @@ export default {
 
             if (entry && entry.grade && entry.grade.published) {
                 return 'graded'
-            } else if (!entry && this.lockDateHasPassed()) {
+            } else if (!entry && comparison.nodeLockDateHasPassed(this.node)) {
                 return 'failed'
-            } else if (!entry && this.dueDateHasPassed()) {
+            } else if (!entry && comparison.nodeDueDateHasPassed(this.node, this.assignment)) {
                 return 'overdue'
-            } else if (!entry && !this.dueDateHasPassed()) {
+            } else if (!entry && !comparison.nodeDueDateHasPassed(this.node, this.assignment)) {
                 return 'empty'
             } else if (!isGrader && entry && !entry.grade) {
                 return 'awaiting_grade'

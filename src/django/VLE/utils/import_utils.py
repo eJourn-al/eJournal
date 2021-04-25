@@ -3,8 +3,9 @@ Model import helper functionality
 """
 
 from django.core.files.base import ContentFile
+from django.db import transaction
 
-from VLE.models import Category, Comment, Entry, Field, FileContext, Grade, JournalImportRequest, Node
+from VLE.models import Category, Comment, Entry, Field, FileContext, Grade, JournalImportRequest, Node, TemplateChain
 from VLE.utils.error_handling import VLEProgrammingError
 from VLE.utils.file_handling import copy_assignment_related_rt_files
 
@@ -204,13 +205,27 @@ def import_content(content, entry):
     return content
 
 
+@transaction.atomic
 def import_template(template, assignment, user, archived=None):
     """
     Copies the given template and adds it to the given assignment's format
+
+    A new template chain is started for the copy, and chain related settings are copied.
     """
+    chain = TemplateChain.objects.create(
+        format=assignment.format,
+        allow_custom_categories=template.chain.allow_custom_categories,
+        allow_custom_title=template.chain.allow_custom_title,
+        title_description=copy_assignment_related_rt_files(
+            template.chain.title_description, user, assignment=assignment
+        ),
+        default_grade=template.chain.default_grade,
+    )
+
     source_template_id = template.pk
     template.pk = None
     template.format = assignment.format
+    template.chain = chain
     template.archived = template.archived if archived is None else archived
     template.save()
 

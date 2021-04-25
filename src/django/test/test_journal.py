@@ -604,10 +604,25 @@ class JournalAPITest(TestCase):
         teacher = assignment.author
         unadded_student = factory.AssignmentParticipation(user=factory.Student(), assignment=assignment).user
         unrelated_student = factory.Student()
+        unrelated_teacher = factory.Teacher()
 
-        # Test students that are not added to the journal are NOT allowed to view other members
-        api.get(self, 'journals/get_members', params={'pk': group_journal.pk}, user=unadded_student, status=403)
-        api.get(self, 'journals/get_members', params={'pk': group_journal.pk}, user=factory.Teacher(), status=403)
+        # Unrelated teachers or students are blocked from using the entry point
+        api.get(self, 'journals/get_members', params={'pk': group_journal.pk}, user=unrelated_teacher, status=403)
+        api.get(self, 'journals/get_members', params={'pk': group_journal.pk}, user=unrelated_student, status=403)
+
+        # Members of the assignment CAN use the entry point
+        api.get(self, 'journals/get_members', params={'pk': group_journal.pk}, user=unadded_student)
+        api.get(self, 'journals/get_members', params={'pk': group_journal.pk}, user=student1_group)
+        api.get(self, 'journals/get_members', params={'pk': group_journal.pk}, user=teacher)
+
+        # Students cannot use the entry point if the assignment is not a group assignment
+        individual_assignment = factory.Assignment()
+        individual_journal1 = factory.Journal(assignment=individual_assignment)
+        individual_journal2 = factory.Journal(assignment=individual_assignment)
+        api.get(self, 'journals/get_members', params={'pk': individual_journal1.pk}, user=individual_journal2.author,
+                status=403)
+        # The API can be used for by a student for their own indivudal journal
+        api.get(self, 'journals/get_members', params={'pk': individual_journal1.pk}, user=individual_journal1.author)
 
         # Test before adding student, that student is not returned
         members = api.get(self, 'journals/get_members', params={'pk': group_journal.pk}, user=teacher)['authors']

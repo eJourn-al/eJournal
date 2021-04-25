@@ -3,6 +3,7 @@ import test.factory as factory
 from copy import deepcopy
 from datetime import datetime, timedelta
 from test.utils import api
+from test.utils.generic_utils import _model_instance_to_dict, equal_models, zip_equal
 from test.utils.performance import QueryContext
 from unittest import mock
 
@@ -10,7 +11,7 @@ from django.db import transaction
 from django.test import TestCase
 from django.test.utils import override_settings
 
-from VLE.models import Entry, EntryCategoryLink, Field, Grade, Journal, Node, TeacherEntry
+from VLE.models import Comment, Entry, EntryCategoryLink, Field, FileContext, Grade, Journal, Node, TeacherEntry
 from VLE.serializers import EntrySerializer, TeacherEntrySerializer
 from VLE.utils.error_handling import VLEPermissionError
 
@@ -381,6 +382,17 @@ class TeacherEntryAPITest(TestCase):
 
         assert serializer.data['title'] != create_params['title'], 'Title should not be shown in timeline'
 
+        for title in ['', None]:
+            params = deepcopy(self.valid_create_params)
+            params['title'] = title
+            api.create(self, 'teacher_entries', params=params, user=self.teacher, status=400)
+
+        params = deepcopy(self.valid_create_params)
+        falsey_but_string_title = '0'
+        params['title'] = falsey_but_string_title
+        resp = api.create(self, 'teacher_entries', params=params, user=self.teacher)['teacher_entry']
+        assert resp['title'] == falsey_but_string_title, 'Falsey title value is no issue'
+
     @override_settings(CELERY_TASK_ALWAYS_EAGER=True, CELERY_TASK_EAGER_PROPAGATES=True)
     def test_get_teacher_entries(self):
         resp = api.create(self, 'teacher_entries', params=self.valid_create_params, user=self.teacher)['teacher_entry']
@@ -476,3 +488,55 @@ class TeacherEntryAPITest(TestCase):
                 TeacherEntrySerializer.setup_eager_loading(TeacherEntry.objects.filter(pk=te_id)).get()
             ).data
         assert len(context_pre) == len(context_post) and len(context_pre) <= 8
+
+    def test_teacher_entry_crash_recovery(self):
+        # Setup some earlier DB context
+        course = factory.Course(author__preferences__can_post_teacher_entries=True)
+        teacher = course.author
+        assignment = factory.Assignment(courses=[course], format__templates=[])
+        factory.TemplateAllTypes(format=assignment.format)
+        for _ in range(3):
+            journal = factory.Journal(assignment=assignment)
+        entry = Entry.objects.get(node__journal=journal)
+        factory.Grade(entry=entry, author=teacher)
+        factory.TeacherComment(entry=entry, n_att_files=1, n_rt_files=1, author=teacher, published=True)
+
+        def all_to_dict(model):
+            return [_model_instance_to_dict(i) for i in model.objects.all()]
+
+        pre_crash_nodes = all_to_dict(Node)
+        pre_crash_entries = all_to_dict(Entry)
+        pre_crash_grades = all_to_dict(Grade)
+        pre_crash_comments = all_to_dict(Comment)
+        pre_crash_fcs = set(FileContext.objects.values_list('pk', flat=True))
+
+        data = factory.TeacherEntryCreationParams(assignment=assignment)
+        temp_files = set(FileContext.objects.filter(author=teacher, is_temp=True).values_list('pk', flat=True))
+
+        def check_db_state_after_exception(self, raise_exception_for):
+            with mock.patch(raise_exception_for, side_effect=Exception()):
+                self.assertRaises(
+                    Exception, api.create, self, 'teacher_entries', params=data, user=teacher)
+
+            # Check if DB state is unchanged after a crash
+            assert all([equal_models(pre, post) for pre, post in zip_equal(pre_crash_nodes, all_to_dict(Node))])
+            assert all([equal_models(pre, post) for pre, post in zip_equal(pre_crash_entries, all_to_dict(Entry))])
+            assert all([equal_models(pre, post) for pre, post in zip_equal(pre_crash_grades, all_to_dict(Grade))])
+            assert all([equal_models(pre, post) for pre, post in zip_equal(pre_crash_comments, all_to_dict(Comment))])
+            assert set(FileContext.objects.exclude(pk__in=temp_files).values_list('pk', flat=True)) == pre_crash_fcs
+            assert set(FileContext.objects.filter(author=teacher, is_temp=True).values_list('pk', flat=True)) \
+                == temp_files, \
+                'Teacher can reuse earlier uploaded temporary files, despite a crash occurring'
+
+        check_db_state_after_exception(self, 'VLE.views.teacher_entry.TeacherEntryView._create_new_entries')
+        check_db_state_after_exception(self, 'VLE.views.teacher_entry.TeacherEntryView._update_existing_entries')
+        check_db_state_after_exception(self, 'VLE.views.teacher_entry.TeacherEntryView._check_teacher_entry_content')
+        check_db_state_after_exception(self, 'VLE.utils.import_utils.copy_node')
+        check_db_state_after_exception(self, 'VLE.utils.import_utils.copy_entry')
+        check_db_state_after_exception(self, 'VLE.utils.import_utils.import_comment')
+        check_db_state_after_exception(self, 'VLE.utils.import_utils.import_content')
+        check_db_state_after_exception(self, 'VLE.factory.make_content')
+        check_db_state_after_exception(self, 'VLE.utils.file_handling.get_files_from_rich_text')
+        check_db_state_after_exception(self, 'VLE.utils.file_handling.establish_file')
+        check_db_state_after_exception(self, 'VLE.factory.make_grade')
+        check_db_state_after_exception(self, 'VLE.utils.grading.task_journal_status_to_LMS')

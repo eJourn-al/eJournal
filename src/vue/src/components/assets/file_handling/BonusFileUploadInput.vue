@@ -2,12 +2,26 @@
     <div>
         <b-form-file
             ref="bonusInput"
+            v-model="file"
             accept="*/*.csv"
-            :state="Boolean(file)"
+            :state="state"
             :placeholder="placeholderText"
             class="fileinput mb-2"
             @change="fileHandler"
         />
+        <b-progress
+            v-if="uploading"
+            class="multi-form"
+        >
+            <b-progress-bar
+                :value="loaded"
+                :max="total"
+                :label="progressLabel"
+                show-progress
+                animated
+            />
+        </b-progress>
+
         <b-button
             v-if="!autoUpload"
             class="green-button float-right"
@@ -109,8 +123,20 @@ export default {
         return {
             placeholderText: 'No file chosen',
             file: null,
+            state: null,
+            uploading: false,
+            loaded: 0,
+            total: 100,
             errorLogs: null,
         }
+    },
+    computed: {
+        progressLabel () {
+            if (this.loaded === this.total) {
+                return 'Processing...'
+            }
+            return `${Math.floor((this.loaded / this.total) * 100)}%`
+        },
     },
     created () {
         // Assume the given file is present in the backend
@@ -120,22 +146,35 @@ export default {
         }
     },
     methods: {
+        resetUploadState () {
+            this.uploading = false
+            this.total = 100
+            this.progress = 0
+        },
         fileHandler (e) {
             const files = e.target.files
 
             if (!files || !files.length) { return }
-            if (files[0].size > this.$root.maxFileSizeBytes) {
+
+            const file = files[0]
+
+            if (file.size > this.$root.maxFileSizeBytes) {
                 this.$toasted.error(
-                    `The selected file exceeds the maximum file size of: ${this.$root.maxFileSizeBytes} bytes.`)
-                return
+                    `The selected file exceeds the maximum file size of ${this.$root.maxFileSizeLabel}.`)
+                this.state = false
+            } else if (file.name.length > this.$root.maxFileNameLength) {
+                this.$toasted.error(
+                    `The selected file exceeds the maximum file name length of ${this.$root.maxFileNameLength}.`)
+                this.state = false
+            } else {
+                this.state = true
+                this.file = file
+                this.resetErrorLogs()
+
+                this.$emit('fileSelect', this.file.name)
+
+                if (this.autoUpload) { this.uploadFile() }
             }
-
-            this.file = files[0]
-            this.resetErrorLogs()
-
-            this.$emit('fileSelect', this.file.name)
-
-            if (this.autoUpload) { this.uploadFile() }
         },
         uploadFile () {
             const formData = new FormData()
@@ -143,20 +182,34 @@ export default {
             formData.append('assignment_id', this.aID)
             formData.append('content_id', this.contentID)
 
-            auth.uploadFile(this.endpoint, formData, {
-                customSuccessToast: 'Successfully imported bonus points.',
-                customErrorToast: 'Something is wrong with the uploaded file.',
-            })
+            this.uploading = true
+            auth.uploadFile(
+                this.endpoint,
+                formData,
+                {
+                    onUploadProgress: (e) => {
+                        this.loaded = e.loaded
+                        this.total = e.total
+                    },
+                },
+                {
+                    customSuccessToast: 'Successfully imported bonus points.',
+                    customErrorToast: 'Something is wrong with the uploaded file.',
+                },
+            )
                 .then(() => {
                     this.$emit('bonusPointsSuccessfullyUpdated', this.file.name)
-                    this.file = null
-                    this.$refs.bonusInput.reset()
+                    this.state = null
                 })
                 .catch((error) => {
                     this.$emit('bonusPointsFileFormatIssues', this.file.name)
+                    this.state = false
+                    this.errorLogs = error.response.data.description
+                })
+                .finally(() => {
+                    this.resetUploadState()
                     this.file = null
                     this.$refs.bonusInput.reset()
-                    this.errorLogs = error.response.data.description
                 })
         },
         resetErrorLogs () {

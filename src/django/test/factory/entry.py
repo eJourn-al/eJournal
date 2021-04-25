@@ -81,6 +81,7 @@ class BaseEntryFactory(factory.django.DjangoModelFactory):
         model = 'VLE.Entry'
 
     last_edited = factory.LazyFunction(timezone.now)
+    title = None
     template = None
 
     @factory.post_generation

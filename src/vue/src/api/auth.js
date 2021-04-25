@@ -1,3 +1,4 @@
+import axios from 'axios'
 import connection from '@/api/connection.js'
 import genericUtils from '@/utils/generic_utils.js'
 import router from '@/router/index.js'
@@ -117,6 +118,8 @@ function handleError (error, connArgs) {
 function initRequest (func, url, data = null, connArgs = DEFAULT_CONN_ARGS) {
     const packedConnArgs = packConnArgs(connArgs)
 
+    // for a list of the executed Axios aliases see: https://github.com/axios/axios#request-method-aliases
+    // NOTE: paramater 'data' can also function as 'config' depending on which alias is used.
     return func(url, data).then(
         (resp) => handleSuccess(resp, packedConnArgs),
         (error) => handleError(error, packedConnArgs))
@@ -184,8 +187,18 @@ export default {
     delete (url, data, connArgs) {
         return initRequest(connection.conn.delete, improveUrl(url, data), null, connArgs)
     },
-    uploadFile (url, data, connArgs) {
-        return initRequest(connection.connUpFile.post, improveUrl(url), data, connArgs)
+    /* Each upload request can be accompanied by a custom 'onUploadProgress' handler, which is why a dedicated instance
+     * is created for each request. */
+    uploadFile (url, data, config, connArgs) {
+        const axiosInstance = axios.create({
+            headers: {
+                'Content-Type': 'multipart/form-data',
+            },
+            ...config,
+        })
+        store.dispatch('connection/setupConnectionInterceptors', { connection: axiosInstance })
+
+        return initRequest(axiosInstance.post, improveUrl(url), data, connArgs)
     },
     downloadFile (url, data, connArgs) {
         return initRequest(connection.connDownFile.get, improveUrl(url, data), null, connArgs)

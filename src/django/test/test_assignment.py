@@ -722,7 +722,7 @@ class AssignmentAPITest(TestCase):
         assert before_source_preset_nodes.count() == created_preset_nodes.count() \
             and before_source_templates.count() == created_templates.count(), \
             'Format of the import should be equal to the import target'
-        ignoring = ['id', 'format', 'forced_template', 'creation_date', 'update_date']
+        ignoring = ['id', 'format', 'forced_template', 'creation_date', 'update_date', 'chain']
         for before_n, created_n in zip(before_source_preset_nodes, created_preset_nodes):
             assert equal_models(before_n, created_n, ignore_keys=ignoring), 'Import preset nodes should be equal'
         for before_t, created_t in zip(before_source_templates, created_templates):

@@ -41,6 +41,13 @@
                     trim
                     required
                 />
+
+                <template
+                    v-if="presetNode.template && presetNode.template.allow_custom_title"
+                    #description
+                >
+                    The template setting <i>"allow custom title"</i> allows students to override this value.
+                </template>
             </b-form-group>
 
             <preset-node-edit-select-and-preview-template
@@ -276,7 +283,7 @@ export default {
 
             if (this.edit) {
                 this.update({ data: this.presetNode, aID: this.$route.params.aID })
-                    .then(() => { this.presetNodeUpdated({ presetNode: this.presetNode }) })
+                    .then((presetNode) => { this.presetNodeUpdated({ presetNode }) })
             } else {
                 this.create({ data: this.presetNode, aID: this.$route.params.aID })
                     .then((createdPresetNode) => {

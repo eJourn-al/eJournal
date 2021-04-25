@@ -9,6 +9,13 @@ const getters = {
 
     journalImportRequestButtonSetting: (state) => state.journalImportRequestButtonSetting,
     dismissedJIRs: (state) => state.dismissedJIRs,
+    hidePastDeadlines: (state, _, rootState) => {
+        const aID = parseInt(rootState.route.params.aID, 10)
+        return (
+            state.saved.hide_past_deadlines_of_assignments
+            && state.saved.hide_past_deadlines_of_assignments.includes(aID)
+        )
+    },
 
     // Search filters.
     todoSortBy: (state) => state.todo.sortBy,
@@ -126,6 +133,19 @@ const mutations = {
     },
     [types.ADD_DISMISSED_JIRS_TO_JOURNAL] (state, data) {
         state.dismissedJIRs = [...state.dismissedJIRs, ...data]
+    },
+    SET_HIDE_PAST_DEADLINES (state, { hidePastDeadlines, aID }) {
+        const aIDint = parseInt(aID, 10)
+
+        if (hidePastDeadlines) {
+            state.saved.hide_past_deadlines_of_assignments = [...state.saved.hide_past_deadlines_of_assignments, aIDint]
+        } else {
+            state.saved.hide_past_deadlines_of_assignments = state.saved.hide_past_deadlines_of_assignments.filter(
+                (id) => id !== aIDint,
+            )
+        }
+
+        preferencesAPI.update(store.getters['user/uID'], state.saved)
     },
     [types.RESET_PREFERENCES] (state) {
         state.saved = {}

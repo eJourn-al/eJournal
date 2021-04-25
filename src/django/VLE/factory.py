@@ -205,8 +205,12 @@ def make_node(journal, entry=None, type=VLE.models.Node.ENTRY, preset=None):
     return VLE.models.Node.objects.get_or_create(type=type, entry=entry, preset=preset, journal=journal)[0]
 
 
-def make_entry(template, author, node, category_ids=None):
+def make_entry(template, author, node, category_ids=None, title=None):
     params = {}
+
+    if template.chain.allow_custom_title:
+        params['title'] = title
+
     if not template.chain.allow_custom_categories or category_ids is None:
         params['category_ids'] = list(template.categories.values_list('pk', flat=True))
     elif category_ids:

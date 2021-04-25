@@ -89,6 +89,8 @@ class UnlimitedEntryCreationParamsFactory(factory.Factory):
     class Meta:
         model = dict
 
+    title = None
+
     @classmethod
     def _adjust_kwargs(cls, **kwargs):
         journal = kwargs.pop('journal')
@@ -98,7 +100,7 @@ class UnlimitedEntryCreationParamsFactory(factory.Factory):
         kwargs['template_id'] = template.pk
 
         if 'author' in kwargs:
-            author = kwargs['author']
+            author = kwargs.pop('author')
         else:
             author = random.choice(journal.authors.all()).user
 
@@ -118,6 +120,8 @@ class PresetEntryCreationParamsFactory(factory.Factory):
     """
     class Meta:
         model = dict
+
+    title = None
 
     @classmethod
     def _adjust_kwargs(cls, **kwargs):

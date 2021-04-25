@@ -42,11 +42,29 @@
                 v-if="node && (edit || create)"
                 :files="node.attached_files"
             />
+
+            <b-form-group v-if="node && template.allow_custom_title && (edit || create)">
+                <template #label>
+                    Title
+                    <tooltip tip="The title will also be displayed in the timeline."/>
+                </template>
+
+                <sandboxed-iframe
+                    v-if="template.title_description"
+                    :content="template.title_description"
+                />
+
+                <b-input
+                    v-model="title"
+                    class="theme-input"
+                />
+            </b-form-group>
+
             <entry-fields
                 :template="template"
                 :content="newEntryContent"
                 :edit="edit || create"
-                :nodeID="node ? node.nID : -1"
+                :nodeID="node ? node.id : -1"
                 @uploading-file="uploadingFiles ++"
                 @finished-uploading-file="uploadingFiles --"
             />
@@ -146,6 +164,7 @@ import EntryCategories from '@/components/category/EntryCategories.vue'
 import EntryFields from '@/components/entry/EntryFields.vue'
 import EntryTitle from '@/components/entry/EntryTitle.vue'
 import SandboxedIframe from '@/components/assets/SandboxedIframe.vue'
+import Tooltip from '@/components/assets/Tooltip.vue'
 import filesList from '@/components/assets/file_handling/FilesList.vue'
 
 import entryAPI from '@/api/entry.js'
@@ -155,6 +174,7 @@ export default {
         EntryFields,
         EntryTitle,
         SandboxedIframe,
+        Tooltip,
         Comments,
         filesList,
         EntryCategories,
@@ -176,6 +196,7 @@ export default {
             edit: false,
             requestInFlight: false,
             newEntryContent: () => Object(),
+            title: null,
             uploadingFiles: 0,
         }
     },
@@ -190,8 +211,10 @@ export default {
             handler () {
                 if (this.node && this.node.entry) {
                     this.newEntryContent = { ...this.node.entry.content }
+                    this.title = this.node.entry.title
                 } else {
                     this.newEntryContent = Object()
+                    this.title = ''
                 }
                 this.edit = false
             },
@@ -202,6 +225,7 @@ export default {
                 // Add node should empty filled in entry content when switching template
                 if (this.node.type === 'a') {
                     this.newEntryContent = Object()
+                    this.title = ''
                 }
             },
         },
@@ -210,27 +234,35 @@ export default {
         saveChanges () {
             if (this.checkRequiredFields()) {
                 this.requestInFlight = true
-                entryAPI.update(this.node.entry.id, { content: this.newEntryContent },
-                    { customSuccessToast: 'Entry successfully updated.' })
+                entryAPI.update(
+                    this.node.entry.id,
+                    {
+                        content: this.newEntryContent,
+                        title: this.template.allow_custom_title ? this.title : null,
+                    },
+                    { customSuccessToast: 'Entry successfully updated.' },
+                )
                     .then((entry) => {
                         this.node.entry = entry
                         this.edit = false
-                        this.requestInFlight = false
                     })
-                    .catch(() => {
-                        this.requestInFlight = false
-                    })
+                    .finally(() => { this.requestInFlight = false })
             }
+        },
+        clearDraft () {
+            this.edit = false
+            this.title = null
+            this.newEntryContent = {}
         },
         deleteEntry () {
             if (window.confirm('Are you sure that you want to delete this entry?')) {
                 this.requestInFlight = true
                 entryAPI.delete(this.node.entry.id, { customSuccessToast: 'Entry successfully deleted.' })
                     .then((data) => {
-                        this.requestInFlight = false
+                        this.clearDraft()
                         this.$emit('entry-deleted', data)
                     })
-                    .catch(() => { this.requestInFlight = false })
+                    .finally(() => { this.requestInFlight = false })
             }
         },
         createEntry () {
@@ -247,14 +279,15 @@ export default {
                     journal_id: this.$route.params.jID,
                     template_id: this.template.id,
                     content: this.newEntryContent,
-                    node_id: this.node && this.node.nID > 0 ? this.node.nID : null,
+                    node_id: this.node && this.node.id > 0 ? this.node.id : null,
                     category_ids: categoryIds,
+                    title: this.template.allow_custom_title ? this.title : null,
                 }, { customSuccessToast: 'Entry successfully posted.' })
                     .then((data) => {
-                        this.requestInFlight = false
+                        this.clearDraft()
                         this.$emit('entry-posted', data)
                     })
-                    .catch(() => { this.requestInFlight = false })
+                    .finally(() => { this.requestInFlight = false })
             }
         },
         checkRequiredFields () {
@@ -268,8 +301,10 @@ export default {
         safeToLeave () {
             // It is safe to leave the entry if it is not currently being edited AND if no content for an entry to be
             // created is provided.
-            return !this.edit && !(
-                this.create && this.template.field_set.some((field) => this.newEntryContent[field.id]))
+            return (
+                !this.edit
+                && !(this.create && this.template.field_set.some((field) => this.newEntryContent[field.id]))
+            )
         },
     },
 }

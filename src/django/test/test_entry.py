@@ -18,8 +18,8 @@ from faker import Faker
 
 import VLE.utils.entry_utils as entry_utils
 from VLE.models import (Assignment, Category, Comment, Content, Course, Entry, Field, FileContext, Format, Grade,
-                        Journal, JournalImportRequest, Node, PresetNode, TeacherEntry, Template, User)
-from VLE.serializers import EntrySerializer, TemplateSerializer
+                        Journal, JournalImportRequest, Node, PresetNode, TeacherEntry, Template, TemplateChain, User)
+from VLE.serializers import EntrySerializer, FileSerializer, TemplateSerializer
 from VLE.utils.error_handling import VLEBadRequest, VLEMissingRequiredField, VLEPermissionError
 from VLE.validators import validate_entry_content
 
@@ -96,6 +96,7 @@ class EntryAPITest(TestCase):
         assert Node.objects.filter(type=Node.ENTRY, journal__assignment=assignment, entry=entry).count() == 1, \
             'An entry node is correctly attached and of the correct type'
         assert entry.grade is None, 'Entry is ungraded by default'
+        assert entry.title is None, 'Entry has no custom title by default'
         assert entry.categories.first().assignment == assignment
 
         grade = 7
@@ -106,11 +107,13 @@ class EntryAPITest(TestCase):
             node__journal__assignment=assignment,
             node__journal__entries__n=0,
             grade__grade=grade,
-            categories=[category]
+            categories=[category],
+            title='Custom',
         )
         assert grade_c + 1 == Grade.objects.count(), 'A single grade instance is created for the grade entry'
         assert entry.grade.grade == grade, 'Deep syntax works for entry grade instance'
         assert entry.categories.first() == category, 'Passing categories directly works'
+        assert entry.title == 'Custom', 'We can set the title'
 
         assignment = factory.Assignment()
         template_c = Template.objects.count()
@@ -475,7 +478,7 @@ class EntryAPITest(TestCase):
         # Check if students cannot update journals without required parts filled in
         create_params = self.valid_create_params.copy()
         create_params['content'] = {
-            list(self.valid_create_params['content'])[0]: 'only one field filled',
+            list(self.valid_create_params['content'])[1]: 'only optional field filled',
         }
         api.create(self, 'entries', params=create_params, user=self.student, status=400)
 
@@ -514,6 +517,27 @@ class EntryAPITest(TestCase):
         self.group_journal.assignment.active_lti_id = assignment_old_lti_id
         self.group_journal.assignment.save()
 
+        # Cannot set a custom title when the template does not allow it
+        payload = deepcopy(self.valid_create_params)
+        TemplateChain.objects.filter(template=payload['template_id']).update(allow_custom_title=False)
+        title = 'Custom'
+        payload['title'] = title
+        api.create(self, 'entries', params=payload, user=self.student, status=403)
+
+        # But we can do so if the template does allow for a custom title
+        TemplateChain.objects.filter(template=payload['template_id']).update(allow_custom_title=True)
+        resp = api.create(self, 'entries', params=payload, user=self.student)['entry']
+        assert resp['title'] == title, \
+            'It is possible to set a custom entry title if its template allows as such'
+
+        # A custom title can also be set for deadline entries
+        payload = deepcopy(payload)
+        deadline = factory.DeadlinePresetNode(format=self.g_assignment.format, forced_template=self.template)
+        payload['node_id'] = self.group_journal.node_set.get(preset=deadline).pk
+        resp = api.create(self, 'entries', params=payload, user=self.student)['entry']
+        assert resp['title'] == title, \
+            'It is possible to set a custom entry title if its template allows as such, for a deadline entry as well'
+
         # Check entry categories, fixed categories
         cat = factory.Category(assignment=self.g_assignment, templates=self.template)
         payload = deepcopy(self.valid_create_params)
@@ -550,6 +574,95 @@ class EntryAPITest(TestCase):
         # TODO: Test for entry bound to entrydeadline
         # TODO: Test with file upload
         # TODO: Test added index
+
+    def test_create_entry_title(self):
+        assignment = factory.Assignment(format__templates=[{'type': Field.TEXT}])
+        template = assignment.format.template_set.first()
+        TemplateChain.objects.filter(template=template).update(allow_custom_title=False)
+        journal = factory.Journal(assignment=assignment, entries__n=0)
+
+        # Providing an empty title despite the template setting not allowing a custom title is allowed
+        for val in ['', None]:
+            params = factory.UnlimitedEntryCreationParams(title=val, journal=journal, author=journal.author)
+            resp = api.create(self, 'entries', params=params, user=journal.author)['entry']
+            entry = Entry.objects.get(pk=resp['id'])
+
+            assert not entry.title, 'Entry title remains unset (None or empty string)'
+            assert resp['title'] == template.name, (
+                'The entry title is still serialized based on the template name despite having been passed an empty '
+                'title during creation'
+            )
+
+        # A user cannot pass an actual value as title when the template setting does not allow as such
+        params = factory.UnlimitedEntryCreationParams(title='A title', journal=journal, author=journal.author)
+        api.create(self, 'entries', params=params, user=journal.author, status=403)
+
+        # We now allow a custom title to be set
+        TemplateChain.objects.filter(template=template).update(allow_custom_title=True)
+
+        # Because an entry title is optional, it is still possible to provide an empty value as title.
+        # In this scenario we expect the default title to be set (template name or preset node display name)
+        for val in ['', None]:
+            params = factory.UnlimitedEntryCreationParams(title=val, journal=journal, author=journal.author)
+            resp = api.create(self, 'entries', params=params, user=journal.author)['entry']
+            entry = Entry.objects.get(pk=resp['id'])
+
+            assert not entry.title, 'Entry title remains unset (None or empty string)'
+            assert resp['title'] == template.name, (
+                'The entry title is still serialized based on the template name despite having been passed an empty '
+                'title during creation'
+            )
+
+        title = 'A title'
+        params = factory.UnlimitedEntryCreationParams(title=title, journal=journal, author=journal.author)
+        resp = api.create(self, 'entries', params=params, user=journal.author)['entry']
+        assert resp['title'] == title
+
+    def test_patch_entry_title(self):
+        assignment = factory.Assignment(format__templates=[{'type': Field.TEXT}])
+        template = assignment.format.template_set.first()
+        TemplateChain.objects.filter(template=template).update(allow_custom_title=False)
+        journal = factory.Journal(assignment=assignment, entries__n=0)
+        entry = factory.UnlimitedEntry(node__journal=journal)
+        params = EntrySerializer(entry).data
+        params['pk'] = entry.pk
+
+        # Providing an empty title despite the template setting not allowing a custom title is allowed
+        for val in ['', None]:
+            params['title'] = val
+            resp = api.update(self, 'entries', params=params, user=journal.author)['entry']
+            entry.refresh_from_db()
+
+            assert not entry.title, 'Entry title remains unset (None or empty string)'
+            assert resp['title'] == template.name, (
+                'The entry title is still serialized based on the template name despite having been passed an empty '
+                'title during creation'
+            )
+
+        # A user cannot pass an actual value as title when the template setting does not allow as such
+        params['title'] = 'A value'
+        api.update(self, 'entries', params=params, user=journal.author, status=403)
+
+        # We now allow a custom title to be set
+        TemplateChain.objects.filter(template=template).update(allow_custom_title=True)
+
+        # Because an entry title is optional, it is still possible to provide an empty value as title.
+        # In this scenario we expect the default title to be set (template name or preset node display name)
+        for val in ['', None]:
+            params['title'] = val
+            resp = api.update(self, 'entries', params=params, user=journal.author)['entry']
+            entry.refresh_from_db()
+
+            assert not entry.title, 'Entry title remains unset (None or empty string)'
+            assert resp['title'] == template.name, (
+                'The entry title is still serialized based on the template name despite having been passed an empty '
+                'title during creation'
+            )
+
+        title = 'A value'
+        params['title'] = title
+        resp = api.update(self, 'entries', params=params, user=journal.author)['entry']
+        assert resp['title'] == title
 
     def test_create_invalid_preset_entry(self):
         # Entries cannot be created after lockdate
@@ -730,6 +843,19 @@ class EntryAPITest(TestCase):
         assert entry['last_edited'] != updated_entry['last_edited'], \
             'Last edited should update when entry content changes'
 
+        # Cannot set a custom title when the template does not allow it
+        payload = deepcopy(params)
+        TemplateChain.objects.filter(template=entry['template']['id']).update(allow_custom_title=False)
+        title = 'Custom'
+        payload['title'] = title
+        api.update(self, 'entries', params=payload, user=self.student, status=403)
+
+        # But we can do so if the template does allow for a custom title
+        TemplateChain.objects.filter(template=entry['template']['id']).update(allow_custom_title=True)
+        resp = api.update(self, 'entries', params=payload, user=self.student)['entry']
+        assert resp['title'] == title, \
+            'It is possible to set a custom entry title if its template allows as such'
+
         # Check if last_edited_by gets set to the correct other user
         last_edited = factory.AssignmentParticipation(assignment=self.group_journal.assignment)
         self.group_journal.add_author(last_edited)
@@ -780,6 +906,25 @@ class EntryAPITest(TestCase):
 
         # Check if a published entry cannot be unpublished
         api.create(self, 'grades', params={'entry_id': entry['id'], 'published': False}, user=self.teacher, status=400)
+
+    def test_update_entry_file_field(self):
+        file_template = factory.Template(format=self.g_assignment.format, add_fields=[{'type': Field.FILE}])
+        file_field = file_template.field_set.first()
+        entry = factory.UnlimitedEntry(node__journal=self.group_journal, template=file_template)
+        file_content = entry.content_set.first()
+
+        new_fc = factory.TempFileContext(author=self.student)
+        params = {
+            'pk': entry.pk,
+            'journal_id': self.group_journal.pk,
+            'content': {file_field.pk: FileSerializer(new_fc).data}
+        }
+        updated_entry_resp = api.update(self, 'entries', params=params, user=self.student)['entry']
+
+        file_content.refresh_from_db()
+        assert int(file_content.data) == new_fc.pk, 'Entry file content is updated to match the new file'
+        assert updated_entry_resp['content'][str(file_field.pk)]['id'] == new_fc.pk, \
+            'The updated entry serializes the new file correctly'
 
     def test_destroy_entry(self):
         # Only a student can delete their own entry
@@ -1058,6 +1203,18 @@ class EntryAPITest(TestCase):
             ).data
             assert data['title'] == preset_node_display_name, \
                 '''A preset entry's title should be the display name of the preset node.'''
+
+            custom_title = 'Custom title'
+            preset_entry.title = custom_title
+            preset_entry.save()
+            data = EntrySerializer(
+                EntrySerializer.setup_eager_loading(Entry.objects.filter(pk=preset_entry.pk)).get(),
+                context={'user': teacher}
+            ).data
+            assert data['title'] == custom_title, \
+                '''A student's custom entry title should take precedence over the preset node display name.'''
+            preset_entry.title = None
+            preset_entry.save()
 
             preset_entry.node.preset.delete()
             data = EntrySerializer(

@@ -170,6 +170,8 @@ class TemplateSerializer(serializers.ModelSerializer, EagerLoadingMixin):
         fields = (
             *TemplateConcreteFieldsSerializer.Meta.fields,
             'allow_custom_categories',
+            'allow_custom_title',
+            'title_description',
             'default_grade',
             'field_set',
             'categories',
@@ -186,6 +188,8 @@ class TemplateSerializer(serializers.ModelSerializer, EagerLoadingMixin):
     ]
 
     allow_custom_categories = serializers.BooleanField(source='chain.allow_custom_categories')
+    allow_custom_title = serializers.BooleanField(source='chain.allow_custom_title')
+    title_description = serializers.CharField(source='chain.title_description')
     default_grade = serializers.FloatField(source='chain.default_grade')
     field_set = FieldSerializer(many=True, read_only=True)
     categories = CategoryConcreteFieldsSerializer(many=True, read_only=True)
@@ -343,8 +347,15 @@ class PreferencesSerializer(serializers.ModelSerializer):
             'upcoming_deadline_reminder',
             # Hidden preferences
             'show_format_tutorial', 'hide_version_alert', 'grade_button_setting', 'comment_button_setting',
+            'hide_past_deadlines_of_assignments',
         )
         read_only_fields = ('user',)
+
+    hide_past_deadlines_of_assignments = serializers.PrimaryKeyRelatedField(
+        many=True,
+        read_only=False,
+        queryset=VLE.models.Assignment.objects.all(),
+    )
 
 
 class CourseSerializer(serializers.ModelSerializer):
@@ -893,7 +904,12 @@ class EntrySerializer(serializers.ModelSerializer, EagerLoadingMixin):
     prefetch_related = [
         'content_set',
         'content_set__field',
-        'content_set__filecontext_set',
+        # Order the file context set from new to old to ensure the first element of the prefetch cache contains
+        # the most recent FC (e.g. after updating an existing file field)
+        Prefetch(
+            'content_set__filecontext_set',
+            queryset=VLE.models.FileContext.objects.order_by('-creation_date'),
+        ),
         'categories',
         Prefetch('template', queryset=TemplateSerializer.setup_eager_loading(VLE.models.Template.objects.all())),
         # NOTE: Too uncommon, not worth the additional prefetch.
@@ -912,6 +928,9 @@ class EntrySerializer(serializers.ModelSerializer, EagerLoadingMixin):
     jir = serializers.SerializerMethodField()
 
     def get_title(self, entry):
+        if entry.title:
+            return entry.title
+
         if (entry.teacher_entry and entry.teacher_entry.show_title_in_timeline):
             return entry.teacher_entry.title
 
@@ -929,8 +948,9 @@ class EntrySerializer(serializers.ModelSerializer, EagerLoadingMixin):
                 if content.field.type == VLE.models.Field.FILE and content.data:
                     try:
                         values, prefetched = prefetched_objects(content, 'filecontext_set')
-                        # A file field only has a single FC associated, so we can directly access the first element
-                        # from the prefetch cache if available.
+                        # The prefetch cache is ordered on FC creation date, so we can directly access the first element
+                        # if available to retrieve the matching FC (multiple FCs can match one content,
+                        # e.g. between cleanup cycles and after updating a file field).
                         fc = values[0] if prefetched else VLE.models.FileContext.objects.get(pk=content.data)
                         content_dict[content.field.id] = FileSerializer(fc).data
                     except VLE.models.FileContext.DoesNotExist:

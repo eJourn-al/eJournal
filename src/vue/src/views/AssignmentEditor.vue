@@ -23,13 +23,8 @@
             <timeline
                 v-intro="timelineIntroText"
                 v-intro-step="3"
-                :selected="activeTimelineElementIndex"
                 :nodes="presetNodes"
                 :assignment="assignment"
-                :edit="true"
-                @select-node="(timelineElementIndex) => {
-                    timelineElementSelected({ timelineElementIndex, mode: activeComponentModeOptions.read }) }
-                "
             />
         </template>
 
@@ -151,16 +146,24 @@ This tutorial can be consulted again by clicking the <i>info</i> sign.
             activeComponentModeOptions: 'assignmentEditor/activeComponentModeOptions',
             activeComponent: 'assignmentEditor/activeComponent',
             activeComponentOptions: 'assignmentEditor/activeComponentOptions',
-            selectedTimelineElementIndex: 'assignmentEditor/selectedTimelineElementIndex',
             presetNodes: 'presetNode/assignmentPresetNodes',
             savedPreferences: 'preferences/saved',
+            currentNode: 'timeline/currentNode',
+            startNode: 'timeline/startNode',
         }),
-        activeTimelineElementIndex () {
-            if (this.activeComponent === this.activeComponentOptions.timeline) {
-                return this.selectedTimelineElementIndex
+    },
+    watch: {
+        /* Observe timeline UI navigation */
+        currentNode (element) {
+            if (element) {
+                this.timelineElementSelected({ element })
             }
-
-            return null
+        },
+        /* If the active component is not the timeline, ensure no timeline UI element is highlighted */
+        activeComponent (val) {
+            if (val !== this.activeComponentOptions.timeline && this.currentNode) {
+                this.setCurrentNode(null)
+            }
         },
     },
     created () {
@@ -173,7 +176,8 @@ This tutorial can be consulted again by clicking the <i>info</i> sign.
 
         Promise.all(init).then(() => {
             /* Start with the assignment details selected in read mode */
-            this.timelineElementSelected({ timelineElementIndex: -1, mode: this.activeComponentModeOptions.read })
+            this.setCurrentNode(this.startNode)
+            this.timelineElementSelected({ element: this.startNode, mode: this.activeComponentModeOptions.read })
             this.loading = false
 
             if (this.savedPreferences.show_format_tutorial) {
@@ -186,6 +190,7 @@ This tutorial can be consulted again by clicking the <i>info</i> sign.
         ...mapMutations({
             changePreference: 'preferences/CHANGE_PREFERENCES',
             reset: 'assignmentEditor/RESET',
+            setCurrentNode: 'timeline/SET_CURRENT_NODE',
         }),
         ...mapActions({
             confirmIfDirty: 'assignmentEditor/confirmIfDirty',

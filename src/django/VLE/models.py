@@ -529,6 +529,11 @@ class Preferences(CreateUpdateModel):
         default=WEEKLY,
     )
 
+    hide_past_deadlines_of_assignments = models.ManyToManyField(
+        'Assignment',
+        related_name='+',
+    )
+
     # Only get notifications of people that are in your group
     group_only_notifications = models.BooleanField(
         default=True,
@@ -2617,6 +2622,11 @@ class Entry(CreateUpdateModel):
         through_fields=('entry', 'category'),
     )
 
+    title = models.TextField(
+        null=True,
+        blank=True,
+    )
+
     @staticmethod
     def validate_categories(category_ids, assignment, template=None):
         """
@@ -2735,9 +2745,6 @@ class TeacherEntry(Entry):
     assignment = models.ForeignKey(
         'Assignment',
         on_delete=models.CASCADE,
-    )
-    title = models.TextField(
-        null=False,
     )
     show_title_in_timeline = models.BooleanField(
         default=True
@@ -2900,6 +2907,15 @@ class TemplateChain(CreateUpdateModel):
         default=False,
     )
 
+    allow_custom_title = models.BooleanField(
+        default=True,
+    )
+
+    title_description = models.TextField(
+        blank=True,
+        null=True,
+    )
+
     default_grade = models.FloatField(
         blank=True,
         null=True,
@@ -2911,6 +2927,8 @@ class TemplateQuerySet(models.QuerySet):
         """Creates a template and starts a new chain if not provided in the same transaction."""
         with transaction.atomic():
             allow_custom_categories = kwargs.pop('allow_custom_categories', False)
+            allow_custom_title = kwargs.pop('allow_custom_title', True)
+            title_description = kwargs.pop('title_description', None)
             default_grade = kwargs.pop('default_grade', None)
             if default_grade == '':
                 default_grade = None
@@ -2919,6 +2937,8 @@ class TemplateQuerySet(models.QuerySet):
                 kwargs['chain'] = TemplateChain.objects.create(
                     format=format,
                     allow_custom_categories=allow_custom_categories,
+                    allow_custom_title=allow_custom_title,
+                    title_description=title_description,
                     default_grade=default_grade,
                 )
 
@@ -2940,6 +2960,8 @@ class TemplateQuerySet(models.QuerySet):
                 format=format,
                 preset_only=data['preset_only'],
                 allow_custom_categories=data['allow_custom_categories'],
+                allow_custom_title=data['allow_custom_title'],
+                title_description=data['title_description'],
                 default_grade=data['default_grade'],
                 chain=archived_template.chain if archived_template else False,
             )
@@ -2963,6 +2985,13 @@ class TemplateQuerySet(models.QuerySet):
             if template_import:
                 if not author:
                     raise VLEProgrammingError('Author is required when importing a template')
+
+                template.chain.title_description = file_handling.copy_assignment_related_rt_files(
+                    template.chain.title_description,
+                    author,
+                    assignment=format.assignment,
+                )
+                template.chain.save()
 
                 fields_with_copied_rt_description_files = []
                 for field in fields:

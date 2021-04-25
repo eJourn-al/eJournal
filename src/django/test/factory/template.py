@@ -42,7 +42,7 @@ class MentorgesprekTemplateFactory(TemplateFactory):
 
     @factory.post_generation
     def gen_fields(self, create, extracted):
-        test.factory.Field(type=Field.RICH_TEXT, title='Title', template=self, required=True)
+        test.factory.Field(type=Field.RICH_TEXT, title='Content', template=self, required=True)
 
 
 class TextTemplateFactory(TemplateFactory):
@@ -50,7 +50,6 @@ class TextTemplateFactory(TemplateFactory):
 
     @factory.post_generation
     def gen_fields(self, create, extracted):
-        test.factory.Field(type=Field.TEXT, title='Title', template=self, required=True)
         test.factory.Field(type=Field.TEXT, title='Summary', template=self, required=True)
         test.factory.Field(type=Field.TEXT, title='Optional', template=self, required=False)
 
@@ -71,7 +70,6 @@ class ColloquiumTemplateFactory(TemplateFactory):
 
     @factory.post_generation
     def gen_fields(self, create, extracted):
-        test.factory.Field(type=Field.TEXT, title='Title', template=self, required=True)
         test.factory.Field(type=Field.RICH_TEXT, title='Summary', template=self, required=True)
         test.factory.Field(type=Field.RICH_TEXT, title='Experience', template=self, required=True)
         test.factory.Field(type=Field.TEXT, title='Requested Points', template=self, required=True)
@@ -94,6 +92,8 @@ class TemplateCreationParamsFactory(factory.Factory):
 
     name = factory.Sequence(lambda x: f"Template {x + 1}".format(x))
     allow_custom_categories = False
+    allow_custom_title = True
+    title_description = ''
     default_grade = None
     preset_only = True
 

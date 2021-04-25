@@ -80,6 +80,9 @@ def remove_unused_assignment_files():
             template__format__assignment=fc.assignment, description__contains=fc.access_id).exists()
         found = found or VLE.models.PresetNode.objects.filter(
             format__assignment=fc.assignment, description__contains=fc.access_id).exists()
+        found = found or VLE.models.TemplateChain.objects.filter(
+            format__assignment=fc.assignment, title_description__contains=fc.access_id).exists()
+
         if not found:
             fc.delete()
 

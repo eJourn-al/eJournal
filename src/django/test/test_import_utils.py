@@ -1,13 +1,18 @@
+import datetime
 import test.factory as factory
 import test.utils.generic_utils as test_utils
+from test.test_template import _validate_field_creation
 from test.utils.generic_utils import (check_equality_of_imported_file_context, check_equality_of_imported_rich_text,
                                       equal_models, zip_equal)
 
 from django.test import TestCase
 
+import VLE.tasks.beats.cleanup as cleanup
 import VLE.utils.import_utils as import_utils
-from VLE.models import Comment, Content, Entry, Field, FileContext, JournalImportRequest
+from VLE.models import Comment, Content, Entry, Field, FileContext, JournalImportRequest, Template
+from VLE.serializers import TemplateSerializer
 from VLE.utils.error_handling import VLEProgrammingError
+from VLE.utils.file_handling import get_files_from_rich_text
 
 
 class ImportTest(TestCase):
@@ -126,6 +131,94 @@ class ImportTest(TestCase):
         assert copied_entry_instance.node.entry.pk == copied_entry_instance.pk, \
             'Copied node is linked to the provided entry'
         assert copied_entry_instance.node.journal == target_journal, 'Entry is linked to the target journal'
+
+    def test_template_import(self):
+        source_assignment = factory.Assignment(format__templates=[])
+        source_template = factory.Template(
+            format=source_assignment.format,
+            name='To import',
+            add_fields=[{'type': Field.RICH_TEXT}],
+            allow_custom_categories=True,
+            allow_custom_title=True,
+            title_description='Some description',
+            default_grade=1,
+        )
+        source_template_pk = source_template.pk
+        source_template_field = source_template.field_set.first()
+        source_template_field_description_fc = factory.RichTextFieldDescriptionFileContext(
+            assignment=source_assignment,
+            field=source_template_field,
+        )
+        source_template_title_description_fc = factory.RichTextTemplateTitleDescriptionFileContext(
+            assignment=source_assignment,
+            template=source_template,
+        )
+        target_assignment = factory.Assignment(format__templates=[], author=source_assignment.author)
+
+        imported_template = import_utils.import_template(source_template, target_assignment, source_assignment.author)
+        source_template = Template.objects.get(pk=source_template_pk)
+        imported_template_field = imported_template.field_set.first()
+        imported_template_field_description_fc = get_files_from_rich_text(imported_template_field.description).first()
+        imported_template_title_description_fc = get_files_from_rich_text(
+            imported_template.chain.title_description).first()
+
+        # Check if the template and its chain are created according to the source instance
+        assert imported_template != source_template, 'A new template is created'
+        assert imported_template.chain != source_template.chain, 'A new chain is created for the imported template'
+        assert imported_template.name == source_template.name
+        assert imported_template.chain.allow_custom_categories == source_template.chain.allow_custom_categories
+        assert imported_template.chain.allow_custom_title == source_template.chain.allow_custom_title
+        assert imported_template.chain.title_description != source_template.chain.title_description, \
+            'Title description should be updated to contain the copied file\'s access id, and thus it should differ'
+        assert imported_template.chain.default_grade == source_template.chain.default_grade
+        assert imported_template.preset_only == source_template.preset_only
+        assert not imported_template.categories.all().exists(), \
+            'Importing a template does not also import all of its categories'
+
+        # Fields are copied succesfully (except potential files in the description, checked later)
+        field_set_serialized = TemplateSerializer(source_template).data['field_set']
+        _validate_field_creation(imported_template, field_set_serialized, template_import=True)
+
+        # Files are copied succesfully
+        fc_ignore_keys = ['last_edited', 'creation_date', 'update_date', 'id', 'access_id', 'assignment']
+        check_equality_of_imported_file_context(
+            source_template_field_description_fc, imported_template_field_description_fc, fc_ignore_keys)
+        check_equality_of_imported_file_context(
+            source_template_title_description_fc, imported_template_title_description_fc, fc_ignore_keys)
+
+        # Removing a reference in the source only removes the source files, not the copies
+        source_template_field.description = ''
+        source_template_field.save()
+        cleanup.remove_unused_files(datetime.datetime.now())
+        assert not FileContext.objects.filter(pk=source_template_field_description_fc.pk).exists(), \
+            'Source file in the template field description is succesfully deleted.'
+        assert FileContext.objects.filter(pk=imported_template_field_description_fc.pk).exists(), \
+            'Imported file in the template field description remains.'
+        source_template.chain.title_description = ''
+        source_template.chain.save()
+        cleanup.remove_unused_files(datetime.datetime.now())
+        assert not FileContext.objects.filter(pk=source_template_title_description_fc.pk).exists(), \
+            'Source file in the template title description is succesfully deleted.'
+        assert FileContext.objects.filter(pk=imported_template_title_description_fc.pk).exists(), \
+            'Imported file in the template title description remains.'
+
+        source_assignment.delete()
+        cleanup.remove_unused_files(datetime.datetime.now())
+        assert FileContext.objects.filter(pk=imported_template_field_description_fc.pk).exists(), \
+            'Deleting the source assignment should have no impact on the copied files.'
+        assert FileContext.objects.filter(pk=imported_template_title_description_fc.pk).exists(), \
+            'Deleting the source assignment should have no impact on the copied files.'
+
+        # When no longer referenced the files SHOULD be removed by cleanup
+        imported_template_field.description = ''
+        imported_template_field.save()
+        imported_template.chain.title_description = ''
+        imported_template.chain.save()
+        cleanup.remove_unused_files(datetime.datetime.now())
+        assert not FileContext.objects.filter(pk=source_template_field_description_fc.pk).exists(), \
+            'When a RT field description file is no longer referenced in the RT, cleanup should remove the file.'
+        assert not FileContext.objects.filter(pk=imported_template_title_description_fc.pk).exists(), \
+            'When a RT field description file is no longer referenced in the RT, cleanup should remove the file.'
 
     def test_content_import(self):
         assignment = factory.Assignment(format__templates=[])
