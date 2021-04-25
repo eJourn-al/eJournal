@@ -422,12 +422,15 @@ class LtiLaunchTest(TestCase):
         assignment = factory.LtiAssignment(courses=[course])
         test_student = factory.TestUser()
         group_count = Group.objects.filter(course=course).count()
+
         get_jwt(
             self, url='update_lti_groups',
             user=self.student, status=404,
             request_body={'user_id': 'invalid_user_id'},
             response_msg='User does not exist',
-            assert_msg='Without a valid lti_id it should not find the user')
+            assert_msg='Without a valid lti_id it should not find the user',
+        )
+
         get_jwt(
             self, url='update_lti_groups',
             user=test_student, status=200,
@@ -436,22 +439,61 @@ class LtiLaunchTest(TestCase):
                 'custom_course_id': course.active_lti_id,
                 'custom_assignment_id': assignment.active_lti_id},
             response_msg='',
-            assert_msg='With valid params it should response successfully')
+            assert_msg='With valid params it should response successfully',
+        )
         assert group_count == Group.objects.filter(course=course).count(), \
             'No new groups should be created, if no supplied'
+
+        # User is added to two groups on the LMS unknown to eJournal
+        lms_group_ids = {'new_group1', 'new_group2'}
+        body = {
+            'user_id': test_student.lti_id,
+            'custom_section_id': ','.join(lms_group_ids),
+            'custom_course_id': course.active_lti_id,
+            'custom_assignment_id': assignment.active_lti_id,
+        }
         get_jwt(
             self, url='update_lti_groups',
             user=test_student, status=200,
-            request_body={
-                'user_id': test_student.lti_id,
-                'custom_section_id': 'new_group1,new_group2',
-                'custom_course_id': course.active_lti_id,
-                'custom_assignment_id': assignment.active_lti_id},
+            request_body=body,
             response_msg='',
-            assert_msg='With valid params it should response successfully')
+            assert_msg='With valid params it should response successfully',
+        )
         assert group_count + 2 == Group.objects.filter(course=course).count() and \
             Group.objects.filter(course=course, lti_id='new_group2').exists(), \
             'New groups should be created'
+        test_student_participation = test_student.participation_set.get(course=course)
+        assert set(test_student_participation.groups.values_list('lti_id', flat=True)) == lms_group_ids, \
+            'The newly created LMS groups have been added to the participation of the student'
+
+        # User is removed from 'new_group2' group manually on EJ
+        new_group2 = Group.objects.get(lti_id='new_group2')
+        test_student_participation.groups.remove(new_group2)
+        get_jwt(
+            self, url='update_lti_groups',
+            user=test_student, status=200,
+            request_body=body,
+            response_msg='',
+            assert_msg='With valid params it should response successfully',
+        )
+        assert set(test_student_participation.groups.values_list('lti_id', flat=True)) == lms_group_ids, (
+            'LTI launch overwrites any group corrections made specifically on the EJ side, when the group is part of '
+            'the lti launch params.'
+        )
+
+        # User is added to a group created manually on EJ
+        ej_group = factory.Group(course=course, lti_id='')
+        test_student_participation.groups.add(ej_group)
+        group_pks = set(test_student_participation.groups.values_list('pk', flat=True))
+        get_jwt(
+            self, url='update_lti_groups',
+            user=test_student, status=200,
+            request_body=body,
+            response_msg='',
+            assert_msg='With valid params it should response successfully',
+        )
+        assert set(test_student_participation.groups.values_list('pk', flat=True)) == group_pks, \
+            'LTI launch does not affect groups which are not part of the request body (only syncs mentioned groups).'
 
     def test_get_lti_params_from_jwt_wrong_user(self):
         get_jwt(
