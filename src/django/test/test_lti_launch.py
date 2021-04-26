@@ -17,6 +17,7 @@ from django.test import RequestFactory, TestCase
 import VLE.lti_launch as lti
 import VLE.views.lti as lti_view
 from VLE.models import Group, Instance, Journal, Participation, User, access_gen
+from VLE.utils.error_handling import VLEProgrammingError
 
 REQUEST = {
     # Authentication data
@@ -393,6 +394,11 @@ class LtiLaunchTest(TestCase):
         )
         assert User.objects.filter(lti_id=test_user_params2['user_id']).exists(), 'Second test user should be created.'
         assert not User.objects.filter(lti_id=test_student.lti_id).exists(), 'Can only be one test student per course.'
+
+        # A test user is expected to launch without a valid email address, if this DOES occur a VLEProgrammingError
+        # should be raised so we can take action
+        with self.assertRaises(VLEProgrammingError):
+            lti_launch(request_body={**test_user_params2, 'custom_user_email': 'something@valid.com'})
 
     def test_get_lti_params_from_valid_test_user(self):
         course = factory.LtiCourse()

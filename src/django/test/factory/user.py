@@ -43,9 +43,9 @@ class LtiStudentFactory(UserFactory):
 
 
 class TestUserFactory(LtiStudentFactory):
+    # Full name can vary, we have seen 'Test student' but also 'Cursist X'
     email = None
     username = factory.Sequence(lambda x: f"305c9b180a9ce9684ea62aeff2b2e97052cf2d4b{x + 1}")
-    full_name = settings.LTI_TEST_STUDENT_FULL_NAME
     verified_email = False
     is_test_student = True
     factory.PostGenerationMethodCall('set_unusable_password')

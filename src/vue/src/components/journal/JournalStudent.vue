@@ -26,6 +26,13 @@
                 :journal="journal"
             />
 
+            <b-alert
+                v-if="$store.getters['user/isTestStudent']"
+                show
+            >
+                <b>Note:</b> This is a <i>test student</i> account, any changes you make are not permanent.
+            </b-alert>
+
             <load-wrapper :loading="loadingNodes">
                 <template v-if="currentNode.type === addNodeSymbol">
                     <h4 class="theme-h4 mb-2 d-block">

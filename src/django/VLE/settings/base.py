@@ -106,8 +106,8 @@ LTI_ROLES = OrderedDict({
     'urn:lti:role:ims/lis/teachingassistant': 'TA',
     'urn:lti:role:ims/lis/learner': 'Student',
 })
-LTI_TEST_STUDENT_FULL_NAME = 'Test student'
-
+# Names we have encountered used for test students
+LTI_TEST_STUDENT_FULL_NAMES = {'Test student'}
 
 # Celery settings
 CELERY_BROKER_URL = os.environ['BROKER_URL']

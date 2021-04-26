@@ -5,7 +5,6 @@ from test.factory.file_context import _fc_to_rt_img_element
 from test.factory.user import DEFAULT_PASSWORD
 
 import factory
-from django.conf import settings
 
 import VLE.models
 import VLE.serializers
@@ -23,9 +22,9 @@ class JWTParamsFactory(factory.Factory):
 
 
 class JWTTestUserParamsFactory(JWTParamsFactory):
+    # NOTE: custom_user_full_name can vary, we have seen 'Test student' but also 'Cursist X'
     custom_user_email = ''
     user_id = factory.Sequence(lambda x: "305c9b180a9ce9684ea62aeff2b2e97052cf2d4b{}".format(x))
-    custom_user_full_name = settings.LTI_TEST_STUDENT_FULL_NAME
     custom_username = factory.Sequence(lambda x: '305c9b180a9ce9684ea62aeff2b2e97052cf2d4c1{}'.format(x))
 
 
