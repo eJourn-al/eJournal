@@ -75,6 +75,18 @@
                         @input="selectedExtensionType = ' '"
                     />
                 </div>
+                <theme-select
+                    v-if="field.type === 'v'"
+                    v-model="selectedVideoSources"
+                    label="label"
+                    trackBy="id"
+                    :options="videoSources"
+                    :multiple="true"
+                    placeholder="Please select one or more video hosts"
+                    :multiSelectText="selectedVideoSources.map(host => host.label).join(', ')"
+                    class="multi-form mr-2"
+                    @input="field.options = selectedVideoSources.map(elem => elem.id).join()"
+                />
                 <div v-else-if="field.type === 's'">
                     <!-- Event targeting allows us to access the input value -->
                     <div class="d-flex">
@@ -155,12 +167,15 @@ export default {
         fileExtensions[this.$root.fileTypes.pdf] = 'Accept PDF Only'
         fileExtensions[' '] = 'Accept Custom Extensions Only'
 
+        const youtube = { label: 'YouTube', id: 'y' }
+        const kaltura = { label: 'Kaltura', id: 'k' }
+
         return {
             fieldTypes: {
                 t: 'Text',
                 rt: 'Rich Text',
                 f: 'File Upload',
-                v: 'YouTube Video',
+                v: 'Video',
                 u: 'URL',
                 d: 'Date',
                 dt: 'Date Time',
@@ -169,6 +184,10 @@ export default {
             },
             fileExtensions,
             selectedExtensionType: '',
+            youtube,
+            kaltura,
+            videoSources: [youtube, kaltura],
+            selectedVideoSources: [youtube, kaltura],
         }
     },
     watch: {
@@ -178,6 +197,7 @@ export default {
     },
     created () {
         this.setFieldExtensionType()
+        this.initAndMapSelectedVideoSources()
     },
     methods: {
         setFieldExtensionType () {
@@ -192,11 +212,21 @@ export default {
                 }
             }
         },
+        /* Work back from the fetched video source options as string to the respective objects for the select */
+        initAndMapSelectedVideoSources () {
+            if (this.field.type === 'v') {
+                this.selectedVideoSources = this.field.options.split(',').map(
+                    (id) => this.videoSources.find((source) => source.id === id),
+                )
+            }
+        },
         selectedType () {
             this.field.options = ''
             this.selectedExtensionType = ''
             if (this.field.type === 'n') {
                 this.field.required = false
+            } else if (this.field.type === 'v') {
+                this.field.options = this.videoSources.map((source) => source.id).join()
             }
         },
         addSelectionOption (target, field) {

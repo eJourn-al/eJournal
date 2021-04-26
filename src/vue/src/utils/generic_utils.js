@@ -69,4 +69,11 @@ export default {
 
         return (match && match.groups.id) ? match.groups.id : false
     },
+
+    praseSrcFromKalturaEmbedCode (code) {
+        const re = /(?:<iframe.*src=")(?<src>https:\/\/api\.eu\.kaltura\.com[^ ]*)(?:")/
+
+        const match = code.match(re)
+        return (match && match.groups.src) ? match.groups.src : false
+    },
 }

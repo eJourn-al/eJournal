@@ -18,6 +18,8 @@ if not (os.path.exists(IMG_FILE_PATH)):
     IMG_FILE_PATH = './src/vue/public/journal-view.png'
     PDF_FILE_PATH = './src/django/VLE/management/commands/dummy.pdf'
 
+kaltura_what_is_ej_embed_code = '''<iframe id="kaltura_player" src="https://api.eu.kaltura.com/p/120/sp/12000/embedIframeJs/uiconf_id/23449960/partner_id/120?iframeembed=true&playerId=kaltura_player&entry_id=0_jerjtlfn&flashvars[streamerType]=auto&amp;flashvars[localizationCode]=en_US&amp;flashvars[leadWithHTML5]=true&amp;flashvars[sideBarContainer.plugin]=true&amp;flashvars[sideBarContainer.position]=left&amp;flashvars[sideBarContainer.clickToClose]=true&amp;flashvars[chapters.plugin]=true&amp;flashvars[chapters.layout]=vertical&amp;flashvars[chapters.thumbnailRotator]=false&amp;flashvars[streamSelector.plugin]=true&amp;flashvars[EmbedPlayer.SpinnerTarget]=videoHolder&amp;flashvars[dualScreen.plugin]=true&amp;flashvars[hotspots.plugin]=1&amp;flashvars[Kaltura.addCrossoriginToIframe]=true&amp;&wid=0_cj3sp2ui" width="400" height="261" allowfullscreen webkitallowfullscreen mozAllowFullScreen allow="autoplay *; fullscreen *; encrypted-media *" sandbox="allow-forms allow-same-origin allow-scripts allow-top-navigation allow-pointer-lock allow-popups allow-modals allow-orientation-lock allow-popups-to-escape-sandbox allow-presentation allow-top-navigation-by-user-activation" frameborder="0" title="Kaltura Player"></iframe>'''  # noqa: E501
+
 
 def _from_file_to_file(from_file):
     """
@@ -38,8 +40,10 @@ def gen_valid_non_file_data(field):
     if field.type == Field.TEXT:
         return factory.Faker('text').generate()
     if field.type == Field.VIDEO:
-        # According to our current validators this can be any url
-        return 'https://www.youtube.com/watch?v=lJMNA7UcpxE'
+        if field.youtube_allowed:
+            return 'https://www.youtube.com/watch?v=lJMNA7UcpxE'
+        if field.kaltura_allowed:
+            return kaltura_what_is_ej_embed_code
     if field.type == Field.URL:
         return factory.Faker('url').generate()
     if field.type == Field.DATE:

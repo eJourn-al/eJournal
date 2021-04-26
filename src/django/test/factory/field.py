@@ -21,6 +21,8 @@ def _select_location(g_field):
 def _gen_options(g_field):
     if g_field.type == Field.SELECTION:
         return '["a", "b", "c"]'
+    elif g_field.type == Field.VIDEO:
+        return f'{Field.YOUTUBE},{Field.KALTURA}'
     return None
 
 
@@ -60,6 +62,7 @@ class FileFieldFactory(FieldFactory):
 
 class VideoFieldFactory(FieldFactory):
     type = Field.VIDEO
+    options = f'{Field.YOUTUBE},{Field.KALTURA}'
 
 
 class UrlFieldFactory(FieldFactory):

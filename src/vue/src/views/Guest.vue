@@ -47,13 +47,14 @@
         <custom-footer style="clear:both"/>
     </content-single-column>
 </template>
+
 <script>
 import contentSingleColumn from '@/components/columns/ContentSingleColumn.vue'
 import customFooter from '@/components/assets/Footer.vue'
 import loginForm from '@/components/account/LoginForm.vue'
 import routerConstraints from '@/utils/constants/router_constraints.js'
 
-import instanceAPI from '@/api/instance.js'
+import { mapGetters } from 'vuex'
 
 export default {
     name: 'Guest',
@@ -64,16 +65,14 @@ export default {
     },
     data () {
         return {
-            name: null,
             username: '',
             password: '',
         }
     },
-    created () {
-        instanceAPI.get()
-            .then((instance) => {
-                this.name = instance.name
-            })
+    computed: {
+        ...mapGetters({
+            name: 'instance/name',
+        }),
     },
     methods: {
         handleLoginSucces () {
