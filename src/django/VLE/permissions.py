@@ -137,8 +137,26 @@ def serialize_general_permissions(user):
 
 
 def serialize_course_permissions(user, course):
-    return {key: has_course_permission(user, key, course) for key in VLE.models.Role.COURSE_PERMISSIONS}
+    return VLE.models.Role.objects.values(*VLE.models.Role.COURSE_PERMISSIONS).filter(
+        role__user=user,
+        course=course,
+    ).first()
 
 
 def serialize_assignment_permissions(user, assignment):
-    return {key: has_assignment_permission(user, key, assignment) for key in VLE.models.Role.ASSIGNMENT_PERMISSIONS}
+    permissions = {}
+    for course in assignment.courses.all():
+        perms = VLE.models.Role.objects.values(*VLE.models.Role.ASSIGNMENT_PERMISSIONS).filter(
+            role__user=user,
+            course=course,
+        ).first()
+
+        if perms:
+            for perm, value in perms.items():
+                if value or perm not in permissions:
+                    permissions[perm] = value
+
+    if permissions.get('can_view_all_journals', False) or user.is_superuser:
+        permissions['can_have_journal'] = False
+
+    return permissions
