@@ -366,20 +366,28 @@ class TemplateTest(TestCase):
 
         def test_field_set_validation():
             duplicate_field_locations = deepcopy(valid_data)
-            duplicate_field_locations['field_set'] = [{'location': 0}, {'location': 0}]
+            duplicate_field_locations['field_set'] = [{'location': 0, 'type': 't'}, {'location': 0, 'type': 't'}]
             self.assertRaises(ValidationError, Template.validate, duplicate_field_locations, self.assignment)
 
             oob_field_locations = deepcopy(valid_data)
-            oob_field_locations['field_set'] = [{'location': 0}, {'location': -1}]
+            oob_field_locations['field_set'] = [{'location': 0, 'type': 't'}, {'location': -1, 'type': 't'}]
             self.assertRaises(ValidationError, Template.validate, oob_field_locations, self.assignment)
 
             oob_field_locations = deepcopy(valid_data)
-            oob_field_locations['field_set'] = [{'location': 0}, {'location': 2}]
+            oob_field_locations['field_set'] = [{'location': 0, 'type': 't'}, {'location': 2, 'type': 't'}]
             self.assertRaises(ValidationError, Template.validate, oob_field_locations, self.assignment)
 
             no_fields = deepcopy(valid_data)
             no_fields['field_set'] = []
             self.assertRaises(ValidationError, Template.validate, no_fields, self.assignment)
+
+            unknwown_video_host = deepcopy(valid_data)
+            unknwown_video_host['field_set'] = [{'location': 0, 'type': 'v', 'options': f'{Field.YOUTUBE},NONSENSE'}]
+            self.assertRaises(ValidationError, Template.validate, unknwown_video_host, self.assignment)
+
+            empty_video_host = deepcopy(valid_data)
+            empty_video_host['field_set'] = [{'location': 0, 'type': 'v', 'options': ''}]
+            self.assertRaises(ValidationError, Template.validate, empty_video_host, self.assignment)
 
         test_concrete_fields_validation()
         test_validate_chain_fields()

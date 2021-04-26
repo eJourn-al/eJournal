@@ -22,7 +22,7 @@ import {
     FormFilePlugin,
     FormGroupPlugin,
     FormInputPlugin,
-    // FormRadioPlugin,
+    FormRadioPlugin,
     // FormRatingPlugin,
     FormSelectPlugin,
     // FormSpinbuttonPlugin,
@@ -75,7 +75,7 @@ export default function initBootstrap (Vue) {
     Vue.use(FormFilePlugin)
     Vue.use(FormGroupPlugin)
     Vue.use(FormInputPlugin)
-    // Vue.use(FormRadioPlugin)
+    Vue.use(FormRadioPlugin)
     // Vue.use(FormRatingPlugin)
     Vue.use(FormSelectPlugin)
     // Vue.use(FormSpinbuttonPlugin)

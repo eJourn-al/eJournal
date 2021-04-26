@@ -184,13 +184,10 @@
 <script>
 import { mapGetters } from 'vuex'
 
-import instanceAPI from '@/api/instance.js'
-
 export default {
     data () {
         return {
             defaultProfileImg: '/unknown-profile.png',
-            allowRegistration: null,
         }
     },
     computed: {
@@ -198,13 +195,8 @@ export default {
             loggedIn: 'user/loggedIn',
             profileImg: 'user/profilePicture',
             showConnectionSpinner: 'connection/showConnectionSpinner',
+            allowRegistration: 'instance/allowRegistration',
         }),
-    },
-    created () {
-        instanceAPI.get()
-            .then((instance) => {
-                this.allowRegistration = instance.allow_standalone_registration
-            })
     },
 }
 </script>

@@ -283,9 +283,6 @@ export default {
             const file = blobInfo.blob()
             const formData = new FormData()
 
-            console.log('blob name', blobInfo.filename())
-            console.log('file name', file.name)
-
             if (file.size > this.$root.maxFileSizeBytes) {
                 failure(
                     `The selected file exceeds the maximum file size of ${this.$root.maxFileSizeLabel}.`,

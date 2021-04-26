@@ -210,6 +210,8 @@ router.beforeEach((to, from, next) => {
 })
 
 router.afterEach((to, from) => {
+    store.dispatch('instance/retrieve', {})
+
     if ('aID' in to.params) {
         store.dispatch('assignment/retrieve', { id: to.params.aID })
         store.dispatch('presetNode/list', { aID: to.params.aID })

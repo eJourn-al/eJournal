@@ -91,7 +91,7 @@ class ExtendedModelSerializer(serializers.ModelSerializer):
 class InstanceSerializer(serializers.ModelSerializer):
     class Meta:
         model = VLE.models.Instance
-        fields = ('allow_standalone_registration', 'name')
+        fields = ('allow_standalone_registration', 'name', 'kaltura_url')
         read_only_fields = ()
 
 

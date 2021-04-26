@@ -4,6 +4,7 @@ import os
 import test.factory as factory
 from copy import deepcopy
 from datetime import datetime, timedelta
+from test.factory.content import kaltura_what_is_ej_embed_code
 from test.utils import api
 from test.utils.generic_utils import equal_models
 from test.utils.performance import QueryContext, assert_num_queries_less_than
@@ -361,10 +362,11 @@ class EntryAPITest(TestCase):
             ValidationError, validate_entry_content, faker.url(schemes=('illega')), factory.UrlField(template=template))
 
         # Test Video
-        valid_youtube_video_url = 'http://youtube.com/watch?v=iwGFalTRHDA'
-        with mock.patch('VLE.validators.validate_youtube_url_with_video_id') as validate_youtube_video_url_mock:
-            validate_entry_content('http://youtube.com/watch?v=iwGFalTRHDA', factory.VideoField(template=template))
-            validate_youtube_video_url_mock.assert_called_with(valid_youtube_video_url)
+        valid_youtube_video_url = 'http://www.youtube.com/watch?v=06xKPwQuMfk'
+        video_field = factory.VideoField(template=template)
+        with mock.patch('VLE.validators.validate_video_data') as validate_video_data_mock:
+            validate_entry_content('http://www.youtube.com/watch?v=06xKPwQuMfk', video_field)
+            validate_video_data_mock.assert_called_with(video_field, valid_youtube_video_url)
 
         selection_field = factory.SelectionField(template=template)
         validate_entry_content(json.loads(selection_field.options)[0], selection_field)
@@ -449,6 +451,28 @@ class EntryAPITest(TestCase):
             valid_rich_text_field_content.data,
             valid_rich_text_field_content.field
         )
+
+    def test_validate_video_data(self):
+        assignment = factory.Assignment(format__templates=False)
+        template = factory.Template(format=assignment.format)
+
+        valid_youtube_video_url = 'http://www.youtube.com/watch?v=06xKPwQuMfk'
+        youtube_video_field = factory.VideoField(template=template, options=f'{Field.YOUTUBE}')
+        with mock.patch(
+            'VLE.validators.validate_youtube_url_with_video_id') as validate_youtube_video_url_mock, mock.patch(
+                'VLE.validators.validate_kaltura_video_embed_code') as validate_kaltura_mock:
+            validate_entry_content(valid_youtube_video_url, youtube_video_field)
+            validate_youtube_video_url_mock.assert_called_with(valid_youtube_video_url)
+            assert not validate_kaltura_mock.called
+
+        valid_kaltura_embed_code = kaltura_what_is_ej_embed_code
+        kaltura_video_field = factory.VideoField(template=template, options=f'{Field.KALTURA}')
+        with mock.patch(
+            'VLE.validators.validate_youtube_url_with_video_id') as validate_youtube_video_url_mock, mock.patch(
+                'VLE.validators.validate_kaltura_video_embed_code') as validate_kaltura_mock:
+            validate_entry_content(valid_kaltura_embed_code, kaltura_video_field)
+            assert not validate_youtube_video_url_mock.called
+            validate_kaltura_mock.assert_called_with(valid_kaltura_embed_code)
 
     def test_assignment_unpublish_with_entries(self):
         assignment = factory.Assignment()
