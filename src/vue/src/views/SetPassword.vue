@@ -52,8 +52,9 @@ import contentSingleColumn from '@/components/columns/ContentSingleColumn.vue'
 import tooltip from '@/components/assets/Tooltip.vue'
 
 import authAPI from '@/api/auth.js'
-import instanceAPI from '@/api/instance.js'
 import validation from '@/utils/validation.js'
+
+import { mapGetters } from 'vuex'
 
 export default {
     name: 'SetPassword',
@@ -64,12 +65,16 @@ export default {
     props: ['username', 'token'],
     data () {
         return {
-            instanceName: 'eJournal',
             password: '',
             passwordRepeated: '',
         }
     },
     computed: {
+        computed: {
+            ...mapGetters({
+                instanceName: 'instance/name',
+            }),
+        },
         title () {
             if (this.$route.query.new_user) {
                 return 'Complete registration'
@@ -82,12 +87,6 @@ export default {
             }
             return `To continue using ${this.instanceName}, please please set a new password below. `
         },
-    },
-    created () {
-        instanceAPI.get()
-            .then((instance) => {
-                this.name = instance.name
-            })
     },
     methods: {
         setPassword () {

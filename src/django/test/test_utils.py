@@ -16,7 +16,7 @@ import VLE.utils.generic_utils as utils
 import VLE.utils.responses
 from VLE.serializers import UserSerializer, prefetched_objects
 from VLE.utils.error_handling import VLEParamWrongType, VLEProgrammingError
-from VLE.validators import validate_youtube_url_with_video_id
+from VLE.validators import validate_kaltura_video_embed_code, validate_youtube_url_with_video_id
 
 
 class UtilsTest(TestCase):
@@ -229,42 +229,43 @@ class UtilsTest(TestCase):
 
     def test_validate_youtube_url_with_video_id(self):
         valid_youtube_video_urls = [
-            'http://youtube.com/watch?v=iwGFalTRHDA',
-            'http://www.youtube.com/watch?v=iwGFalTRHDA&feature=related',
-            'https://youtube.com/iwGFalTRHDA',
-            'http://youtu.be/n17B_uFF4cA',
+            'http://www.youtube.com/watch?v=06xKPwQuMfk',
+            'http://www.youtube.com/watch?v=06xKPwQuMfk&feature=related',
+            'http://youtu.be/06xKPwQuMfk',
+            'http://www.youtube.com/watch?v=06xKPwQuMfk',
+            'http://youtu.be/06xKPwQuMfk',
+            'https://www.youtube.com/watch?v=06xKPwQuMfk&feature=featured',
+            'https://www.youtube.com/watch?v=06xKPwQuMfk',
+            'http://www.youtube.com/watch?v=06xKPwQuMfk',
+            'www.youtube.com/watch?v=06xKPwQuMfk',
+            'https://youtube.com/watch?v=06xKPwQuMfk',
+            'http://youtube.com/watch?v=06xKPwQuMfk',
+            'youtube.com/watch?v=06xKPwQuMfk',
+            'https://m.youtube.com/watch?v=06xKPwQuMfk',
+            'http://m.youtube.com/watch?v=06xKPwQuMfk',
+            'm.youtube.com/watch?v=06xKPwQuMfk',
+            'https://www.youtube.com/v/06xKPwQuMfk?fs=1&hl=en_US',
+            'http://www.youtube.com/v/06xKPwQuMfk?fs=1&hl=en_US',
+            'www.youtube.com/v/06xKPwQuMfk?fs=1&hl=en_US',
+            'youtube.com/v/06xKPwQuMfk?fs=1&hl=en_US',
+            'https://www.youtube.com/embed/06xKPwQuMfk?autoplay=1',
+            'https://www.youtube.com/embed/06xKPwQuMfk',
+            'http://www.youtube.com/embed/06xKPwQuMfk',
+            'www.youtube.com/embed/06xKPwQuMfk',
+            'https://youtube.com/embed/06xKPwQuMfk',
+            'http://youtube.com/embed/06xKPwQuMfk',
+            'youtube.com/embed/06xKPwQuMfk',
+            'https://youtu.be/06xKPwQuMfk?t=120',
+            'https://youtu.be/06xKPwQuMfk',
+            'http://youtu.be/06xKPwQuMfk',
+            'youtu.be/06xKPwQuMfk',
+            'https://www.youtube.com/HamdiKickProduction?v=06xKPwQuMfk',
+            '//www.youtube.com/watch?v=06xKPwQuMfk',
+            '//youtube.com/embed/06xKPwQuMfk',
+            # NOTE: No longer valid YouTube links?
             'youtube.com/iwGFalTRHDA',
             'youtube.com/n17B_uFF4cA',
-            'http://www.youtube.com/watch?v=t-ZRX8984sc',
-            'http://youtu.be/t-ZRX8984sc',
-            'https://www.youtube.com/watch?v=DFYRQ_zQ-gk&feature=featured',
-            'https://www.youtube.com/watch?v=DFYRQ_zQ-gk',
-            'http://www.youtube.com/watch?v=DFYRQ_zQ-gk',
-            'www.youtube.com/watch?v=DFYRQ_zQ-gk',
-            'https://youtube.com/watch?v=DFYRQ_zQ-gk',
-            'http://youtube.com/watch?v=DFYRQ_zQ-gk',
-            'youtube.com/watch?v=DFYRQ_zQ-gk',
-            'https://m.youtube.com/watch?v=DFYRQ_zQ-gk',
-            'http://m.youtube.com/watch?v=DFYRQ_zQ-gk',
-            'm.youtube.com/watch?v=DFYRQ_zQ-gk',
-            'https://www.youtube.com/v/DFYRQ_zQ-gk?fs=1&hl=en_US',
-            'http://www.youtube.com/v/DFYRQ_zQ-gk?fs=1&hl=en_US',
-            'www.youtube.com/v/DFYRQ_zQ-gk?fs=1&hl=en_US',
-            'youtube.com/v/DFYRQ_zQ-gk?fs=1&hl=en_US',
-            'https://www.youtube.com/embed/DFYRQ_zQ-gk?autoplay=1',
-            'https://www.youtube.com/embed/DFYRQ_zQ-gk',
-            'http://www.youtube.com/embed/DFYRQ_zQ-gk',
-            'www.youtube.com/embed/DFYRQ_zQ-gk',
-            'https://youtube.com/embed/DFYRQ_zQ-gk',
-            'http://youtube.com/embed/DFYRQ_zQ-gk',
-            'youtube.com/embed/DFYRQ_zQ-gk',
-            'https://youtu.be/DFYRQ_zQ-gk?t=120',
-            'https://youtu.be/DFYRQ_zQ-gk',
-            'http://youtu.be/DFYRQ_zQ-gk',
-            'youtu.be/DFYRQ_zQ-gk',
-            'https://www.youtube.com/HamdiKickProduction?v=DFYRQ_zQ-gk',
-            '//www.youtube.com/watch?v=DFYRQ_zQ-gk',
-            '//youtube.com/embed/DFYRQ_zQ-gk',
+            'https://youtube.com/iwGFalTRHDA',
         ]
 
         invalid_youtube_video_urls = [
@@ -283,3 +284,29 @@ class UtilsTest(TestCase):
 
         for invalid_url in invalid_youtube_video_urls:
             self.assertRaises(ValidationError, validate_youtube_url_with_video_id, invalid_url)
+
+    def test_validate_kaltura_video_embed_code(self):
+        valid_kaltura_video_embed_codes = [
+            '<iframe id="kaltura_player" src="https://api.eu.kaltura.com/p/120/sp/12000/embedIframeJs/uiconf_id/23449960/partner_id/120?iframeembed=true&playerId=kaltura_player&entry_id=0_jerjtlfn&flashvars[streamerType]=auto&amp;flashvars[localizationCode]=en_US&amp;flashvars[leadWithHTML5]=true&amp;flashvars[sideBarContainer.plugin]=true&amp;flashvars[sideBarContainer.position]=left&amp;flashvars[sideBarContainer.clickToClose]=true&amp;flashvars[chapters.plugin]=true&amp;flashvars[chapters.layout]=vertical&amp;flashvars[chapters.thumbnailRotator]=false&amp;flashvars[streamSelector.plugin]=true&amp;flashvars[EmbedPlayer.SpinnerTarget]=videoHolder&amp;flashvars[dualScreen.plugin]=true&amp;flashvars[hotspots.plugin]=1&amp;flashvars[Kaltura.addCrossoriginToIframe]=true&amp;&wid=0_cj3sp2ui" width="400" height="261" allowfullscreen webkitallowfullscreen mozAllowFullScreen allow="autoplay *; fullscreen *; encrypted-media *" sandbox="allow-forms allow-same-origin allow-scripts allow-top-navigation allow-pointer-lock allow-popups allow-modals allow-orientation-lock allow-popups-to-escape-sandbox allow-presentation allow-top-navigation-by-user-activation" frameborder="0" title="Kaltura Player"></iframe>',  # noqa: E501
+            '<iframe src="https://api.eu.kaltura.com/<anything_but_space_goes>" <any tags are allowed but not captured',
+        ]
+
+        invalid_kaltura_video_embed_codes = [
+            '<iframe src="http://api.eu.kaltura.com/1"',
+            '<iframe src="https://api.us.kaltura.com/1"',
+            'https://api.eu.kaltura.com/1',
+            'http://www.youtube.com/watch?v=06xKPwQuMfk',
+            'http://www.youtube.com/embed/watch?feature=player_embedded&v=r5nB9u4jjy4',
+            'http://altotube.com/t-ZRX8984sc',
+            'https://bootstrap-vue.org/',
+            '',
+            1,
+            False,
+            True,
+        ]
+
+        for valid_code in valid_kaltura_video_embed_codes:
+            validate_kaltura_video_embed_code(valid_code)
+
+        for invalid_code in invalid_kaltura_video_embed_codes:
+            self.assertRaises(ValidationError, validate_kaltura_video_embed_code, invalid_code)

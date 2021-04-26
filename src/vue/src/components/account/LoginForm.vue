@@ -92,7 +92,8 @@
 
 <script>
 import authAPI from '@/api/auth.js'
-import instanceAPI from '@/api/instance.js'
+
+import { mapGetters } from 'vuex'
 
 export default {
     name: 'LoginForm',
@@ -101,14 +102,12 @@ export default {
             usernameEmail: null,
             username: null,
             password: null,
-            allowRegistration: null,
         }
     },
-    created () {
-        instanceAPI.get()
-            .then((instance) => {
-                this.allowRegistration = instance.allow_standalone_registration
-            })
+    computed: {
+        ...mapGetters({
+            allowRegistration: 'instance/allowRegistration',
+        }),
     },
     mounted () {
         if (this.$root.previousPage && this.$root.previousPage.name === 'SetPassword') {

@@ -11,6 +11,7 @@ import assignmentEditor from './modules/assignmentEditor.js'
 import category from './modules/category.js'
 import connection from './modules/connection.js'
 import content from './modules/content.js'
+import instance from './modules/instance.js'
 import permissions from './modules/permissions.js'
 import preferences from './modules/preferences.js'
 import presetNode from './modules/presetNode.js'
@@ -32,6 +33,7 @@ export default createStore(Vuex.Store, {
         category,
         connection,
         content,
+        instance,
         permissions,
         preferences,
         presetNode,
