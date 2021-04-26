@@ -538,5 +538,4 @@ class TeacherEntryAPITest(TestCase):
         check_db_state_after_exception(self, 'VLE.factory.make_content')
         check_db_state_after_exception(self, 'VLE.utils.file_handling.get_files_from_rich_text')
         check_db_state_after_exception(self, 'VLE.utils.file_handling.establish_file')
-        check_db_state_after_exception(self, 'VLE.factory.make_grade')
         check_db_state_after_exception(self, 'VLE.utils.grading.task_journal_status_to_LMS')
