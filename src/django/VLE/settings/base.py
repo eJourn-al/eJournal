@@ -86,25 +86,32 @@ LTI_SECRET = os.environ['LTI_SECRET']
 LTI_KEY = os.environ['LTI_KEY']
 ROLES = OrderedDict({
     'Teacher': [
+        'instructor',
+        'administrator',
         'urn:lti:role:ims/lis/instructor',
         'urn:lti:role:ims/lis/contentdeveloper',
         'urn:lti:role:ims/lis/administrator',
     ],
     'TA': [
+        'teachingassistant',
         'urn:lti:role:ims/lis/mentor',
         'urn:lti:role:ims/lis/teachingassistant',
     ],
     'Student': [
+        'learner',
         'urn:lti:role:ims/lis/learner',
     ]
 })
 LTI_ROLES = OrderedDict({
+    'instructor': 'Teacher',
+    'administrator': 'Teacher',
     'urn:lti:role:ims/lis/instructor': 'Teacher',
     'urn:lti:role:ims/lis/contentdeveloper': 'Teacher',
     'urn:lti:role:ims/lis/administrator': 'Teacher',
     'urn:lti:role:ims/lis/mentor': 'TA',
     'urn:lti:role:ims/lis/teachingassistant': 'TA',
     'urn:lti:role:ims/lis/learner': 'Student',
+    'learner': 'Student',
 })
 # Names we have encountered used for test students
 LTI_TEST_STUDENT_FULL_NAMES = {'Test student'}

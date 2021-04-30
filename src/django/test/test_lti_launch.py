@@ -771,6 +771,16 @@ class LtiLaunchTest(TestCase):
             assert_msg='When a student tries to create a new course, with also a new Instructor role, \
                         it should grand its permissions')
 
+    def test_get_lti_params_from_jwt_canvas_instructor_role(self):
+        get_jwt(
+            self, user=self.student, status=200,
+            request_body={
+                'user_id': self.student.lti_id,
+                'roles': 'Learner,Instructor'},
+            response_value=lti_view.LTI_STATES.NEW_COURSE.value,
+            assert_msg='When a student tries to create a new course, with also a new Instructor role, \
+                        it should grand its permissions')
+
     def test_get_lti_params_from_jwt_administrator_role(self):
         get_jwt(
             self, user=self.student, status=200,
@@ -926,3 +936,18 @@ class LtiLaunchTest(TestCase):
             None
         )
         assert selected_journal is None
+
+    def test_update_lti_course_if_exists(self):
+        lti_course = factory.LtiCourse()
+        student_role = lti_course.role_set.get(name='Student')
+        teacher_now_student = factory.Teacher()
+
+        # Insitution teacher is now launched as a student in a different course
+        lti.update_lti_course_if_exists(
+            {'custom_course_id': lti_course.active_lti_id},
+            teacher_now_student,
+            role='urn:lti:instrole:ims/lis/Instructor,urn:lti:ims:ims/lis/Student'
+
+        )
+        assert lti_course.participation_set.filter(user=teacher_now_student, role=student_role).exists(), \
+            'Institution teacher but course student is added to the course as a student '
