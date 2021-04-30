@@ -79,7 +79,7 @@ class JournalImportRequestView(viewsets.ViewSet):
 
         source_entries = Entry.objects.none()
         if not jir_action == jir.DECLINED:
-            source_entries = Entry.objects.filter(node__journal=jir.source)
+            source_entries = Entry.objects.filter(node__journal=jir.source, is_draft=False)
             if not source_entries.exists():
                 jir.state = jir.EMPTY_WHEN_PROCESSED
 

@@ -205,7 +205,7 @@ def make_node(journal, entry=None, type=VLE.models.Node.ENTRY, preset=None):
     return VLE.models.Node.objects.get_or_create(type=type, entry=entry, preset=preset, journal=journal)[0]
 
 
-def make_entry(template, author, node, category_ids=None, title=None):
+def make_entry(template, author, node, category_ids=None, title=None, is_draft=False):
     """NOTE: Only called for single entry creation (not bulk, e.g. teacher entries)"""
     if not template.chain.allow_custom_categories or category_ids is None:
         category_ids = list(template.categories.values_list('pk', flat=True))
@@ -214,7 +214,13 @@ def make_entry(template, author, node, category_ids=None, title=None):
         title = None
 
     with transaction.atomic():
-        entry = VLE.models.Entry.objects.create(template=template, author=author, node=node, title=title)
+        entry = VLE.models.Entry.objects.create(
+            template=template,
+            author=author,
+            node=node,
+            title=title,
+            is_draft=is_draft,
+        )
         entry_category_links = [
             VLE.models.EntryCategoryLink(entry=entry, category_id=id, author=author)
             for id in category_ids

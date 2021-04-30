@@ -79,39 +79,67 @@
 
             <template v-if="edit">
                 <hr/>
-
-                <b-row
-                    no-gutters
-                    class="mt-2"
+                <b-button
+                    v-if="node.entry.is_draft"
+                    class="red-button"
+                    @click="() => deleteEntry(true)"
                 >
-                    <b-button
-                        class="red-button"
-                        @click="deleteEntry"
-                    >
-                        <icon name="trash"/>
-                        Delete
-                    </b-button>
+                    <icon name="trash"/>
+                    Discard draft
+                </b-button>
+                <b-button
+                    v-else
+                    class="red-button"
+                    @click="() => deleteEntry(false)"
+                >
+                    <icon name="trash"/>
+                    Delete
+                </b-button>
 
-                    <b-button
-                        class="green-button ml-auto"
-                        :class="{ 'input-disabled': requestInFlight || uploadingFiles > 0 }"
-                        @click="saveChanges"
-                    >
-                        <icon name="save"/>
-                        Save
-                    </b-button>
-                </b-row>
+                <dropdown-button
+                    :selectedOption="draftPostEntrySetting"
+                    :options="{
+                        p: {
+                            text: 'Post',
+                            icon: 'paper-plane',
+                            class: 'green-button',
+                        },
+                        d: {
+                            text: 'Save as draft',
+                            icon: 'save',
+                            class: 'gray-button',
+                            tooltip: 'This will also hide the existing entry from the teacher(s)'
+                        },
+                    }"
+                    :class="{ 'input-disabled': requestInFlight || uploadingFiles > 0 }"
+                    :up="true"
+                    class="ml-2 float-right"
+                    @change-option="(e) => draftPostEntrySetting = e"
+                    @click="() => saveChanges(isDraft = draftPostEntrySetting === 'd')"
+                />
             </template>
 
-            <b-button
+            <dropdown-button
                 v-else-if="create"
-                class="green-button float-right"
+                :selectedOption="draftPostEntrySetting"
+                :options="{
+                    p: {
+                        text: 'Post',
+                        icon: 'paper-plane',
+                        class: 'green-button',
+                    },
+                    d: {
+                        text: 'Save as draft',
+                        icon: 'save',
+                        class: 'gray-button',
+                    },
+                }"
                 :class="{ 'input-disabled': requestInFlight || uploadingFiles > 0 }"
-                @click="createEntry"
-            >
-                <icon name="paper-plane"/>
-                Post
-            </b-button>
+                :up="true"
+                class="ml-2 float-right"
+                @change-option="(e) => draftPostEntrySetting = e"
+                @click="() => createEntry(isDraft = draftPostEntrySetting === 'd')"
+            />
 
             <template v-else>
                 <hr/>
@@ -137,6 +165,14 @@
                         LATE
                     </b-badge>
                     <b-badge
+                        v-if="node.entry.is_draft"
+                        v-b-tooltip:hover="'This entry is not yet viewable for teachers'"
+                        pill
+                        class="draft-entry-badge"
+                    >
+                        DRAFT
+                    </b-badge>
+                    <b-badge
                         v-if="node.entry.jir"
                         v-b-tooltip:hover="
                             `This entry has been imported from the assignment
@@ -160,6 +196,7 @@
 
 <script>
 import Comments from '@/components/entry/Comments.vue'
+import DropdownButton from '@/components/assets/DropdownButton.vue'
 import EntryCategories from '@/components/category/EntryCategories.vue'
 import EntryFields from '@/components/entry/EntryFields.vue'
 import EntryTitle from '@/components/entry/EntryTitle.vue'
@@ -171,11 +208,12 @@ import entryAPI from '@/api/entry.js'
 
 export default {
     components: {
+        Comments,
+        DropdownButton,
         EntryFields,
         EntryTitle,
         SandboxedIframe,
         Tooltip,
-        Comments,
         filesList,
         EntryCategories,
     },
@@ -198,6 +236,7 @@ export default {
             newEntryContent: () => Object(),
             title: null,
             uploadingFiles: 0,
+            draftPostEntrySetting: 'p',
         }
     },
     computed: {
@@ -209,14 +248,7 @@ export default {
         node: {
             immediate: true,
             handler () {
-                if (this.node && this.node.entry) {
-                    this.newEntryContent = { ...this.node.entry.content }
-                    this.title = this.node.entry.title
-                } else {
-                    this.newEntryContent = Object()
-                    this.title = ''
-                }
-                this.edit = false
+                this.clearDraft()
             },
         },
         template: {
@@ -231,31 +263,49 @@ export default {
         },
     },
     methods: {
-        saveChanges () {
-            if (this.checkRequiredFields()) {
+        saveChanges (isDraft = false) {
+            if (isDraft || this.checkRequiredFields()) {
                 this.requestInFlight = true
                 entryAPI.update(
                     this.node.entry.id,
                     {
                         content: this.newEntryContent,
                         title: this.template.allow_custom_title ? this.title : null,
+                        is_draft: isDraft,
                     },
                     { customSuccessToast: 'Entry successfully updated.' },
                 )
                     .then((entry) => {
                         this.node.entry = entry
-                        this.edit = false
+                        // Draft nodes should immidiatly go to edit mode
+                        this.edit = this.node.entry.is_draft
                     })
                     .finally(() => { this.requestInFlight = false })
             }
         },
         clearDraft () {
+            if (this.node && this.node.entry) {
+                this.newEntryContent = { ...this.node.entry.content }
+                this.title = this.node.entry.title
+            } else {
+                this.newEntryContent = Object()
+                this.title = ''
+            }
+            // Draft nodes should NOT immidiatly go to edit mode, only after saving it should stay in edit mode
             this.edit = false
-            this.title = null
-            this.newEntryContent = {}
         },
-        deleteEntry () {
-            if (window.confirm('Are you sure that you want to delete this entry?')) {
+        deleteEntry (isDraft = false) {
+            if (isDraft) {
+                if (window.confirm('Are you sure that you want to discard this entry?')) {
+                    this.requestInFlight = true
+                    entryAPI.delete(this.node.entry.id, { customSuccessToast: 'Entry successfully discarded.' })
+                        .then((data) => {
+                            this.clearDraft()
+                            this.$emit('entry-deleted', data)
+                        })
+                        .finally(() => { this.requestInFlight = false })
+                }
+            } else if (window.confirm('Are you sure that you want to delete this entry?')) {
                 this.requestInFlight = true
                 entryAPI.delete(this.node.entry.id, { customSuccessToast: 'Entry successfully deleted.' })
                     .then((data) => {
@@ -265,8 +315,8 @@ export default {
                     .finally(() => { this.requestInFlight = false })
             }
         },
-        createEntry () {
-            if (this.checkRequiredFields()) {
+        createEntry (isDraft = false) {
+            if (isDraft || this.checkRequiredFields()) {
                 this.requestInFlight = true
 
                 let categoryIds = []
@@ -282,10 +332,12 @@ export default {
                     node_id: this.node && this.node.id > 0 ? this.node.id : null,
                     category_ids: categoryIds,
                     title: this.template.allow_custom_title ? this.title : null,
+                    is_draft: isDraft,
                 }, { customSuccessToast: 'Entry successfully posted.' })
                     .then((data) => {
                         this.clearDraft()
                         this.$emit('entry-posted', data)
+                        this.edit = data.entry.is_draft
                     })
                     .finally(() => { this.requestInFlight = false })
             }
@@ -298,13 +350,20 @@ export default {
 
             return true
         },
+        entryContentHasPendingChanges () {
+            // For newly created entries simply check if any field or the title has any content
+            if (this.create) {
+                return this.template.field_set.some((field) => this.newEntryContent[field.id])
+                    || this.title !== this.node.entry.title
+            } else {
+                // For existing entries check if the content or title is changed
+                return !this.$_isEqual(this.newEntryContent, this.node.entry.content)
+                    || this.title !== this.node.entry.title
+            }
+        },
         safeToLeave () {
-            // It is safe to leave the entry if it is not currently being edited AND if no content for an entry to be
-            // created is provided.
-            return (
-                !this.edit
-                && !(this.create && this.template.field_set.some((field) => this.newEntryContent[field.id]))
-            )
+            // It is safe to leave the entry if no entry is selected, or the selected entry has no pending changes
+            return !this.node || !this.node.entry || !this.entryContentHasPendingChanges()
         },
     },
 }

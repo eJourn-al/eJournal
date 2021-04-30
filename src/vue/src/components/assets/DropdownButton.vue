@@ -8,12 +8,28 @@
             class="dropdown-button"
             @click="emitClick(selectedOption)"
         >
-            <icon
-                :name="options[selectedOption].icon"
-                scale="1"
-            />
-            {{ options[selectedOption].text }}
+            <!-- NOTE: this had to be in two different spans because else the tooltip would be 'cached' and still
+                 visible after you switch to another item in the dropdown -->
             <span
+                v-if="options[selectedOption].tooltip"
+                v-b-tooltip.hover
+                :title="options[selectedOption].tooltip"
+            >
+                <icon
+                    :name="options[selectedOption].icon"
+                    scale="1"
+                />
+                {{ options[selectedOption].text }}
+            </span>
+            <span v-else>
+                <icon
+                    :name="options[selectedOption].icon"
+                    scale="1"
+                />
+                {{ options[selectedOption].text }}
+            </span>
+            <span
+                class="dropdown-arrow"
                 @click.prevent.stop="() => {
                     isOpen = !isOpen
                 }"
@@ -107,7 +123,7 @@ export default {
 .dropdown-button-wrapper
     .dropdown-button
         z-index: 1
-        span
+        span.dropdown-arrow
             display: inline-block
             margin: 0px -0.375rem 0px 0.375rem
             padding: 0px 0.375rem

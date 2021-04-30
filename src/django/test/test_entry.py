@@ -14,12 +14,15 @@ from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db.models import Max
 from django.test import TestCase
+from django.test.utils import override_settings
 from django.utils import timezone
 from faker import Faker
 
+import VLE.timeline as timeline
 import VLE.utils.entry_utils as entry_utils
 from VLE.models import (Assignment, Category, Comment, Content, Course, Entry, Field, FileContext, Format, Grade,
-                        Journal, JournalImportRequest, Node, PresetNode, TeacherEntry, Template, TemplateChain, User)
+                        Journal, JournalImportRequest, Node, Notification, PresetNode, TeacherEntry, Template,
+                        TemplateChain, User)
 from VLE.serializers import EntrySerializer, FileSerializer, TemplateSerializer
 from VLE.utils.error_handling import VLEBadRequest, VLEMissingRequiredField, VLEPermissionError
 from VLE.validators import validate_entry_content
@@ -359,7 +362,11 @@ class EntryAPITest(TestCase):
         validate_entry_content(faker.url(schemes=Field.ALLOWED_URL_SCHEMES), factory.UrlField(template=template))
         # Unallowed scheme should raise validation error
         self.assertRaises(
-            ValidationError, validate_entry_content, faker.url(schemes=('illega')), factory.UrlField(template=template))
+            ValidationError,
+            validate_entry_content,
+            faker.url(schemes=('illega')),
+            factory.UrlField(template=template)
+        )
 
         # Test Video
         valid_youtube_video_url = 'http://www.youtube.com/watch?v=06xKPwQuMfk'
@@ -500,6 +507,8 @@ class EntryAPITest(TestCase):
         resp2 = api.create(self, 'entries', params=self.valid_create_params, user=self.student)['entry']
         assert resp['id'] != resp2['id'], 'Multiple creations should lead to different ids'
         assert resp['author'] == self.student.full_name
+        assert not resp['is_draft'], 'Entry response should NOT be draft if is_draft is not supplied'
+        assert not Entry.objects.get(pk=resp['id']).is_draft, 'Entry should NOT be draft if is_draft is not supplied'
 
         # Check if students cannot update journals without required parts filled in
         create_params = self.valid_create_params.copy()
@@ -1377,3 +1386,97 @@ class EntryAPITest(TestCase):
         assert link_student == link_teacher, 'Row can be reused.'
         assert link_student.author == student == link_teacher.author, \
             'Author should not be changed if the category was already part of the entry'
+
+    @override_settings(CELERY_TASK_ALWAYS_EAGER=True)
+    def test_draft(self):
+        create_draft_params = {
+            **self.valid_create_params,
+            'is_draft': True,
+        }
+        notification_count = Notification.objects.filter(type=Notification.NEW_ENTRY).count()
+        resp = api.create(self, 'entries', params=create_draft_params, user=self.student)['entry']
+        assert resp['is_draft'], 'Entry response should be draft if is_draft is set to true'
+        assert Entry.objects.get(pk=resp['id']).is_draft, 'Entry should be draft if is_draft is set to true'
+
+        assert notification_count == Notification.objects.filter(type=Notification.NEW_ENTRY).count(), \
+            'No new notifications should be created for drafted entries'
+        notification_count = Notification.objects.filter(type=Notification.NEW_ENTRY).count()
+        params = {
+            'pk': resp['id'],
+            'content': resp['content'].copy(),
+            'is_draft': True,
+        }
+
+        resp = api.update(self, 'entries', params=params.copy(), user=self.student)['entry']
+        assert resp['is_draft'], 'Entry response should stay drafted if so supplied'
+        assert Entry.objects.get(pk=resp['id']).is_draft, 'Entry should stay drafted if so supplied'
+
+        assert notification_count == Notification.objects.filter(type=Notification.NEW_ENTRY).count(), \
+            'No new notifications should be created when draft does not change'
+        notification_count = Notification.objects.filter(type=Notification.NEW_ENTRY).count()
+
+        params.pop('is_draft')
+        resp = api.update(self, 'entries', params=params.copy(), user=self.student)['entry']
+        assert not resp['is_draft'], 'Entry response should NO LONGER be drafted if not supplied'
+        assert not Entry.objects.get(pk=resp['id']).is_draft, 'Entry should NO LONGER be drafted if not supplied'
+
+        assert notification_count + 1 == Notification.objects.filter(type=Notification.NEW_ENTRY).count(), \
+            'New notifications should be created when draft changes'
+
+        params['is_draft'] = True
+        resp = api.update(self, 'entries', params=params.copy(), user=self.student)['entry']
+        assert Entry.objects.get(pk=resp['id']).is_draft, 'Entry should be able to be drafted after posting'
+
+        assert notification_count == Notification.objects.filter(type=Notification.NEW_ENTRY).count(), \
+            'Notifications should be delete when posted entry changes to draft'
+        notification_count = Notification.objects.filter(type=Notification.NEW_ENTRY).count()
+        Field.objects.update(required=True)
+        self.group_journal = Journal.objects.get(pk=self.group_journal.pk)
+        needs_marking_before = self.group_journal.needs_marking
+
+        create_draft_params['content'] = {}
+        # Without content, an entry should still be able to be drafted
+        resp = api.create(self, 'entries', params=create_draft_params, user=self.student)['entry']
+        assert resp['is_draft'], 'Entry response should be draft if is_draft is set to true'
+        assert Entry.objects.get(pk=resp['id']).is_draft, 'Entry should be draft if is_draft is set to true'
+
+        params = {
+            'pk': resp['id'],
+            'content': resp['content'].copy(),
+            'is_draft': True,
+        }
+
+        # But a drafted entry should not be able to be posted when it has invalid fields
+        params.pop('is_draft')
+        api.update(self, 'entries', params=params.copy(), user=self.student, status=400)
+        assert Entry.objects.get(pk=resp['id']).is_draft, 'Entry should NOT be posted without all required fields'
+
+        self.group_journal = Journal.objects.get(pk=self.group_journal.pk)
+        assert needs_marking_before == self.group_journal.needs_marking, \
+            'needs_marking should not get updated for drafted entries'
+        assert notification_count == Notification.objects.filter(type=Notification.NEW_ENTRY).count(), \
+            'No new notifications should be created for drafted entries'
+
+        data = timeline.get_nodes(self.group_journal, user=self.student)
+        found = False
+        for node in data:
+            if 'entry' in node and resp['id'] == node['entry']['id']:
+                found = True
+        assert found, 'Student should be able to see the draft entry'
+
+        data = timeline.get_nodes(self.group_journal, user=self.teacher)
+        found = False
+        for node in data:
+            if 'entry' in node and resp['id'] == node['entry']['id']:
+                found = True
+        assert not found, 'Teacher should NOT be able to see the draft entry'
+
+        graded_entry = factory.Grade(entry__node__journal=self.group_journal).entry
+        params = {
+            'pk': graded_entry.pk,
+            'content': {},
+            'is_draft': True,
+        }
+        resp = api.update(self, 'entries', params=params.copy(), user=self.student, status=400)
+        assert 'draft an entry' in resp['description'], \
+            'Student should not be allowed to draft an entry that is no longer editable (e.g. graded)'

@@ -350,6 +350,7 @@ class JournalImportRequestTest(TestCase):
         jir = factory.JournalImportRequest(source=source_journal, target=target_journal)
 
         entry1 = factory.UnlimitedEntry(node__journal=source_journal)
+        factory.UnlimitedEntry(node__journal=source_journal, is_draft=True)
         factory.UnlimitedEntry(node__journal=source_journal, grade__grade=1)
         factory.StudentComment(entry=entry1, published=True)
         factory.TeacherComment(entry=entry1, published=False)
@@ -364,12 +365,15 @@ class JournalImportRequestTest(TestCase):
         pre_import_journal_node_count = Node.objects.filter(journal=jir.target).count()
         pre_import_comment_count = Comment.objects.filter(entry__node__journal=jir.target).count()
         pre_import_preset_node_count = PresetNode.objects.filter(format=jir.target.assignment.format).count()
+        target_journal = Journal.objects.get(pk=target_journal.pk)
         pre_import_needs_marking = target_journal.needs_marking
-        source_entry_count = Entry.objects.filter(node__journal=jir.source).count()
-        source_ungraded_entry_count = Entry.objects.filter(node__journal=jir.source, grade__isnull=True).count()
-        source_journal_node_count = Node.objects.filter(journal=jir.source).count()
+        source_entry_count = Entry.objects.filter(node__journal=jir.source, is_draft=False).count()
+        source_ungraded_entry_count = Entry.objects.filter(
+            node__journal=jir.source, grade__isnull=True, is_draft=False).count()
+        source_journal_node_count = Node.objects.filter(journal=jir.source, entry__is_draft=False).count()
         source_published_comment_count = Comment.objects.filter(entry__node__journal=jir.source, published=True).count()
-        source_journal_progress_nodes = source_journal.node_set.filter(preset__type=Node.PROGRESS).count()
+        source_journal_progress_nodes = source_journal.node_set.filter(
+            preset__type=Node.PROGRESS, entry__is_draft=False).count()
         source_journal_deadline_nodes_without_entry = \
             source_journal.node_set.filter(preset__type=Node.ENTRYDEADLINE, entry=None).count()
 

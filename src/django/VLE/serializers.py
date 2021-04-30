@@ -881,6 +881,7 @@ class EntrySerializer(serializers.ModelSerializer, EagerLoadingMixin):
             'last_edited_by',
             'jir',
             'categories',
+            'is_draft',
         )
         read_only_fields = (
             'creation_date',

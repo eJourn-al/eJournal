@@ -74,6 +74,8 @@ export default {
         },
         iconName () {
             switch (this.nodeState()) {
+            case 'draft':
+                return 'edit'
             case 'graded':
                 return 'check'
             case 'failed':
@@ -97,6 +99,8 @@ export default {
         },
         nodeTitle () {
             switch (this.nodeState()) {
+            case 'draft':
+                return 'Draft'
             case 'graded':
                 return 'Graded'
             case 'failed':
@@ -155,6 +159,7 @@ export default {
         },
     },
     methods: {
+        /* eslint-disable-next-line complexity */
         nodeState () {
             if (this.node.type === 's') {
                 return 'start'
@@ -169,7 +174,9 @@ export default {
             const entry = this.node.entry
             const isGrader = this.$hasPermission('can_grade')
 
-            if (entry && entry.grade && entry.grade.published) {
+            if (entry && entry.is_draft) {
+                return 'draft'
+            } else if (entry && entry.grade && entry.grade.published) {
                 return 'graded'
             } else if (!entry && comparison.nodeLockDateHasPassed(this.node)) {
                 return 'failed'

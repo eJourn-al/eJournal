@@ -40,11 +40,12 @@ class EntryView(viewsets.ViewSet):
         """
         journal_id, template_id, content_dict = utils.required_params(
             request.data, 'journal_id', 'template_id', 'content')
-        node_id, category_ids, title = utils.optional_typed_params(
+        node_id, category_ids, title, is_draft = utils.optional_typed_params(
             request.data,
             (int, 'node_id'),
             (int, 'category_ids'),
             (str, 'title'),
+            (bool, 'is_draft', False),
         )
 
         journal = Journal.objects.get(pk=journal_id, authors__user=request.user)
@@ -67,17 +68,20 @@ class EntryView(viewsets.ViewSet):
         if title and not template.chain.allow_custom_title:
             return response.forbidden('Entry does not allow for a custom title.')
 
-        entry_utils.check_fields(template, content_dict)
+        # Check for fields only when it is not a draft
+        if not is_draft:
+            entry_utils.check_fields(template, content_dict)
         category_ids = Entry.validate_categories(category_ids, assignment, template)
 
         # Deadline entry
         if node_id:
             node = Node.objects.get(pk=node_id, journal=journal)
-            entry = entry_utils.add_entry_to_deadline_preset_node(node, template, request.user, category_ids, title)
+            entry = entry_utils.add_entry_to_deadline_preset_node(
+                node, template, request.user, category_ids, title, is_draft=is_draft)
         # Unlimited entry
         else:
             node = factory.make_node(journal)
-            entry = factory.make_entry(template, request.user, node, category_ids, title)
+            entry = factory.make_entry(template, request.user, node, category_ids, title, is_draft=is_draft)
 
         entry_utils.create_entry_content(content_dict, entry, request.user)
         # Notify teacher on new entry
@@ -108,11 +112,15 @@ class EntryView(viewsets.ViewSet):
             success -- with the new entry data
         """
         content_dict, = utils.required_params(request.data, 'content')
-        title, = utils.optional_typed_params(request.data, (str, 'title'))
+        title, is_draft = utils.optional_typed_params(request.data, (str, 'title'), (bool, 'is_draft', False))
         entry_id, = utils.required_typed_params(kwargs, (int, 'pk'))
         entry = Entry.objects.get(pk=entry_id)
         journal = Journal.objects.get(node__entry=entry)
         assignment = journal.assignment
+
+        # Entries should not be able to be drafted when it is no longer editable
+        if not entry.is_editable() and is_draft:
+            return response.bad_request('You are not allowed to draft an entry that is no longer editable.')
 
         if assignment.is_locked():
             return response.forbidden('The assignment is locked, entries can no longer be edited/changed.')
@@ -128,8 +136,9 @@ class EntryView(viewsets.ViewSet):
         if title and not entry.template.chain.allow_custom_title:
             return response.forbidden('Entry does not allow for a custom title.')
 
-        # Check for required fields
-        entry_utils.check_fields(entry.template, content_dict)
+        # Check for required fields only when the user did not specify the entry to be a draft
+        if not is_draft:
+            entry_utils.check_fields(entry.template, content_dict)
 
         # Attempt to edit the entries content.
         files_to_establish = []
@@ -180,6 +189,7 @@ class EntryView(viewsets.ViewSet):
         entry.last_edited_by = request.user
         entry.last_edited = timezone.now()
         entry.title = title
+        entry.is_draft = is_draft
         entry.save()
 
         return response.success({'entry': serialize.EntrySerializer(entry, context={'user': request.user}).data})
