@@ -25,7 +25,7 @@
             >
                 <b-form-input
                     v-model="instance.kaltura_url"
-                    class="theme-input multi-form"
+                    class="theme-input mb-2"
                     type="url"
                 />
             </b-form-group>

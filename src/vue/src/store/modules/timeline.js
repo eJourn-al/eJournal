@@ -14,6 +14,7 @@ const getters = {
     endNode: (state) => state.endNode,
 
     filteredCategories: (state) => state.filteredCategories,
+    filteringCategoriesForAssignmentId: (state) => state.filteringCategoriesForAssignmentId,
     timelineInstance: (state) => state.timelineInstance,
     currentNode: (state) => state.currentNode,
 }
@@ -21,6 +22,7 @@ const getters = {
 const mutations = {
     SET_FILTERED_CATEGORIES (state, filteredCategories) {
         state.filteredCategories = filteredCategories
+        state.filteringCategoriesForAssignmentId = parseInt(this.state.route.params.aID, 10)
     },
     REMOVE_CATEGORY_FROM_FILTER (state, { id }) {
         Vue.delete(state.filteredCategories, state.filteredCategories.findIndex((elem) => elem.id === id))
@@ -56,6 +58,7 @@ export default {
         endNode: { type: endNodeSymbol },
 
         filteredCategories: [], /* Filter used for the timeline */
+        filteringCategoriesForAssignmentId: null,
         timelineInstance: null,
         currentNode: null,
 

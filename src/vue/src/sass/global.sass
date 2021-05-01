@@ -4,8 +4,6 @@
 
 @import '~sass/vendor/bootstrap.sass' /* cherry picked bootstrap css bundled with app css by default */
 
-@import '~sass/partials/colors.sass'
-@import '~sass/partials/shadows.sass'
 @import '~sass/partials/buttons.sass'
 @import '~sass/partials/alerts.sass'
 @import '~sass/partials/cards.sass'
@@ -16,14 +14,15 @@
 @import '~sass/partials/icons.sass'
 @import '~sass/partials/images.sass'
 @import '~sass/partials/inputs.sass'
+@import '~sass/partials/tables.sass'
 @import '~sass/partials/modals.sass'
 @import '~sass/partials/paragraph.sass'
 @import '~sass/partials/select.sass'
 @import '~sass/partials/tours.sass'
+@import '~sass/partials/colors.sass'
 
 body
-    color: $theme-dark-blue
-    background-color: #f4f4f4
+    color: $text-color
     font-family: 'Roboto', sans-serif
     font-size: 1em
     -webkit-font-smoothing: antialiased
@@ -34,9 +33,9 @@ a, select, input
     text-decoration: none
 
 a
-    color: $theme-dark-blue
+    color: $text-color
     &:hover, &:after
-        color: $theme-dark-blue
+        color: $text-color
         text-decoration: none
 
 .cursor-pointer:hover
@@ -46,10 +45,7 @@ a
     min-height: 100%
 
 .round-border
-    border-radius: 5px !important
-
-.multi-form
-    margin-bottom: 10px !important
+    border-radius: 10px !important
 
 .input-disabled
     @extend .unselectable
@@ -90,12 +86,14 @@ a
 .info, .blue
     background-color: $theme-blue !important
 
-.toasted, .toasted.toasted-primary
-    padding: 10px 15px
-    font-size: 1em
-    color: white
-    .action
-        color: rgba(0, 0, 0, 0.45)
+.toasted-container
+    .toasted, .toasted.toasted-primary
+        padding: 10px 15px
+        border-radius: 50px
+        font-size: 1em
+        color: white
+        .action
+            color: rgba(0, 0, 0, 0.45)
 
 .fade-enter-active, .fade-leave-active
   transition: opacity .5s
@@ -117,11 +115,46 @@ a
 .no-right-radius
     border-top-right-radius: 0 !important
     border-bottom-right-radius: 0 !important
+.no-left-radius
+    border-top-left-radius: 0 !important
+    border-bottom-left-radius: 0 !important
 
 ul
     margin-bottom: 0px
 
+
+.bordered-content
+    border: 1px solid $theme-medium-grey
+    border-radius: 10px
+
+.flex-basis-100
+    flex-basis: 100%
+
 hr
     width: 100%
-    border-color: $theme-dark-grey
     margin: 10px 0px
+
+.badge
+    text-transform: uppercase
+    padding: 5px 9px
+
+.not-logged-in-page
+    .card
+        border-width: 0px
+        .card-header
+            border: 1px solid $theme-dark-blue
+            background-color: $theme-dark-blue
+            border-radius: 10px 10px 0px 0px
+            color: white
+        .card-body
+            border: 1px solid $border-color
+            border-top-width: 0px
+            border-radius: 0px 0px 10px 10px
+    .not-logged-in-page-logo
+        display: block
+        margin: 0 auto 20px auto
+        width: 300px
+        max-width: 100%
+
+.b-sidebar.bg-light
+    background-color: white !important

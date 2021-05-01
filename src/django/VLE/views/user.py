@@ -314,7 +314,7 @@ class UserView(viewsets.ViewSet):
 
         request.user.set_password(new_password)
         request.user.save()
-        return response.success(description='Successfully changed the password.')
+        return response.success(description='Password succesfully updated.')
 
     @action(methods=['get'], detail=True)
     def GDPR(self, request, pk):

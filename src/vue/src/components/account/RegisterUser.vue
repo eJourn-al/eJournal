@@ -13,7 +13,7 @@
             <b-input
                 v-if="!lti"
                 v-model="form.username"
-                class="multi-form theme-input"
+                class="mb-2"
                 placeholder="Username"
                 maxlength="30"
                 required
@@ -27,7 +27,7 @@
             <b-input
                 v-if="!lti"
                 v-model="form.fullName"
-                class="multi-form theme-input"
+                class="mb-2"
                 placeholder="Full name"
                 maxlength="200"
                 required
@@ -40,7 +40,7 @@
             </h2>
             <b-input
                 v-model="form.password"
-                class="multi-form theme-input"
+                class="mb-2"
                 type="password"
                 placeholder="Password"
                 required
@@ -50,7 +50,7 @@
             </h2>
             <b-input
                 v-model="form.password2"
-                class="multi-form theme-input"
+                class="mb-2"
                 type="password"
                 placeholder="Repeat password"
                 required
@@ -64,19 +64,19 @@
             <b-input
                 v-if="!lti"
                 v-model="form.email"
-                class="multi-form theme-input"
+                class="mb-2"
                 placeholder="Email"
                 required
             />
             <b-button
-                class="float-left orange-button multi-form"
+                class="orange-button"
                 type="reset"
             >
                 <icon name="undo"/>
                 Reset
             </b-button>
             <b-button
-                class="float-right multi-form"
+                class="float-right"
                 :class="{ 'input-disabled': saveRequestInFlight }"
                 type="submit"
             >

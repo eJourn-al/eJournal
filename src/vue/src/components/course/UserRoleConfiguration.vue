@@ -1,79 +1,77 @@
 <template>
-    <wide-content>
-        <bread-crumb/>
-        <b-card class="no-hover">
-            <b-alert
-                v-if="isChanged"
-                show
-            >
-                <b>Note</b>: changes are not saved.
-            </b-alert>
-            <b-table-simple
-                striped
-                responsive
-                class="role-config-table"
-            >
-                <b-thead>
-                    <b-tr>
-                        <b-th/>
-                        <b-th
-                            v-for="role in roles"
-                            :key="`th-${role}`"
-                        >
-                            {{ role }}
-                            <icon
-                                v-if="!undeleteableRoles.includes(role)"
-                                name="trash"
-                                class="trash-icon"
-                                @click.native="deleteRole(role)"
-                            />
-                        </b-th>
-                        <b-th>
-                            <span
-                                class="darken-on-hover text-grey cursor-pointer unselectable"
-                                @click="modalShow = !modalShow"
-                            >
-                                <icon
-                                    name="plus"
-                                    class="shift-up-3"
-                                />
-                                Add Role
-                            </span>
-                        </b-th>
-                    </b-tr>
-                </b-thead>
-                <b-tbody>
-                    <b-tr
-                        v-for="permission in permissions"
-                        :key="permission"
+    <load-wrapper :loading="loadingRoles">
+        <b-alert
+            v-if="isChanged"
+            show
+        >
+            <b>Note</b>: changes are not saved.
+        </b-alert>
+        <b-table-simple
+            striped
+            responsive
+            class="role-config-table"
+        >
+            <b-thead>
+                <b-tr>
+                    <b-th/>
+                    <b-th
+                        v-for="role in roles"
+                        :key="`th-${role}`"
                     >
-                        <b-td class="permission-column">
-                            <b>{{ formatPermissionString(permission) }}</b>
-                        </b-td>
-                        <b-td
-                            v-for="role in roles"
-                            :key="`${role}-${permission}`"
+                        {{ role }}
+                        <icon
+                            v-if="!undeleteableRoles.includes(role)"
+                            name="trash"
+                            class="trash-icon"
+                            @click.native="deleteRole(role)"
+                        />
+                    </b-th>
+                    <b-th>
+                        <b-button
+                            class="grey-button m-auto"
+                            variant="link"
+                            @click="modalShow = !modalShow"
                         >
-                            <b-form-checkbox
-                                v-model="roleConfig[getIndex(role)][permission]"
-                                :class="{ 'input-disabled': essentialPermission(role, permission) }"
-                                inline
+                            <icon
+                                name="plus"
+                                class="shift-up-3"
                             />
-                        </b-td>
-                        <b-td>
-                            <b-form-checkbox
-                                class="input-disabled"
-                            />
-                        </b-td>
-                    </b-tr>
-                </b-tbody>
-            </b-table-simple>
-        </b-card>
+                            Add Role
+                        </b-button>
+                    </b-th>
+                </b-tr>
+            </b-thead>
+            <b-tbody>
+                <b-tr
+                    v-for="permission in permissions"
+                    :key="permission"
+                >
+                    <b-td class="permission-column">
+                        {{ formatPermissionString(permission) }}
+                    </b-td>
+                    <b-td
+                        v-for="role in roles"
+                        :key="`${role}-${permission}`"
+                    >
+                        <b-form-checkbox
+                            v-model="roleConfig[getIndex(role)][permission]"
+                            :class="{ 'input-disabled': essentialPermission(role, permission) }"
+                            inline
+                        />
+                    </b-td>
+                    <b-td>
+                        <b-form-checkbox
+                            class="input-disabled"
+                        />
+                    </b-td>
+                </b-tr>
+            </b-tbody>
+        </b-table-simple>
 
         <transition name="fade">
             <b-button
                 v-if="isChanged"
-                class="green-button fab"
+                class="green-filled-button fab shadow"
                 @click="update()"
             >
                 <icon
@@ -87,21 +85,20 @@
             v-model="modalShow"
             title="New Role"
             size="lg"
-            hideFooter
             noEnforceFocus
             @shown="focusRoleNameInput"
         >
-            <b-card class="no-hover">
-                <b-form-input
-                    ref="roleNameInput"
-                    v-model="newRole"
-                    class="multi-form theme-input"
-                    required
-                    placeholder="Role name"
-                    @keyup.enter.native="addRole"
-                />
+            <b-form-input
+                ref="roleNameInput"
+                v-model="newRole"
+                class="mb-2"
+                required
+                placeholder="Role name"
+                @keyup.enter.native="addRole"
+            />
+            <template #modal-footer>
                 <b-button
-                    class="red-button float-left"
+                    class="red-button mr-auto"
                     @click="modalShow = false"
                 >
                     <icon name="ban"/>
@@ -114,14 +111,13 @@
                     <icon name="user-plus"/>
                     Create new role
                 </b-button>
-            </b-card>
+            </template>
         </b-modal>
-    </wide-content>
+    </load-wrapper>
 </template>
 
 <script>
-import BreadCrumb from '@/components/assets/BreadCrumb.vue'
-import WideContent from '@/components/columns/WideContent.vue'
+import LoadWrapper from '@/components/loading/LoadWrapper.vue'
 
 import commonAPI from '@/api/common.js'
 import roleAPI from '@/api/role.js'
@@ -129,8 +125,7 @@ import roleAPI from '@/api/role.js'
 export default {
     name: 'UserRoleConfiguration',
     components: {
-        WideContent,
-        BreadCrumb,
+        LoadWrapper,
     },
     props: {
         cID: {
@@ -139,6 +134,7 @@ export default {
     },
     data () {
         return {
+            loadingRoles: true,
             roles: [],
             permissions: [],
             roleConfig: [],
@@ -148,14 +144,13 @@ export default {
             modalShow: false,
             newRole: '',
             essentialPermissions: { Teacher: ['can_edit_course_roles', 'can_edit_course_details'] },
-            setRoleConfig: false,
             isChanged: false,
         }
     },
     watch: {
         roleConfig: {
             handler () {
-                if (this.setRoleConfig) {
+                if (!this.loadingRoles) {
                     this.isChanged = true
                 }
             },
@@ -180,7 +175,7 @@ export default {
 
                 this.originalRoleConfig = this.deepCopyRoles(roleConfig)
 
-                this.$nextTick(() => { this.setRoleConfig = true })
+                this.$nextTick(() => { this.loadingRoles = false })
             })
     },
     methods: {

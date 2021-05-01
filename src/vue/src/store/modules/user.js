@@ -206,7 +206,7 @@ const actions = {
                 if (error.response) {
                     Vue.toasted.error(`Error logging in: ${sanitization.escapeHtml(error.response.data.description)}`)
                 } else {
-                    Vue.toasted.error('Something went wrong when loggin in')
+                    Vue.toasted.error('Something went wrong when logging in')
                 }
                 reject(error)
             })

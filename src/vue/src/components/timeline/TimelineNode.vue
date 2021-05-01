@@ -18,7 +18,7 @@
             <timeline-node-circle
                 :node="node"
                 class="position-absolute"
-                @click.native="setCurrentNode(node)"
+                @click.native="setCurrentNode(node); $root.$emit('bv::toggle::collapse', 'timeline-container')"
             />
         </b-col>
         <b-col
@@ -74,7 +74,7 @@ export default {
     .time-line
         position: absolute
         width: 5px
-        background-color: $theme-dark-grey
+        background-color: $theme-medium-grey
         height: 100px
         &.top
             height: 50px

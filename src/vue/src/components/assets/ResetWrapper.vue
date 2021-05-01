@@ -28,9 +28,11 @@ export default {
         position: absolute
         right: 5px
         top: 5px
-        padding: 0
+        padding: 0px 3px
         opacity: 0
         transition: all 0.3s cubic-bezier(.25,.8,.25,1)
+        svg
+            margin-right: 0px
     &:hover .reset-button
         opacity: 1
 </style>

@@ -49,7 +49,7 @@ class Instance(CreateUpdateModel):
         default=True
     )
     name = models.TextField(
-        default='eJournal'
+        default='Demo'
     )
     kaltura_url = models.URLField(
         blank=True,

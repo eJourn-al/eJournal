@@ -2,7 +2,7 @@
     <div>
         <b-input
             v-model="filter"
-            class="theme-input full-width mb-2"
+            class="full-width mb-2"
             placeholder="Search by name, username or email"
             debounce="500"
         />

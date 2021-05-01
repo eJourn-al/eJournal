@@ -56,6 +56,7 @@ def create_request_body(user=None, course=None, assignment=None, is_teacher=Fals
         request['custom_user_full_name'] = user.full_name
         request['custom_user_image'] = user.profile_picture
         request['user_id'] = user.lti_id or access_gen()
+        request['custom_user_email'] = user.email
     else:
         n = User.objects.count()
         request['custom_username'] = f'user_{n}_{access_gen(size=10)}'

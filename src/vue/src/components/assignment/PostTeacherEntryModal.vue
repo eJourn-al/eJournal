@@ -1,5 +1,10 @@
 <template>
-    <div>
+    <b-modal
+        ref="postTeacherEntry"
+        title="Post teacher entries"
+        size="lg"
+        noEnforceFocus
+    >
         <template v-if="templates && templates.length > 0">
             <h2 class="theme-h2 field-heading required">
                 Title
@@ -8,7 +13,6 @@
                 v-model="title"
                 placeholder="Enter A Title"
                 type="text"
-                class="theme-input"
             />
             <b-form-checkbox
                 v-model="showTitleInTimeline"
@@ -38,7 +42,7 @@
         >
             No templates for this assignment. Create some in the assignment editor first.
         </span>
-        <div v-if="selectedTemplate">
+        <template v-if="selectedTemplate">
             <entry-fields
                 :template="selectedTemplate"
                 :content="teacherEntryContent"
@@ -76,13 +80,19 @@
                     select by username</span>.
                 <br/>
             </small>
-            <b-input
-                v-else
-                v-model="usernameInput"
-                class="theme-input mt-2"
-                placeholder="Enter a username and press enter to select"
-                @keydown.enter.native="selectUsername"
-            />
+            <template v-else>
+                <b-input
+                    v-model="usernameInput"
+                    class="mt-2"
+                    placeholder="Enter a username and press enter to select"
+                    @keydown.enter.native="selectUsername"
+                />
+                <small>
+                    <b>Tip:</b>
+                    you can also copy a spreadsheet column and paste it in the input above.
+                    <br/>
+                </small>
+            </template>
             <b-form-checkbox
                 v-model="sameGradeForAllEntries"
                 class="mt-2 mr-2 d-inline-block"
@@ -99,7 +109,7 @@
                     type="number"
                     min="0"
                     placeholder="-"
-                    class="theme-input inline mt-2"
+                    class="inline mt-2"
                     size="3"
                 />
                 <b-form-checkbox
@@ -153,7 +163,7 @@
                                 type="number"
                                 min="0"
                                 placeholder="-"
-                                class="theme-input inline"
+                                class="inline"
                                 size="3"
                             />
                         </b-td>
@@ -170,17 +180,18 @@
                     </b-tr>
                 </b-tbody>
             </b-table-simple>
-
+        </template>
+        <template #modal-footer>
             <b-button
-                class="green-button float-right ml-2 mt-2"
-                :class="{ 'input-disabled': requestInFlight }"
+                class="green-button float-right"
+                :class="{ 'input-disabled': requestInFlight || !selectedTemplate }"
                 @click="createTeacherEntry"
             >
                 <icon name="paper-plane"/>
                 Post
             </b-button>
-        </div>
-    </div>
+        </template>
+    </b-modal>
 </template>
 
 <script>
@@ -209,7 +220,6 @@ export default {
     data () {
         return {
             selectedJournals: [],
-            selectableJournals: [],
             selectedTemplate: null,
             showUsernameInput: false,
             usernameInput: null,
@@ -227,17 +237,20 @@ export default {
         ...mapGetters({
             templates: 'template/assignmentTemplates',
         }),
-    },
-    created () {
-        this.assignmentJournals.forEach((journal) => {
-            this.selectableJournals.push({
-                journal_id: journal.id,
-                grade: this.grade,
-                published: this.publishSameGrade,
-                name: journal.name,
-                usernames: journal.usernames,
+        selectableJournals () {
+            const journalList = []
+            this.assignmentJournals.forEach((journal) => {
+                journalList.push({
+                    journal_id: journal.id,
+                    grade: this.grade,
+                    published: this.publishSameGrade,
+                    name: journal.name,
+                    usernames: journal.usernames,
+                })
             })
-        })
+
+            return journalList
+        },
     },
     methods: {
         selectUsername () {
@@ -292,8 +305,19 @@ export default {
                     customSuccessToast: 'Teacher entry successfully posted.',
                 })
                     .then((data) => {
-                        this.requestInFlight = false
                         this.$emit('teacher-entry-posted', data)
+                        this.selectedJournals = []
+                        this.selectedTemplate = null
+                        this.showUsernameInput = false
+                        this.usernameInput = null
+                        this.sameGradeForAllEntries = true
+                        this.grade = null
+                        this.publishSameGrade = true
+                        this.teacherEntryContent = Object()
+                        this.teacherEntryCategories = {}
+                        this.requestInFlight = false
+                        this.title = null
+                        this.showTitleInTimeline = true
                     })
                     .catch(() => { this.requestInFlight = false })
             }
@@ -301,6 +325,12 @@ export default {
         newJournal (journal) {
             journal.grade = this.grade
             journal.published = this.publishSameGrade
+        },
+        show () {
+            this.$refs.postTeacherEntry.show()
+        },
+        hide () {
+            this.$refs.postTeacherEntry.hide()
         },
     },
 }

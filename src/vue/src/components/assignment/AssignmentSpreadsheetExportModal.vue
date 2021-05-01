@@ -1,6 +1,15 @@
 <template>
-    <div>
-        <b-form-checkbox v-model="exportSelection.name">
+    <b-modal
+        ref="assignmentExportSpreadsheetModal"
+        title="Export results to spreadsheet"
+        size="lg"
+        noEnforceFocus
+    >
+        Select which columns should be included in the exported file.
+        <b-form-checkbox
+            v-model="exportSelection.name"
+            class="mt-1"
+        >
             Journal name
             <tooltip
                 class="ml-1"
@@ -44,7 +53,7 @@
         </b-form-checkbox>
         <b-form-checkbox
             v-model="exportSelection.bonus_points"
-            class="multi-form"
+            class="mb-2"
         >
             Bonus points
             <tooltip
@@ -52,31 +61,33 @@
                 tip="Number of bonus points given for a journal"
             />
         </b-form-checkbox>
-        <b-button
-            v-if="exportFilteredResults"
-            class="mr-3"
-            @click="exportFilteredResults = false"
-        >
-            <icon name="filter"/>
-            Current filter only
-        </b-button>
-        <b-button
-            v-else
-            class="mr-3"
-            @click="exportFilteredResults = true"
-        >
-            <icon name="book"/>
-            All journals
-        </b-button>
-        <b-button
-            class="green-button float-right"
-            :class="{ 'input-disabled': exportInProgress || !someExportOptionSelected }"
-            @click="exportAssignmentSpreadsheet()"
-        >
-            <icon name="file-export"/>
-            Export Results
-        </b-button>
-    </div>
+        <template #modal-footer>
+            <b-button
+                v-if="exportFilteredResults"
+                class="mr-auto"
+                @click="exportFilteredResults = false"
+            >
+                <icon name="filter"/>
+                Current filter only
+            </b-button>
+            <b-button
+                v-else
+                class="mr-auto"
+                @click="exportFilteredResults = true"
+            >
+                <icon name="book"/>
+                All journals
+            </b-button>
+            <b-button
+                class="green-button float-right"
+                :class="{ 'input-disabled': exportInProgress || !someExportOptionSelected }"
+                @click="exportAssignmentSpreadsheet()"
+            >
+                <icon name="file-export"/>
+                Export Results
+            </b-button>
+        </template>
+    </b-modal>
 </template>
 
 <script>
@@ -190,6 +201,12 @@ export default {
         },
         zeroIfNull (val) {
             return (val === null) ? 0 : val
+        },
+        show () {
+            this.$refs.assignmentExportSpreadsheetModal.show()
+        },
+        hide () {
+            this.$refs.assignmentExportSpreadsheetModal.hide()
         },
     },
 }

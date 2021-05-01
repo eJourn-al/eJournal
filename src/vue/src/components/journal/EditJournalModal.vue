@@ -1,28 +1,28 @@
 <template>
-    <b-card
-        :class="{
-            'input-disabled': saveRequestInFlight,
-        }"
-        class="no-hover"
+    <b-modal
+        ref="editJournalModal"
+        size="lg"
+        title="Edit journal"
     >
         <div v-if="assignment.can_set_journal_image || $hasPermission('can_manage_journals')">
-            <h2 class="theme-h2 field-heading multi-form">
+            <h2 class="theme-h2 field-heading mb-2">
                 Image
             </h2>
             <cropper
                 ref="journalImageCropper"
+                class="mb-2"
                 :pictureUrl="newJournalImage"
                 :hideSaveButton="true"
             />
         </div>
         <div v-if="assignment.can_set_journal_name || $hasPermission('can_manage_journals')">
-            <h2 class="theme-h2 field-heading multi-form required">
+            <h2 class="theme-h2 field-heading mb-2 required">
                 Name
             </h2>
             <b-input
                 v-model="newJournalName"
                 placeholder="Journal name"
-                class="theme-input multi-form"
+                class="mb-2"
                 required
             />
         </div>
@@ -35,28 +35,30 @@
                 type="number"
                 placeholder="No member limit"
                 min="2"
-                class="theme-input multi-form"
+                class="mb-2"
             />
         </div>
-        <b-button
-            v-if="assignment.is_group_assignment && $hasPermission('can_manage_journals')"
-            :class="{
-                'input-disabled': journal.author_count > 0,
-            }"
-            class="red-button"
-            @click="deleteJournal"
-        >
-            <icon name="trash"/>
-            Delete journal
-        </b-button>
-        <b-button
-            class="green-button float-right"
-            @click="updateJournal"
-        >
-            <icon name="save"/>
-            Save
-        </b-button>
-    </b-card>
+        <template #modal-footer>
+            <b-button
+                v-if="assignment.is_group_assignment && $hasPermission('can_manage_journals')"
+                :class="{
+                    'input-disabled': journal.author_count > 0,
+                }"
+                class="red-button mr-auto"
+                @click="deleteJournal"
+            >
+                <icon name="trash"/>
+                Delete journal
+            </b-button>
+            <b-button
+                class="green-button"
+                @click="updateJournal"
+            >
+                <icon name="save"/>
+                Save
+            </b-button>
+        </template>
+    </b-modal>
 </template>
 
 <script>
@@ -146,6 +148,12 @@ export default {
             } else {
                 this.saveRequestInFlight = false
             }
+        },
+        show () {
+            this.$refs.editJournalModal.show()
+        },
+        hide () {
+            this.$refs.editJournalModal.hide()
         },
     },
 }

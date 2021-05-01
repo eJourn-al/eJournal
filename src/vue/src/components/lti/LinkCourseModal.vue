@@ -1,8 +1,10 @@
 <template>
-    <b-card class="no-hover">
-        <h2 class="theme-h2 field-heading">
-            Select a course to link
-        </h2>
+    <b-modal
+        ref="linkCourseRef"
+        title="Link Course"
+        size="lg"
+        noEnforceFocus
+    >
         <p>
             Select the eJournal course that you want to link to the current LMS (Canvas) course below. This action will
             overwrite an existing link between Canvas and this eJournal course, so proceed with caution.
@@ -15,20 +17,19 @@
             :multiple="false"
             :searchable="true"
             placeholder="Select A Course"
-            class="multi-form"
+            class="mb-2"
         />
-        <div v-if="selectedCourse !== null">
-            <hr/>
-
+        <template #modal-footer>
             <b-button
-                class="orange-button float-right"
+                class="orange-button"
+                :class="{ 'input-disabled': selectedCourse === null }"
                 @click="linkCourse"
             >
                 <icon name="link"/>
                 Link
             </b-button>
-        </div>
-    </b-card>
+        </template>
+    </b-modal>
 </template>
 
 <script>
@@ -56,6 +57,12 @@ export default {
         linkCourse () {
             courseAPI.update(this.selectedCourse.id, { lti_id: this.lti.ltiCourseID })
                 .then((course) => { this.$emit('handleAction', course.id) })
+        },
+        show () {
+            this.$refs.linkCourseRef.show()
+        },
+        hide () {
+            this.$refs.linkCourseRef.hide()
         },
     },
 }

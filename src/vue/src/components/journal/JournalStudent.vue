@@ -34,30 +34,25 @@
             </b-alert>
 
             <load-wrapper :loading="loadingNodes">
-                <template v-if="currentNode.type === addNodeSymbol">
-                    <h4 class="theme-h4 mb-2 d-block">
-                        <span>New entry</span>
-                    </h4>
-                    <b-form-select
-                        v-if="currentNode.templates.length > 1"
-                        v-model="selectedTemplate"
-                        class="theme-select mb-2"
+                <b-form-select
+                    v-if="currentNode.type === addNodeSymbol && currentNode.templates.length > 1"
+                    v-model="selectedTemplate"
+                    class="theme-select mb-2"
+                >
+                    <option
+                        :value="null"
+                        disabled
                     >
-                        <option
-                            :value="null"
-                            disabled
-                        >
-                            Select a template
-                        </option>
-                        <option
-                            v-for="template in currentNode.templates"
-                            :key="template.id"
-                            :value="template"
-                        >
-                            {{ template.name }}
-                        </option>
-                    </b-form-select>
-                </template>
+                        New entry: select a template
+                    </option>
+                    <option
+                        v-for="template in currentNode.templates"
+                        :key="template.id"
+                        :value="template"
+                    >
+                        {{ template.name }}
+                    </option>
+                </b-form-select>
 
                 <journal-start-card
                     v-if="currentNode === startNode"
@@ -76,25 +71,28 @@
                 <b-card
                     v-else-if="currentNode.type == 'd' && !currentNode.entry
                         && currentNodeIsLocked"
-                    :class="$root.getBorderClass($route.params.cID)"
-                    class="no-hover"
                 >
-                    <h2 class="theme-h2 mb-2">
-                        {{ currentNode.template.name }}
-                    </h2>
-                    <hr class="full-width"/>
-                    <b>This preset is locked. You cannot submit an entry at the moment.</b><br/>
-                    {{ deadlineRange }}
+                    <template slot="header">
+                        <h2 class="theme-h2">
+                            {{ currentNode.template.name }}
+                        </h2>
+                    </template>
+                    <span class="text-grey">
+                        This deadline is locked. You cannot submit an entry at the moment.
+                    </span>
+                    <deadline-date-display :subject="currentNode"/>
                 </b-card>
                 <entry
                     v-else-if="currentTemplate && ['d', 'e', 'a'].includes(currentNode.type)"
                     ref="entry"
+                    :key="`entry-${currentTemplate.id}-${currentNode.id}`"
                     :class="{'input-disabled': !loadingNodes && journal.needs_lti_link.length > 0
                         && assignment.active_lti_course}"
                     :template="currentTemplate"
                     :assignment="assignment"
                     :node="currentNode"
                     :create="currentNode.type == 'a' || (currentNode.type == 'd' && !currentNode.entry)"
+                    :startInEdit="startInEdit"
                     @entry-deleted="removeCurrentEntry"
                     @entry-posted="entryPosted"
                 />
@@ -102,43 +100,40 @@
         </template>
 
         <template #right>
-            <h3 class="theme-h3">
-                Details
-            </h3>
-            <b-card
-                :class="$root.getBorderClass($route.params.cID)"
-                class="journal-details-card no-hover mb-3"
-            >
-                <journal-details
-                    v-if="!loadingNodes"
-                    :journal="journal"
-                    :assignment="assignment"
-                />
-            </b-card>
-
-            <h3 class="theme-h3">
-                Actions
-            </h3>
-
-            <b-button
+            <journal-details
                 v-if="!loadingNodes"
-                v-b-modal="'journal-import-modal'"
-                class="multi-form orange-button full-width"
-            >
-                <icon name="file-import"/>
-                Import Journal
-            </b-button>
+                :journal="journal"
+                :assignment="assignment"
+            />
+
+            <b-card>
+                <h3
+                    slot="header"
+                    class="theme-h3"
+                >
+                    Actions
+                </h3>
+                <b-button
+                    v-if="!loadingNodes"
+                    v-b-modal="'journalImportModal'"
+                    variant="link"
+                    class="orange-button"
+                >
+                    <icon name="file-import"/>
+                    Import Journal
+                </b-button>
+            </b-card>
 
             <journal-import-modal
                 v-if="!loadingNodes"
-                modalID="journal-import-modal"
+                ref="journalImportModal"
                 :targetAssignmentID="Number(aID)"
             />
 
             <transition name="fade">
                 <b-button
                     v-if="addNodeExists && currentNode.type !== addNodeSymbol"
-                    class="fab"
+                    class="fab blue-filled-button shadow"
                     @click="setCurrentNode(nodes.find((node) => node.type === addNodeSymbol))"
                 >
                     <icon
@@ -152,6 +147,7 @@
 </template>
 
 <script>
+import DeadlineDateDisplay from '@/components/assets/DeadlineDateDisplay.vue'
 import Entry from '@/components/entry/Entry.vue'
 import TimelineLayout from '@/components/columns/TimelineLayout.vue'
 import UserMissingLtiLinkWarning from '@/components/journal/UserMissingLtiLinkWarning.vue'
@@ -175,6 +171,7 @@ export default {
         breadCrumb,
         loadWrapper,
         timeline,
+        DeadlineDateDisplay,
         Entry,
         TimelineLayout,
         progressNode,
@@ -192,6 +189,7 @@ export default {
             assignment: null,
             loadingNodes: true,
             selectedTemplate: null,
+            startInEdit: false,
         }
     },
     computed: {
@@ -203,20 +201,6 @@ export default {
         }),
         addNodeExists () {
             return this.nodes.findIndex((node) => node.type === this.addNodeSymbol) !== -1
-        },
-        deadlineRange () {
-            const unlockDate = this.$root.beautifyDate(this.currentNode.unlock_date)
-            const lockDate = this.$root.beautifyDate(this.currentNode.lock_date)
-
-            if (unlockDate && lockDate) {
-                return `Available from ${unlockDate} until ${lockDate}`
-            } else if (unlockDate) {
-                return `Available from ${unlockDate}`
-            } else if (lockDate) {
-                return `Available until ${lockDate}`
-            }
-
-            return ''
         },
         currentNodeIsLocked () {
             const currentDate = new Date()
@@ -300,10 +284,14 @@ export default {
             this.setCurrentNode(this.startNode)
         },
         entryPosted (data) {
+            this.startInEdit = data.entry.is_draft
             this.nodes = data.nodes
             this.loadingNodes = false
             this.setCurrentNode(this.nodes[data.added])
             this.selectedTemplate = null
+            this.$nextTick(() => {
+                this.startInEdit = false
+            })
         },
         safeToLeave () {
             return (
@@ -315,8 +303,3 @@ export default {
     },
 }
 </script>
-
-<style lang="sass">
-.journal-details-card > .card-body
-    padding-top: 45px
-</style>

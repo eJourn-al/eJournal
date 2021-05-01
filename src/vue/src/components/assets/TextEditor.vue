@@ -385,8 +385,6 @@ export default {
 </script>
 
 <style lang="sass">
-@import '~sass/partials/shadows.sass'
-
 .editor-container
     border-radius: 5px !important
     padding-right: 1px
@@ -397,7 +395,6 @@ export default {
     .tox-edit-area
         border-radius: 0px !important
         &::before
-            @extend .small-inner-shadow
             content: ''
             position: absolute
             z-index: 2

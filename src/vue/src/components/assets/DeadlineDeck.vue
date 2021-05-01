@@ -1,86 +1,94 @@
 <template>
-    <div>
-        <h3
-            slot="right-content-column"
-            class="theme-h3"
-        >
-            To Do
-        </h3>
-        <div
-            v-if="$root.canGradeForSomeCourse()"
-            class="text-grey float-right unselectable cursor-pointer"
-        >
-            <span
-                v-if="filterOwnGroups"
-                v-b-tooltip.hover
-                title="Only showing to do items for groups of which you are a member"
-                @click="filterOwnGroups = false"
+    <b-card
+        slot="right-content-column"
+        class="todo-deck"
+    >
+        <template slot="header">
+            <h3
+                class="theme-h3 d-inline"
             >
-                Showing:
-                <b>own groups</b>
-            </span>
-            <span
-                v-else
-                v-b-tooltip.hover
-                title="Showing to do items for all groups"
-                @click="filterOwnGroups = true"
+                To do
+            </h3>
+            <div
+                v-if="$root.canGradeForSomeCourse()"
+                class="text-grey small float-right unselectable cursor-pointer"
             >
-                Showing:
-                <b>all groups</b>
-            </span>
-        </div>
-        <load-wrapper :loading="loadingDeadlines">
-            <div v-if="computedDeadlines.length > 0">
-                <b-form-select
-                    v-if="$root.canGradeForSomeCourse() && computedDeadlines.length > 1"
-                    v-model="sortBy"
-                    :selectSize="1"
-                    class="theme-select multi-form"
+                <span
+                    v-if="filterOwnGroups"
+                    v-b-tooltip.hover
+                    title="Only showing to do items for groups of which you are a member"
+                    @click="filterOwnGroups = false"
                 >
-                    <option value="date">
-                        Sort by date
-                    </option>
-                    <option value="markingNeeded">
-                        Sort by marking needed
-                    </option>
-                </b-form-select>
-                <div
+                    Showing:
+                    <b>own groups</b>
+                </span>
+                <span
+                    v-else
+                    v-b-tooltip.hover
+                    title="Showing to do items for all groups"
+                    @click="filterOwnGroups = true"
+                >
+                    Showing:
+                    <b>all groups</b>
+                </span>
+            </div>
+        </template>
+        <load-wrapper :loading="loadingDeadlines">
+            <b-list-group
+                v-if="computedDeadlines.length > 0"
+                flush
+                class="todo-list-group"
+            >
+                <b-list-group-item
+                    v-if="$root.canGradeForSomeCourse() && computedDeadlines.length > 1"
+                    class="todo-teacher-filter"
+                >
+                    <b-form-select
+                        v-model="sortBy"
+                        :selectSize="1"
+                        class="theme-select"
+                    >
+                        <option value="date">
+                            Sort by date
+                        </option>
+                        <option value="markingNeeded">
+                            Sort by marking needed
+                        </option>
+                    </b-form-select>
+                </b-list-group-item>
+                <b-list-group-item
                     v-for="(d, i) in computedDeadlines"
                     :key="i"
                 >
-                    <b-link
-                        :to="$root.assignmentRoute(d)"
-                        tag="b-button"
-                    >
-                        <todo-card
+                    <b-link :to="$root.assignmentRoute(d)">
+                        <todo-item
                             :deadline="d"
                             :courses="d.courses"
                             :filterOwnGroups="filterOwnGroups"
                         />
                     </b-link>
-                </div>
-            </div>
-            <b-card
+                </b-list-group-item>
+            </b-list-group>
+            <div
                 v-else
-                class="no-hover"
+                class="mb-2"
             >
-                <div class="text-center multi-form">
-                    <icon
-                        name="check"
-                        scale="4"
-                        class="fill-green mb-2"
-                    /><br/>
-                    <b>
-                        All done!
-                    </b>
-                </div>
-                You do not have any {{ $root.canGradeForSomeCourse()
-                    ? `entries to grade${filterOwnGroups ? ' (in your own groups)' : ''}`
-                    : 'upcoming deadlines' }}
-                at this moment.
-            </b-card>
+                <icon
+                    name="check"
+                    class="fill-green shift-up-4"
+                />
+                <b>
+                    All done!
+                </b><br/>
+                <span class="small">
+                    You do not have any {{ $root.canGradeForSomeCourse()
+                        ? `entries to grade${filterOwnGroups ? ' (in your own groups)' : ''}`
+                        : 'upcoming deadlines' }}
+                    at this moment.
+                </span>
+            </div>
         </load-wrapper>
-    </div>
+    </b-card>
 </template>
 
 <script>
@@ -89,11 +97,11 @@ import comparison from '@/utils/comparison.js'
 
 import { mapGetters, mapMutations } from 'vuex'
 import loadWrapper from '@/components/loading/LoadWrapper.vue'
-import todoCard from '@/components/assets/TodoCard.vue'
+import todoItem from '@/components/assets/TodoItem.vue'
 
 export default {
     components: {
-        todoCard,
+        todoItem,
         loadWrapper,
     },
     data () {
@@ -128,12 +136,21 @@ export default {
             if (this.$root.canGradeForSomeCourse() && deadlines.length > 0) {
                 if (this.filterOwnGroups) {
                     deadlines = deadlines.filter(
-                        (dd) => (dd.stats.needs_marking_own_groups + dd.stats.unpublished_own_groups) > 0
+                        (dd) => (
+                            dd.stats.needs_marking_own_groups
+                            + dd.stats.unpublished_own_groups
+                            + dd.stats.import_requests_own_groups
+                        ) > 0
                         || !dd.is_published,
                     )
                 } else {
                     deadlines = deadlines.filter(
-                        (d) => d.stats.needs_marking + d.stats.unpublished > 0 || !d.is_published,
+                        (d) => (
+                            d.stats.needs_marking
+                            + d.stats.unpublished
+                            + d.stats.import_requests
+                        ) > 0
+                        || !d.is_published,
                     )
                 }
             } else {
@@ -167,3 +184,23 @@ export default {
     },
 }
 </script>
+
+<style lang="sass">
+.card.todo-deck
+    .card-body
+        border-radius: 0px 0px 5px 5px
+        overflow: hidden
+        padding-bottom: 0px
+    .todo-list-group
+        margin: -10px -10px 0px -10px
+        .list-group-item
+            padding: 10px
+            &:not(.todo-teacher-filter):hover
+                transition: all 0.3s cubic-bezier(.25,.8,.25,1) !important
+                background-color: $theme-light-grey
+            &:nth-of-type(even)
+                background-color: lighten($theme-light-grey, 3%)
+            &:last-child
+                border-bottom-left-radius: 10px
+                border-bottom-right-radius: 10px
+</style>

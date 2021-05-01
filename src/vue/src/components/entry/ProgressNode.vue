@@ -1,53 +1,35 @@
 <template>
-    <b-card
-        :class="borderColor"
-        class="no-hover"
-    >
-        <b-row
-            no-gutters
-            class="multi-form"
-        >
-            <span class="theme-h2">{{ currentNode.display_name }}</span>
-
-            <slot name="edit-button"/>
-        </b-row>
-
-        <p
-            v-if="currentNode.description"
-            class="mb-0"
-        >
-            <sandboxed-iframe
-                :content="currentNode.description"
+    <b-card>
+        <template slot="header">
+            <slot
+                name="edit-button"
             />
-        </p>
-        <files-list :files="currentNode.attached_files"/>
-        <hr/>
-        <span
-            v-if="!accomplished && new Date() < new Date(currentNode.due_date)"
-            class="text-grey"
-        >
-            Target: <b>{{ currentNode.target }}</b> point<span v-if="currentNode.target > 1">s</span><br/>
-            <b>{{ score }}</b> out of <b>{{ currentNode.target }}</b> points<br/>
-
-            <b>{{ Math.round(left * 1000) / 1000 }}</b> more required before
-            {{ $root.beautifyDate(currentNode.due_date) }}<br/>
-        </span>
-        <span
-            v-else-if="!accomplished"
-            class="text-grey"
-        >
-            Not achieved
-        </span>
-        <span
-            v-else
-            class="text-grey"
-        >
-            Successfully achieved
-        </span>
+            <h2 class="theme-h2">
+                {{ currentNode.display_name }}
+            </h2>
+            <span class="small">
+                Goal: <b>{{ currentNode.target }}</b> point<span v-if="currentNode.target > 1">s</span>
+                (<b>{{ score > currentNode.target ? currentNode.target : score }}</b> achieved)<br/>
+            </span>
+        </template>
+        <sandboxed-iframe
+            v-if="currentNode.description"
+            :content="currentNode.description"
+        />
+        <files-list
+            v-if="currentNode.attached_files && currentNode.attached_files.length > 0"
+            :files="currentNode.attached_files"
+            class="mt-2 mr-2 align-top"
+        />
+        <deadline-date-display
+            :subject="currentNode"
+            class="mt-2 align-top"
+        /><br/>
     </b-card>
 </template>
 
 <script>
+import DeadlineDateDisplay from '@/components/assets/DeadlineDateDisplay.vue'
 import filesList from '@/components/assets/file_handling/FilesList.vue'
 import sandboxedIframe from '@/components/assets/SandboxedIframe.vue'
 
@@ -55,6 +37,7 @@ export default {
     components: {
         sandboxedIframe,
         filesList,
+        DeadlineDateDisplay,
     },
     props: ['nodes', 'currentNode', 'bonusPoints'],
     computed: {
@@ -85,11 +68,11 @@ export default {
         left () {
             return this.currentNode.target - this.score
         },
-        borderColor () {
+        scoreClass () {
             return {
-                'green-border': this.accomplished,
-                'red-border': !this.accomplished && new Date() > new Date(this.currentNode.due_date),
-                'orange-border': !this.accomplished && new Date() < new Date(this.currentNode.due_date),
+                'text-green': this.accomplished,
+                'text-red': !this.accomplished && new Date() > new Date(this.currentNode.due_date),
+                'text-orange': !this.accomplished && new Date() < new Date(this.currentNode.due_date),
             }
         },
     },

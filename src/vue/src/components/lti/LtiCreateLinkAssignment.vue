@@ -1,6 +1,6 @@
 <template>
     <div>
-        <h2 class="theme-h2 multi-form">
+        <h2 class="theme-h2 mb-2">
             Configuring an assignment
         </h2>
         <span class="d-block mb-2">
@@ -37,10 +37,7 @@
                 Import existing assignment
             </b-button>
         </div>
-        <div
-            v-if="linkableAssignments.some(linkable => linkable.assignments.length > 0)"
-            class="no-hover"
-        >
+        <div v-if="linkableAssignments.some(linkable => linkable.assignments.length > 0)">
             <hr/>
             <p class="mb-1">
                 If you have already configured an assignment on eJournal, you can link it to the assignment in
@@ -55,52 +52,39 @@
                 Link to existing assignment
             </b-button>
         </div>
-        <b-modal
+        <link-assignment-modal
             ref="linkAssignmentRef"
-            title="Link to existing assignment"
-            size="lg"
-            hideFooter
-            noEnforceFocus
-        >
-            <link-assignment
-                :lti="lti"
-                :page="page"
-                :linkableAssignments="linkableAssignments"
-                @handleAction="handleLinked"
-            />
-        </b-modal>
+            :lti="lti"
+            :page="page"
+            :linkableAssignments="linkableAssignments"
+            @handleAction="handleLinked"
+        />
         <assignment-import-modal
             modalID="lti-assignment-import-modal"
             :cID="page.cID"
             :lti="lti"
         />
-        <b-modal
+        <create-assignment-modal
             ref="createAssignmentRef"
-            title="Create new assignment"
-            size="lg"
-            hideFooter
-            noEnforceFocus
-        >
-            <create-assignment
-                :lti="lti"
-                :page="page"
-                @handleAction="handleCreated"
-            />
-        </b-modal>
+            :lti="lti"
+            :page="page"
+            @handleAction="handleCreated"
+        />
     </div>
 </template>
 
 <script>
+import LinkAssignmentModal from '@/components/lti/LinkAssignmentModal.vue'
+
 import assignmentImportModal from '@/components/assignment/AssignmentImportModal.vue'
-import createAssignment from '@/components/assignment/CreateAssignment.vue'
-import linkAssignment from '@/components/lti/LinkAssignment.vue'
+import createAssignmentModal from '@/components/assignment/CreateAssignmentModal.vue'
 
 export default {
     name: 'LtiCreateLinkAssignment',
     components: {
-        createAssignment,
-        linkAssignment,
+        createAssignmentModal,
         assignmentImportModal,
+        LinkAssignmentModal,
     },
     props: ['lti', 'page', 'linkableAssignments'],
     methods: {

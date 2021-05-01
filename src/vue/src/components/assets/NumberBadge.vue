@@ -1,9 +1,13 @@
 <template>
-    <div :class="{'absolute': absolute}">
+    <div
+        class="text-right"
+        :class="{'absolute': absolute}"
+    >
         <b-badge
             v-for="(d, i) in displayedBadges"
             :key="`${keyPrefix}-badge-${i}`"
             v-b-tooltip.hover="('tooltip' in d.badge) ? tooltipToMsg(d.badge.tooltip, d.badge.value) : ''"
+            class="ml-1"
             pill
             :class="d.class"
         >

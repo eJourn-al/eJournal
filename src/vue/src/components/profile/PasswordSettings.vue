@@ -1,56 +1,61 @@
 <template>
-    <b-card
-        :class="$root.getBorderClass($route.params.uID)"
-        class="no-hover multi-form"
-    >
-        <b-form @submit.prevent="changePassword()">
-            <b-input
-                name="username"
-                autocomplete="username"
-                hidden
-            />
-            <h2 class="theme-h2 field-heading">
-                Current password
-            </h2>
-            <b-input
+    <b-form @submit.prevent="changePassword()">
+        <b-input
+            name="username"
+            autocomplete="username"
+            hidden
+        />
+
+        <b-form-group
+            label="Current password"
+            required
+        >
+            <b-form-input
                 v-model="oldPass"
-                class="theme-input multi-form"
                 type="password"
+                autofocus
                 placeholder="Current password"
-                autocomplete="new-password"
+                autocomplete="current-password"
+                required
             />
-            <h2 class="theme-h2 field-heading required">
+        </b-form-group>
+
+        <b-form-group required>
+            <template #label>
                 New password
-                <tooltip
-                    tip="Should contain at least 8 characters, a capital letter and a special character"
-                />
-            </h2>
-            <b-input
+                <tooltip tip="Should contain at least 8 characters, a capital letter and a special character"/>
+            </template>
+
+            <b-form-input
                 v-model="newPass"
-                class="theme-input multi-form"
                 type="password"
                 placeholder="New password"
                 autocomplete="new-password"
+                required
             />
-            <h2 class="theme-h2 field-heading">
-                Repeat new password
-            </h2>
-            <b-input
+        </b-form-group>
+
+        <b-form-group
+            label="Repeat new password"
+            required
+        >
+            <b-form-input
                 v-model="newPassRepeat"
-                class="theme-input multi-form"
                 type="password"
                 placeholder="Repeat new password"
                 autocomplete="new-password"
+                required
             />
-            <b-button
-                type="submit"
-                class="green-button float-right"
-            >
-                <icon name="save"/>
-                Save
-            </b-button>
-        </b-form>
-    </b-card>
+        </b-form-group>
+
+        <b-button
+            class="green-button float-right mb-2"
+            type="submit"
+        >
+            <icon name="save"/>
+            Save
+        </b-button>
+    </b-form>
 </template>
 
 <script>
@@ -81,9 +86,6 @@ export default {
                         this.newPassRepeat = ''
                     })
             }
-        },
-        isChanged () {
-            return (this.oldPass !== '' || this.newPass !== '' || this.newPassRepeat !== '')
         },
     },
 }

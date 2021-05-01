@@ -1,24 +1,23 @@
 <template>
     <content-single-column>
         <h1 class="theme-h1 mb-2">
-            <span>
-                Error {{ code }}: {{ reasonPhrase }}
-            </span>
+            <icon
+                name="exclamation-circle"
+                scale="1.75"
+                class="fill-red mr-1 shift-up-5"
+            />
+            Error {{ code }}: {{ reasonPhrase }}
         </h1>
-        <b-card
-            class="no-hover max-width-600"
-        >
-            <h2
-                v-if="description !== null"
-                class="theme-h2 mb-2"
-            >
-                {{ description }}
-            </h2>
+        <b-card class=" max-width-600">
             <span
-                v-else
-                class="d-block multi-form"
+                class="d-block"
             >
-                We are sorry, but an unknown error has brought you here.
+                <template v-if="description !== null">
+                    {{ description }}
+                </template>
+                <template v-else>
+                    We are sorry, but an unknown error has brought you here.
+                </template>
             </span>
             <sentry-feedback-form
                 v-if="sentryLastEventID !== null"
@@ -26,6 +25,8 @@
             />
             <b-button
                 v-else
+                slot="footer"
+                class="blue-filled-button"
                 :to="{name: 'Home'}"
             >
                 <icon name="home"/>

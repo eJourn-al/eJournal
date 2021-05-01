@@ -1,8 +1,10 @@
 <template>
-    <b-card class="no-hover">
-        <h2 class="theme-h2 multi-form">
-            Select an assignment to link
-        </h2>
+    <b-modal
+        ref="linkAssignmentRef"
+        title="Link to existing assignment"
+        size="lg"
+        noEnforceFocus
+    >
         <p>
             This action will create a link between the eJournal assignment of your choice and the LMS (Canvas)
             assignment. Students with existing journals for the eJournal assignment will be able to continue their work
@@ -16,7 +18,7 @@
             :multiple="false"
             :searchable="true"
             placeholder="Select A Course"
-            class="multi-form"
+            class="mb-2"
             @select="() => {
                 selectedAssignment = null
             }"
@@ -30,21 +32,19 @@
             :multiple="false"
             :searchable="true"
             placeholder="Select An Assignment"
-            class="multi-form"
+            class="mb-2"
         />
 
-        <div v-if="selectedAssignment !== null">
-            <hr/>
+        <template #modal-footer>
             <b-button
-                class="orange-button float-right"
-                type="submit"
+                class="orange-button"
                 @click="linkAssignment"
             >
                 <icon name="link"/>
                 Link
             </b-button>
-        </div>
-    </b-card>
+        </template>
+    </b-modal>
 </template>
 
 <script>
@@ -103,6 +103,12 @@ export default {
                         }
                     })
             }
+        },
+        show () {
+            this.$refs.linkAssignmentRef.show()
+        },
+        hide () {
+            this.$refs.linkAssignmentRef.hide()
         },
     },
 }

@@ -1,27 +1,33 @@
 <template>
-    <b-card class="no-hover">
+    <b-modal
+        ref="createAssignmentRef"
+        title="Create new assignment"
+        size="lg"
+        noEnforceFocus
+    >
         <assignment-details
             ref="assignmentDetails"
             :assignmentDetails="form"
         />
-        <hr/>
-        <b-button
-            class="float-left orange-button"
-            type="reset"
-            @click.prevent.stop="onReset"
-        >
-            <icon name="undo"/>
-            Reset
-        </b-button>
-        <b-button
-            class="float-right green-button"
-            type="submit"
-            @click.prevent.stop="onSubmit"
-        >
-            <icon name="plus-square"/>
-            Create
-        </b-button>
-    </b-card>
+        <template #modal-footer>
+            <b-button
+                class="mr-auto orange-button"
+                type="reset"
+                @click.prevent.stop="onReset"
+            >
+                <icon name="undo"/>
+                Reset
+            </b-button>
+            <b-button
+                class="green-button"
+                type="submit"
+                @click.prevent.stop="onSubmit"
+            >
+                <icon name="plus-square"/>
+                Create
+            </b-button>
+        </template>
+    </b-modal>
 </template>
 
 <script>
@@ -143,6 +149,12 @@ export default {
             /* Trick to reset/clear native browser form validation state */
             this.show = false
             this.$nextTick(() => { this.show = true })
+        },
+        show () {
+            this.$refs.createAssignmentRef.show()
+        },
+        hide () {
+            this.$refs.createAssignmentRef.hide()
         },
     },
 }

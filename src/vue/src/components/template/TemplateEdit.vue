@@ -1,51 +1,51 @@
 <template>
-    <b-card
-        :class="$root.getBorderClass($route.params.cID)"
-        class="no-hover template-card"
-    >
-        <entry-preview
-            v-if="readMode"
-            :template="template"
-        >
-            <template #edit-button>
+    <b-card class="template-card">
+        <template #header>
+            <template v-if="readMode">
                 <b-button
-                    class="orange-button ml-auto"
+                    class="grey-button float-right ml-2"
                     @click="setModeToEdit()"
                 >
                     <icon name="edit"/>
                     Edit
                 </b-button>
-            </template>
-        </entry-preview>
-
-        <template v-else>
-            <b-row
-                no-gutters
-                class="multi-form"
-            >
-                <span class="theme-h2">
-                    {{ (template.name) ? template.name : 'Template name' }}
-                </span>
-
                 <b-button
-                    class="ml-auto"
-                    :class="(create) ? 'green-button' : 'red-button'"
-                    @click="(create) ? setModeToRead() : cancelTemplateEdit({ template })"
+                    v-if="!create"
+                    class="red-button float-right"
+                    @click.stop="confirmDeleteTemplate()"
                 >
-                    <icon :name="(create) ? 'eye' : 'ban'"/>
-                    {{ (create) ? 'Preview' : 'Cancel' }}
+                    <icon name="trash"/>
+                    Delete
                 </b-button>
-            </b-row>
+            </template>
+            <b-button
+                v-else
+                class="float-right ml-2"
+                :class="(create) ? 'green-button' : 'red-button'"
+                @click="(create) ? setModeToRead() : cancelTemplateEdit({ template })"
+            >
+                <icon :name="(create) ? 'eye' : 'ban'"/>
+                {{ (create) ? 'Preview' : 'Cancel' }}
+            </b-button>
+            <h2 class="theme-h2">
+                {{ (template.name) ? template.name : 'Template' }}
+            </h2>
+        </template>
 
+        <entry-preview
+            v-if="readMode"
+            :template="template"
+        />
+        <template v-else>
             <b-form-group
                 label="Name"
+                class="required"
                 :invalid-feedback="nameInvalidFeedback"
                 :state="nameInputState"
             >
                 <b-input
                     v-model="template.name"
                     placeholder="Name"
-                    class="theme-input"
                     type="text"
                     trim
                     required
@@ -58,27 +58,19 @@
             />
 
             <template-edit-fields :template="template"/>
+        </template>
 
-            <hr/>
-
-            <b-row no-gutters>
-                <b-button
-                    v-if="!create"
-                    class="red-button"
-                    @click.stop="confirmDeleteTemplate()"
-                >
-                    <icon name="trash"/>
-                    Delete
-                </b-button>
-
-                <b-button
-                    class="green-button ml-auto"
-                    @click="finalizeTemplateChanges"
-                >
-                    <icon :name="(create) ? 'plus' : 'save'"/>
-                    {{ (create) ? 'Add Template' : 'Save' }}
-                </b-button>
-            </b-row>
+        <template
+            v-if="!readMode"
+            #footer
+        >
+            <b-button
+                class="green-button float-right"
+                @click="finalizeTemplateChanges"
+            >
+                <icon :name="(create) ? 'plus' : 'save'"/>
+                {{ (create) ? 'Add Template' : 'Save' }}
+            </b-button>
         </template>
     </b-card>
 </template>

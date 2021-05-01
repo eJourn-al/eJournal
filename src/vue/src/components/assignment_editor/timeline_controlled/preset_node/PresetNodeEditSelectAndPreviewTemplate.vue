@@ -12,6 +12,8 @@
                     class="theme-select"
                     :disabled="templates.length === 0"
                     required
+                    :invalid-feedback="templateInvalidFeedback"
+                    :state="templateInputState"
                 >
                     <option
                         disabled
@@ -42,23 +44,19 @@
                     </b-button>
                 </template>
             </b-input-group>
+            <span
+                class="text-blue cursor-pointer small"
+                @click.stop="createTemplate({ fromPresetNode: presetNode })"
+            >
+                {{ (templates.length === 0) ? 'Create a new template' : 'Or create a new template' }}
+            </span>
         </b-form-group>
-
-        <span
-            class="text-blue cursor-pointer"
-            @click.stop="createTemplate({ fromPresetNode: presetNode })"
-        >
-            {{ (templates.length === 0) ? 'Create a new template' : 'Or create a new template' }}
-        </span>
 
         <div
             v-if="showTemplatePreview && presetNode.template"
-            class="p-2"
+            class="p-4 background-light-grey round-border"
         >
-            <entry-preview
-                :presetNode="presetNode"
-                :template="presetNode.template"
-            />
+            <entry-preview :template="presetNode.template"/>
         </div>
     </div>
 </template>
@@ -82,6 +80,8 @@ export default {
     data () {
         return {
             showTemplatePreview: false,
+            templateInputState: null,
+            templateInvalidFeedback: null,
         }
     },
     computed: {
@@ -89,10 +89,23 @@ export default {
             templates: 'template/assignmentTemplates',
         }),
     },
+    watch: {
+        'presetNode.template': 'validateTemplateInput',
+    },
     methods: {
         ...mapMutations({
             createTemplate: 'assignmentEditor/CREATE_TEMPLATE',
         }),
+        validateTemplateInput () {
+            const template = this.presetNode.template
+
+            if (template === null || template === '') {
+                this.templateInputState = false
+                this.templateInvalidFeedback = 'Template cannot be empty.'
+            } else {
+                this.templateInputState = null
+            }
+        },
     },
 }
 </script>

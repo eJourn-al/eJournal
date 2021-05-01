@@ -7,7 +7,6 @@
         <b-form-input
             v-model="data"
             :placeholder="placeholder"
-            class="theme-input"
             type="text"
             trim
         />

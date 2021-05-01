@@ -25,7 +25,7 @@
             <template #append>
                 <b-input-group-text>
                     <icon
-                        v-b-modal="'video-upload-information-modal'"
+                        v-b-modal="'video-embed-instructions-modal'"
                         class="fill-grey cursor-pointer"
                         name="info-circle"
                     />
@@ -34,73 +34,113 @@
         </b-input-group>
 
         <b-modal
-            id="video-upload-information-modal"
+            id="video-embed-instructions-modal"
             size="lg"
-            title="Video upload information"
+            title="Video embed instructions"
             hideFooter
+            show
             noEnforceFocus
         >
-            <b-card class="no-hover">
-                <template v-if="youtubeAllowed">
-                    <!-- Steps taken from https://support.google.com/youtube/answer/57741 -->
-                    <h2>YouTube</h2>
+            <template v-if="youtubeAllowed">
+                <!-- Steps taken from https://support.google.com/youtube/answer/57741 -->
+                <b-alert
+                    show
+                    variant="danger"
+                    class="mb-2"
+                >
+                    <h2 class="theme-h2 field-heading">
+                        <icon
+                            name="brands/youtube"
+                            class="shift-up-2 fill-red mr-1"
+                        />
+                        YouTube
+                    </h2>
+                </b-alert>
+                <ol class="mb-2">
+                    <li>
+                        Navigate to
+                        <b-link
+                            class="text-blue"
+                            href="https://youtube.com"
+                            target="_blank"
+                        >
+                            https://www.youtube.com
+                        </b-link>
+                        .
+                    </li>
+                    <li>
+                        Select or upload the video you would like to share.
+                    </li>
+                    <li>
+                        Under the video, click <b>Share</b>
+                        <icon
+                            name="share"
+                            class="shift-up-2 ml-1"
+                            scale="0.8"
+                        />.
+                    </li>
+                    <li>
+                        From the presented sharing options, click the <b>copy</b> button to copy a link to the video.
+                    </li>
+                </ol>
+            </template>
 
-                    <ol>
-                        <li>
-                            Start watching or upload a video on
-                            <b-link
-                                class="text-blue"
-                                href="https://youtube.com"
-                                target="_blank"
-                            >
-                                youtube.com
-                            </b-link>
-                        </li>
-                        <li>Under the video, click <b>Share</b> <icon name="share"/>.</li>
-                        <li>
-                            A panel will appear, presenting different sharing options. <br/>
-                            <b>Copy the link</b>: Click the <b>Copy</b> button to copy a link to the video.
-                        </li>
-                    </ol>
-                </template>
-
-                <template v-if="kalturaAllowed">
-                    <h2>Kaltura</h2>
-
-                    <ol>
-                        <li>
-                            Navigate to your
-                            <b-link
-                                v-if="kalturaUrl"
-                                class="text-blue"
-                                :href="kalturaUrl"
-                                target="_blank"
-                            >
-                                Kaltura environment
-                            </b-link>
-                            <span v-else>Kaltura environment</span>
-                        </li>
-                        <li>
-                            Navigate to <b>My Media</b> and select the video you would like to share.
-                            <img
-                                src="/kaltura_media_selection.png"
-                                class="inline-screenshot"
-                            />
-                            <br/><br/>
-                        </li>
-                        <li>Select the <b>Share</b> tab.</li>
-                        <li>
-                            Select the <b>Embed</b> tab and copy the embed code. Your video will only be visible to
-                            those with access to your journal.
-
-                            <img
-                                src="/kaltura_embed_tab.png"
-                                class="inline-screenshot"
-                            />
-                        </li>
-                    </ol>
-                </template>
-            </b-card>
+            <template v-if="kalturaAllowed">
+                <b-alert
+                    show
+                    class="mb-2 purple-alert"
+                >
+                    <h2 class="theme-h2 field-heading">
+                        <icon
+                            name="photo-video"
+                            class="shift-up-2 mr-1"
+                        />
+                        Kaltura
+                    </h2>
+                </b-alert>
+                <ol class="mb-2">
+                    <li>
+                        Navigate to
+                        <b-link
+                            v-if="kalturaUrl"
+                            class="text-blue"
+                            :href="kalturaUrl"
+                            target="_blank"
+                        >
+                            {{ kalturaUrl }}
+                        </b-link>
+                        <template v-else>
+                            your Kaltura environment
+                        </template>.
+                    </li>
+                    <li>
+                        Navigate to <b>My Media</b>.
+                    </li>
+                    <li>
+                        Select or upload the video you would like to share.
+                        <img
+                            src="/kaltura_media_selection.png"
+                            class="inline-screenshot bordered-content mb-2"
+                        />
+                    </li>
+                    <li>
+                        Select the <b>Share</b> tab.
+                        <img
+                            src="/kaltura_embed_tab.png"
+                            class="inline-screenshot bordered-content mb-2"
+                        />
+                    </li>
+                    <li>
+                        Select the <b>Embed</b> tab and copy the embed code.
+                        <small class="d-block mb-2">
+                            <b>
+                                Note:
+                            </b>
+                            Your video will only be visible to those with access to your journal.
+                        </small>
+                    </li>
+                </ol>
+            </template>
         </b-modal>
     </b-form-group>
     <!-- eslint-enable vue/attribute-hyphenation -->

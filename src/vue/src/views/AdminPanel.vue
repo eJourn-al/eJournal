@@ -1,10 +1,7 @@
 <template>
     <wide-content>
         <bread-crumb/>
-        <b-card
-            class="no-hover no-left-border"
-            noBody
-        >
+        <b-card noBody>
             <b-tabs
                 card
                 pills

@@ -52,7 +52,7 @@ export default {
 }
 </script>
 <style lang="sass">
-.controls
+.image-display .controls, .pdf-display .controls, .file-download-button
     &:hover
         cursor: pointer
     b

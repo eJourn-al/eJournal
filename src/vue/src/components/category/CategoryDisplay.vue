@@ -1,39 +1,47 @@
 <template>
     <div
         v-if="categories"
-        :ref="`${id}-category-display`"
         class="category-display"
         :class="{
             'compact': compact,
         }"
     >
-        <icon
+        <span
             v-if="categories.length > 0"
-            name="caret-left"
             class="category-left"
-            @click.native="scrollLeft"
-        />
-        <category-tag
-            v-for="category in categories"
-            :key="`${id}-category-${category.id}`"
-            :ref="`${id}-category-${category.id}`"
-            :category="category"
-            :removable="editable"
-            :showInfo="true"
-            @click.native="$emit('select-category', category)"
-            @remove-category="$emit('remove-category', category)"
-            @show-info="
-                infoCategory = $event
-                $nextTick(() => { $bvModal.show(infoModalID) })
-            "
-        />
-        <icon
+            @click="scrollLeft"
+        >
+            <icon
+                name="angle-left"
+                class="shift-up-2"
+            />
+        </span>
+        <span
             v-if="categories.length > 0"
             class="category-right"
-            name="caret-right"
-            @click.native="scrollRight"
-        />
-
+            @click="scrollRight"
+        >
+            <icon
+                name="angle-right"
+                class="shift-up-2"
+            />
+        </span>
+        <div :ref="`${id}-category-display`">
+            <category-tag
+                v-for="category in categories"
+                :key="`${id}-category-${category.id}`"
+                :ref="`${id}-category-${category.id}`"
+                :category="category"
+                :removable="editable"
+                :showInfo="true"
+                @click.native="$emit('select-category', category)"
+                @remove-category="$emit('remove-category', category)"
+                @show-info="
+                    infoCategory = $event
+                    $nextTick(() => { $bvModal.show(infoModalID) })
+                "
+            />
+        </div>
         <slot/>
 
         <category-information-modal
@@ -99,27 +107,36 @@ export default {
     .category-left, .category-right
         display: none
     &.compact
-        display: block
-        width: auto
-        max-width: 100%
-        overflow-x: scroll
-        white-space: nowrap
-        scrollbar-width: none
-        scroll-behavior: smooth
-        .category-left, .category-right
-            position: absolute
-            top: 50%
-            transform: translateY(-50%)
-            display: block
-            color: $theme-medium-grey
-            transition: all 0.3s cubic-bezier(.25,.8,.25,1)
+        position: relative
+        &:hover
+            span.category-left, span.category-right
+                opacity: 0.8
+        div
+            width: auto
+            max-width: 100%
+            overflow-x: scroll
+            white-space: nowrap
+            scroll-behavior: smooth
+            scrollbar-width: none
+            z-index: 20
+            &::-webkit-scrollbar
+                display: none
             &:hover
-                color: grey
-                cursor: pointer
+        span.category-left, span.category-right
+            z-index: 21
+            opacity: 0
+            position: absolute
+            height: 100%
+            background: white
+            padding: 2px
+            display: block
+            color: grey
+            transition: all 0.3s cubic-bezier(.25,.8,.25,1)
+            cursor: pointer
+            &:hover
+                opacity: 1
         .category-left
             left: 0px
         .category-right
             right: 0px
-        &::-webkit-scrollbar
-            display: none
 </style>

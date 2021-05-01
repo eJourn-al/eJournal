@@ -3,15 +3,14 @@
     <b-navbar
         v-if="loggedIn"
         id="header"
-        class="theme-shadow no-hover"
-        toggleable="md"
-        type="dark"
+        class="shadow-sm"
         fixed="top"
+        variant="dark"
     >
         <transition name="fade">
             <div
                 v-if="showConnectionSpinner"
-                class="spinner theme-shadow"
+                class="spinner"
             >
                 <icon
                     name="circle-notch"
@@ -20,54 +19,55 @@
                 />
             </div>
         </transition>
+        <icon
+            v-b-toggle.nav-sidebar
+            class="ml-1 mr-4 nav-sidebar-button"
+            name="bars"
+        />
         <b-navbar-brand
             :to="{ name: 'Home' }"
-            class="brand-name text-shadow"
+            class="brand-name"
         >
             <img
                 src="/ejournal-logo-white.svg"
-                class="theme-img"
+                class="unselectable"
             />
         </b-navbar-brand>
 
-        <b-navbar-toggle
-            class="ml-auto mr-auto"
-            target="nav-collapse"
-            aria-expanded="false"
-            aria-controls="nav-collapse"
+        <b-sidebar
+            id="nav-sidebar"
+            backdrop-variant="dark"
+            backdrop
+            shadow
         >
-            <span class="nav-collapse__icon nav-collapse__icon--open">
+            <template #header>
                 <icon
-                    class="collapse-icon"
-                    name="caret-down"
-                    scale="1.75"
+                    v-b-toggle.nav-sidebar
+                    class="ml-1 mr-4 cursor-pointer text-white"
+                    name="bars"
                 />
-            </span>
-            <span class="nav-collapse__icon nav-collapse__icon--close">
-                <icon
-                    class="collapse-icon"
-                    name="caret-up"
-                    scale="1.75"
-                />
-            </span>
-        </b-navbar-toggle>
-
-        <b-collapse
-            id="nav-collapse"
-            isNav
-        >
-            <b-navbar-nav class="mr-auto">
+                <b-navbar-brand class="brand-name">
+                    <img
+                        src="/ejournal-logo-white.svg"
+                        class="unselectable"
+                    />
+                </b-navbar-brand>
+            </template>
+            <b-nav
+                isNav
+                vertical
+            >
                 <b-nav-item :to="{ name : 'Home' }">
                     <icon
-                        name="home"
-                        class="shift-up-2"
+                        name="book"
+                        class="shift-up-3 mr-1 ml-1"
                     />
                     Courses
                 </b-nav-item>
                 <b-nav-item :to="{ name : 'AssignmentsOverview' }">
                     <icon
                         name="edit"
-                        class="shift-up-2"
+                        class="shift-up-3 mr-1 ml-1"
                     />
                     Assignments
                 </b-nav-item>
@@ -77,114 +77,48 @@
                 >
                     <icon
                         name="user-shield"
-                        class="shift-up-2"
+                        class="shift-up-3 mr-1 ml-1"
                     />
                     Admin Panel
                 </b-nav-item>
-            </b-navbar-nav>
-        </b-collapse>
-
-        <b-navbar-nav class="ml-auto">
-            <b-nav-dropdown
-                id="nav-dropdown-options"
-                noCaret
-                right
-            >
-                <div
-                    slot="button-content"
-                    class="profile-picture-container"
-                >
-                    <img
-                        :src="profileImg"
-                        class="theme-img profile-picture-sm"
-                    />
-                </div>
-                <b-button
-                    :to="{ name: 'Profile' }"
-                    class="mb-1"
-                >
-                    <icon name="user"/>
-                    &nbsp;Profile
-                </b-button>
-                <b-button :to="{ name: 'Logout' }">
-                    <icon name="sign-out-alt"/>
-                    Log out
-                </b-button>
-            </b-nav-dropdown>
-        </b-navbar-nav>
-    </b-navbar>
-
-    <!-- Section visible if user logged out -->
-    <b-navbar
-        v-else
-        id="header"
-        class="theme-shadow no-hover"
-        toggleable="md"
-        type="dark"
-        fixed="top"
-    >
-        <transition name="fade">
-            <div
-                v-if="showConnectionSpinner"
-                class="spinner theme-shadow"
-            >
-                <icon
-                    name="circle-notch"
-                    spin
-                    scale="1.3"
-                />
-            </div>
-        </transition>
-        <b-navbar-brand
-            :to="{ name: 'Guest' }"
-            class="brand-name"
-        >
-            <img
-                src="/ejournal-logo-white.svg"
-                class="theme-img"
-            />
-        </b-navbar-brand>
-
-        <b-navbar-nav
-            v-if="$route.name !== 'LtiLogin'"
-            class="ml-auto"
-        >
-            <b-nav-dropdown
-                id="nav-dropdown-options"
-                ref="loginDropdown"
-                right
-                noCaret
-            >
-                <div
-                    slot="button-content"
-                    class="profile-picture-container bg-white d-flex justify-content-center align-items-center"
+                <b-nav-item
+                    :to="{ name : 'Profile' }"
                 >
                     <icon
-                        name="ellipsis-v"
-                        class="fill-dark-blue"
+                        name="user"
+                        class="shift-up-3 mr-1 ml-1"
                     />
-                </div>
-                <b-button
-                    v-if="allowRegistration"
-                    :to="{ name: 'Register' }"
-                    class="mb-1"
+                    Profile
+                </b-nav-item>
+                <b-nav-item
+                    @click="logOut"
                 >
-                    <icon name="user-plus"/>
-                    Register
-                </b-button>
-                <b-button :to="{ name: 'Login' }">
-                    <icon name="sign-in-alt"/>
-                    Log in
-                </b-button>
-            </b-nav-dropdown>
-        </b-navbar-nav>
+                    <icon
+                        name="sign-out-alt"
+                        class="shift-up-3 mr-1 ml-1"
+                    />
+                    Log out
+                </b-nav-item>
+            </b-nav>
+            <custom-footer slot="footer"/>
+        </b-sidebar>
+        <b-link :to="{ name: 'Profile' }">
+            <img
+                :src="profileImg"
+                class="profile-picture"
+            />
+        </b-link>
     </b-navbar>
 </template>
 
 <script>
 import { mapGetters } from 'vuex'
+import customFooter from '@/components/assets/Footer.vue'
 
 export default {
+    components: {
+        customFooter,
+    },
     data () {
         return {
             defaultProfileImg: '/unknown-profile.png',
@@ -198,86 +132,61 @@ export default {
             allowRegistration: 'instance/allowRegistration',
         }),
     },
+    methods: {
+        logOut () {
+            this.$store.dispatch('user/logout')
+            this.$router.push({ name: 'Login' })
+        },
+    },
 }
 </script>
 
 <style lang="sass">
-@import '~sass/partials/shadows.sass'
-
 #header
-    background-color: $theme-dark-blue
-    color: white
+    padding: 0px 10px
     height: $header-height
-    .nav-link
-        > svg
-            fill: grey !important
+    background-color: $theme-dark-blue !important
+    .nav-sidebar-button
+        color: white
         &:hover
-            > svg
-                fill: $theme-medium-grey !important
-        &.router-link-active
-            color: white
-            > svg
-                fill: $theme-orange !important
+            cursor: pointer
+            color: $theme-light-grey
     .brand-name
-        img
-            height: 25px
-    .navbar-toggler
-        width: 40px
-        height: 40px
         padding: 0px
-        .collapse-icon
-            fill: white !important
-        @include md-max
-            position: absolute
-            left: 50%
-            right: 50%
-            top: 8px
-            transform: translateX(-50%)
-            border-radius: 50% !important
-    /* Handles rotation of the arrow icon. */
-    [aria-expanded="false"] .nav-collapse__icon--open
-        display: block
-
-    [aria-expanded="false"] .nav-collapse__icon--close
-        display: none
-
-    [aria-expanded="true"] .nav-collapse__icon--open
-        display: none
-
-    [aria-expanded="true"] .nav-collapse__icon--close
-        display: block
-    @include md-max
-        min-height: $header-height
-        height: auto
-
-    #nav-dropdown-options
-        .profile-picture-container
-            float: right
-            border-radius: 50% !important
-            width: 35px
-            height: 35px
-        a
-            padding: 0px !important
-        a.btn
-            padding: 0.375rem 0.75rem !important
-            min-width: 100%
-            width: auto
-            justify-content: left
-        @include sm-max
-            position: absolute
-            top: -65px
-            right: 15px
-            margin-top: 75px
-
-    .dropdown-menu
-        @extend .theme-shadow
-        float: right
-        background: $theme-dark-blue !important
-        border: none !important
-        border-radius: 0px 0px 5px 5px !important
-        padding: 10px 5px 5px 5px !important
-        @include sm-max
-            margin-top: 10px !important
+        img
+            height: calc(#{$header-height} - 20px)
+            margin-top: -5px
+    #nav-sidebar
+        .b-sidebar-header
+            background-color: $theme-dark-blue
+        .b-sidebar-header, .b-sidebar-body
+            padding: 8px 10px
+        .nav-link
+            color: grey
+            background-color: $theme-light-grey
+            border-radius: 5px
+            margin-bottom: 8px
+            &:hover
+                background-color: $theme-medium-grey
+            &.router-link-active
+                color: $text-color
+                font-weight: bold
+                > svg
+                    fill: $theme-blue !important
+        .b-sidebar-footer
+            margin: 0px
+            background-color: $theme-light-grey
+    .profile-picture
+        border-radius: 8px
+        border-width: 0px
+        position: fixed
+        right: 10px
+        top: 10px
+        overflow: hidden
+        width: calc(#{$header-height} - 20px)
+        height: calc(#{$header-height} - 20px)
+        &:hover
+            opacity: 0.9
 
     .spinner
         background: white

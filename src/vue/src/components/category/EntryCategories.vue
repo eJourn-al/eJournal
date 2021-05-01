@@ -1,25 +1,46 @@
 <template>
-    <div v-if="$store.getters['category/assignmentCategories'].length">
-        <h2 class="theme-h2 field-heading">
-            Categories
-        </h2>
+    <div
+        v-if="($store.getters['category/assignmentCategories'].length
+            && (editable || entry.categories)) || (displayOnly && template.categories.length > 0)"
+        class="p-2 background-light-grey round-border d-inline-block"
+        :class="{ 'full-width': editMode, }"
+    >
+        <b>Categories</b>
+        <span
+            v-if="editable && !editMode"
+            class="text-grey cursor-pointer small"
+            @click="editMode = true"
+        >
+            Edit
+        </span><br/>
 
-        <category-select
-            v-if="editable"
-            v-model="entry.categories"
-            :class="{ 'multi-form': create || edit }"
-            :options="$store.getters['category/assignmentCategories']"
-            :placeholder="`${(edit && entry.categories.length) ? 'Edit' : 'Add'} categories`"
-            @remove="removeCategory"
-            @select="addCategory"
-        />
         <category-display
-            v-if="!editable && 'categories' in entry"
+            v-if="(!editMode && 'categories' in entry) || displayOnly"
             :id="`${id}-display`"
             :editable="editable"
-            :categories="entry.categories"
+            :categories="displayOnly ? template.categories : entry.categories"
+            class="small"
             @remove-category="removeCategory($event)"
         />
+
+        <category-select
+            v-else-if="editable"
+            v-model="entry.categories"
+            :options="$store.getters['category/assignmentCategories']"
+            :placeholder="`${(edit && entry.categories.length) ? 'Edit' : 'Add'} categories`"
+            :startOpen="editMode"
+            :openDirection="'top'"
+            @remove="removeCategory"
+            @select="addCategory"
+            @close="editMode = false"
+        />
+
+        <i
+            v-if="!editMode && 'categories' in entry && entry.categories.length === 0"
+            class="text-grey small"
+        >
+            This entry has no categories.
+        </i>
     </div>
 </template>
 
@@ -58,20 +79,32 @@ export default {
             type: Boolean,
             default: true,
         },
+        displayOnly: {
+            type: Boolean,
+            default: false,
+        },
+    },
+    data () {
+        return {
+            editMode: false,
+        }
     },
     computed: {
         editable () {
             return (
-                this.$hasPermission('can_grade')
-                || (
-                    (this.edit || this.create)
-                    && this.template.allow_custom_categories
+                !this.displayOnly
+                && (
+                    this.$hasPermission('can_grade')
+                    || (
+                        (this.edit || this.create)
+                        && this.template.allow_custom_categories
+                    )
                 )
             )
         },
     },
     created () {
-        if (this.create || !('categories' in this.entry)) {
+        if ((this.create || !('categories' in this.entry)) && !this.displayOnly) {
             this.$set(this.entry, 'categories', JSON.parse(JSON.stringify(this.template.categories)))
         }
     },

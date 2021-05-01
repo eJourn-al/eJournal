@@ -16,57 +16,43 @@
 <template>
     <div>
         <b-collapse id="timeline-container">
-            <h3 class="theme-h3 mb-1 mr-2">
-                Timeline
-            </h3>
-
-            <b-dropdown
+            <b-card
                 v-if="assignmentHasCategories"
                 class="timeline-filter"
-                noCaret
-                variant="link"
+                noBody
             >
-                <template #button-content>
+                <template #header>
+                    <h3 class="theme-h3 mb-1 mr-2">
+                        Timeline
+                    </h3>
                     <b-button
-                        pill
-                        class="filter-button"
-                        :class="{
-                            'blue-filled-button': optionsActive,
-                            'grey-filled-button': !optionsActive,
-                        }"
+                        variant="link"
+                        class="grey-button float-right pt-0 pb-0"
+                        @click="showFilters = !showFilters"
                     >
                         <icon name="cog"/>
                         Options
                     </b-button>
                 </template>
-
-                <div
-                    v-if="nodesHoldPastDeadlines"
-                    class="extra-filter-options-container"
-                >
+                <b-card-body v-if="showFilters">
                     <b-form-checkbox
                         v-if="nodesHoldPastDeadlines"
                         v-model="hidePastDeadlines"
+                        class="mb-2"
                         @change="filterNodes"
                     >
                         Hide past deadlines
                     </b-form-checkbox>
-                </div>
-
-                <category-select
-                    v-model="filteredCategories"
-                    :options="$store.getters['category/assignmentCategories']"
-                    :multiple="true"
-                    :searchable="true"
-                    :multiSelectText="`${filteredCategories.length > 1 ? 'categories' : 'category'}`"
-                    @input="filterNodes"
-                />
-            </b-dropdown>
-
-            <category-display
-                :id="'timeline-filter-categories'"
-                :categories="filteredCategories"
-            />
+                    <category-select
+                        v-model="filteredCategories"
+                        :options="$store.getters['category/assignmentCategories']"
+                        :multiple="true"
+                        :searchable="true"
+                        :multiSelectText="`${filteredCategories.length > 1 ? 'categories' : 'category'}`"
+                        @input="filterNodes"
+                    />
+                </b-card-body>
+            </b-card>
 
             <template
                 v-b-toggle="($root.lgMax) ? 'timeline-container' : null"
@@ -88,26 +74,27 @@
             aria-expanded="false"
             aria-controls="timeline-container"
         >
-            <span class="timeline-container__icon timeline-container__icon--open">
+            <span class="timeline-container__icon timeline-container__icon--open collapse-icon">
                 <icon
-                    class="collapse-icon"
-                    name="list-ul"
-                    scale="1.75"
+                    class="shift-up-4 mr-1"
+                    name="caret-down"
+                    scale="1"
                 />
+                Show timeline
             </span>
-            <span class="timeline-container__icon timeline-container__icon--close">
+            <span class="timeline-container__icon timeline-container__icon--close collapse-icon">
                 <icon
-                    class="collapse-icon"
+                    class="shift-up-4 mr-1"
                     name="caret-up"
-                    scale="1.75"
+                    scale="1"
                 />
+                Hide timeline
             </span>
         </div>
     </div>
 </template>
 
 <script>
-import CategoryDisplay from '../category/CategoryDisplay.vue'
 import CategorySelect from '@/components/category/CategorySelect.vue'
 import TimelineNodes from '@/components/timeline/TimelineNodes.vue'
 
@@ -117,7 +104,6 @@ import { mapGetters, mapMutations } from 'vuex'
 
 export default {
     components: {
-        CategoryDisplay,
         CategorySelect,
         TimelineNodes,
     },
@@ -134,6 +120,7 @@ export default {
     },
     data () {
         return {
+            showFilters: false,
             filteredNodes: [],
         }
     },
@@ -162,12 +149,6 @@ export default {
                 (node.type === 'd' || node.type === 'p')
                 && comparison.nodeDueDateHasPassed(node, this.assignment)
             ))
-        },
-        optionsActive () {
-            return (
-                this.filteredCategories.length > 0
-                || this.hidePastDeadlines
-            )
         },
     },
     watch: {
@@ -286,36 +267,22 @@ export default {
 </script>
 
 <style lang="sass">
-@import '~sass/partials/shadows.sass'
+@import '~sass/modules/breakpoints.sass'
 
 #timeline-container
-    position: relative
-    @include lg
+    @include lg-max
+        padding: 10px
+        border: 1px solid $border-color
+        background-color: $theme-light-grey
+        border-radius: 5px 5px 0px 0px
+        max-height: 50vh
+        overflow-x: hidden
+        overflow-y: auto
+        scrollbar-width: none
+        &::-webkit-scrollbar
+            display: none
+    @include xl
         display: block !important
-
-.timeline-filter
-    position: static !important
-    vertical-align: top
-    display: inline
-    .dropdown-toggle
-        text-decoration: none
-        border-width: 0px
-        padding: 0px
-        .filter-button
-            padding: 0.15em 0.6em
-            &:hover, &:focus, &:active
-                border-color: inherit !important
-    .dropdown-menu
-        width: 100%
-        margin-top: 5px
-        padding: 0px
-        border: none
-        .multiselect--active .multiselect__content-wrapper
-            box-shadow: none
-            position: relative
-
-    .extra-filter-options-container
-        padding: 0.5em
 
 #timeline-toggle
     display: none
@@ -342,14 +309,13 @@ export default {
         display: block
         border: 0px
         padding: 10px 0px
-        border-radius: 40px !important
+        border-radius: 0px 0px 5px 5px !important
         background-color: $theme-blue !important
         &:hover
             background-color: $theme-blue !important
             cursor: pointer
         .collapse-icon
-            display: block
             margin-left: auto
             margin-right: auto
-            fill: white
+            color: white
 </style>

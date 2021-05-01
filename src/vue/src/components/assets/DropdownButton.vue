@@ -13,6 +13,7 @@
             <span
                 v-if="options[selectedOption].tooltip"
                 v-b-tooltip.hover
+                class="dropdown-button-active-text"
                 :title="options[selectedOption].tooltip"
             >
                 <icon
@@ -21,7 +22,10 @@
                 />
                 {{ options[selectedOption].text }}
             </span>
-            <span v-else>
+            <span
+                v-else
+                class="dropdown-button-active-text"
+            >
                 <icon
                     :name="options[selectedOption].icon"
                     scale="1"
@@ -29,7 +33,7 @@
                 {{ options[selectedOption].text }}
             </span>
             <span
-                class="dropdown-arrow"
+                class="dropdown-button-caret"
                 @click.prevent.stop="() => {
                     isOpen = !isOpen
                 }"
@@ -118,21 +122,22 @@ export default {
 </script>
 
 <style lang="sass">
-@import '~sass/partials/shadows.sass'
-
 .dropdown-button-wrapper
-    .dropdown-button
+    .btn.dropdown-button
         z-index: 1
-        span.dropdown-arrow
+        padding: 0px
+        .dropdown-button-active-text
             display: inline-block
-            margin: 0px -0.375rem 0px 0.375rem
-            padding: 0px 0.375rem
-            border-radius: 5px !important
-            border: 1px solid $theme-dark-grey
-            background-color: rgba(0, 0, 0, 0.05)
+            padding: 0.375rem 0.75rem
+        .dropdown-button-caret
+            display: inline-block
+            margin: 0px
+            padding: 0.375rem 0.75rem
+            border-radius: 0px 5px 5px 0px
+            border-left: 1px solid $border-color
             transition: all 0.3s cubic-bezier(.25,.8,.25,1) !important
             svg
-                fill: grey !important
+                fill: $text-color
             &:hover
                 background-color: rgba(0, 0, 0, 0.2)
         &:hover:not(.no-hover), &.active
@@ -145,10 +150,9 @@ export default {
         position: absolute
         top: 100%
         right: 0px
-        @extend .theme-shadow
         background: $theme-medium-grey !important
         border: none !important
-        border-radius: 0px 0px 5px 5px !important
+        border-radius: 5px !important
         padding: 5px 5px 0px 5px
         &.up
             bottom: 100%
@@ -158,7 +162,6 @@ export default {
             text-align: left
             margin-bottom: 5px
             width: 100%
-            line-height: 1.1em
             svg
                 min-width: 0.95em
                 margin-left: 0px

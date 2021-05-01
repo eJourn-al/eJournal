@@ -51,7 +51,10 @@ class JournalImportRequestView(viewsets.ViewSet):
             JournalImportRequestSerializer.setup_eager_loading(JournalImportRequest.objects.filter(pk=jir.pk)).get(),
             context={'user': request.user},
         )
-        return response.created({'journal_import_request': serializer.data})
+        return response.created(
+            {'journal_import_request': serializer.data},
+            description='Journal import request succesfully received and is now awaiting evaluation by your educator.',
+        )
 
     def partial_update(self, request, *args, **kwargs):
         """

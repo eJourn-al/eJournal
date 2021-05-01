@@ -13,7 +13,7 @@
             >
                 <b-input
                     v-model="field.title"
-                    class="multi-form theme-input"
+                    class="mb-2"
                     placeholder="Optional field title"
                     required
                 />
@@ -25,7 +25,7 @@
                     :basic="true"
                     :displayInline="true"
                     :minifiedTextArea="true"
-                    class="multi-form"
+                    class="mb-2"
                     placeholder="Optional description"
                     required
                 />
@@ -33,12 +33,12 @@
                     <b-select
                         v-model="field.type"
                         :options="fieldTypes"
-                        class="theme-select multi-form mr-2"
+                        class="theme-select mb-2 mr-2"
                         @change="selectedType"
                     />
                     <b-button
                         v-if="!field.required"
-                        class="optional-field-template float-right multi-form"
+                        class="optional-field-template float-right mb-2"
                         :class="{ 'input-disabled': field.type === 'n' }"
                         @click.stop
                         @click="field.required = !field.required"
@@ -48,7 +48,7 @@
                     </b-button>
                     <b-button
                         v-if="field.required"
-                        class="required-field-template float-right multi-form"
+                        class="required-field-template float-right mb-2"
                         @click.stop
                         @click="field.required = !field.required"
                     >
@@ -63,14 +63,13 @@
                         v-model="selectedExtensionType"
                         :options="fileExtensions"
                         placeholder="Custom"
-                        class="theme-select multi-form mr-2"
+                        class="theme-select mb-2 mr-2"
                         @change="selectedExtensionType === ' ' || selectedExtensionType === '*' ?
                             field.options = '' : field.options = selectedExtensionType"
                     />
                     <b-input
                         v-if="selectedExtensionType == ' '"
                         v-model="field.options"
-                        class="theme-input"
                         placeholder="Enter a list of accepted extensions (comma seperated), for example: pdf, docx"
                         @input="selectedExtensionType = ' '"
                     />
@@ -84,19 +83,20 @@
                     :multiple="true"
                     placeholder="Please select one or more video hosts"
                     :multiSelectText="selectedVideoSources.map(host => host.label).join(', ')"
-                    class="multi-form mr-2"
+                    :showCount="false"
+                    class="mb-2 mr-2"
                     @input="field.options = selectedVideoSources.map(elem => elem.id).join()"
                 />
                 <div v-else-if="field.type === 's'">
                     <!-- Event targeting allows us to access the input value -->
                     <div class="d-flex">
                         <b-input
-                            class="multi-form mr-2 theme-input"
+                            class="mb-2 mr-2"
                             placeholder="Enter an option"
                             @keyup.enter.native="addSelectionOption($event.target, field)"
                         />
                         <b-button
-                            class="float-right multi-form green-button"
+                            class="float-right mb-2 green-button"
                             @click.stop="addSelectionOption($event.target.previousElementSibling, field)"
                         >
                             <icon name="plus"/>
@@ -133,13 +133,13 @@
                     <icon
                         class="move-icon"
                         name="arrows-alt"
-                        scale="1.75"
+                        scale="1.25"
                     />
                 </div>
                 <icon
                     class="trash-icon"
                     name="trash"
-                    scale="1.75"
+                    scale="1.25"
                     @click.native="$emit('removeField', field.location)"
                 />
             </b-col>
@@ -249,48 +249,3 @@ export default {
     },
 }
 </script>
-
-<style lang="sass">
-.field-card
-    .optional-field-template
-        background-color: white
-        color: $theme-dark-blue !important
-        svg
-            fill: $theme-medium-grey
-
-    .required-field-template
-        background-color: $theme-dark-blue !important
-        color: white !important
-        svg, &:hover:not(.no-hover) svg
-            fill: $theme-red !important
-
-    .sortable-chosen .card
-        background-color: $theme-dark-grey
-
-    .sortable-ghost
-        visibility: hidden
-
-    .sortable-drag .card
-        visibility: visible
-
-    .handle
-        text-align: center
-        padding-bottom: 7px
-
-    .field-card:hover .move-icon, .field-card:hover .trash-icon
-        fill: $theme-dark-blue !important
-
-    .handle:hover .move-icon
-        cursor: grab
-        fill: $theme-blue !important
-
-    .field-card:hover .trash-icon:hover
-        fill: $theme-red !important
-
-    .icon-box
-        text-align: center
-
-    @include sm-max
-        .icon-box
-            margin-top: 10px
-</style>

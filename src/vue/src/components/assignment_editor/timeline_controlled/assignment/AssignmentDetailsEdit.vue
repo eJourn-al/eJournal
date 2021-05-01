@@ -1,22 +1,17 @@
 <template>
-    <b-card
-        :class="$root.getBorderClass($route.params.cID)"
-        class="no-hover"
-    >
-        <b-row
-            no-gutters
-            class="multi-form"
-        >
-            <span class="theme-h2">Assignment details</span>
-
+    <b-card>
+        <template #header>
             <b-button
-                class="red-button ml-auto"
+                class="red-button float-right"
                 @click="clearAssignmentDetailsDraft(); selectAssignmentDetails({ originalAssignment })"
             >
                 <icon name="ban"/>
                 Cancel
             </b-button>
-        </b-row>
+            <h2 class="theme-h2">
+                Assignment details
+            </h2>
+        </template>
 
         <assignment-details
             v-if="assignmentDetailsDraft.all_groups && assignmentDetailsDraft.assigned_groups"
@@ -25,9 +20,8 @@
             :presetNodes="assignmentPresetNodes"
         />
 
-        <hr/>
-
         <b-button
+            slot="footer"
             class="float-right green-button"
             @click.stop="save()"
         >

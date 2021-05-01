@@ -1,26 +1,24 @@
 <template>
-    <div class="image-field">
+    <div class="image-display round-border">
         <div
             class="controls unselectable"
             @click="handleDownload"
         >
             <icon
                 name="image"
-                class="shift-up-2"
+                class="shift-up-2 fill-blue"
             />
             <b class="ml-1">
                 {{ file.file_name }}
             </b>
             <slot/>
         </div>
-        <transition name="fade">
-            <img
-                v-if="fileURL && show"
-                class="theme-img"
-                :class="showImage"
-                :src="fileURL"
-            />
-        </transition>
+        <img
+            v-if="fileURL && show"
+            class="full-width round-border"
+            :class="showImage"
+            :src="fileURL"
+        />
     </div>
 </template>
 
@@ -77,7 +75,7 @@ export default {
 </script>
 
 <style lang="sass">
-.image-field
+.image-display
     img
         display: inline
 </style>

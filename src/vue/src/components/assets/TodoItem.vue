@@ -1,60 +1,66 @@
 <template>
-    <b-card :class="$root.getBorderClass(deadline.id)">
+    <div>
         <!-- Teacher show things todo -->
         <number-badge
             v-if="thingsToDo"
             :absolute="false"
             :badges="badges"
             :displayZeroValues="false"
-            class="float-right multi-form"
+            class="float-right ml-2 mb-2"
             keyPrefix="todo"
         />
-
-        <b class="align-top">
-            {{ deadline.name }}
-        </b>
-        <span class="align-middle">
-            {{ courseAbbreviations }}
-        </span>
         <b-badge
             v-if="!deadline.is_published"
             v-b-tooltip:hover="'This assignment is not yet published'"
             pill
-            class="background-medium-grey text-grey align-middle"
+            class="background-medium-grey text-grey align-middle float-right mb-2"
         >
-            <icon name="eye-slash"/>
+            <icon
+                name="eye-slash"
+                scale="0.8"
+            />
         </b-badge>
+
+        {{ deadline.name }}
+        <span class="small">
+            {{ courseAbbreviations }}
+        </span>
         <br/>
         <!-- Teacher deadline shows last submitted entry date  -->
-        <span v-if="$hasPermission('can_view_all_journals', 'assignment', deadline.id)">
+        <span
+            v-if="$hasPermission('can_view_all_journals', 'assignment', deadline.id)"
+            class="small"
+        >
             <span v-if="thingsToDo">
                 <icon
-                    name="eye"
-                    class="fill-grey shift-up-3"
-                /> {{ timeLeft[1] }} ago<br/>
-                <icon
-                    name="flag"
-                    class="fill-grey shift-up-3"
-                /> {{ $root.beautifyDate(deadline.deadline.date) }}
+                    name="edit"
+                    class="fill-grey shift-up-2"
+                    scale="0.8"
+                /> <timeago :datetime="deadline.deadline.date"/>
             </span>
         </span>
-        <span v-else-if="deadline.deadline.date">
+        <span
+            v-else-if="deadline.deadline.date"
+            class="small"
+        >
             <!-- Student deadline shows last not submitted deadline -->
             <icon
                 name="calendar"
                 class="fill-grey shift-up-3 mr-1"
+                scale="0.8"
             />
-            <span v-if="timeLeft[0] < 0">Due in {{ timeLeft[1] }}<br/></span>
+            {{ deadline.deadline.name }}
+            <span v-if="new Date() < new Date(deadline.deadline.date)">
+                due in <timeago :datetime="deadline.deadline.date"/>
+            </span>
             <span
                 v-else
                 class="text-red"
-            >{{ timeLeft[1] }} late<br/></span>
-            <icon
-                name="flag"
-                class="fill-grey shift-up-3"
-            /> {{ deadline.deadline.name }}
+            >
+                due <timeago :datetime="deadline.deadline.date"/>
+            </span>
         </span>
-    </b-card>
+    </div>
 </template>
 
 <script>
@@ -108,37 +114,6 @@ export default {
             } else {
                 return `(${this.deadline.course.abbreviation})`
             }
-        },
-        timeLeft () {
-            if (!this.deadline.deadline.date) { return '' }
-            const dateNow = new Date()
-            const dateFuture = new Date(this.deadline.deadline.date)
-
-            // get total seconds between the times
-            let delta = Math.abs(dateFuture - dateNow) / 1000
-            const dir = dateNow - dateFuture
-
-            // calculate (and subtract) whole days
-            const days = Math.floor(delta / 86400)
-            delta -= days * 86400
-
-            // calculate (and subtract) whole hours
-            const hours = Math.floor(delta / 3600) % 24
-            delta -= hours * 3600
-
-            // calculate (and subtract) whole minutes
-            const minutes = Math.floor(delta / 60) % 60
-            delta -= minutes * 60
-
-            if (days) {
-                return [dir, days > 1 ? `${days} days` : '1 day']
-            }
-
-            if (hours) {
-                return [dir, hours > 1 ? `${hours} hours` : '1 hour']
-            }
-
-            return [dir, minutes > 1 ? `${minutes} minutes` : '1 minute']
         },
         squareInfo () {
             const info = []

@@ -43,7 +43,7 @@ class PreferencesAPITest(TestCase):
         # Except for admins or self
         prefs = api.update(self, 'preferences', params=data, user=factory.Admin())['preferences']
         assert prefs['new_grade_notifications'] == data['new_grade_notifications']
-        assert prefs['hide_past_deadlines_of_assignments'] == data['hide_past_deadlines_of_assignments']
+        assert set(prefs['hide_past_deadlines_of_assignments']) == set(data['hide_past_deadlines_of_assignments'])
         prefs = api.update(self, 'preferences', params=data, user=self.teacher)['preferences']
 
         # Invalid data should not work

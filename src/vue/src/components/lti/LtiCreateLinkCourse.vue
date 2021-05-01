@@ -1,6 +1,6 @@
 <template>
     <div v-if="courses">
-        <h2 class="theme-h2 multi-form">
+        <h2 class="theme-h2 mb-2">
             Configuring a Course
         </h2>
         <p>
@@ -38,44 +38,30 @@
             </b-button>
         </div>
 
-        <b-modal
+        <create-course-modal
             ref="createCourseRef"
-            title="New Course"
-            size="lg"
-            hideFooter
-            noEnforceFocus
-        >
-            <create-course
-                :lti="lti"
-                @handleAction="handleCreation"
-            />
-        </b-modal>
+            :lti="lti"
+            @handleAction="handleCreation"
+        />
 
-        <b-modal
+        <link-course-modal
             ref="linkCourseRef"
-            title="Link Course"
-            size="lg"
-            hideFooter
-            noEnforceFocus
-        >
-            <link-course
-                :lti="lti"
-                :courses="courses"
-                @handleAction="handleLinked"
-            />
-        </b-modal>
+            :lti="lti"
+            :courses="courses"
+            @handleAction="handleLinked"
+        />
     </div>
 </template>
 
 <script>
-import createCourse from '@/components/course/CreateCourse.vue'
-import linkCourse from '@/components/lti/LinkCourse.vue'
+import createCourseModal from '@/components/course/CreateCourseModal.vue'
+import linkCourseModal from '@/components/lti/LinkCourseModal.vue'
 
 export default {
     name: 'LtiCreateLinkCourse',
     components: {
-        createCourse,
-        linkCourse,
+        createCourseModal,
+        linkCourseModal,
     },
     props: ['lti', 'courses'],
     methods: {

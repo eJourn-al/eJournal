@@ -34,7 +34,7 @@ import {
     // JumbotronPlugin,
     LayoutPlugin,
     LinkPlugin,
-    // ListGroupPlugin,
+    ListGroupPlugin,
     // MediaPlugin,
     ModalPlugin,
     NavPlugin,
@@ -44,7 +44,7 @@ import {
     // PaginationNavPlugin,
     // PopoverPlugin,
     ProgressPlugin,
-    // SidebarPlugin,
+    SidebarPlugin,
     // SpinnerPlugin,
     TablePlugin, // Table plugin includes TableLitePlugin and TableSimplePlugin
     TabsPlugin,
@@ -87,7 +87,7 @@ export default function initBootstrap (Vue) {
     // Vue.use(JumbotronPlugin)
     Vue.use(LayoutPlugin)
     Vue.use(LinkPlugin)
-    // Vue.use(ListGroupPlugin)
+    Vue.use(ListGroupPlugin)
     // Vue.use(MediaPlugin)
     Vue.use(ModalPlugin)
     Vue.use(NavPlugin)
@@ -97,7 +97,7 @@ export default function initBootstrap (Vue) {
     // Vue.use(PaginationNavPlugin)
     // Vue.use(PopoverPlugin)
     Vue.use(ProgressPlugin)
-    // Vue.use(SidebarPlugin)
+    Vue.use(SidebarPlugin)
     // Vue.use(SpinnerPlugin)
     Vue.use(TablePlugin)
     Vue.use(TabsPlugin)

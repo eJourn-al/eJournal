@@ -33,6 +33,9 @@ export default {
 @import '~sass/modules/breakpoints.sass'
 
 #app
+    margin: auto
+    width: 100%
+    max-width: $max-app-width
     overflow-x: hidden
     padding-top: $header-height
     min-height: 100%

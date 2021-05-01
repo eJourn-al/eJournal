@@ -1,0 +1,21 @@
+table
+    background-color: white
+    td.truncate-content
+        white-space: nowrap
+        overflow: hidden
+        text-overflow: ellipsis
+    &.table > tbody > tr > td
+        vertical-align: middle
+
+    &.table-striped tbody tr:nth-of-type(odd) td, .table-striped tbody tr:nth-of-type(even) th
+        background-color: lighten($theme-light-grey, 3%)
+    &.table-hover tbody tr:hover td, .table-hover tbody tr:hover th
+        cursor: pointer
+        background-color: $theme-light-grey
+        .btn.grey-button:hover
+            background-color: $theme-medium-grey
+
+.no-top-table-border
+    table
+        thead tr th, tbody tr:first-child td
+            border-top-width: 0px

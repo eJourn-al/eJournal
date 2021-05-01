@@ -3,7 +3,7 @@
         <div
             v-for="field in orderedFields"
             :key="`node ${nodeID}-field-${field.id}`"
-            class="multi-form"
+            class="mb-2"
         >
             <h2
                 v-if="field.title"
@@ -21,7 +21,6 @@
                 <b-input
                     v-if="field.type == 't'"
                     v-model="content[field.id]"
-                    class="theme-input"
                     rows="1"
                 />
                 <reset-wrapper
@@ -92,7 +91,7 @@
         <div
             v-for="field in displayFields"
             :key="`node-${nodeID}-field-${field.id}`"
-            class="multi-form"
+            class="mb-2"
         >
             <h2
                 v-if="field.title"
@@ -128,6 +127,8 @@
             />
             <a
                 v-else-if="field.type == 'u'"
+                class="text-blue"
+                target="_blank"
                 :href="content[field.id]"
             >
                 {{ content[field.id] }}
@@ -138,7 +139,7 @@
             v-if="displayFields && displayFields.length === 0"
             class="text-grey"
         >
-            This entry has no content.
+            This entry has no content
         </i>
     </div>
 </template>

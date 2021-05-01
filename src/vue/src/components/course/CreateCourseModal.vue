@@ -1,5 +1,10 @@
 <template>
-    <b-card class="no-hover">
+    <b-modal
+        ref="createCourseRef"
+        title="New Course"
+        size="lg"
+        noEnforceFocus
+    >
         <b-form
             :vModel="form.lti_id"
             @submit.prevent="onSubmit"
@@ -10,7 +15,7 @@
             </h2>
             <b-input
                 v-model="form.name"
-                class="multi-form theme-input"
+                class="mb-2"
                 placeholder="Course name"
             />
             <h2 class="theme-h2 field-heading required">
@@ -18,7 +23,7 @@
             </h2>
             <b-input
                 v-model="form.abbreviation"
-                class="multi-form theme-input"
+                class="mb-2"
                 maxlength="10"
                 placeholder="Course abbreviation (max 10 characters)"
             />
@@ -31,7 +36,7 @@
                     <reset-wrapper v-model="form.startdate">
                         <flat-pickr
                             v-model="form.startdate"
-                            class="multi-form full-width"
+                            class="mb-2 full-width"
                             :config="startDateConfig"
                         />
                     </reset-wrapper>
@@ -44,29 +49,30 @@
                     <reset-wrapper v-model="form.enddate">
                         <flat-pickr
                             v-model="form.enddate"
-                            class="multi-form full-width"
+                            class="mb-2 full-width"
                             :config="endDateConfig"
                         />
                     </reset-wrapper>
                 </b-col>
             </b-row>
-            <hr/>
+        </b-form>
+        <template #modal-footer>
             <b-button
-                class="float-left orange-button"
-                type="reset"
+                class="orange-button mr-auto"
+                @click="onReset"
             >
                 <icon name="undo"/>
                 Reset
             </b-button>
             <b-button
-                class="float-right green-button"
-                type="submit"
+                class="green-button"
+                @click="onSubmit"
             >
                 <icon name="plus-square"/>
                 Create
             </b-button>
-        </b-form>
-    </b-card>
+        </template>
+    </b-modal>
 </template>
 
 <script>
@@ -143,6 +149,12 @@ export default {
             this.form.abbreviation = ''
             this.form.startdate = ''
             this.form.enddate = ''
+        },
+        show () {
+            this.$refs.createCourseRef.show()
+        },
+        hide () {
+            this.$refs.createCourseRef.hide()
         },
     },
 }

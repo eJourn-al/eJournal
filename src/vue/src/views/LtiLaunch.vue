@@ -4,11 +4,10 @@
             v-if="currentPage"
             class="theme-h1 mb-2"
         >
-            <span>{{ currentPage }}</span>
+            {{ currentPage }}
         </h1>
         <b-card
             v-if="currentPage"
-            class="no-hover"
         >
             <lti-create-link-course
                 v-if="handleCourseChoice"

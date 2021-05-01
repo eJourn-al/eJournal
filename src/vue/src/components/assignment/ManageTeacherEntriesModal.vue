@@ -1,5 +1,16 @@
 <template>
-    <div>
+    <b-modal
+        ref="manageTeacherEntries"
+        title="Manage teacher entries"
+        size="lg"
+        noEnforceFocus
+    >
+        <b-alert show>
+            <b>Note:</b>
+            Changes will not be saved until you click 'save' at the bottom of this window!
+            Category changes will also take effect for all existing entries.
+        </b-alert>
+
         <div
             v-if="teacherEntries && teacherEntries.length > 0"
             class="d-lg-flex"
@@ -16,7 +27,8 @@
             />
             <b-button
                 v-if="selectedTeacherEntry"
-                class="orange-button mr-2 flex-shrink-0 mb-2"
+                class="grey-button mr-2 flex-shrink-0 mb-2"
+                :class="{ 'active': showUpdateTitle, }"
                 @click="toggleUpdateTitle"
             >
                 <icon name="edit"/>
@@ -50,7 +62,7 @@
                 v-if="showUpdateTitle"
                 v-model="updatedTitle"
                 placeholder="New title"
-                class="theme-input mt-2"
+                class="mb-2"
             />
             <entry-fields
                 v-if="showTeacherEntryContent"
@@ -90,13 +102,19 @@
                     select by username</span>.
                 <br/>
             </small>
-            <b-input
-                v-else
-                v-model="usernameInput"
-                class="theme-input mt-2"
-                placeholder="Enter a username and press enter to select"
-                @keydown.enter.native="selectUsername"
-            />
+            <template v-else>
+                <b-input
+                    v-model="usernameInput"
+                    class="mt-2"
+                    placeholder="Enter a username and press enter to select"
+                    @keydown.enter.native="selectUsername"
+                />
+                <small>
+                    <b>Tip:</b>
+                    you can also copy a spreadsheet column and paste it in the input above.
+                    <br/>
+                </small>
+            </template>
             <b-table-simple
                 v-if="selectedTeacherEntry && selectedJournals.length > 0"
                 responsive
@@ -120,6 +138,7 @@
                             Published
                             <tooltip tip="Make the grade visible to students"/>
                         </b-th>
+                        <b-th/>
                     </b-tr>
                 </b-thead>
                 <b-tbody>
@@ -139,7 +158,7 @@
                                 type="number"
                                 min="0"
                                 placeholder="-"
-                                class="theme-input inline"
+                                class="inline"
                                 size="3"
                             />
                         </b-td>
@@ -156,25 +175,26 @@
                     </b-tr>
                 </b-tbody>
             </b-table-simple>
-
+        </div>
+        <template #modal-footer>
             <b-button
-                class="red-button float-left clearfix mr-2 mt-2"
-                :class="{ 'input-disabled': requestInFlight }"
+                class="red-button mr-auto"
+                :class="{ 'input-disabled': requestInFlight || !selectedTeacherEntry }"
                 @click="deleteTeacherEntry"
             >
                 <icon name="trash"/>
                 Delete
             </b-button>
             <b-button
-                class="green-button float-right clearfix ml-2 mt-2"
-                :class="{ 'input-disabled': requestInFlight }"
+                class="green-button"
+                :class="{ 'input-disabled': requestInFlight || !selectedTeacherEntry }"
                 @click="saveTeacherEntry"
             >
                 <icon name="save"/>
                 Save
             </b-button>
-        </div>
-    </div>
+        </template>
+    </b-modal>
 </template>
 
 <script>
@@ -236,20 +256,23 @@ export default {
         },
     },
     created () {
-        assignmentAPI.getTeacherEntries(this.aID).then((entries) => {
-            this.teacherEntries = entries
-        })
-        this.assignmentJournals.forEach((journal) => {
-            this.selectableJournals.push({
-                journal_id: journal.id,
-                grade: this.grade,
-                published: this.publishSameGrade,
-                name: journal.name,
-                usernames: journal.usernames,
-            })
-        })
+        this.loadTeacherEntries()
     },
     methods: {
+        loadTeacherEntries () {
+            assignmentAPI.getTeacherEntries(this.aID).then((entries) => {
+                this.teacherEntries = entries
+            })
+            this.assignmentJournals.forEach((journal) => {
+                this.selectableJournals.push({
+                    journal_id: journal.id,
+                    grade: this.grade,
+                    published: this.publishSameGrade,
+                    name: journal.name,
+                    usernames: journal.usernames,
+                })
+            })
+        },
         selectUsername () {
             // Split input on comma and space
             this.usernameInput.split(/[ ,]+/).forEach((username) => {
@@ -294,8 +317,22 @@ export default {
                     customSuccessToast: 'Teacher entry successfully updated.',
                 })
                     .then((data) => {
-                        this.requestInFlight = false
                         this.$emit('teacher-entry-updated', data)
+                        this.requestInFlight = false
+                        this.selectedJournals = []
+                        this.selectableJournals = []
+                        this.showUsernameInput = false
+                        this.usernameInput = null
+                        this.requestInFlight = false
+                        this.teacherEntries = []
+                        this.selectedTeacherEntry = null
+                        this.showTeacherEntryContent = false
+                        this.grades = Object()
+                        this.publishGrade = Object()
+                        this.showUpdateTitle = false
+                        this.updatedTitle = null
+                        this.updatedCategories = null
+                        this.loadTeacherEntries()
                     })
                     .catch(() => { this.requestInFlight = false })
             }
@@ -318,6 +355,12 @@ export default {
                 this.updatedTitle = this.selectedTeacherEntry.title
             }
             this.showUpdateTitle = !this.showUpdateTitle
+        },
+        show () {
+            this.$refs.manageTeacherEntries.show()
+        },
+        hide () {
+            this.$refs.manageTeacherEntries.hide()
         },
     },
 }

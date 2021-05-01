@@ -5,7 +5,6 @@ import Course from '@/views/Course.vue'
 import Home from '@/views/Home.vue'
 import Journal from '@/views/Journal.vue'
 import Login from '@/views/Login.vue'
-import Logout from '@/views/Logout.vue'
 import LtiLaunch from '@/views/LtiLaunch.vue'
 import LtiLogin from '@/views/LtiLogin.vue'
 import Router from 'vue-router'
@@ -19,8 +18,8 @@ const router = new Router({
     mode: 'history',
     routes: [{
         path: '/',
-        name: 'Guest',
-        component: () => import(/* webpackChunkName: 'guest' */ '@/views/Guest.vue'),
+        name: 'Login',
+        component: Login,
     }, {
         path: '/Home',
         name: 'Home',
@@ -29,10 +28,6 @@ const router = new Router({
         path: '/AdminPanel',
         name: 'AdminPanel',
         component: AdminPanel,
-    }, {
-        path: '/Login',
-        name: 'Login',
-        component: Login,
     }, {
         path: '/SetPassword/:username/:token',
         name: 'SetPassword',
@@ -74,10 +69,6 @@ const router = new Router({
         component: () => import(/* webpackChunkName: 'not-setup' */ '@/views/NotSetup.vue'),
         props: true,
     }, {
-        path: '/Logout',
-        name: 'Logout',
-        component: Logout,
-    }, {
         path: '/Home/Course/:cID',
         name: 'Course',
         component: Course,
@@ -88,13 +79,6 @@ const router = new Router({
         path: '/Home/Course/:cID/CourseEdit',
         name: 'CourseEdit',
         component: () => import(/* webpackChunkName: 'course-edit' */ '@/views/CourseEdit.vue'),
-        props: (route) => ({
-            cID: Number.parseInt(route.params.cID, 10),
-        }),
-    }, {
-        path: '/Home/Course/:cID/CourseEdit/UserRoleConfiguration',
-        name: 'UserRoleConfiguration',
-        component: () => import(/* webpackChunkName: 'role-config' */ '@/views/UserRoleConfiguration.vue'),
         props: (route) => ({
             cID: Number.parseInt(route.params.cID, 10),
         }),
@@ -167,7 +151,7 @@ router.beforeEach((to, from, next) => {
 
     /* Show warning when user visits the website with an outdated browser (to ensure correct functionality).
      * In case the browser is not in our whitelist, no message will be shown. */
-    if (browserUpdateNeeded && !(to.name === 'Logout' || from.name === 'Guest' || from.name === 'Login')) {
+    if (browserUpdateNeeded) {
         router.app.$toasted.clear() // Clear existing toasts.
         setTimeout(() => { // Allow a cooldown for smoother transitions.
             router.app.$toasted.clear() // Clear existing toasts.
@@ -209,7 +193,7 @@ router.beforeEach((to, from, next) => {
     } else { next() }
 })
 
-router.afterEach((to, from) => {
+router.afterEach((to) => {
     store.dispatch('instance/retrieve', {})
 
     if ('aID' in to.params) {
@@ -218,8 +202,11 @@ router.afterEach((to, from) => {
         store.dispatch('category/list', { aID: to.params.aID })
         store.dispatch('template/list', { aID: to.params.aID })
 
-        if ('aID' in from.params && parseInt(to.params.aID, 10) !== parseInt(from.params.aID, 10)) {
-            store.commit('category/CLEAR_FILTERED_CATEGORIES')
+        if (
+            store.getters['timeline/filteredCategories'].length
+            && parseInt(to.params.aID, 10) !== store.getters['timeline/filteringCategoriesForAssignmentId']
+        ) {
+            store.commit('timeline/CLEAR_FILTERED_CATEGORIES')
         }
     }
 })

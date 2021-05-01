@@ -4,25 +4,23 @@
 -->
 
 <template>
-    <div class="timeline-node-circle-border">
+    <div
+        :title="nodeTitle"
+        :class="nodeClass"
+        class="timeline-node-circle unselectable shadow"
+        data-toggle="tooltip"
+    >
+        <icon
+            v-if="node.type !== 'p'"
+            :name="iconName"
+            :class="iconClass"
+            :scale="iconScale"
+        />
         <div
-            :title="nodeTitle"
-            :class="nodeClass"
-            class="timeline-node-circle unselectable"
-            data-toggle="tooltip"
+            v-else
+            class="timeline-node-circle-text"
         >
-            <icon
-                v-if="node.type !== 'p'"
-                :name="iconName"
-                :class="iconClass"
-                :scale="iconScale"
-            />
-            <div
-                v-else
-                class="timeline-node-circle-text"
-            >
-                {{ node.target }}
-            </div>
+            {{ node.target }}
         </div>
     </div>
 </template>
@@ -199,14 +197,7 @@ export default {
 </script>
 
 <style lang="sass">
-@import '~sass/partials/shadows.sass'
-
-.timeline-node-circle-border
-    border-radius: 50% !important
-    padding: 5px
-
 .timeline-node-circle
-    @extend .theme-shadow
     width: 55px
     height: 55px
     border-radius: 50% !important
@@ -227,6 +218,8 @@ export default {
         height: 55px
     &.enc-entry, &.enc-deadline
         background-color: white
+    &.enc-selected
+        background-color: $theme-dark-blue
     &.enc-start
         background-color: $theme-green
     &.enc-end
@@ -234,9 +227,7 @@ export default {
     &.enc-add
         background-color: $theme-blue
     &.enc-progress
-        background-color: $theme-orange
-    &.enc-selected
-        background-color: $theme-dark-blue
+        background-color: $theme-yellow
     svg
         transition: all 0.3s cubic-bezier(.25,.8,.25,1)
     .timeline-node-circle-text

@@ -147,13 +147,14 @@ class AssignmentView(viewsets.ViewSet):
             success -- with the assignment data
 
         """
-        name, description, course_id = utils.required_typed_params(
+        name, description, course_id, points_possible, = utils.required_typed_params(
             request.data,
             (str, 'name'),
             (str, 'description'),
             (int, 'course_id'),
+            (float, 'points_possible'),
         )
-        unlock_date, due_date, lock_date, lti_id, is_published, points_possible, is_group_assignment, \
+        unlock_date, due_date, lock_date, lti_id, is_published, is_group_assignment, \
             can_set_journal_name, can_set_journal_image, can_lock_journal, remove_grade_upon_leaving_group = \
             utils.optional_typed_params(
                 request.data,
@@ -162,7 +163,6 @@ class AssignmentView(viewsets.ViewSet):
                 (datetime, 'lock_date'),
                 (str, 'lti_id'),
                 (bool, 'is_published'),
-                (float, 'points_possible'),
                 (bool, 'is_group_assignment'),
                 (bool, 'can_set_journal_name'),
                 (bool, 'can_set_journal_image'),
@@ -251,7 +251,7 @@ class AssignmentView(viewsets.ViewSet):
         update_lti_course, lti_id = utils.optional_typed_params(
             request.data,
             (int, 'update_lti_course'),
-            (int, 'lti_id')
+            (str, 'lti_id')
         )
         assigned_groups, = utils.optional_params(request.data, 'assigned_groups')
 
@@ -271,6 +271,14 @@ class AssignmentView(viewsets.ViewSet):
             course = Course.objects.get(pk=course_id)
             request.user.check_permission('can_add_assignment', course)
             assignment.add_lti_id(lti_id, course)
+
+        # TODO: Treat empty string as valid blank value for date(time) db fields.
+        if 'unlock_date' in request.data and request.data['unlock_date'] == '':
+            request.data['unlock_date'] = None
+        if 'due_date' in request.data and request.data['due_date'] == '':
+            request.data['due_date'] = None
+        if 'lock_date' in request.data and request.data['lock_date'] == '':
+            request.data['lock_date'] = None
 
         serializer = AssignmentSerializer(
             assignment, data=request.data, context={'user': request.user, 'course': course}, partial=True)
