@@ -10,7 +10,7 @@ from django.test import TestCase
 from django.test.utils import override_settings
 
 import VLE.factory as nfac
-from VLE.models import Comment, FileContext, Notification, Participation, User
+from VLE.models import Comment, FileContext, Notification, Participation, Role, User
 from VLE.serializers import CommentSerializer
 
 
@@ -144,6 +144,9 @@ class CommentAPITest(TestCase):
         self.check_comment_update(self.comment, self.teacher, False)
         # Teacher should be allowed to edit TA comment
         self.check_comment_update(self.TA_comment, self.teacher, True)
+        # Teacher should not be allowed to edit TA comment if can_edit_staff_comment is not set
+        Role.objects.filter(name='Teacher').update(can_edit_staff_comment=False)
+        self.check_comment_update(self.TA_comment, self.teacher, False)
 
     def test_update_as_TA(self):
         # TA should be allowed to edit his own comment

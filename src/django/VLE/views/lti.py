@@ -10,14 +10,14 @@ from django.utils import timezone
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
-from sentry_sdk import capture_exception
+from sentry_sdk import capture_exception, capture_message, push_scope
 
 import VLE.factory as factory
 import VLE.lti_launch as lti
 import VLE.utils.generic_utils as utils
 import VLE.utils.responses as response
 from VLE.models import User
-from VLE.utils.error_handling import VLEMissingRequiredKey
+from VLE.utils.error_handling import VLEMissingRequiredKey, VLEProgrammingError
 
 
 class LTI_STATES(enum.Enum):
@@ -115,11 +115,19 @@ def get_finish_state(user, assignment, lti_params):
 
 def handle_test_student(user, params):
     """Creates a test user if no user is provided and the params contain a blank email adress."""
-    if not user \
-       and 'custom_user_email' in params and params['custom_user_email'] == '' \
-       and 'custom_user_full_name' in params and params['custom_user_full_name'] == settings.LTI_TEST_STUDENT_FULL_NAME:
+    if not user and 'custom_user_email' in params and params['custom_user_email'] == '':
         lti_id, username, full_name, email, course_id = utils.required_params(
             params, 'user_id', 'custom_username', 'custom_user_full_name', 'custom_user_email', 'custom_course_id')
+
+        student_number_length = 8
+        if (
+            len(username) <= student_number_length
+            or params.get('custom_user_full_name') not in settings.LTI_TEST_STUDENT_FULL_NAMES
+        ):
+            with push_scope() as scope:
+                scope.set_context('params', params)
+                capture_message('Unusual test student created', level='warning')
+
         profile_picture = params.get('custom_user_image', settings.DEFAULT_PROFILE_PICTURE)
         is_teacher = any(role in lti.roles_to_list(params) for role in settings.ROLES['Teacher'])
 
@@ -224,6 +232,13 @@ def lti_launch(request):
         else:
             refresh = TokenObtainPairSerializer.get_token(user)
             user.last_login = timezone.now()
+            if params.get('custom_user_email'):
+                if user.is_test_student:
+                    raise VLEProgrammingError(
+                        f'This account is configured as a test student. Please contact {settings.EMAILS.support.email}.'
+                    )
+                user.email = params['custom_user_email']
+                user.verified_email = True
             user.save()
             query = QueryDict.fromkeys(['lti_params'], lti_params, mutable=True)
             query['jwt_access'] = str(refresh.access_token)

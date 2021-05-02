@@ -1,26 +1,25 @@
 .grade-section
-    @extend .theme-shadow
     border-radius: 5px !important
-    border: 1px solid $theme-dark-grey
+    border: 1px solid $border-color
     min-width: 3em
     min-height: 3em
     background-color: white
     float: right
-    margin: 0px 0px 10px 0px
+    margin: 0px 0px 0px 5px
     text-align: center
+    z-index: 10
     &.grade
         line-height: 3em
         font-weight: bold
-    .theme-input, .theme-input:hover, .theme-input:focus, .btn, .btn:hover:not(.no-hover), .btn:focus
-        box-shadow: none !important
-    .theme-input, .theme-input:hover, .theme-input:focus
+    input, input:hover, input:focus
         width: 3em
+        height: 1.4em
         display: inline-block
         border: none !important
         margin: 2px 0px 0px 20px
         padding: 0px !important
         font-weight: bold
-        font-size: 1.5em
+        font-size: 1.4em
         text-align: center
     .grade-history-button
         border-width: 0px 0px 0px 1px !important
@@ -30,26 +29,10 @@
         width: 100%
         border-width: 1px 0px 0px 0px !important
         border-radius: 0px 0px 5px 5px !important
-    &.sticky
-        position: sticky
-        top: 10px
-        @include xl
-            top: -20px
-        margin-bottom: 40px
 
-.timestamp
-    text-align: right
-    float: right
-    &, span
-        color: grey
-    svg
-        fill: grey
-        margin-top: -2px
-    .late-submission-badge
-        margin-left: 5px
-        background-color: $theme-red
-        color: white
-    .imported-entry-badge
-        margin-left: 5px
-        background-color: grey
-        color: white
+.late-submission-badge
+    background-color: $theme-red
+    color: white
+.imported-entry-badge, .draft-entry-badge
+    background-color: $theme-pink
+    color: white

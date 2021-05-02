@@ -7,69 +7,68 @@
             hideFooter
             noEnforceFocus
         >
-            <b-card class="no-hover">
-                <cropper
-                    v-if="profileImageDataURL"
-                    ref="cropperRef"
-                    :pictureUrl="profileImageDataURL"
-                    @newPicture="fileHandler"
-                />
-            </b-card>
+            <cropper
+                v-if="profileImageDataURL"
+                ref="cropperRef"
+                :pictureUrl="profileImageDataURL"
+                @newPicture="fileHandler"
+            />
         </b-modal>
         <div class="profile-picture-lg">
+            <b-button
+                class="position-absolute"
+                pill
+                @click="showCropperModal()"
+            >
+                <icon name="edit"/>
+                Edit
+            </b-button>
             <img
                 :src="storeProfilePic"
                 class="theme-img"
             />
-            <b-button @click="showCropperModal()">
-                <icon name="edit"/>
-                Edit
-            </b-button>
         </div>
-        <h4 class="theme-h4 mb-2 d-block">
-            <span>User details</span>
-        </h4>
-        <b-card
-            :class="$root.getBorderClass($route.params.uID)"
-            class="no-hover multi-form"
-        >
-            <h2 class="theme-h2 field-heading multi-form">
-                Username
-            </h2>
-            <b-form-input
-                :readonly="true"
-                :value="storeUsername"
-                class="theme-input multi-form"
-                type="text"
-            />
-            <h2 class="theme-h2 field-heading multi-form">
-                Full name
-            </h2>
+        <h2 class="theme-h2 field-heading mb-2">
+            Username
+        </h2>
+        <b-form-input
+            :disabled="true"
+            :value="storeUsername"
+            class="mb-2"
+            type="text"
+        />
+        <h2 class="theme-h2 field-heading mb-2">
+            Full name
+        </h2>
+        <b-input-group class="mb-2">
             <b-form-input
                 v-model="fullName"
-                :readonly="(storeLtiID) ? true : false"
-                class="theme-input multi-form"
+                :disabled="storeLtiID"
+                :class="{ 'no-right-radius': !storeLtiID }"
                 type="text"
                 placeholder="Full name"
             />
-            <h2 class="theme-h2 field-heading multi-form">
-                Email address
-            </h2>
-            <email/>
-
             <b-button
                 v-if="!storeLtiID"
-                class="green-button float-right"
-                @click="saveUserdata"
+                slot="append"
+                class="green-button"
+                @click="saveFullName"
             >
                 <icon name="save"/>
                 Save
             </b-button>
-            <b-button @click="downloadUserData">
+        </b-input-group>
+        <h2 class="theme-h2 field-heading mb-2">
+            Email address
+        </h2>
+        <email/>
+
+        <div class="mt-2">
+            <b-button click="downloadUserData">
                 <icon name="download"/>
                 Download Data
             </b-button>
-        </b-card>
+        </div>
     </div>
 </template>
 
@@ -112,8 +111,8 @@ export default {
             this.$refs.cropperRef.refreshPicture()
             this.$refs.cropperModal.show()
         },
-        saveUserdata () {
-            userAPI.update(0, { full_name: this.fullName }, { customSuccessToast: 'Saved profile data.' })
+        saveFullName () {
+            userAPI.update(0, { full_name: this.fullName }, { customSuccessToast: 'Saved full name.' })
                 .then(() => {
                     this.$store.commit('user/SET_FULL_USER_NAME', { fullName: this.fullName })
                 })
@@ -141,9 +140,6 @@ export default {
                         this.$toasted.error('Error creating file locally.')
                     }
                 })
-        },
-        isChanged () {
-            return (this.fullName !== this.storeFullName)
         },
     },
 }

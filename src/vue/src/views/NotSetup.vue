@@ -1,9 +1,7 @@
 <template>
     <content-single-column>
         <h1 class="theme-h1">
-            <span>
-                You're early!
-            </span>
+            You're early!
         </h1>
         <b-card
             class="no-hove max-width-600"
@@ -11,7 +9,7 @@
             <h2 class="theme-h2 mb-2">
                 This assignment is not ready yet
             </h2>
-            <p class="multi-form">
+            <p class="mb-2">
                 The assignment you are looking for is not yet configured by your instructor.
                 Please ask them to visit the assignment through Canvas first, or come back at a later time
                 once your instructor has completed configuration.

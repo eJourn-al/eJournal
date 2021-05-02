@@ -281,9 +281,16 @@ class JournalView(viewsets.ViewSet):
     @action(['get'], detail=True)
     def get_members(self, request, pk):
         """Get the list of members of the journal."""
-        journal = Journal.objects.get(pk=pk)
+        journal = Journal.objects.filter(pk=pk).select_related('assignment').get()
 
-        request.user.check_can_view(journal)
+        can_view_journal = request.user.can_view(journal)
+        can_have_journal_in_group_assignment = (
+            journal.assignment.is_group_assignment
+            and request.user.has_permission('can_have_journal', journal.assignment)
+        )
+
+        if not (can_view_journal or can_have_journal_in_group_assignment):
+            return response.forbidden('Cannot view journal')
 
         return response.success({
             'authors': AssignmentParticipationSerializer(

@@ -1,5 +1,6 @@
 import Vue from 'vue'
 import auth from '@/api/auth.js'
+import router from '@/router/index.js'
 
 const getters = {
     assignment: (state, _, rootState) => {
@@ -12,6 +13,9 @@ const getters = {
 const mutations = {
     SET_ASSIGNMENT (state, { assignment }) {
         Vue.set(state.assignments, assignment.id, assignment)
+    },
+    DELETE_ASSIGNMENT (state, { id }) {
+        Vue.delete(state.assignments, id)
     },
 }
 
@@ -38,6 +42,23 @@ const actions = {
         }
 
         return fn()
+    },
+    delete (context, { id, cID, connArgs = auth.DEFAULT_CONN_ARGS }) {
+        return auth.delete(`assignments/${id}`, { course_id: cID }, connArgs)
+            .then((response) => {
+                // Succesfull deletion should ignore any WIP in the assignment editor, otherwise the navigation guard
+                // will trigger
+                context.commit('assignmentEditor/RESET', null, { root: true })
+
+                // Local reference needs to be removed before the assignment can be deleted from cache
+                // This is why we navigate first, wait for update, then clear cache
+                router.push({ name: 'Course', cID })
+                    .then(() => {
+                        context.commit('DELETE_ASSIGNMENT', { id })
+                    })
+
+                return response.data
+            })
     },
 }
 

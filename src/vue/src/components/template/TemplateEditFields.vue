@@ -1,24 +1,55 @@
 <template>
     <section>
-        <h2 class="theme-h2 multi-form">
-            Fields
-        </h2>
-
-        <b-form-group
+        <b-card
             v-if="template.allow_custom_title"
-            label="Title"
+            class="field-card background-light-grey"
         >
-            <text-editor
-                :id="`rich-text-editor-template-${template.id}-title-description`"
-                :key="`rich-text-editor-template-${template.id}-title-description`"
-                v-model="template.title_description"
-                :basic="true"
-                :displayInline="true"
-                :minifiedTextArea="true"
-                class="multi-form"
-                placeholder="Optional description"
-            />
-        </b-form-group>
+            <b-row
+                alignH="between"
+                noGutters
+            >
+                <b-col
+                    cols="12"
+                    sm="10"
+                    lg="11"
+                >
+                    <b-input
+                        class="mb-2 disabled"
+                        placeholder="Title"
+                        disabled
+                    />
+                    <text-editor
+                        :id="`rich-text-editor-template-${template.id}-title-description`"
+                        :key="`rich-text-editor-template-${template.id}-title-description`"
+                        v-model="template.title_description"
+                        :basic="true"
+                        :displayInline="true"
+                        :minifiedTextArea="true"
+                        placeholder="Optional description"
+                    />
+                </b-col>
+                <b-col
+                    cols="12"
+                    sm="2"
+                    lg="1"
+                    class="icon-box unselectable disabled"
+                >
+                    <div class="handle d-inline d-sm-block">
+                        <icon
+                            class="fill-grey"
+                            name="arrows-alt"
+                            scale="1.25"
+                        />
+                    </div>
+                    <icon
+                        class="fill-grey"
+                        name="trash"
+                        scale="1.25"
+                        @click.native="$emit('removeField', field.location)"
+                    />
+                </b-col>
+            </b-row>
+        </b-card>
 
         <draggable
             v-model="template.field_set"
@@ -66,7 +97,6 @@ export default {
     },
     data () {
         return {
-            selectedLocation: null,
             showEditors: true,
         }
     },
@@ -101,3 +131,48 @@ export default {
     },
 }
 </script>
+
+<style lang="sass">
+.field-card
+    .optional-field-template
+        background-color: white
+        color: $text-color !important
+        svg
+            fill: $theme-medium-grey
+
+    .required-field-template
+        background-color: $theme-dark-blue !important
+        color: white !important
+        svg, &:hover:not(.no-hover) svg
+            fill: $theme-red !important
+
+    &.sortable-chosen .card
+        background-color: $border-color
+
+    &.sortable-ghost
+        opacity: 0.5
+
+    &.sortable-drag .card
+        visibility: visible
+
+    .handle
+        text-align: center
+        padding-bottom: 7px
+
+    .field-card:hover .move-icon, .field-card:hover .trash-icon
+        fill: $theme-dark-blue !important
+
+    .handle:hover .move-icon
+        cursor: grab
+        fill: $theme-blue !important
+
+    .field-card:hover .trash-icon:hover
+        fill: $theme-red !important
+
+    .icon-box
+        text-align: center
+
+    @include sm-max
+        .icon-box
+            margin-top: 10px
+</style>

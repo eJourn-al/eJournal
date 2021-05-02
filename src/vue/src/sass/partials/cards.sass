@@ -1,29 +1,41 @@
-@import '~sass/partials/shadows.sass'
-
 .card
-    @extend .theme-shadow
     margin-bottom: 8px
     text-align: left
     background-color: white
-    border-width: 2px 2px 2px 2px
-    border-color: $theme-dark-grey
+    border: 1px solid $border-color
     transition: all 0.3s cubic-bezier(.25,.8,.25,1) !important
-    border-radius: 5px !important
-    &:not(.no-left-border) .card-body
-        position: relative
-        border-radius: 3px !important
-        border-left: 8px solid $theme-dark-grey
-    .card
-        border-left-width: 2px
-        .card-body
-            border: none
-        &.unselected
-            opacity: 0.5
-    &:hover:not(.no-hover)
+    border-radius: 10px
+    &.hover:hover .card-body:hover, &.hover.active
         cursor: pointer
         background-color: $theme-light-grey !important
-.card-body
-    padding: 10px
-
-.card-last-elem-button .card-body
-    padding-bottom: 2px !important
+    &.hover .card-footer:hover
+        cursor: pointer
+        background-color: $theme-medium-grey !important
+    .card-body, .card-header
+        padding: 10px
+    .card-header
+        border-radius: 9px 9px 0px 0px
+        &:last-child
+            border-bottom-width: 0px
+            border-radius: 9px
+        .card-header-pills
+            padding: 0px 10px
+        .btn-link.grey-button:hover
+            background-color: $theme-medium-grey
+    .card-body
+        &:first-child
+            border-top-left-radius: 9px
+            border-top-right-radius: 9px
+        &:last-child
+            border-bottom-left-radius: 9px
+            border-bottom-right-radius: 9px
+    .card-footer
+        padding: 10px
+        border-radius: 0px 0px 9px 9px
+    &.sticky-header .card-header
+        position: sticky
+        @include lg
+            z-index: 2 // PDF controls
+            top: 0px
+        @include xl
+            top: -30px

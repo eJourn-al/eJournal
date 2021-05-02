@@ -4,65 +4,42 @@
             <bread-crumb v-if="$root.lgMax"/>
             <timeline
                 v-if="!loadingNodes"
-                :selected="currentNode"
                 :nodes="nodes"
                 :assignment="assignment"
-                @select-node="selectNode"
             />
         </template>
 
         <template #center>
             <bread-crumb v-if="$root.xl"/>
-            <b-alert
+
+            <user-missing-lti-link-warning
                 v-if="!loadingNodes && journal.needs_lti_link.length > 0 && assignment.active_lti_course"
-                show
-            >
-                <span v-if="assignment.is_group_assignment">
-                    <b>Warning:</b> The following journal members have not visited the assignment in the active
-                    LMS (Canvas) course '{{ assignment.active_lti_course.name }}' yet:
-                    <ul class="pt-1 pb-1 mb-0">
-                        <li
-                            v-for="name in journal.needs_lti_link"
-                            :key="`lti-author-${name}`"
-                        >
-                            {{ name }}
-                        </li>
-                    </ul>
-                    This journal cannot be updated and grades cannot be passed back until each member visits the
-                    assignment at least once.
-                </span>
-                <span v-else>
-                    <b>Warning:</b> This student has not visited the assignment in the active LMS (Canvas)
-                    course '{{ assignment.active_lti_course.name }}' yet. They cannot update this journal and
-                    grades cannot be passed back until they visit the assignment at least once.
-                </span>
-            </b-alert>
+                :assignment="assignment"
+                :journal="journal"
+            />
+
             <load-wrapper :loading="loadingNodes">
-                <div v-if="nodes.length > currentNode && currentNode !== -1">
-                    <div v-if="nodes[currentNode].type == 'e' || nodes[currentNode].type == 'd'">
-                        <entry-non-student
-                            ref="entry-template-card"
-                            :journal="journal"
-                            :entryNode="nodes[currentNode]"
-                            :assignment="assignment"
-                            @check-grade="loadJournal(true)"
-                        />
-                    </div>
-                    <div v-else-if="nodes[currentNode].type == 'p'">
-                        <progress-node
-                            :currentNode="nodes[currentNode]"
-                            :nodes="nodes"
-                            :bonusPoints="journal.bonus_points"
-                        />
-                    </div>
-                </div>
                 <journal-start-card
-                    v-else-if="currentNode === -1"
+                    v-if="currentNode === startNode"
                     :assignment="assignment"
                 />
                 <journal-end-card
-                    v-else
+                    v-else-if="currentNode === endNode"
                     :assignment="assignment"
+                />
+                <entry-non-student
+                    v-else-if="currentNode.type == 'e' || currentNode.type == 'd'"
+                    ref="entry-template-card"
+                    :journal="journal"
+                    :entryNode="currentNode"
+                    :assignment="assignment"
+                    @check-grade="loadJournal(true)"
+                />
+                <progress-node
+                    v-else-if="currentNode.type == 'p'"
+                    :currentNode="currentNode"
+                    :nodes="nodes"
+                    :bonusPoints="journal.bonus_points"
                 />
             </load-wrapper>
         </template>
@@ -74,42 +51,34 @@
                     lg="12"
                     class="mb-2"
                 >
-                    <h3 class="theme-h3">
-                        Details
-                    </h3>
-                    <b-card
-                        :class="$root.getBorderClass($route.params.cID)"
-                        class="journal-details-card no-hover mb-3"
+                    <journal-details
+                        v-if="!loadingNodes"
+                        :journal="journal"
+                        :assignment="assignment"
                     >
-                        <journal-details
-                            v-if="!loadingNodes"
-                            :journal="journal"
-                            :assignment="assignment"
-                        />
-                    </b-card>
-                    <div
-                        v-if="filteredJournals.length > 1"
-                        class="d-flex mb-2"
-                    >
-                        <b-button
-                            v-if="filteredJournals.length !== 0"
-                            :to="{ name: 'Journal', params: { cID: cID, aID: aID, jID: prevJournal.id } }"
-                            class="mr-2 flex-grow-1"
-                            tag="b-button"
+                        <div
+                            v-if="filteredJournals.length > 1"
+                            slot="footer"
+                            class="d-flex"
                         >
-                            <icon name="arrow-left"/>
-                            Previous
-                        </b-button>
-                        <b-button
-                            v-if="filteredJournals.length !== 0"
-                            :to="{ name: 'Journal', params: { cID: cID, aID: aID, jID: nextJournal.id } }"
-                            class="flex-grow-1"
-                            tag="b-button"
-                        >
-                            Next
-                            <icon name="arrow-right"/>
-                        </b-button>
-                    </div>
+                            <b-button
+                                v-if="filteredJournals.length !== 0"
+                                :to="{ name: 'Journal', params: { cID: cID, aID: aID, jID: prevJournal.id } }"
+                                class="flex-grow-1 mr-1 flex-basis-50 grey-button"
+                            >
+                                <icon name="angle-left"/>
+                                Previous
+                            </b-button>
+                            <b-button
+                                v-if="filteredJournals.length !== 0"
+                                :to="{ name: 'Journal', params: { cID: cID, aID: aID, jID: nextJournal.id } }"
+                                class="flex-grow-1 flex-basis-50 grey-button"
+                            >
+                                Next
+                                <icon name="angle-right"/>
+                            </b-button>
+                        </div>
+                    </journal-details>
                 </b-col>
 
                 <b-col
@@ -117,59 +86,76 @@
                     md="6"
                     lg="12"
                 >
-                    <h3 class="theme-h3">
-                        Grading
-                    </h3>
-                    <div
-                        v-if="$hasPermission('can_grade')"
-                        class="bonus-section grade-section mb-2 full-width"
-                    >
-                        <div>
+                    <b-card>
+                        <h3
+                            slot="header"
+                            class="theme-h3"
+                        >
+                            Grading
+                        </h3>
+                        <b-button
+                            v-if="$hasPermission('can_grade') && !showBonusInput"
+                            variant="link"
+                            class="yellow-button"
+                            @click="showBonusInput = true"
+                        >
+                            <icon name="star"/>
+                            Give bonus points
+                        </b-button>
+                        <b-input-group
+                            v-if="showBonusInput"
+                            class="mb-2 p-2 background-light-grey round-border"
+                        >
+                            <b-input-group-text
+                                slot="prepend"
+                                class="no-right-radius"
+                            >
+                                Bonus points
+                            </b-input-group-text>
                             <b-form-input
                                 v-model="bonusPointsTemp"
                                 type="number"
-                                class="theme-input mr-2"
+                                class="no-left-radius"
                                 size="2"
                                 placeholder="0"
                                 min="0.0"
                             />
-                            Bonus points
-                        </div>
-                        <b-button
-                            class="green-button"
-                            @click="commitBonus"
-                        >
-                            <icon
-                                name="save"
-                                scale="1"
-                            />
-                            Save bonus
-                        </b-button>
-                    </div>
-                    <b-button
-                        v-if="$hasPermission('can_publish_grades')"
-                        class="green-button mb-2 full-width"
-                        @click="publishGradesJournal"
-                    >
-                        <icon name="upload"/>
-                        Publish all grades
-                    </b-button>
-                    <div v-if="$hasPermission('can_manage_journal_import_requests') && !loadingNodes">
-                        <b-button
-                            v-if="journal.import_requests"
-                            v-b-modal="'journal-import-request-approval-modal'"
-                            class="multi-form orange-button mb-2 full-width"
-                        >
-                            <icon name="file-import"/>
-                            Manage Import Requests
-                        </b-button>
 
-                        <journal-import-request-approval-modal
-                            v-if="journal.import_requests"
-                            modalID="journal-import-request-approval-modal"
-                            @jir-processed="loadJournal(false)"
-                        />
-                    </div>
+                            <b-button
+                                class="green-button full-width mt-1"
+                                @click="commitBonus"
+                            >
+                                <icon name="save"/>
+                                Save
+                            </b-button>
+                        </b-input-group>
+                        <b-button
+                            v-if="$hasPermission('can_publish_grades')"
+                            variant="link"
+                            class="green-button"
+                            @click="publishGradesJournal"
+                        >
+                            <icon name="upload"/>
+                            Publish all grades
+                        </b-button>
+                        <div v-if="$hasPermission('can_manage_journal_import_requests') && !loadingNodes">
+                            <b-button
+                                v-if="journal.import_requests"
+                                v-b-modal="'journal-import-request-approval-modal'"
+                                variant="link"
+                                class="orange-button"
+                            >
+                                <icon name="file-import"/>
+                                Manage Import Requests
+                            </b-button>
+
+                            <journal-import-request-approval-modal
+                                v-if="journal.import_requests"
+                                modalID="journal-import-request-approval-modal"
+                                @jir-processed="loadJournal(false)"
+                            />
+                        </div>
+                    </b-card>
                 </b-col>
             </b-row>
         </template>
@@ -187,6 +173,7 @@ import LoadWrapper from '@/components/loading/LoadWrapper.vue'
 import ProgressNode from '@/components/entry/ProgressNode.vue'
 import Timeline from '@/components/timeline/Timeline.vue'
 import TimelineLayout from '@/components/columns/TimelineLayout.vue'
+import UserMissingLtiLinkWarning from '@/components/journal/UserMissingLtiLinkWarning.vue'
 
 import { mapGetters, mapMutations } from 'vuex'
 import assignmentAPI from '@/api/assignment.js'
@@ -205,21 +192,19 @@ export default {
         JournalEndCard,
         JournalImportRequestApprovalModal,
         ProgressNode,
+        UserMissingLtiLinkWarning,
     },
     props: ['cID', 'aID', 'jID'],
     data () {
         return {
-            currentNode: -1,
             editedData: ['', ''],
             nodes: [],
-            progressNodes: {},
-            progressPointsLeft: 0,
             assignmentJournals: [],
             assignment: null,
             journal: null,
             loadingNodes: true,
-            editingName: false,
             bonusPointsTemp: 0,
+            showBonusInput: false,
         }
     },
     computed: {
@@ -228,6 +213,11 @@ export default {
             order: 'preferences/journalSortAscending',
             getJournalSearchValue: 'preferences/journalSearchValue',
             getJournalGroupFilter: 'preferences/journalGroupFilter',
+            currentNode: 'timeline/currentNode',
+            startNode: 'timeline/startNode',
+            addNode: 'timeline/addNode',
+            endNode: 'timeline/endNode',
+            preferences: 'preferences/saved',
         }),
         filteredJournals () {
             if (this.assignmentJournals.length > 0) {
@@ -250,6 +240,8 @@ export default {
         },
     },
     created () {
+        this.setCurrentNode(this.startNode)
+        this.pushNodeNavigationGuard(this.safeToLeave)
         this.switchJournalAssignment(this.aID)
 
         assignmentAPI.get(this.aID)
@@ -265,63 +257,61 @@ export default {
             }
         }
     },
+    beforeDestroy () {
+        this.removeNodeNavigationGuard(this.safeToLeave)
+    },
     methods: {
         ...mapMutations({
             switchJournalAssignment: 'preferences/SWITCH_JOURNAL_ASSIGNMENT',
+            setCurrentNode: 'timeline/SET_CURRENT_NODE',
+            pushNodeNavigationGuard: 'timeline/PUSH_NODE_NAVIGATION_GUARD',
+            removeNodeNavigationGuard: 'timeline/REMOVE_NODE_NAVIGATION_GUARD',
         }),
         loadJournal (gradeUpdated) {
             const initialCalls = []
+
             initialCalls.push(journalAPI.get(this.jID))
             initialCalls.push(journalAPI.getNodes(this.jID))
+
             Promise.all(initialCalls).then((results) => {
                 this.journal = results[0]
                 this.bonusPointsTemp = this.journal.bonus_points
                 this.nodes = results[1]
                 this.loadingNodes = false
                 if (this.$route.query.nID !== undefined) {
-                    this.currentNode = this.findEntryNode(parseInt(this.$route.query.nID, 10))
+                    const nID = parseInt(this.$route.query.nID, 10)
+                    const nodeToSelect = this.nodes.find((node) => node.id === nID)
+                    this.setCurrentNode(nodeToSelect || this.startNode)
                 } else {
                     this.selectFirstUngradedNode(gradeUpdated)
                 }
             })
         },
         selectFirstUngradedNode (gradeUpdated) {
-            let min = this.nodes.length
+            const currentNodeIndex = Math.max(
+                this.nodes.findIndex((node) => (
+                    node === this.currentNode || (this.currentNode.id && node.id === this.currentNode.id)
+                )),
+                0,
+            )
+            const firstUngradedNode = this.nodes.find((node, i) => (
+                i > currentNodeIndex
+                && node.entry
+                && (node.entry.grade === null || (node.entry.grade.grade === null || !node.entry.grade.published))
+            ))
 
-            for (let i = Math.max(this.currentNode, 0); i < this.nodes.length; i++) {
-                if (this.nodes[i].entry && (this.nodes[i].entry.grade === null
-                    || (this.nodes[i].entry.grade.grade === null || !this.nodes[i].entry.grade.published))) {
-                    min = i
-                    break
-                }
-            }
-
-            if (min < this.nodes.length && this.$store.getters['preferences/saved'].auto_select_ungraded_entry) {
-                this.currentNode = min
-            } else if (min === this.nodes.length && this.$store.getters['preferences/saved'].auto_proceed_next_journal
-                && gradeUpdated && this.filteredJournals.length > 1) {
+            if (firstUngradedNode && this.preferences.auto_select_ungraded_entry) {
+                this.setCurrentNode(firstUngradedNode)
+            } else if (
+                !firstUngradedNode
+                && gradeUpdated
+                && this.preferences.auto_proceed_next_journal
+                && this.filteredJournals.length > 1
+            ) {
                 this.$router.push({
                     name: 'Journal',
                     params: { cID: this.cID, aID: this.aID, jID: this.nextJournal.id },
                 })
-            }
-        },
-        selectNode (newNode) {
-            /* Function that prevents you from instant leaving an EntryNode
-             * or a DeadlineNode when clicking on a different node in the
-             * timeline. */
-            if (newNode === this.currentNode) {
-                /* TODO fix mess */
-            } else if (!this.safeToLeave()) {
-                /* pass */
-            } else if (this.currentNode === -1 || this.currentNode >= this.nodes.length
-                || this.nodes[this.currentNode].type !== 'e'
-                || this.nodes[this.currentNode].type !== 'd') {
-                this.currentNode = newNode
-            } else if (this.$refs['entry-template-card'].saveEditMode === 'Save') {
-                window.confirm('Progress will not be saved if you leave. Do you wish to continue?')
-            } else {
-                this.currentNode = newNode
             }
         },
         publishGradesJournal () {
@@ -341,14 +331,6 @@ export default {
                     })
             }
         },
-        findEntryNode (nodeID) {
-            for (let i = 0; i < this.nodes.length; i++) {
-                if (this.nodes[i].nID === nodeID) {
-                    return i
-                }
-            }
-            return 0
-        },
         findIndex (array, property, value) {
             for (let i = 0; i < array.length; i++) {
                 if (String(array[i][property]) === String(value)) {
@@ -358,13 +340,14 @@ export default {
 
             return false
         },
+        /* Checks if a pending grade exists */
         safeToLeave () {
-            const node = this.nodes[this.currentNode]
+            const nonStudentEntryRef = this.$refs['entry-template-card']
 
-            if (node && node.entry) {
-                const pendingGrade = this.$refs['entry-template-card'].grade
-                const actualGrade = node.entry.grade
-                const defaultGrade = node.entry.template.default_grade
+            if (this.currentNode && this.currentNode.entry && nonStudentEntryRef) {
+                const pendingGrade = nonStudentEntryRef.grade
+                const actualGrade = this.currentNode.entry.grade
+                const defaultGrade = this.currentNode.entry.template.default_grade
 
                 if (!actualGrade) {
                     if (pendingGrade.grade > 0
@@ -387,32 +370,14 @@ export default {
                 journalAPI.update(
                     this.journal.id,
                     { bonus_points: this.bonusPointsTemp },
-                    { customSuccessToast: 'Bonus successfully added.' },
+                    { customSuccessToast: 'Successfully updated bonus points.' },
                 )
-                    .then((journal) => { this.journal = journal })
+                    .then((journal) => {
+                        this.journal = journal
+                        this.showBonusInput = false
+                    })
             }
         },
     },
 }
 </script>
-
-<style lang="sass">
-@import '~sass/partials/shadows.sass'
-
-.grade-section.bonus-section
-    @extend .theme-shadow
-    .btn
-        display: block
-        width: 100%
-        border-width: 1px 0px 0px 0px !important
-        border-radius: 0px 0px 5px 5px !important
-        box-shadow: none
-    .theme-input, .theme-input:hover, .theme-input:focus
-        margin-left: 0px
-        width: 3.5em
-        display: inline-block
-        padding-right: 0px !important
-
-.journal-details-card > .card-body
-    padding-top: 45px
-</style>

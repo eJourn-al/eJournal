@@ -6,77 +6,105 @@
             slot="main-content-column"
             :loading="loadingCourses"
         >
-            <div v-if="courses.length > 0">
-                <div
-                    v-for="c in courses"
-                    :key="c.id"
-                >
-                    <b-link :to="{ name: 'Course', params: { cID: c.id, courseName: c.name } }">
-                        <main-card
-                            :text="c.name"
-                            :class="$root.getBorderClass(c.id)"
-                        >
+            <b-table-simple
+                v-if="courses.length > 0"
+                responsive
+                striped
+                hover
+                class="mt-2 mb-0 bordered-content no-top-table-border"
+            >
+                <b-thead>
+                    <b-tr>
+                        <b-th>
+                            Name
+                        </b-th>
+                        <b-th>
+                            Year
+                        </b-th>
+                    </b-tr>
+                </b-thead>
+                <b-tbody>
+                    <b-tr
+                        v-for="(course, i) in courses"
+                        :key="i"
+                        class="cursor-pointer"
+                        @click="$router.push({ name: 'Course', params: { cID: course.id, courseName: course.name } })"
+                    >
+                        <b-td :title="course.name">
+                            <b-link
+                                :to="{ name: 'Course', params: { cID: course.id, courseName: course.name } }"
+                                @click.prevent.stop
+                            >
+                                {{ course.name }}
+                            </b-link>
+                        </b-td>
+                        <b-td>
                             <b-badge
-                                v-if="c.startdate || c.enddate"
+                                v-if="course.startdate || course.enddate"
                                 pill
                                 class="background-blue"
                             >
-                                {{ courseDateDisplay(c) }}
+                                {{ courseDateDisplay(course) }}
                             </b-badge>
-                        </main-card>
-                    </b-link>
-                </div>
-            </div>
-            <main-card
+                        </b-td>
+                    </b-tr>
+                </b-tbody>
+            </b-table-simple>
+            <not-found
                 v-else
-                text="No courses found"
-                class="no-hover"
+                subject="courses"
+                explanation="You currently do not participate in any courses."
             >
-                You currently do not participate in any courses.
-            </main-card>
+                <b-button
+                    v-if="$hasPermission('can_add_course')"
+                    class="green-button d-block ml-auto mr-auto mt-2"
+                    @click="showModal('createCourseRef')"
+                >
+                    <icon name="plus"/>
+                    Create new course
+                </b-button>
+            </not-found>
+        </load-wrapper>
+
+        <deadline-deck
+            slot="right-content-column"
+            class="mb-3"
+        />
+        <b-card
+            v-if="courses.length > 0 && $hasPermission('can_add_course')"
+            slot="right-content-column"
+        >
+            <h3
+                slot="header"
+                class="theme-h3"
+            >
+                Actions
+            </h3>
             <b-button
                 v-if="$hasPermission('can_add_course')"
+                variant="link"
                 class="green-button"
                 @click="showModal('createCourseRef')"
             >
                 <icon name="plus"/>
                 Create new course
             </b-button>
-        </load-wrapper>
+        </b-card>
 
-        <deadline-deck slot="right-content-column"/>
-
-        <b-modal
-            slot="main-content-column"
-            ref="editCourseRef"
-            title="Global Changes"
-            size="lg"
-            hideFooter
-            noEnforceFocus
-        >
-            <edit-home @handleAction="handleConfirm('editCourseRef')"/>
-        </b-modal>
-
-        <b-modal
+        <create-course-modal
             slot="main-content-column"
             ref="createCourseRef"
-            title="New Course"
-            size="lg"
-            hideFooter
-            noEnforceFocus
-        >
-            <create-course @handleAction="handleConfirm('createCourseRef')"/>
-        </b-modal>
+            @handleAction="handleConfirm('createCourseRef')"
+        />
     </content-columns>
 </template>
 
 <script>
 import breadCrumb from '@/components/assets/BreadCrumb.vue'
 import contentColumns from '@/components/columns/ContentColumns.vue'
-import createCourse from '@/components/course/CreateCourse.vue'
+import createCourseModal from '@/components/course/CreateCourseModal.vue'
 import deadlineDeck from '@/components/assets/DeadlineDeck.vue'
 import loadWrapper from '@/components/loading/LoadWrapper.vue'
-import mainCard from '@/components/assets/MainCard.vue'
 
 import courseAPI from '@/api/course.js'
 
@@ -86,8 +114,7 @@ export default {
         contentColumns,
         breadCrumb,
         loadWrapper,
-        mainCard,
-        createCourse,
+        createCourseModal,
         deadlineDeck,
     },
     data () {

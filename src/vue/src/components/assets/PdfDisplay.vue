@@ -1,19 +1,19 @@
 <template>
-    <div>
+    <div class="pdf-display">
         <div
             class="controls unselectable"
             @click="handleDownload"
         >
             <icon
                 name="file"
-                class="shift-up-2"
+                class="shift-up-2 fill-blue"
             />
             <b class="ml-1">
                 {{ file.file_name }}
             </b>
             <slot/>
         </div>
-        <div class="position-relative">
+        <template v-if="show">
             <div
                 v-if="loadedRatio > 0 && loadedRatio < 1"
                 :style="{ width: loadedRatio * 100 + '%' }"
@@ -23,8 +23,8 @@
                 {{ Math.floor(loadedRatio * 100) }}%
             </div>
             <div
-                v-if="show && loaded && numPages !== 0"
-                class="pdf-menu-container"
+                v-if="loaded && numPages !== 0"
+                class="pdf-controls"
             >
                 <icon
                     name="undo"
@@ -36,21 +36,21 @@
                     @click.native="rotate += 90"
                 />
                 <icon
-                    name="arrow-left"
+                    name="angle-left"
                     class="mr-2"
                     @click.native="page = (page - 1 > 0) ? page - 1 : numPages"
                 />
-                <input
+                <b-input
                     v-model="displayPageNumber"
                     :max="numPages"
                     type="number"
                     min="1"
-                    class="theme-input inline"
+                    class="inline"
                     @input="validatePageInput"
                 />
                 / {{ numPages }}
                 <icon
-                    name="arrow-right"
+                    name="angle-right"
                     class="mr-4 ml-1"
                     @click.native="page = (page + 1 > numPages) ? 1 : page + 1"
                 />
@@ -65,12 +65,12 @@
                 />
             </div>
             <pdf
-                v-if="show && fileURL"
+                v-if="fileURL"
                 :ref="'pdf'"
                 :src="fileURL"
                 :page="page"
                 :rotate="rotate"
-                class="pdf-viewer"
+                class="pdf-viewer d-block"
                 @password="password"
                 @progress="loadedRatio = $event"
                 @error="error"
@@ -78,7 +78,7 @@
                 @link-clicked="page = $event"
                 @loaded="loaded = true"
             />
-        </div>
+        </template>
     </div>
 </template>
 
@@ -171,46 +171,34 @@ export default {
 </script>
 
 <style lang="sass">
-@import '~sass/partials/shadows.sass'
-
-.pdf-menu-container
-    z-index: 1
-    padding: 10px
-    width: 100%
-    position: absolute
-    text-align: center
-    margin-bottom: 10px
-    justify-content: center
-    transition: opacity 0.3s cubic-bezier(.25,.8,.25,1) !important
-
-    opacity: 0.2
-    &:hover
-        opacity: 1
-    svg
-        @extend .theme-shadow
-        width: 1.6em
-        height: 1.6em
-        border-radius: 5px
-        padding: 5px
+.pdf-display
+    .pdf-controls
+        z-index: 1
+        padding: 10px
+        width: 100%
+        position: absolute
+        text-align: center
+        margin-bottom: 10px
+        justify-content: center
+        transition: opacity 0.3s cubic-bezier(.25,.8,.25,1) !important
+        opacity: 0.2
         &:hover
-            cursor: pointer
+            opacity: 1
+        svg
+            width: 1.6em
+            height: 1.6em
+            border-radius: 5px
+            border: 1px solid $border-color
+            padding: 5px
+            background-color: white
+            &:hover
+                background-color: $theme-light-grey
+                cursor: pointer
 
-.pdf-controls
-    margin: 5px
-    &:hover
-        cursor: pointer
-    b
-        text-decoration: underline !important
-    svg
-        margin-bottom: -2px
-
-.redo
-    -moz-transform: scale(-1, 1)
-    -webkit-transform: scale(-1, 1)
-    -o-transform: scale(-1, 1)
-    -ms-transform: scale(-1, 1)
-    transform: scale(-1, 1)
-
-.pdf-viewer
-    border: 2px solid $theme-dark-blue
+    .redo
+        -moz-transform: scale(-1, 1)
+        -webkit-transform: scale(-1, 1)
+        -o-transform: scale(-1, 1)
+        -ms-transform: scale(-1, 1)
+        transform: scale(-1, 1)
 </style>

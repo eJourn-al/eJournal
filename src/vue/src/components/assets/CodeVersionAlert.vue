@@ -2,7 +2,7 @@
     <b-alert
         id="code-version-alert"
         :show="show"
-        class="theme-shadow cursor-pointer unselectable"
+        class="cursor-pointer unselectable"
         @click.native="beginRefreshForNewVersion"
     >
         eJournal received an update 🎉, click <b>here</b> to reload

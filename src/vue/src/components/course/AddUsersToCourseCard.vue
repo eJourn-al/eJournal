@@ -1,8 +1,5 @@
 <template>
-    <b-card
-        :class="$root.getBorderClass(user.id)"
-        class="no-hover"
-    >
+    <b-card>
         <div class="float-left">
             <b>{{ user.full_name }}</b><br/>
             {{ user.username }}
@@ -34,7 +31,10 @@ export default {
         addUserToCourse () {
             if (window.confirm(`Are you sure you want to add "${this.user.full_name}" to this course?`)) {
                 participationAPI.create({ course_id: this.cID, user_id: this.user.id })
-                    .then(() => { this.$emit('add-participant', this.user) })
+                    .then(() => {
+                        this.$emit('add-participant', this.user)
+                        this.$toasted.success('Added user to course.')
+                    })
             }
         },
     },

@@ -1,17 +1,24 @@
 <template>
     <b-badge
         v-if="date"
-        class="background-medium-grey align-middle mr-1"
+        v-b-tooltip.hover
+        class="background-blue align-middle mr-1"
+        :title="`This assignment ${assignment.due_date ? 'is due' : 'locks'} on ${$root.beautifyDate(date)}`"
         pill
     >
-        <span class="text-grey">
-            <icon
-                name="clock"
-                scale="0.8"
-                class="fill-grey shift-up-2"
-            />
-            {{ $root.beautifyDate(date) }}
-        </span>
+        <icon
+            v-if="assignment.due_date"
+            name="clock"
+            scale="0.8"
+            class="shift-up-2"
+        />
+        <icon
+            v-else
+            name="lock"
+            scale="0.8"
+            class="shift-up-2"
+        />
+        {{ $root.beautifyDate(date) }}
     </b-badge>
 </template>
 

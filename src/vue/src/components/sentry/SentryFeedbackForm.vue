@@ -14,7 +14,6 @@
                 <b-form-input
                     id="form-sentry-feedback-name"
                     v-model="name"
-                    class="theme-input"
                     required
                     placeholder="Jane Doe"
                 />
@@ -28,7 +27,6 @@
                 <b-form-input
                     id="form-sentry-feedback-email"
                     v-model="email"
-                    class="theme-input"
                     type="email"
                     required
                     placeholder="jane@example.com"
@@ -42,7 +40,6 @@
                 <b-form-textarea
                     id="form-sentry-feedback-description"
                     v-model="description"
-                    class="theme-input"
                     required
                     placeholder="I clicked on 'X' and then hit 'Confirm'"
                 />

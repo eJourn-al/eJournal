@@ -24,6 +24,7 @@
             @input="newValue => $emit('input', newValue)"
             @select="(selectedOption, id) => $emit('select', selectedOption, id)"
             @remove="(removedOption, id) => $emit('remove', removedOption, id)"
+            @close="(value, id) => $emit('close', value, id)"
         >
             <template
                 slot="tag"
@@ -106,6 +107,10 @@ export default {
             default: 'Filter By Category',
             type: String,
         },
+        startOpen: {
+            default: false,
+            type: Boolean,
+        },
     },
     data () {
         return {
@@ -117,6 +122,11 @@ export default {
     computed: {
         /* Makes use of random to enable multiple selects as part of the same dom without forcing an id prop. */
         infoModalID () { return `${Math.random()}-category-select-information-modal` },
+    },
+    mounted () {
+        if (this.startOpen) {
+            this.$refs.categorySelect.$el.focus()
+        }
     },
     methods: {
         showCategoryDescriptionInSelectOptions (category) {
@@ -140,10 +150,10 @@ export default {
 
 <style lang="sass">
 .category-select .multiselect
-    color: $theme-dark-blue
+    color: $text-color
     word-wrap: nowrap !important
     &, .multiselect__content-wrapper
-        border: 1px solid $theme-dark-grey
+        border: 1px solid $border-color
     &, .multiselect__content-wrapper, .multiselect__tags
         border-radius: 5px !important
         .multiselect__placeholder, .multiselect__single
@@ -152,9 +162,9 @@ export default {
         font-size: 1em
         border-width: 0px
     .multiselect__select::before
-        border-color: $theme-dark-blue transparent transparent
+        border-color: $text-color transparent transparent
     span.multiselect__option--selected, span.multiselect__option--selected::after,
     span.multiselect__option--highlight, span.multiselect__option--highlight::after
         background: $theme-light-grey !important
-        color: $theme-dark-blue
+        color: $text-color
 </style>

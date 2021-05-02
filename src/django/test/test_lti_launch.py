@@ -17,6 +17,7 @@ from django.test import RequestFactory, TestCase
 import VLE.lti_launch as lti
 import VLE.views.lti as lti_view
 from VLE.models import Group, Instance, Journal, Participation, User, access_gen
+from VLE.utils.error_handling import VLEProgrammingError
 
 REQUEST = {
     # Authentication data
@@ -55,6 +56,7 @@ def create_request_body(user=None, course=None, assignment=None, is_teacher=Fals
         request['custom_user_full_name'] = user.full_name
         request['custom_user_image'] = user.profile_picture
         request['user_id'] = user.lti_id or access_gen()
+        request['custom_user_email'] = user.email
     else:
         n = User.objects.count()
         request['custom_username'] = f'user_{n}_{access_gen(size=10)}'
@@ -64,7 +66,7 @@ def create_request_body(user=None, course=None, assignment=None, is_teacher=Fals
         request['custom_user_email'] = f'email{access_gen(size=10)}@ejournal.app'
 
     if is_teacher:
-        request['roles'] = 'Instructor'
+        request['roles'] = 'urn:lti:role:ims/lis/Instructor'
 
     if course:
         assert course.active_lti_id, 'course needs to be an LTI course'
@@ -213,10 +215,37 @@ class LtiLaunchTest(TestCase):
         assert old_last_login != User.objects.get(pk=self.student.pk).last_login, \
             'Last login should be updated'
 
+    def test_lti_launch_user_update_email(self):
+        old_last_login = self.student.last_login
+        old_email = self.student.email
+        lti_launch(
+            request_body={
+                'user_id': self.student.lti_id,
+                'custom_user_email': 'NEW' + self.student.email
+            },
+            response_value=lti_view.LTI_STATES.LOGGED_IN.value,
+            assert_msg='With a user_id the user should login',
+        )
+        assert old_email != User.objects.get(pk=self.student.pk).email, \
+            'Email should be updated'
+        assert old_last_login != User.objects.get(pk=self.student.pk).last_login, \
+            'Last login should be updated'
+
     def test_lti_launch_multiple_roles(self):
         lti_launch(
             request_body={
-                'roles': 'Extra,Instructor',
+                'roles': 'Extra,urn:lti:instrole:ims/lis/Instructor',
+                'user_id': self.student.lti_id
+            },
+            response_value=lti_view.LTI_STATES.LOGGED_IN.value,
+            assert_msg='With only institution wide teacher role (no context teacher) student should not become teacher',
+        )
+        assert not User.objects.get(lti_id=self.student.lti_id).is_teacher, \
+            'Student should not become a teacher when loggin in with only institution wide Instructor role'
+
+        lti_launch(
+            request_body={
+                'roles': 'Extra,urn:lti:role:ims/lis/Instructor',
                 'user_id': self.student.lti_id
             },
             response_value=lti_view.LTI_STATES.LOGGED_IN.value,
@@ -235,10 +264,22 @@ class LtiLaunchTest(TestCase):
         assert User.objects.get(lti_id=self.student.lti_id).is_teacher, \
             'Teacher should stay teacher when roles change'
 
+    def test_lti_launch_content_developer(self):
+        lti_launch(
+            request_body={
+                'roles': 'Extra,urn:lti:role:ims/lis/ContentDeveloper',
+                'user_id': self.student.lti_id
+            },
+            response_value=lti_view.LTI_STATES.LOGGED_IN.value,
+            assert_msg='With a user_id the user should login',
+        )
+        assert User.objects.get(lti_id=self.student.lti_id).is_teacher, \
+            'Student should become a teacher when loggin in with content developer role'
+
     def test_lti_launch_unknown_role(self):
         lti_launch(
             request_body={
-                'roles': 'urn:lti:instrole:ims/lis/Administrator',
+                'roles': 'urn:lti:role:ims/lis/Administrator',
                 'user_id': self.student.lti_id
             },
             response_value=lti_view.LTI_STATES.LOGGED_IN.value,
@@ -248,7 +289,7 @@ class LtiLaunchTest(TestCase):
     def test_lti_launch_wrong_signature(self):
         lti_launch(
             request_body={
-                'roles': 'urn:lti:instrole:ims/lis/Administrator',
+                'roles': 'urn:lti:role:ims/lis/Administrator',
                 'user_id': get_new_lti_id(),
                 'oauth_signature': 'invalid'
             },
@@ -355,6 +396,11 @@ class LtiLaunchTest(TestCase):
         assert User.objects.filter(lti_id=test_user_params2['user_id']).exists(), 'Second test user should be created.'
         assert not User.objects.filter(lti_id=test_student.lti_id).exists(), 'Can only be one test student per course.'
 
+        # A test user is expected to launch without a valid email address, if this DOES occur a VLEProgrammingError
+        # should be raised so we can take action
+        with self.assertRaises(VLEProgrammingError):
+            lti_launch(request_body={**test_user_params2, 'custom_user_email': 'something@valid.com'})
+
     def test_get_lti_params_from_valid_test_user(self):
         course = factory.LtiCourse()
         assignment = factory.LtiAssignment(courses=[course])
@@ -406,12 +452,15 @@ class LtiLaunchTest(TestCase):
         assignment = factory.LtiAssignment(courses=[course])
         test_student = factory.TestUser()
         group_count = Group.objects.filter(course=course).count()
+
         get_jwt(
             self, url='update_lti_groups',
             user=self.student, status=404,
             request_body={'user_id': 'invalid_user_id'},
             response_msg='User does not exist',
-            assert_msg='Without a valid lti_id it should not find the user')
+            assert_msg='Without a valid lti_id it should not find the user',
+        )
+
         get_jwt(
             self, url='update_lti_groups',
             user=test_student, status=200,
@@ -420,22 +469,61 @@ class LtiLaunchTest(TestCase):
                 'custom_course_id': course.active_lti_id,
                 'custom_assignment_id': assignment.active_lti_id},
             response_msg='',
-            assert_msg='With valid params it should response successfully')
+            assert_msg='With valid params it should response successfully',
+        )
         assert group_count == Group.objects.filter(course=course).count(), \
             'No new groups should be created, if no supplied'
+
+        # User is added to two groups on the LMS unknown to eJournal
+        lms_group_ids = {'new_group1', 'new_group2'}
+        body = {
+            'user_id': test_student.lti_id,
+            'custom_section_id': ','.join(lms_group_ids),
+            'custom_course_id': course.active_lti_id,
+            'custom_assignment_id': assignment.active_lti_id,
+        }
         get_jwt(
             self, url='update_lti_groups',
             user=test_student, status=200,
-            request_body={
-                'user_id': test_student.lti_id,
-                'custom_section_id': 'new_group1,new_group2',
-                'custom_course_id': course.active_lti_id,
-                'custom_assignment_id': assignment.active_lti_id},
+            request_body=body,
             response_msg='',
-            assert_msg='With valid params it should response successfully')
+            assert_msg='With valid params it should response successfully',
+        )
         assert group_count + 2 == Group.objects.filter(course=course).count() and \
             Group.objects.filter(course=course, lti_id='new_group2').exists(), \
             'New groups should be created'
+        test_student_participation = test_student.participation_set.get(course=course)
+        assert set(test_student_participation.groups.values_list('lti_id', flat=True)) == lms_group_ids, \
+            'The newly created LMS groups have been added to the participation of the student'
+
+        # User is removed from 'new_group2' group manually on EJ
+        new_group2 = Group.objects.get(lti_id='new_group2')
+        test_student_participation.groups.remove(new_group2)
+        get_jwt(
+            self, url='update_lti_groups',
+            user=test_student, status=200,
+            request_body=body,
+            response_msg='',
+            assert_msg='With valid params it should response successfully',
+        )
+        assert set(test_student_participation.groups.values_list('lti_id', flat=True)) == lms_group_ids, (
+            'LTI launch overwrites any group corrections made specifically on the EJ side, when the group is part of '
+            'the lti launch params.'
+        )
+
+        # User is added to a group created manually on EJ
+        ej_group = factory.Group(course=course, lti_id='')
+        test_student_participation.groups.add(ej_group)
+        group_pks = set(test_student_participation.groups.values_list('pk', flat=True))
+        get_jwt(
+            self, url='update_lti_groups',
+            user=test_student, status=200,
+            request_body=body,
+            response_msg='',
+            assert_msg='With valid params it should response successfully',
+        )
+        assert set(test_student_participation.groups.values_list('pk', flat=True)) == group_pks, \
+            'LTI launch does not affect groups which are not part of the request body (only syncs mentioned groups).'
 
     def test_get_lti_params_from_jwt_wrong_user(self):
         get_jwt(
@@ -466,7 +554,7 @@ class LtiLaunchTest(TestCase):
             self, user=self.teacher, status=200,
             request_body={
                 'user_id': self.teacher.lti_id,
-                'roles': 'Instructor'},
+                'roles': 'urn:lti:role:ims/lis/Instructor'},
             response_value=lti_view.LTI_STATES.NEW_COURSE.value,
             assert_msg='When a teacher gets jwt_params for the first time it should return the NEW_COURSE state')
 
@@ -483,7 +571,7 @@ class LtiLaunchTest(TestCase):
             self, user=self.teacher, status=200,
             request_body={
                 'user_id': self.teacher.lti_id,
-                'roles': 'Instructor',
+                'roles': 'urn:lti:role:ims/lis/Instructor',
                 'custom_course_id': course.active_lti_id},
             response_value=lti_view.LTI_STATES.NEW_ASSIGN.value,
             assert_msg='When a teacher gets jwt_params after course is created it should return the NEW_ASSIGN state')
@@ -500,7 +588,7 @@ class LtiLaunchTest(TestCase):
             self, user=self.teacher, status=200,
             request_body={
                 'user_id': self.teacher.lti_id,
-                'roles': 'Instructor',
+                'roles': 'urn:lti:role:ims/lis/Instructor',
                 'custom_course_id': course.active_lti_id,
                 'custom_assignment_id': old_id},
             response_value=lti_view.LTI_STATES.FINISH_T.value,
@@ -539,7 +627,7 @@ class LtiLaunchTest(TestCase):
             self, user=self.teacher, status=200,
             request_body={
                 'user_id': self.teacher.lti_id,
-                'roles': 'Instructor'},
+                'roles': 'urn:lti:role:ims/lis/Instructor'},
             response_value=lti_view.LTI_STATES.NEW_COURSE.value,
             delete_field='context_label')
 
@@ -561,11 +649,39 @@ class LtiLaunchTest(TestCase):
             self, user=self.teacher, status=200,
             request_body={
                 'user_id': self.teacher.lti_id,
-                'roles': 'Instructor',
+                'roles': 'urn:lti:role:ims/lis/Instructor',
                 'custom_course_id': course.active_lti_id,
                 'custom_assignment_id': assignment.active_lti_id},
             response_value=lti_view.LTI_STATES.FINISH_T.value,
             assert_msg='When after assignment is created it should return the FINISH_T state for teachers')
+
+    def test_get_lti_params_from_jwt_journal_ta(self):
+        course = factory.LtiCourse(author=self.teacher, name=REQUEST['custom_course_name'])
+        assignment = factory.LtiAssignment(
+            author=self.teacher, courses=[course], name=REQUEST['custom_assignment_title'])
+        get_jwt(
+            self, user=self.student, status=200,
+            request_body={
+                'user_id': self.student.lti_id,
+                'roles': 'urn:lti:role:ims/lis/TeachingAssistant',
+                'custom_course_id': course.active_lti_id,
+                'custom_assignment_id': assignment.active_lti_id},
+            response_value=lti_view.LTI_STATES.FINISH_T.value,
+            assert_msg='When after assignment is created it should return the FINISH_T state for teaching assistents')
+
+    def test_get_lti_params_from_jwt_journal_mentor(self):
+        course = factory.LtiCourse(author=self.teacher, name=REQUEST['custom_course_name'])
+        assignment = factory.LtiAssignment(
+            author=self.teacher, courses=[course], name=REQUEST['custom_assignment_title'])
+        get_jwt(
+            self, user=self.student, status=200,
+            request_body={
+                'user_id': self.student.lti_id,
+                'roles': 'urn:lti:role:ims/lis/Mentor',
+                'custom_course_id': course.active_lti_id,
+                'custom_assignment_id': assignment.active_lti_id},
+            response_value=lti_view.LTI_STATES.FINISH_T.value,
+            assert_msg='When after assignment is created it should return the FINISH_T state for mentors')
 
     def test_get_lti_params_from_jwt_journal_student(self):
         course = factory.LtiCourse(author=self.teacher, name=REQUEST['custom_course_name'])
@@ -651,6 +767,16 @@ class LtiLaunchTest(TestCase):
             self, user=self.student, status=200,
             request_body={
                 'user_id': self.student.lti_id,
+                'roles': 'Learner,urn:lti:role:ims/lis/Instructor'},
+            response_value=lti_view.LTI_STATES.NEW_COURSE.value,
+            assert_msg='When a student tries to create a new course, with also a new Instructor role, \
+                        it should grand its permissions')
+
+    def test_get_lti_params_from_jwt_canvas_instructor_role(self):
+        get_jwt(
+            self, user=self.student, status=200,
+            request_body={
+                'user_id': self.student.lti_id,
                 'roles': 'Learner,Instructor'},
             response_value=lti_view.LTI_STATES.NEW_COURSE.value,
             assert_msg='When a student tries to create a new course, with also a new Instructor role, \
@@ -661,7 +787,7 @@ class LtiLaunchTest(TestCase):
             self, user=self.student, status=200,
             request_body={
                 'user_id': self.student.lti_id,
-                'roles': 'Learner,Administrator'},
+                'roles': 'Learner,urn:lti:role:ims/lis/Administrator'},
             response_value=lti_view.LTI_STATES.NEW_COURSE.value,
             assert_msg='When a student tries to create a new course, with also a new Administrator role, \
                         it should grand its permissions')
@@ -680,7 +806,7 @@ class LtiLaunchTest(TestCase):
             self, user=self.teacher, status=400,
             request_body={
                 'user_id': self.teacher.lti_id,
-                'roles': 'Instructor'},
+                'roles': 'urn:lti:role:ims/lis/Instructor'},
             delete_field='custom_course_id',
             response_msg='missing',
             assert_msg='When missing keys, it should return a keyerror')
@@ -811,3 +937,18 @@ class LtiLaunchTest(TestCase):
             None
         )
         assert selected_journal is None
+
+    def test_update_lti_course_if_exists(self):
+        lti_course = factory.LtiCourse()
+        student_role = lti_course.role_set.get(name='Student')
+        teacher_now_student = factory.Teacher()
+
+        # Insitution teacher is now launched as a student in a different course
+        lti.update_lti_course_if_exists(
+            {'custom_course_id': lti_course.active_lti_id},
+            teacher_now_student,
+            role='urn:lti:instrole:ims/lis/Instructor,urn:lti:ims:ims/lis/Student'
+
+        )
+        assert lti_course.participation_set.filter(user=teacher_now_student, role=student_role).exists(), \
+            'Institution teacher but course student is added to the course as a student '

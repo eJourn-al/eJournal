@@ -1,13 +1,18 @@
 <template>
-    <content-single-column>
+    <content-single-column class="not-logged-in-page">
+        <img
+            class="not-logged-in-page-logo"
+            src="ejournal-logo.svg"
+        />
         <div v-if="handleUserIntegration">
-            <h1 class="theme-h1 mb-2">
-                <span>Welcome to eJournal!</span>
-            </h1>
-            <b-card class="no-hover">
-                <h2 class="theme-h2 multi-form">
-                    Hi {{ lti.fullName ? lti.fullName : lti.username }}
+            <b-card>
+                <h2
+                    slot="header"
+                    class="theme-h2"
+                >
+                    Welcome to eJournal
                 </h2>
+                Hi {{ lti.fullName ? lti.fullName : lti.username }},
                 <template v-if="usernameAlreadyExists">
                     <p>
                         It looks like you already have an account on eJournal. Please verify this by logging in below.
@@ -50,6 +55,7 @@
                     />
                 </template>
             </b-card>
+            <custom-footer/>
 
             <b-modal
                 ref="linkUserModal"
@@ -70,6 +76,7 @@
 
 <script>
 import contentSingleColumn from '@/components/columns/ContentSingleColumn.vue'
+import customFooter from '@/components/assets/Footer.vue'
 import loadSpinner from '@/components/loading/LoadSpinner.vue'
 import loginForm from '@/components/account/LoginForm.vue'
 import registerUser from '@/components/account/RegisterUser.vue'
@@ -80,6 +87,7 @@ export default {
     name: 'LtiLogin',
     components: {
         contentSingleColumn,
+        customFooter,
         loadSpinner,
         registerUser,
         loginForm,

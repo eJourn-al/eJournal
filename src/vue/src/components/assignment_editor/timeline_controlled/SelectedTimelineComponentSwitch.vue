@@ -1,21 +1,21 @@
 <template>
     <div>
-        <template v-if="selectedTimelineElementIndex === -1">
+        <template v-if="currentNode === startNode">
             <assignment-start-read-mode v-if="readMode"/>
             <assignment-details-edit v-else/>
         </template>
 
-        <template v-else-if="selectedTimelineElementIndex >= 0 && selectedTimelineElementIndex <= presetNodes.length">
+        <template v-else-if="currentNode === endNode">
+            <assignment-end-read-mode v-if="readMode"/>
+            <assignment-details-edit v-else/>
+        </template>
+
+        <template v-else>
             <preset-node-read-mode v-if="readMode"/>
             <preset-node-edit
                 v-else
                 :key="`preset-node-${presetNode.id}-edit`"
             />
-        </template>
-
-        <template v-else-if="selectedTimelineElementIndex === presetNodes.length + 1">
-            <assignment-end-read-mode v-if="readMode"/>
-            <assignment-details-edit v-else/>
         </template>
     </div>
 </template>
@@ -44,7 +44,9 @@ export default {
     computed: {
         ...mapGetters({
             readMode: 'assignmentEditor/readMode',
-            selectedTimelineElementIndex: 'assignmentEditor/selectedTimelineElementIndex',
+            currentNode: 'timeline/currentNode',
+            startNode: 'timeline/startNode',
+            endNode: 'timeline/endNode',
             presetNodes: 'presetNode/assignmentPresetNodes',
             presetNode: 'assignmentEditor/selectedPresetNode',
         }),

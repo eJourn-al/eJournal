@@ -1,7 +1,6 @@
 <template>
-    <footer>
-        <hr class="mt-4"/>
-        &copy; 2020 - eJournal
+    <footer class="small">
+        &copy; {{ new Date().getFullYear() }} - eJournal
         <a
             href="https://www.eJournal.app/changelog"
             target="_blank"

@@ -41,7 +41,8 @@ class FileFieldTest(TestCase):
         assert not all_field.options
 
         entry_file = api.post(
-            self, 'files', params={'file': self.image}, user=self.student, content_type=MULTIPART_CONTENT, status=201)
+            self, 'files', params={'file': self.image}, user=self.student, content_type=MULTIPART_CONTENT, status=201,
+        )['file']
         post = self.create_params
         post['content'] = {txt_field.pk: entry_file}
         resp = api.post(self, 'entries', params=post, user=self.student, status=400)
@@ -52,7 +53,8 @@ class FileFieldTest(TestCase):
         assert self.student.filecontext_set.filter(pk=entry_file['id']).exists(), 'File should exist after valid upload'
 
         entry_file = api.post(
-            self, 'files', params={'file': self.txt}, user=self.student, content_type=MULTIPART_CONTENT, status=201)
+            self, 'files', params={'file': self.txt}, user=self.student, content_type=MULTIPART_CONTENT, status=201,
+        )['file']
         post['content'] = {txt_field.pk: entry_file}
         resp = api.post(self, 'entries', params=post, user=self.student, status=201)
         assert self.student.filecontext_set.filter(pk=entry_file['id']).exists(), \

@@ -28,7 +28,7 @@
             class="max-one-line"
             :class="{ dirty: isTemplateDirty(template) }"
         >
-            <b>{{ template.name }}</b>
+            {{ template.name }}
         </span>
     </div>
 </template>

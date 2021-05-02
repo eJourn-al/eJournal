@@ -1,7 +1,5 @@
 <template>
-    <b-card
-        class="large-load-spinner no-hover no-left-border"
-    >
+    <b-card class="large-load-spinner">
         <img
             src="/ejournal-book.svg"
             class="theme-img"
@@ -22,10 +20,7 @@
     transform: translateX(-50%)
     width: 100px
     height: 100px
-    border-left-width: 2px
     overflow: hidden
-    .card-body
-        border-left: none
     img
         position: absolute
         width: 56px

@@ -1,79 +1,97 @@
-@import '~sass/partials/shadows.sass'
-
-.btn:not(.btn-link), .btn-secondary:not(.btn-link)
-    @extend .theme-shadow
-    border: 1px solid $theme-dark-grey
-    position: relative
-    background-color: white
-    justify-content: center
-    display: inline-flex
-    align-items: center
+.btn, .btn-secondary
     border-radius: 5px
     text-transform: capitalize
-    &, svg
-        transition: all 0.3s cubic-bezier(.25,.8,.25,1) !important
+    &:not(.btn-link)
+        border: 1px solid $border-color
+        flex-shrink: 0
+        position: relative
+        background-color: white
+        white-space: nowrap
+        overflow: hiddena
+        text-overflow: ellipsis
+        &, svg
+            transition: all 0.3s cubic-bezier(.25,.8,.25,1) !important
+            color: $text-color
+        svg
+            margin: -4px 2px 0px 0px
+        &:hover:not(.no-hover), &.active:not(.disabled), &:focus
+            background-color: $theme-blue
+            border-color: $theme-blue
+            &, svg
+                color: white !important
+        &.no-hover:hover
+            background-color: white
+        &.fab
+            border-radius: 50% !important
+            border: none !important
+            position: fixed
+            z-index: 100
+            bottom: 30px
+            right: 30px
+            width: 60px
+            height: 60px
+            &, svg
+                color: white !important
+        &.fill-width-sm-max
+            @include sm-max
+                width: 100%
+        &:hover:not(.no-hover), &.active, &:focus
+            &.green-button
+                background-color: $theme-green
+                border-color: $theme-green
+            &.red-button
+                background-color: $theme-red
+                border-color: $theme-red
+            &.orange-button
+                background-color: $theme-orange
+                border-color: $theme-orange
+            &.yellow-button
+                background-color: $theme-yellow
+                border-color: $theme-yellow
+            &.grey-button
+                background-color: grey
+                border-color: grey
+            &.dark-blue-button
+                background-color: $theme-dark-blue
+                border-color: $theme-dark-blue
+            &.blue-filled-button
+                background-color: darken($theme-blue, 5%)
+            &.green-filled-button
+                background-color: darken($theme-green, 5%)
+    &.green-button svg
+        color: $theme-green
+    &.red-button svg
+        color: $theme-red
+    &.orange-button svg
+        color: $theme-orange
+    &.yellow-button svg
+        color: $theme-yellow
+    &.grey-button svg
+        color: grey
+    &.dark-blue-button svg
         color: $theme-dark-blue
-    svg
-        margin: 5px
-    &:hover:not(.no-hover), &.active, &:focus
+    &.blue-button svg
+        color: $theme-blue
+    &.blue-filled-button
         background-color: $theme-blue
         border-color: $theme-blue
         &, svg
-            color: white !important
-    &.no-hover:hover
-        background-color: white
-    &.fab
-        @extend .theme-shadow
-        background-color: $theme-blue
-        border-radius: 50% !important
-        border: none !important
-        position: fixed
-        z-index: 100
-        bottom: 30px
-        right: 30px
-        width: 60px
-        height: 60px
-        &, svg
-            color: white !important
-    &.fill-width-sm-max
-        @include sm-max
-            width: 100%
-    &.green-button
-        svg
-            color: $theme-green
-        &:hover:not(.no-hover), &.active, &.fab, &:focus
-            background-color: $theme-green
-            border-color: $theme-green !important
-    &.red-button
-        svg
-            color: $theme-red
-        &:hover:not(.no-hover), &.active, &.fab, &:focus
-            background-color: $theme-red
-            border-color: $theme-red !important
-    &.orange-button
-        svg
-            color: $theme-orange
-        &:hover:not(.no-hover), &.active, &.fab, &:focus
-            background-color: $theme-orange
-            border-color: $theme-orange !important
-    &.dark-blue-button
-        &:hover:not(.no-hover), &.active, &.fab, &:focus
-            background-color: $theme-dark-blue
-            border-color: $theme-dark-blue !important
-    &.blue-filled-button
-        border-color: $theme-blue !important
+            color: white
+    &.green-filled-button
+        background-color: $theme-green
+        border-color: $theme-green
         &, svg
             color: white
-        background-color: $theme-blue
-        &:hover:not(.no-hover), &.active, &.fab, &:focus
-            background-color: darken($theme-blue, 5%)
-    &.grey-filled-button
-        border-color: $theme-medium-grey !important
-        &, svg
-            color: grey
-        background-color: $theme-medium-grey
-        &:hover:not(.no-hover), &.active, &.fab, &:focus
-            background-color: darken($theme-medium-grey, 20%)
+    &.btn-link
+        display: block
+        text-decoration: none
+        padding: 2px 5px
+        svg
+            margin: -4px 2px 0px 0px
+        color: $text-color
+        &:hover
+            text-decoration: none
+            background-color: $theme-light-grey
     &.preset-type-button
         width: 75px
         height: 75px
@@ -82,4 +100,4 @@
             svg
                 color: white
             background-color: $theme-dark-blue
-            border-color: $theme-dark-blue !important
+            border-color: $theme-dark-blue

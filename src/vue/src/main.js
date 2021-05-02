@@ -2,7 +2,7 @@ import 'flatpickr/dist/flatpickr.css' // eslint-disable-line import/no-extraneou
 import 'flatpickr/dist/themes/material_blue.css' // eslint-disable-line import/no-extraneous-dependencies
 import 'intro.js/introjs.css' // eslint-disable-line import/no-extraneous-dependencies
 import Vue from 'vue'
-import isEqual from 'lodash.isequal'
+import isEqualWith from 'lodash.isequalwith'
 
 import '@/helpers/vue_awesome_icons.js'
 import initBootstrap from '@/helpers/bootstrap.js'
@@ -12,6 +12,7 @@ import initSentry from '@/helpers/sentry.js'
 import Icon from 'vue-awesome/components/Icon.vue'
 import Toasted from 'vue-toasted'
 import VueIntro from 'vue-introjs'
+import VueTimeago from 'vue-timeago'
 import flatPickr from 'vue-flatpickr-component'
 
 import connection from '@/api/connection.js'
@@ -19,6 +20,7 @@ import connection from '@/api/connection.js'
 import { sync } from 'vuex-router-sync'
 
 import App from './App.vue'
+import NotFound from './components/assets/NotFound.vue'
 import ResetWrapper from '@/components/assets/ResetWrapper.vue'
 import ThemeSelect from './components/assets/ThemeSelect.vue'
 import router from './router/index.js'
@@ -35,10 +37,15 @@ Vue.use(Toasted, {
 })
 Vue.use(flatPickr)
 Vue.use(VueIntro)
+Vue.use(VueTimeago, {
+    name: 'Timeago',
+    locale: 'en',
+})
 
 Vue.component('icon', Icon)
-Vue.component('theme-select', ThemeSelect)
+Vue.component('not-found', NotFound)
 Vue.component('reset-wrapper', ResetWrapper)
+Vue.component('theme-select', ThemeSelect)
 
 initSentry(Vue)
 initBootstrap(Vue)
@@ -47,7 +54,13 @@ initGlobalHelpers(Vue)
 /* Checks the store for for permissions according to the current route cID or aID. */
 Vue.prototype.$hasPermission = store.getters['permissions/hasPermission']
 
-Vue.prototype.$_isEqual = isEqual
+/* Checks for object equality, where comparison of values null and '' yields true */
+Vue.prototype.$_isEqual = (obj1, obj2) => isEqualWith(obj1, obj2, (a, b) => {
+    if ((a === null || a === '') && (b === null || b === '')) {
+        return true
+    }
+    return undefined // default comparison should take place
+})
 
 const toApi = new RegExp(`^${CustomEnv.API_URL}`)
 
@@ -78,10 +91,11 @@ new Vue({
     store,
     components: { App },
     data: {
-        borderColors: ['border-pink', 'border-purple', 'border-yellow', 'border-blue'],
         previousPage: null,
         windowWidth: 0,
         maxFileSizeBytes: 10485760,
+        maxFileSizeLabel: '10 MB',
+        maxFileNameLength: 128,
         maxEmailFileSizeBytes: 10485760,
         flatPickrTimeConfig: {
             enableTime: true,
@@ -124,7 +138,6 @@ new Vue({
         store.dispatch('connection/setupConnectionInterceptors', { connection: connection.conn })
         store.dispatch('connection/setupConnectionInterceptors',
             { connection: connection.connRefresh, isRefresh: true })
-        store.dispatch('connection/setupConnectionInterceptors', { connection: connection.connUpFile })
         store.dispatch('connection/setupConnectionInterceptors', { connection: connection.connDownFile })
 
         window.addEventListener('resize', () => {
@@ -133,9 +146,6 @@ new Vue({
         this.windowWidth = window.innerWidth
     },
     methods: {
-        getBorderClass (id) {
-            return this.borderColors[id % this.borderColors.length]
-        },
         beautifyDate (date, displayDate = true, displayTime = true) {
             if (!date) {
                 return ''
@@ -149,7 +159,7 @@ new Vue({
                 s += `${day}-${month}-${year}`
             }
             if (displayDate && displayTime) {
-                s += ' at '
+                s += ' '
             }
             if (displayTime) {
                 s += time

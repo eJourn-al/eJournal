@@ -1,59 +1,58 @@
 <!--
-    Timeline component. Handles the prop connection with parent, as well as any
-    functionality involving the list (ie. showing the list,
-    passing selected state)
+    Timeline component. Responsible for displaying, navigating, and filtering the timeline.
 
-    Nodes are accessed via array index. Some 'virtual' nodes exists, these are not part of the nodes array.
-        - Start of assignment: -1
+    Node navigation occurs via setting the 'currentNode' in the timeline store module.
+    Some nodes exists which have no underlying DB representation, these are not part of the nodes array.
+        - Start of assignment
         - Add node
             - Virtual when adding a preset to the assignment: nodes.length
-              (not virtual when adding an entry to the timeline, but has NO nID)
-        - End of assignment: nodes.length + 1
+              (not virtual when adding an entry to the timeline, but has NO id)
+        - End of assignment
     Passed property nodes can consist of two types:
-        - Preset nodes (edit = true) (assignment edit view)
+        - Preset nodes (assignment editor view)
         - nodes (journal view)
 -->
 
 <template>
     <div>
         <b-collapse id="timeline-container">
-            <h3 class="theme-h3 mb-1 mr-2">
-                Timeline
-            </h3>
-
-            <b-dropdown
+            <b-card
                 v-if="assignmentHasCategories"
                 class="timeline-filter"
-                noCaret
-                variant="link"
+                noBody
             >
-                <template #button-content>
+                <template #header>
+                    <h3 class="theme-h3 mb-1 mr-2">
+                        Timeline
+                    </h3>
                     <b-button
-                        pill
-                        class="filter-button"
-                        :class="{
-                            'blue-filled-button': filteredCategories.length > 0,
-                            'grey-filled-button': filteredCategories.length === 0,
-                        }"
+                        variant="link"
+                        class="grey-button float-right pt-0 pb-0"
+                        @click="showFilters = !showFilters"
                     >
-                        <icon name="eye"/>
-                        Filter
+                        <icon name="cog"/>
+                        Options
                     </b-button>
                 </template>
-                <category-select
-                    v-model="filteredCategories"
-                    :options="$store.getters['category/assignmentCategories']"
-                    :multiple="true"
-                    :searchable="true"
-                    :multiSelectText="`${filteredCategories.length > 1 ? 'categories' : 'category'}`"
-                    @input="filterByCategory"
-                />
-            </b-dropdown>
-
-            <category-display
-                :id="'timeline-filter-categories'"
-                :categories="filteredCategories"
-            />
+                <b-card-body v-if="showFilters">
+                    <b-form-checkbox
+                        v-if="nodesHoldPastDeadlines"
+                        v-model="hidePastDeadlines"
+                        class="mb-2"
+                        @change="filterNodes"
+                    >
+                        Hide past deadlines
+                    </b-form-checkbox>
+                    <category-select
+                        v-model="filteredCategories"
+                        :options="$store.getters['category/assignmentCategories']"
+                        :multiple="true"
+                        :searchable="true"
+                        :multiSelectText="`${filteredCategories.length > 1 ? 'categories' : 'category'}`"
+                        @input="filterNodes"
+                    />
+                </b-card-body>
+            </b-card>
 
             <template
                 v-b-toggle="($root.lgMax) ? 'timeline-container' : null"
@@ -62,12 +61,8 @@
                 aria-controls="timeline-container"
             >
                 <timeline-nodes
-                    :assignment="assignment"
-                    :edit="edit"
-                    :nodes="filteredNodes"
+                    :filteredNodes="filteredNodes"
                     :allNodes="nodes"
-                    :selectedIndex="mappedSelected"
-                    @select-node="mapAndEmitSelectedNode"
                 />
             </template>
         </b-collapse>
@@ -79,54 +74,44 @@
             aria-expanded="false"
             aria-controls="timeline-container"
         >
-            <span class="timeline-container__icon timeline-container__icon--open">
+            <span class="timeline-container__icon timeline-container__icon--open collapse-icon">
                 <icon
-                    class="collapse-icon"
-                    name="list-ul"
-                    scale="1.75"
+                    class="shift-up-4 mr-1"
+                    name="caret-down"
+                    scale="1"
                 />
+                Show timeline
             </span>
-            <span class="timeline-container__icon timeline-container__icon--close">
+            <span class="timeline-container__icon timeline-container__icon--close collapse-icon">
                 <icon
-                    class="collapse-icon"
+                    class="shift-up-4 mr-1"
                     name="caret-up"
-                    scale="1.75"
+                    scale="1"
                 />
+                Hide timeline
             </span>
         </div>
     </div>
 </template>
 
 <script>
-import CategoryDisplay from '../category/CategoryDisplay.vue'
 import CategorySelect from '@/components/category/CategorySelect.vue'
 import TimelineNodes from '@/components/timeline/TimelineNodes.vue'
+
+import comparison from '@/utils/comparison.js'
 
 import { mapGetters, mapMutations } from 'vuex'
 
 export default {
     components: {
-        CategoryDisplay,
         CategorySelect,
         TimelineNodes,
     },
     props: {
-        /* Boolean used to indicate the assignment is being edited, new preset nodes can be inserted
-         * which will not yet be saved / have an id.
-         * Entries are created one at a time and are always inserted after save (with id) */
-        edit: {
-            default: false,
-            type: Boolean,
-        },
-        /* Array of node (edit = false) or preset node (edit = true) objects  */
+        /* Array of nodes (journal view) or preset nodes (assignment editor view) */
         nodes: {
             required: true,
             type: Array,
-        },
-        /* Index of the selected node as part of the full (non filtered) nodes array
-         * Can be null, indicating nothing should be selected. */
-        selected: {
-            required: true,
         },
         assignment: {
             required: true,
@@ -135,85 +120,62 @@ export default {
     },
     data () {
         return {
+            showFilters: false,
             filteredNodes: [],
-            startOfAssignmentNodeIndexSymbol: -1,
-            mappedSelected: this.startOfAssignmentNodeIndexSymbol,
         }
     },
     computed: {
         ...mapGetters({
             assignmentHasCategories: 'category/assignmentHasCategories',
+            currentNode: 'timeline/currentNode',
+            startNode: 'timeline/startNode',
+            addNodeSymbol: 'timeline/addNodeSymbol',
         }),
         filteredCategories: {
             set (value) { this.$store.commit('timeline/SET_FILTERED_CATEGORIES', value) },
             get () { return this.$store.getters['timeline/filteredCategories'] },
         },
-        /* Selected node is actually part of the node array property, see virtual nodes in header */
-        selectedNodeIsActualObject () {
-            return this.selected !== null && this.selected >= 0 && this.selected < this.nodes.length
+        hidePastDeadlines: {
+            set (value) {
+                this.$store.commit(
+                    'preferences/SET_HIDE_PAST_DEADLINES',
+                    { hidePastDeadlines: value, aID: this.assignment.id },
+                )
+            },
+            get () { return this.$store.getters['preferences/hidePastDeadlines'] },
+        },
+        nodesHoldPastDeadlines () {
+            return this.nodes.some((node) => (
+                (node.type === 'd' || node.type === 'p')
+                && comparison.nodeDueDateHasPassed(node, this.assignment)
+            ))
         },
     },
     watch: {
-        /* Selected is the index of the selected node part of the full nodes array, which excludes the virtual nodes
-         * assignment info (-1) and end of assignment (nodes.length + 1)
-         * The selected node index needs to be mapped to the correct index of the filtered nodes array */
-        selected (val) {
-            if (val === null) { // No node should be selected
-                this.mappedSelected = val
-            } else if (val < 0) { // Virtual node: assignment details
-                this.mappedSelected = val
-            } else if (val === this.nodes.length) { // Virtual node: add node (only virtual in assignment edit mode...)
-                this.mappedSelected = val
-            } else if (val === this.nodes.length + 1) { // Virtual node: end of assignment
-                this.mappedSelected = val
-            /* Dealing with an actual node */
-            } else {
-                const selectedNode = this.nodes[val]
-                this.mappedSelected = this.findNodeIndex(this.filteredNodes, selectedNode)
-            }
-        },
         /* Nodes can be added or removed from the parent (e.g. delete or add)
          * Just filter the new nodes again to remain synced */
         nodes () {
-            this.filterByCategory(this.filteredCategories)
+            this.filterNodes()
         },
     },
     created () {
         this.filteredNodes = this.nodes
-        this.mappedSelected = this.selected
         this.setTimelineInstance(this)
         this.syncNodes()
     },
     methods: {
         ...mapMutations({
             setTimelineInstance: 'timeline/SET_TIMELINE_INSTANCE',
+            setCurrentNode: 'timeline/SET_CURRENT_NODE',
         }),
-        mapAndEmitSelectedNode (index) {
-            this.$emit('select-node', this.mappedNodesIndex(index))
-        },
-        /* Maps the index of the filtered nodes to its corresponding index in the list of all nodes.
-         * This allows the existing emit structure to continue without refactor. */
-        mappedNodesIndex (index) {
-            /* Working with virtual nodes (start, end of assignment)
-             * NOTE: The add node does exist, and is simply added in the backend
-             * (only for journal view not assignment edit). */
-            if (index < 0 || index >= this.filteredNodes.length) {
-                return index
-            } else {
-                return this.findNodeIndex(this.nodes, this.filteredNodes[index])
-            }
-        },
         hasCategory (categories, filters) {
+            if (!filters.length) { return true }
             return categories.some((category) => filters.find(
                 (filteredCategory) => category.id === filteredCategory.id),
             )
         },
-        findNodeIndex (nodes, node) {
-            /* When editing the timeline (edit = true) we are working with preset nodes directly
-             * Otherwise we are working with a timeline consisting of normal nodes */
-            const idKey = (this.edit) ? 'id' : 'nID'
-
-            return nodes.findIndex((elem) => elem[idKey] === node[idKey])
+        hasNode (nodes, node) {
+            return !!nodes.find((elem) => elem === node || (node && elem.id === node.id))
         },
         /* When a category is linked to or removed from a template, the current list of nodes can become stale.
          * Each of these nodes has been serialized before the category update, and needs to be synced with possible
@@ -251,44 +213,53 @@ export default {
                 return node
             })
 
-            this.filterByCategory(this.filteredCategories)
+            this.filterNodes()
         },
-        /* Next to filtering the nodes based on the selected categories, also keeps the selected node index in sync.
-         * If a node was selected which is no longer part of the filtered nodes,
-         * selects the start of the assignment. */
-        filterByCategory (filters) {
-            let selectedNode
+        includeEntry (entry) {
+            return this.hasCategory(entry.categories, this.filteredCategories)
+        },
+        includeEntryDeadline (node) {
+            let include = true
 
-            if (this.selectedNodeIsActualObject) {
-                selectedNode = this.nodes[this.selected]
+            if (node.template.categories) {
+                include = include && this.hasCategory(node.template.categories, this.filteredCategories)
             }
 
-            if (!filters.length) {
-                this.filteredNodes = this.nodes
-            } else {
-                this.filteredNodes = this.nodes.filter((node) => {
-                    if (node.type === 'e') {
-                        return this.hasCategory(node.entry.categories, filters)
-                    } else if (node.type === 'd') {
-                        if ('entry' in node && node.entry) {
-                            return this.hasCategory(node.entry.categories, filters)
-                        /* Deadline without entry, filter on template categories */
-                        } else if (node.template.categories) {
-                            return this.hasCategory(node.template.categories, filters)
-                        }
-                    } else if (node.type === 'a' || node.type === 'p') {
-                        return true
+            if (this.hidePastDeadlines) {
+                include = include && !comparison.nodeDueDateHasPassed(node, this.assignment)
+            }
+
+            return include
+        },
+        includeProgressDeadline (node) {
+            if (this.hidePastDeadlines) {
+                return !comparison.nodeDueDateHasPassed(node, this.assignment)
+            }
+
+            return true
+        },
+        /* If a node was selected which is no longer part of the filtered nodes, selects the start of the assignment. */
+        filterNodes () {
+            this.filteredNodes = this.nodes.filter((node) => {
+                if (node.type === 'e') {
+                    return this.includeEntry(node.entry)
+                } else if (node.type === 'd') {
+                    if ('entry' in node && node.entry) {
+                        return this.includeEntry(node.entry)
+                    /* Deadline without entry */
+                    } else {
+                        return this.includeEntryDeadline(node)
                     }
-                    return false
-                })
-            }
-
-            if (this.selectedNodeIsActualObject) {
-                this.mappedSelected = this.findNodeIndex(this.filteredNodes, selectedNode)
-
-                if (this.filteredNodes.indexOf(selectedNode) === -1) {
-                    this.$emit('select-node', this.startOfAssignmentNodeIndexSymbol)
+                } else if (node.type === 'p') {
+                    return this.includeProgressDeadline(node)
+                } else if (node.type === this.addNodeSymbol) {
+                    return true
                 }
+                return false
+            })
+
+            if (!this.hasNode(this.filteredNodes, this.currentNode)) {
+                this.setCurrentNode(this.startNode)
             }
         },
     },
@@ -296,33 +267,22 @@ export default {
 </script>
 
 <style lang="sass">
-@import '~sass/partials/shadows.sass'
+@import '~sass/modules/breakpoints.sass'
 
 #timeline-container
-    position: relative
-    @include lg
+    @include lg-max
+        padding: 10px
+        border: 1px solid $border-color
+        background-color: $theme-light-grey
+        border-radius: 5px 5px 0px 0px
+        max-height: 50vh
+        overflow-x: hidden
+        overflow-y: auto
+        scrollbar-width: none
+        &::-webkit-scrollbar
+            display: none
+    @include xl
         display: block !important
-
-.timeline-filter
-    position: static !important
-    vertical-align: top
-    display: inline
-    .dropdown-toggle
-        text-decoration: none
-        border-width: 0px
-        padding: 0px
-        .filter-button
-            padding: 0.15em 0.6em
-            &:hover, &:focus, &:active
-                border-color: inherit !important
-    .dropdown-menu
-        width: 100%
-        margin-top: 5px
-        padding: 0px
-        border: none
-        .multiselect--active .multiselect__content-wrapper
-            box-shadow: none
-            position: relative
 
 #timeline-toggle
     display: none
@@ -349,14 +309,13 @@ export default {
         display: block
         border: 0px
         padding: 10px 0px
-        border-radius: 40px !important
+        border-radius: 0px 0px 5px 5px !important
         background-color: $theme-blue !important
         &:hover
             background-color: $theme-blue !important
             cursor: pointer
         .collapse-icon
-            display: block
             margin-left: auto
             margin-right: auto
-            fill: white
+            color: white
 </style>

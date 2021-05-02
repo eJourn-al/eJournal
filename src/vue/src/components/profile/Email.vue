@@ -1,22 +1,22 @@
 <template>
     <div>
-        <b-input-group class="multi-form">
+        <b-input-group>
             <b-input
                 v-model="email"
                 :readonly="$store.getters['user/verifiedEmail']"
-                class="theme-input"
+                class="no-right-radius"
                 type="text"
             />
-            <b-input-group-text
+            <b-button
                 slot="append"
-                class="theme-input input-append-icon round-border"
+                v-b-tooltip:hover="(showEmailValidationInput) ? 'Enter the email verification token below' :
+                    'Click to verify your email'"
+                :disabled="$store.getters['user/verifiedEmail'] || showEmailValidationInput"
+                @click="requestEmailVerification"
             >
                 <icon
                     v-if="!$store.getters['user/verifiedEmail']"
-                    v-b-tooltip:hover="(showEmailValidationInput) ? 'Enter the email verification token below.' :
-                        'Click to verify your email!'"
                     :name="(showEmailValidationInput) ? 'check' : 'paper-plane'"
-                    @click.native="requestEmailVerification"
                 />
                 <icon
                     v-if="$store.getters['user/verifiedEmail']"
@@ -24,30 +24,28 @@
                     name="check"
                     class="checked-icon"
                 />
-            </b-input-group-text>
+            </b-button>
         </b-input-group>
 
         <b-input-group
             v-if="!$store.getters['user/verifiedEmail'] && showEmailValidationInput"
-            class="multi-form"
+            class="mt-2"
         >
             <b-input
                 v-model="emailVerificationToken"
-                v-b-tooltip:hover="(emailVerificationTokenMessage) ? emailVerificationTokenMessage : 'Enter your token'"
-                class="theme-input"
+                class="no-right-radius"
                 required
-                placeholder="Enter the email verification token."
+                placeholder="Enter the email verification token"
             />
-            <b-input-group-text
+            <b-button
                 slot="append"
-                class="theme-input input-append-icon round-border"
+                @click="verifyEmail"
             >
                 <icon
-                    v-b-tooltip:hover="'Validate verification code.'"
+                    v-b-tooltip:hover="'Validate verification token'"
                     name="paper-plane"
-                    @click.native="verifyEmail"
                 />
-            </b-input-group-text>
+            </b-button>
         </b-input-group>
     </div>
 </template>

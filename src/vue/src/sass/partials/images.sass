@@ -1,12 +1,10 @@
-@import '~sass/partials/shadows.sass'
-
 .theme-img
     max-width: 100%
-    max-height: 100%
 
 .profile-picture
-    @extend .theme-shadow
-    border-radius: 50% !important
+    border-radius: 50%
+    border: 1px solid $border-color
+    overflow: hidden
 
 .profile-picture-sm
     @extend .profile-picture
@@ -15,37 +13,16 @@
     flex-shrink: 0
 
 .profile-picture-lg
-    @extend .profile-picture
-    display: inline-block
+    display: block
     position: relative
     width: 100%
+    height: 100%
     max-width: 250px
-    margin-bottom: 20px
-    overflow: hidden
+    max-height: 250px
+    margin: 10px auto
     .btn
         position: absolute
-        width: 100%
-        height: 25%
-        bottom: -25%
-        opacity: 0
-    &:hover
-        .btn
-            bottom: 0px
-            opacity: 1
-    &:not(.profile-picture-cropper)
-        left: 50%
-        transform: translateX(-50%)
-        img
-            position: absolute
-            height: 100%
-            width: 100%
-    &.profile-picture-cropper
-        max-height: 250px
-        display: block
-        margin: 10px auto 20px auto
-        cursor: move
-
-.profile-picture-lg:after
-    content: ""
-    display: block
-    padding-bottom: 100%
+        bottom: 10%
+        right: 0
+    img, &.profile-picture-cropper
+        @extend .profile-picture

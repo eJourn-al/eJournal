@@ -1,26 +1,27 @@
 <template>
-    <span>
+    <div class="d-inline-block files-list">
         <div
             v-if="files && files.length > 0"
-            class="file-list multi-form round-border p-2"
+            class="p-2 background-light-grey round-border small"
         >
-            <div
+            <file-display
                 v-for="(file, i) in files"
                 :key="i"
+                :file="file"
             >
-                <file-display :file="file">
-                    <icon
-                        v-if="attachNew"
-                        name="trash"
-                        class="ml-2 float-right mt-1 trash-icon"
-                        @click.native.stop="$emit('fileRemoved', i)"
-                    />
-                </file-display>
-            </div>
+                <icon
+                    v-if="attachNew"
+                    name="trash"
+                    class="ml-2 float-right mt-1 trash-icon"
+                    scale="0.8"
+                    @click.native.stop="$emit('fileRemoved', i)"
+                />
+            </file-display>
         </div>
         <b-button
             v-if="attachNew"
-            class="btn orange-button mr-2"
+            class="green-button d-block attach-button mr-2"
+            variant="link"
             @click="$refs['file-upload'].openFileUpload()"
         >
             <icon name="paperclip"/>
@@ -37,7 +38,7 @@
                 @fileUploadFailed="(file) => $emit('fileUploadFailed', file)"
             />
         </b-button>
-    </span>
+    </div>
 </template>
 <script>
 import fileDisplay from '@/components/assets/file_handling/FileDisplay.vue'
@@ -58,8 +59,15 @@ export default {
     },
 }
 </script>
+
 <style lang="sass">
-.file-list
-    border: 2px solid $theme-dark-grey
-    font-weight: bold
+.files-list
+    max-width: 100%
+    .pdf-viewer, img // Possible file types that are displayed inline (in sub components)
+        max-width: 100%
+        width: $max-app-width
+        margin-bottom: 8px
+    .attach-button
+        &:not(:first-child)
+            margin-top: 8px
 </style>

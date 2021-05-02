@@ -49,7 +49,10 @@ class Instance(CreateUpdateModel):
         default=True
     )
     name = models.TextField(
-        default='eJournal'
+        default='Demo'
+    )
+    kaltura_url = models.URLField(
+        blank=True,
     )
     default_lms_profile_picture = models.TextField(
         default=settings.DEFAULT_LMS_PROFILE_PICTURE
@@ -414,8 +417,8 @@ class User(AbstractUser):
             raise ValidationError('A legitimate user requires an email adress.')
 
         if self._state.adding:
-            if self.is_test_student and settings.LTI_TEST_STUDENT_FULL_NAME not in self.full_name:
-                raise ValidationError('Test user\'s full name deviates on creation.')
+            if self.is_test_student and self.email:
+                raise ValidationError('A test user is not expected to have an email adress.')
         else:
             pre_save = User.objects.get(pk=self.pk)
             if pre_save.is_test_student and not self.is_test_student:
@@ -525,6 +528,11 @@ class Preferences(CreateUpdateModel):
         max_length=1,
         choices=FREQUENCIES,
         default=WEEKLY,
+    )
+
+    hide_past_deadlines_of_assignments = models.ManyToManyField(
+        'Assignment',
+        related_name='+',
     )
 
     # Only get notifications of people that are in your group
@@ -1762,6 +1770,7 @@ class JournalQuerySet(models.QuerySet):
             Entry.objects.filter(
                 node__journal=OuterRef('pk'),
                 grade__published=True,
+                is_draft=False,
             ).values(
                 'node__journal',  # NOTE: Could be replaced by Sum(distinct=True) in Django 3.0+
             ).annotate(
@@ -1780,6 +1789,7 @@ class JournalQuerySet(models.QuerySet):
             Entry.objects.filter(
                 grade__published=False,
                 node__journal=OuterRef('pk'),
+                is_draft=False,
             ).values(
                 'node__journal',
             ).annotate(
@@ -1798,6 +1808,7 @@ class JournalQuerySet(models.QuerySet):
             Entry.objects.filter(
                 grade__isnull=True,
                 node__journal=OuterRef('pk'),
+                is_draft=False,
             ).values(
                 'node__journal',
             ).annotate(
@@ -1969,13 +1980,26 @@ class Journal(CreateUpdateModel):
         self.import_request_targets.all().delete()
         self.import_request_sources.filter(state=JournalImportRequest.PENDING).delete()
 
-    def get_sorted_nodes(self):
+    def is_in_journal(self, user):
+        '''Return wether the user is in a journal'''
+        return user and self.authors.filter(user=user).exists()
+
+    def can_see_drafted_entries(self, user):
+        '''Check if the user can see drafted entries, aka is part of the journal'''
+        return user and self.is_in_journal(user)
+
+    def get_sorted_nodes(self, user=None):
         """
         Get all the nodes of a journal in sorted order.
 
         Sorts first by preset due date, defaulting to entry creation date when dealing with an unlimited entry.
+        If "user" is set, it checks if the user can see drafted entries, if so, also return drafted entries
         """
-        return self.node_set.select_related(
+        nodes = self.node_set
+        if not user or not self.can_see_drafted_entries(user):
+            nodes = nodes.exclude(entry__is_draft=True)
+
+        return nodes.select_related(
             'entry',
             'preset'
         ).annotate(sort_due_date=Case(
@@ -2043,10 +2067,11 @@ class Journal(CreateUpdateModel):
         Used to help determine if the add node appears in the timeline.
         """
         return user \
-            and self.authors.filter(user=user).exists() \
+            and self.is_in_journal(user) \
             and user.has_permission('can_have_journal', self.assignment) \
             and not len(self.needs_lti_link) > 0 \
-            and self.assignment.format.template_set.filter(archived=False, preset_only=False).exists()
+            and self.assignment.format.template_set.filter(archived=False, preset_only=False).exists() \
+            and not self.assignment.is_locked()
 
     def generate_missing_nodes(self, create=True):
         nodes = [Node(
@@ -2619,6 +2644,9 @@ class Entry(CreateUpdateModel):
         null=True,
         blank=True,
     )
+    is_draft = models.BooleanField(
+        default=False,
+    )
 
     @staticmethod
     def validate_categories(category_ids, assignment, template=None):
@@ -2679,6 +2707,11 @@ class Entry(CreateUpdateModel):
 
     def save(self, *args, **kwargs):
         is_new = not self.pk
+        if not is_new:
+            was_draft = Entry.objects.get(pk=self.pk).is_draft
+        else:
+            # We define newly created entries to come from a draft
+            was_draft = True
         author_id = self.__dict__.get('author_id', None)
         node_id = self.__dict__.get('node_id', None)
         author = self.author if self.author else User.objects.get(pk=author_id) if author_id else None
@@ -2699,9 +2732,35 @@ class Entry(CreateUpdateModel):
 
         super().save(*args, **kwargs)
 
-        if is_new and not isinstance(self, TeacherEntry):
+        if self.should_send_new_entry_notification(is_new, was_draft):
             generate_new_entry_notifications.apply_async(
                 args=[self.pk, self.node.pk], countdown=settings.WEBSERVER_TIMEOUT)
+        elif self.should_delete_new_entry_notifications(was_draft):
+            Notification.objects.filter(entry=self, type=Notification.NEW_ENTRY).delete()
+
+    def should_send_new_entry_notification(self, is_new, was_draft):
+        # Teacher entries should never get a notification
+        if isinstance(self, TeacherEntry):
+            return False
+        # Entries should send notification when it is new, and not a draft
+        if is_new and not self.is_draft:
+            return True
+        # Entries should send notification when it is switched from draft to no draft
+        if was_draft and not self.is_draft:
+            return True
+
+        return False
+
+    def should_delete_new_entry_notifications(self, was_draft):
+        # Teacher entries cannot get any notifications, so also dont delete them
+        if isinstance(self, TeacherEntry):
+            return False
+
+        # If an entry goes from non draft state, to a draft state, delete the notifications
+        if not was_draft and self.is_draft:
+            return True
+
+        return False
 
     def to_string(self, user=None):
         return "Entry"
@@ -3024,6 +3083,13 @@ class Template(CreateUpdateModel):
                 if location < 0 or location >= len(field_set_data):
                     raise ValidationError('Template field location is out of bounds.')
 
+                if field_data['type'] == Field.VIDEO:
+                    if not field_data['options']:
+                        raise ValidationError('Please select which video hosts are allowed.')
+
+                    if not set(field_data['options'].split(',')).issubset(Field.VIDEO_OPTIONS):
+                        raise ValidationError('Video host not supported.')
+
                 locations.add(location)
 
             if len(locations) == 0:
@@ -3082,6 +3148,10 @@ class Field(CreateUpdateModel):
 
     TYPES_WITHOUT_FILE_CONTEXT = {TEXT, VIDEO, URL, DATE, DATETIME, SELECTION, NO_SUBMISSION}
 
+    KALTURA = 'k'
+    YOUTUBE = 'y'
+    VIDEO_OPTIONS = {KALTURA, YOUTUBE}
+
     TYPES = (
         (TEXT, 'text'),
         (RICH_TEXT, 'rich text'),
@@ -3111,6 +3181,14 @@ class Field(CreateUpdateModel):
         on_delete=models.CASCADE
     )
     required = models.BooleanField()
+
+    @property
+    def kaltura_allowed(self):
+        return self.type == Field.VIDEO and Field.KALTURA in self.options.split(',')
+
+    @property
+    def youtube_allowed(self):
+        return self.type == Field.VIDEO and Field.YOUTUBE in self.options.split(',')
 
     def to_string(self, user=None):
         return "{} ({})".format(self.title, self.id)

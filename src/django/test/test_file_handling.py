@@ -91,7 +91,7 @@ class FileHandlingTest(TestCase):
 
         image = SimpleUploadedFile('file.png', b'image_content', content_type='image/png')
         new_image = api.post(
-            self, 'files', params={'file': image}, user=student, content_type=MULTIPART_CONTENT, status=201)
+            self, 'files', params={'file': image}, user=student, content_type=MULTIPART_CONTENT, status=201)['file']
 
         patch = {
             'pk': entry.pk,
@@ -199,9 +199,11 @@ class FileHandlingTest(TestCase):
     def test_remove_unused_files_content(self):
         # Test uploading two files, then post entry, 1 gets removed
         content_fake = api.post(
-            self, 'files', params={'file': self.image}, user=self.student, content_type=MULTIPART_CONTENT, status=201)
+            self, 'files', params={'file': self.image}, user=self.student, content_type=MULTIPART_CONTENT, status=201,
+        )['file']
         content_real = api.post(
-            self, 'files', params={'file': self.image}, user=self.student, content_type=MULTIPART_CONTENT, status=201)
+            self, 'files', params={'file': self.image}, user=self.student, content_type=MULTIPART_CONTENT, status=201,
+        )['file']
         post = self.create_params
         post['content'] = {self.img_field.pk: content_real}
         api.post(self, 'entries', params=post, user=self.student, status=201)
@@ -213,13 +215,13 @@ class FileHandlingTest(TestCase):
         # Rich text fields also need to be checked to not be deleted
         content_fake = api.post(
             self, 'files', params={'file': self.image, 'in_rich_text': True},
-            user=self.student, content_type=MULTIPART_CONTENT, status=201)
+            user=self.student, content_type=MULTIPART_CONTENT, status=201)['file']
         content_real = api.post(
             self, 'files', params={'file': self.image, 'in_rich_text': True},
-            user=self.student, content_type=MULTIPART_CONTENT, status=201)
+            user=self.student, content_type=MULTIPART_CONTENT, status=201)['file']
         content_rt = api.post(
             self, 'files', params={'file': self.image, 'in_rich_text': True},
-            user=self.student, content_type=MULTIPART_CONTENT, status=201)
+            user=self.student, content_type=MULTIPART_CONTENT, status=201)['file']
         post = self.create_params
         post['content'] = {
             self.img_field.pk: content_real,
@@ -234,7 +236,8 @@ class FileHandlingTest(TestCase):
         # When file in entry updates, old file needs to be removed
         content_old = content_real
         content_new = api.post(
-            self, 'files', params={'file': self.image}, user=self.student, content_type=MULTIPART_CONTENT, status=201)
+            self, 'files', params={'file': self.image}, user=self.student, content_type=MULTIPART_CONTENT, status=201,
+        )['file']
         patch = {
             'pk': entry_with_rt['id'],
             'content': post['content'],
@@ -249,10 +252,10 @@ class FileHandlingTest(TestCase):
         content_old_rt = content_rt
         content_new_rt = api.post(
             self, 'files', params={'file': self.image, 'in_rich_text': True},
-            user=self.student, content_type=MULTIPART_CONTENT, status=201)
+            user=self.student, content_type=MULTIPART_CONTENT, status=201)['file']
         content_new_rt2 = api.post(
             self, 'files', params={'file': self.image, 'in_rich_text': True},
-            user=self.student, content_type=MULTIPART_CONTENT, status=201)
+            user=self.student, content_type=MULTIPART_CONTENT, status=201)['file']
         rt_field_id = next(field for field in self.template.field_set.all() if field.type == 'rt').id
         patch['content'][rt_field_id] = "<p>hello!<img src='{}' /><img src='{}' /></p>".format(
             content_new_rt['download_url'], content_new_rt2['download_url'])
@@ -266,10 +269,10 @@ class FileHandlingTest(TestCase):
         # Test uploading two files, then post comment, 1 gets removed
         content_fake = api.post(
             self, 'files', params={'file': self.image, 'in_rich_text': True}, user=self.student,
-            content_type=MULTIPART_CONTENT, status=201)
+            content_type=MULTIPART_CONTENT, status=201)['file']
         content_real = api.post(
             self, 'files', params={'file': self.image, 'in_rich_text': True}, user=self.student,
-            content_type=MULTIPART_CONTENT, status=201)
+            content_type=MULTIPART_CONTENT, status=201)['file']
         params = {
             'entry_id': factory.UnlimitedEntry(node__journal=self.journal).pk,
             'text': '<p><img src="{}"</p>'.format(content_real['download_url']),
@@ -319,7 +322,8 @@ class FileHandlingTest(TestCase):
 
     def test_establish(self):
         to_establish = api.post(
-            self, 'files', params={'file': self.image}, user=self.teacher, content_type=MULTIPART_CONTENT, status=201)
+            self, 'files', params={'file': self.image}, user=self.teacher, content_type=MULTIPART_CONTENT, status=201
+        )['file']
 
         self.assertRaises(
             VLEPermissionError, file_handling.establish_file, author=self.student, identifier=to_establish['id'])
@@ -362,7 +366,7 @@ class FileHandlingTest(TestCase):
         long_name = SimpleUploadedFile('f' * 120 + '.png', b'image_content', content_type='image/png')
         resp = api.post(
             self, 'files', params={'file': long_name, 'in_rich_text': False},
-            user=author, content_type=MULTIPART_CONTENT, status=201)
+            user=author, content_type=MULTIPART_CONTENT, status=201)['file']
         content = {f.pk: 'abcd' for f in node.preset.forced_template.field_set.exclude(pk=field.pk)}
         content[field.pk] = resp.copy()
         entry = api.create(

@@ -17,20 +17,15 @@
             />
             <timeline-node-circle
                 :node="node"
-                :selected="selected"
-                :edit="edit"
                 class="position-absolute"
-                @click.native="$emit('select-node', index)"
+                @click.native="setCurrentNode(node); $root.$emit('bv::toggle::collapse', 'timeline-container')"
             />
         </b-col>
         <b-col
             cols="8"
             class="d-flex h-100 align-items-center"
         >
-            <timeline-node-info
-                :node="node"
-                :selected="selected"
-            />
+            <timeline-node-info :node="node"/>
         </b-col>
     </b-row>
 </template>
@@ -39,40 +34,36 @@
 import timelineNodeCircle from '@/components/timeline/TimelineNodeCircle.vue'
 import timelineNodeInfo from '@/components/timeline/TimelineNodeInfo.vue'
 
+import { mapGetters, mapMutations } from 'vuex'
+
 export default {
     components: {
         timelineNodeInfo,
         timelineNodeCircle,
     },
     props: {
-        edit: {
-            required: true,
-            type: Boolean,
-        },
-        index: {
-            required: true,
-            type: Number,
-        },
-        last: {
-            default: false,
-            type: Boolean,
-        },
         node: {
             required: true,
             type: Object,
         },
-        selected: {
-            required: true,
-            type: Boolean,
-        },
     },
     computed: {
+        ...mapGetters({
+            startNode: 'timeline/startNode',
+            addNode: 'timeline/addNode',
+            endNode: 'timeline/endNode',
+        }),
         timeLineClass () {
             return {
-                top: this.index === -1,
-                bottom: this.last,
+                top: this.node === this.startNode,
+                bottom: this.node === this.endNode,
             }
         },
+    },
+    methods: {
+        ...mapMutations({
+            setCurrentNode: 'timeline/SET_CURRENT_NODE',
+        }),
     },
 }
 </script>
@@ -83,7 +74,7 @@ export default {
     .time-line
         position: absolute
         width: 5px
-        background-color: $theme-dark-grey
+        background-color: $theme-medium-grey
         height: 100px
         &.top
             height: 50px

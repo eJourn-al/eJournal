@@ -242,8 +242,7 @@ class UserAPITest(TestCase):
             **gen_jwt_params(factory.JWTTestUserParams()),
         })
         user = User.objects.get(username=user_params['username'])
-        assert user.is_test_student, 'A user created via LTI parameters without email and with full_name {} should ' \
-            'should be flagged as a test student.'.format(settings.LTI_TEST_STUDENT_FULL_NAME)
+        assert user.is_test_student, 'A user created via LTI parameters without email should be flagged as test student'
 
         # It should be possible to create multiple test students (all without email under the unique contraint)
         api.create(self, 'users', params={
@@ -404,7 +403,6 @@ class UserAPITest(TestCase):
         assert 'requires an email adress' in str(exception_info.value)
 
         params['is_test_student'] = True
-        params['full_name'] = settings.LTI_TEST_STUDENT_FULL_NAME
         User.objects.create(**params)
 
     def test_gdpr(self):
@@ -434,16 +432,22 @@ class UserAPITest(TestCase):
         # Create test student
         test_student = creation_factory.make_user(
             username='test_student_username',
+            full_name='Test student',
             password='',
-            full_name=settings.LTI_TEST_STUDENT_FULL_NAME,
             is_test_student=True
         )
         assert test_student.is_test_student, 'Test student should be flagged accordingly'
         assert not test_student.has_usable_password(), 'Test student should have no usable password'
+
+        # Test student should have no email on creation.
         with pytest.raises(ValidationError):
-            assert creation_factory.make_user(
-                username='test_student_username', password='', full_name='Not test student', is_test_student=True), \
-                'Test user\'s full name is expected to match Test student'
+            creation_factory.make_user(
+                email='test_student_should_have_no_email_on@creation.com',
+                username='test_student_username2',
+                password='',
+                full_name='Test student',
+                is_test_student=True,
+            )
 
         test_student.email = 'newvalid@email.com'
         test_student.full_name = 'new full name'
