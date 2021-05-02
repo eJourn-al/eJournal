@@ -4,10 +4,10 @@ import json
 
 from dateutil.parser import parse
 from django.conf import settings
+from pylti1p3.exception import LtiException
 
 import VLE.factory as factory
 import VLE.lti1p3 as lti
-from pylti1p3.exception import LtiException
 from VLE.lti1p3 import utils
 from VLE.models import Assignment, PresetNode
 from VLE.utils.error_handling import VLEBadRequest, VLEProgrammingError

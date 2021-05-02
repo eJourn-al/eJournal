@@ -6,10 +6,10 @@ import sentry_sdk
 from dateutil import parser
 from django.conf import settings
 from django.db.models import Q
-
-import VLE.lti1p3 as lti
 from pylti1p3.contrib.django import DjangoCacheDataStorage, DjangoMessageLaunch
 from pylti1p3.exception import LtiException
+
+import VLE.lti1p3 as lti
 from VLE.utils.error_handling import VLEMissingRequiredKey
 
 

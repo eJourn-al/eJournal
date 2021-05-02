@@ -2,10 +2,10 @@ import json
 
 from celery import shared_task
 from django.conf import settings
-
-import VLE.lti1p3 as lti
 from pylti1p3.names_roles import NamesRolesProvisioningService
 from pylti1p3.service_connector import ServiceConnector
+
+import VLE.lti1p3 as lti
 from VLE.models import Course, Instance
 
 
