@@ -6,45 +6,33 @@
 -->
 
 <template>
-    <div class="breadcrumb-container">
+    <div class="breadcrumb-container unselectable">
         <h4
             v-if="crumbs.length > 1"
             class="theme-h4"
         >
-            <span>
-                <b-link
-                    v-for="crumb in crumbs.slice(0, -1)"
-                    :key="crumb.route"
-                    :to="{ name: crumb.routeName }"
-                    class="crumb"
-                >
-                    {{ crumb.displayName }}
-                </b-link>
-                <b-link :to="{ name: crumbs[crumbs.length-2].routeName }">
-                    <icon
-                        name="level-up-alt"
-                        class="shift-up-2 cursor-pointer"
-                    />
-                </b-link>
-            </span>
+            <b-link
+                v-for="crumb in crumbs.slice(0, -1)"
+                :key="crumb.route"
+                :to="{ name: crumb.routeName }"
+                class="crumb"
+            >
+                {{ crumb.displayName }}
+            </b-link>
+            <b-link :to="{ name: crumbs[crumbs.length-2].routeName }">
+                <icon
+                    name="level-up-alt"
+                    class="shift-up-2 cursor-pointer"
+                    scale="0.8"
+                />
+            </b-link>
         </h4>
         <h1
             v-if="crumbs.length > 0 && crumbs.slice(-1)[0].displayName"
             class="theme-h1"
         >
-            <span class="title">
-                {{ crumbs.slice(-1)[0].displayName }}
-                <slot/>
-            </span>
-            <b-button
-                v-if="canEdit()"
-                class="orange-button edit-button"
-                pill
-                @click="editClick()"
-            >
-                <icon name="edit"/>
-                Edit
-            </b-button>
+            {{ crumbs.slice(-1)[0].displayName }}
+            <slot/>
         </h1>
         <version-alert class="d-block"/>
     </div>
@@ -70,10 +58,9 @@ export default {
                 aliases: {
                     Home: 'Courses',
                     AssignmentEditor: 'Assignment Editor',
-                    CourseEdit: 'Course Editor',
+                    CourseEdit: 'Course Settings',
                     AdminPanel: 'Admin Panel',
                     AssignmentsOverview: 'Assignments',
-                    UserRoleConfiguration: 'Permission Manager',
                     JoinJournal: 'Join a Journal',
                 },
                 namedViews: {
@@ -146,19 +133,6 @@ export default {
                     .then(() => { store.setCachedMap(this.cachedMap) })
             }
         },
-        editClick () {
-            this.$emit('edit-click')
-        },
-        canEdit () {
-            const pageName = this.$route.name
-
-            if ((pageName === 'Course' && this.$hasPermission('can_edit_course_details'))
-                || (pageName === 'Assignment' && this.$hasPermission('can_edit_assignment'))) {
-                return true
-            }
-
-            return false
-        },
     },
 }
 </script>
@@ -172,7 +146,4 @@ export default {
         margin-right: -10px
     .title
         margin-right: 10px
-    .edit-button
-        font-size: 0.7em !important
-        vertical-align: middle
 </style>

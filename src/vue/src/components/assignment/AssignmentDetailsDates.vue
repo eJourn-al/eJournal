@@ -4,7 +4,7 @@
             <b-form-group
                 :invalid-feedback="unlockDateInvalidFeedback"
                 :state="unlockDateInputState"
-                :class="{ 'multi-form': $root.lgMax}"
+                :class="{ 'mb-2': $root.lgMax}"
             >
                 <template #label>
                     Unlock date
@@ -24,7 +24,7 @@
             <b-form-group
                 :invalid-feedback="dueDateInvalidFeedback"
                 :state="dueDateInputState"
-                :class="{ 'multi-form': $root.lgMax}"
+                :class="{ 'mb-2': $root.lgMax}"
             >
                 <template #label>
                     Due date

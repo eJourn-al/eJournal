@@ -8,8 +8,8 @@ class UserFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = 'VLE.User'
 
-    username = factory.Sequence(lambda x: f"user{x + 1}")
-    full_name = factory.Sequence(lambda x: f"Normal user {x + 1}")
+    username = factory.Sequence(lambda x: f"{10000000 + x}")
+    full_name = factory.Faker('name_nonbinary')
     email = factory.Sequence(lambda x: f'email{x + 1}@example.com')
     password = factory.PostGenerationMethodCall('set_password', DEFAULT_PASSWORD)
     verified_email = True
@@ -43,9 +43,9 @@ class LtiStudentFactory(UserFactory):
 
 
 class TestUserFactory(LtiStudentFactory):
+    # Full name can vary, we have seen 'Test student' but also 'Cursist X'
     email = None
     username = factory.Sequence(lambda x: f"305c9b180a9ce9684ea62aeff2b2e97052cf2d4b{x + 1}")
-    full_name = settings.LTI_TEST_STUDENT_FULL_NAME
     verified_email = False
     is_test_student = True
     factory.PostGenerationMethodCall('set_unusable_password')
@@ -53,7 +53,6 @@ class TestUserFactory(LtiStudentFactory):
 
 class TeacherFactory(UserFactory):
     username = factory.Sequence(lambda x: f"teacher{x + 1}")
-    full_name = factory.Sequence(lambda x: f"Teacher user {x + 1}")
     is_teacher = True
 
 
@@ -63,5 +62,4 @@ class LtiTeacherFactory(TeacherFactory):
 
 class AdminFactory(UserFactory):
     username = factory.Sequence(lambda x: f"admin{x + 1}")
-    full_name = factory.Sequence(lambda x: f"Admin user {x + 1}")
     is_superuser = True

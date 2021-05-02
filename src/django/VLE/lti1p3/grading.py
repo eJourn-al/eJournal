@@ -4,10 +4,10 @@ import xml.etree.cElementTree as ET
 import oauth2
 from celery import shared_task
 from django.conf import settings
+
 from pylti1p3.assignments_grades import AssignmentsGradesService
 from pylti1p3.grade import Grade
 from pylti1p3.service_connector import ServiceConnector
-
 from VLE.models import AssignmentParticipation, Counter, Instance, Journal
 
 

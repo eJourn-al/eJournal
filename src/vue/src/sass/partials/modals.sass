@@ -1,28 +1,22 @@
 .modal-content
-    border-radius: 5px !important
+    border-radius: 10px
+    border-width: 0px
     .modal-header
-        border-radius: 5px 5px 0px 0px !important
-        margin-top: -4px
-        background-color: $theme-dark-blue
+        border-radius: 10px 10px 0px 0px
+        border-bottom-color: $theme-medium-grey
+        background-color: $theme-light-grey
         .modal-title
-            color: white
+            font-weight: 700
         .close
-            color: white
+            padding: 12px 10px
             font-size: 2em
             margin-right: -5px
             opacity: 1
             text-shadow: none
             &:hover
                 color: $theme-red
-    .modal-body
-        /* Background pattern from Toptal Subtle Patterns */
-        background-image: url(/background.png)
-        padding: 0px
-        border-radius: 0px 0px 5px 5px !important
-        .card
-            margin: 10px
-            border-left-width: 2px
-            .card
-                margin: 0px 0px 8px 0px
-            .card-body
-                border-left: none
+    .modal-body, .modal-footer
+        padding: 10px
+        margin: 0px
+        border-top-color: $theme-medium-grey
+

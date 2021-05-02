@@ -96,7 +96,7 @@ class InstanceSerializer(serializers.ModelSerializer):
         fields = (
             'id',
             # Platform settings
-            'allow_standalone_registration', 'name',
+            'allow_standalone_registration', 'name', 'kaltura_url',
             # LMS settings
             'lms_name', 'lms_url', 'api_client_id',
             'has_client_secret', 'lti_client_id', 'lti_deployment_ids',
@@ -374,8 +374,15 @@ class PreferencesSerializer(serializers.ModelSerializer):
             'upcoming_deadline_reminder',
             # Hidden preferences
             'show_format_tutorial', 'hide_version_alert', 'grade_button_setting', 'comment_button_setting',
+            'hide_past_deadlines_of_assignments',
         )
         read_only_fields = ('user',)
+
+    hide_past_deadlines_of_assignments = serializers.PrimaryKeyRelatedField(
+        many=True,
+        read_only=False,
+        queryset=VLE.models.Assignment.objects.all(),
+    )
 
 
 class CourseSerializer(serializers.ModelSerializer):
@@ -903,6 +910,7 @@ class EntrySerializer(serializers.ModelSerializer, EagerLoadingMixin):
             'last_edited_by',
             'jir',
             'categories',
+            'is_draft',
         )
         read_only_fields = (
             'creation_date',

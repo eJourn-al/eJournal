@@ -1,45 +1,88 @@
 <template>
-    <content-single-column>
+    <wide-content>
+        <b-button
+            class="grey-button d-inline-block float-right mb-2"
+            variant="link"
+            @click="logOut"
+        >
+            <icon name="sign-out-alt"/>
+            Log out
+        </b-button>
         <bread-crumb/>
-        <profile-data ref="profileData"/>
-        <notification-card/>
-        <grading-card v-if="$root.canGradeForSomeCourse()"/>
-        <h4 class="theme-h4 mb-2 mt-4">
-            <span>Password</span>
-        </h4>
-        <password-card ref="passData"/>
-        <custom-footer/>
-    </content-single-column>
+        <b-card noBody>
+            <b-tabs
+                card
+                pills
+                lazy
+            >
+                <b-tab>
+                    <template slot="title">
+                        <icon
+                            name="user"
+                            class="shift-up-3"
+                        />
+                        Details
+                    </template>
+                    <profile-data/>
+                </b-tab>
+                <b-tab>
+                    <template slot="title">
+                        <icon
+                            name="envelope"
+                            class="shift-up-3"
+                        />
+                        Email notifications
+                    </template>
+                    <notification-settings/>
+                </b-tab>
+                <b-tab v-if="$root.canGradeForSomeCourse()">
+                    <template slot="title">
+                        <icon
+                            name="edit"
+                            class="shift-up-3"
+                        />
+                        Grading
+                    </template>
+                    <grading-settings/>
+                </b-tab>
+                <b-tab>
+                    <template slot="title">
+                        <icon
+                            name="key"
+                            class="shift-up-3"
+                        />
+                        Password
+                    </template>
+                    <password-settings/>
+                </b-tab>
+            </b-tabs>
+        </b-card>
+    </wide-content>
 </template>
 
 <script>
+import WideContent from '@/components/columns/WideContent.vue'
 import breadCrumb from '@/components/assets/BreadCrumb.vue'
-import contentSingleColumn from '@/components/columns/ContentSingleColumn.vue'
-import customFooter from '@/components/assets/Footer.vue'
-import gradingCard from '@/components/profile/GradingCard.vue'
-import notificationCard from '@/components/profile/NotificationCard.vue'
-import passwordCard from '@/components/profile/PasswordCard.vue'
+import gradingSettings from '@/components/profile/GradingSettings.vue'
+import notificationSettings from '@/components/profile/NotificationSettings.vue'
+import passwordSettings from '@/components/profile/PasswordSettings.vue'
 import profileData from '@/components/profile/ProfileData.vue'
 
 export default {
     name: 'Profile',
     components: {
-        contentSingleColumn,
-        customFooter,
+        WideContent,
         breadCrumb,
-        gradingCard,
+        gradingSettings,
         profileData,
-        notificationCard,
-        passwordCard,
+        notificationSettings,
+        passwordSettings,
     },
-    beforeRouteLeave (to, from, next) {
-        if ((this.$refs.profileData.isChanged() || this.$refs.passData.isChanged())
-            && !window.confirm('Unsaved changes will be lost if you leave. Do you wish to continue?')) {
-            next(false)
-            return
-        }
-
-        next()
+    methods: {
+        logOut () {
+            this.$store.dispatch('user/logout')
+            this.$router.push({ name: 'Login' })
+        },
     },
 }
 </script>

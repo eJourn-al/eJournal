@@ -1,65 +1,64 @@
 <template>
-    <div>
-        <h4 class="theme-h4 mb-2">
-            <span>Groups</span>
-        </h4>
+    <load-wrapper :loading="loadingGroups">
         <group-card
             v-for="g in groups"
             :key="g.id"
             :participants="participants"
-            :cID="course.id"
+            :cID="cID"
             :group="g"
             @delete-group="deleteGroup"
             @update-group="updateGroup"
             @remove-member="removeMember"
         />
+        <i
+            v-if="!groups.length"
+            class="text-grey"
+        >
+            No existing groups
+        </i>
 
-        <div v-if="$hasPermission('can_add_course_user_group')">
-            <h4 class="theme-h4 mb-2">
-                <span>Create new group</span>
-            </h4>
-            <b-card class="no-hover">
-                <b-form
-                    @submit.prevent="createUserGroup"
-                    @reset.prevent="resetFormInput"
-                >
-                    <b-input
-                        v-model="form.groupName"
-                        class="new-group-input multi-form mr-2 theme-input"
-                        placeholder="Desired group name"
-                        required
-                    />
-                    <b-button
-                        class="green-button float-right"
-                        type="submit"
-                    >
-                        <icon name="plus-square"/>
-                        Create
-                    </b-button>
-                </b-form>
-                <!-- TODO LTI: only visible when its lti 1.0 course with UvA instance -->
+        <template v-if="$hasPermission('can_add_course_user_group')">
+            <b-form
+                class="d-flex mt-2"
+                @submit.prevent="createUserGroup"
+                @reset.prevent="resetFormInput"
+            >
+                <b-input
+                    v-model="form.groupName"
+                    class="new-group-input mr-2"
+                    placeholder="Enter new group name..."
+                    required
+                />
                 <b-button
-                    v-if="course.lti_linked"
-                    class="lti-sync multi-form mr-2"
+                    class="green-button float-right"
                     type="submit"
-                    @click.prevent.stop="getDataNoseGroups()"
                 >
-                    <icon name="sync-alt"/>
-                    Sync from DataNose
+                    <icon name="plus-square"/>
+                    Create
                 </b-button>
-                <!-- TODO LTI: only visible when its lti 1.3 course with Canvas -->
-                <b-button
-                    v-if="course.lti_linked"
-                    class="lti-sync multi-form mr-2"
-                    type="submit"
-                    @click.prevent.stop="getLMSGroups()"
-                >
-                    <icon name="sync-alt"/>
-                    Sync from Canvas
-                </b-button>
-            </b-card>
-        </div>
-    </div>
+            </b-form>
+            <!-- TODO LTI: only visible when its lti 1.0 course with UvA instance -->
+            <b-button
+                v-if="course.lti_linked"
+                class="lti-sync mb-2 mr-2"
+                type="submit"
+                @click.prevent.stop="getDataNoseGroups()"
+            >
+                <icon name="sync-alt"/>
+                Sync groups from DataNose
+            </b-button>
+            <!-- TODO LTI: only visible when its lti 1.3 course with Canvas -->
+            <b-button
+                v-if="course.lti_linked"
+                class="lti-sync mb-2 mr-2"
+                type="submit"
+                @click.prevent.stop="getLMSGroups()"
+            >
+                <icon name="sync-alt"/>
+                Sync from Canvas
+            </b-button>
+        </template>
+    </load-wrapper>
 </template>
 <style lang="sass">
 .new-group-input
@@ -71,17 +70,21 @@
 </style>
 
 <script>
+import GroupCard from '@/components/group/GroupCard.vue'
+import LoadWrapper from '@/components/loading/LoadWrapper.vue'
+
+import courseAPI from '@/api/course.js'
 import groupAPI from '@/api/group.js'
-import groupCard from '@/components/group/GroupCard.vue'
 import participationAPI from '@/api/participation.js'
 
 export default {
     name: 'CourseGroupEditor',
     components: {
-        groupCard,
+        GroupCard,
+        LoadWrapper,
     },
     props: {
-        course: {
+        cID: {
             required: true,
         },
     },
@@ -91,15 +94,25 @@ export default {
                 groupName: '',
                 lti_id: '',
             },
+            course: {},
             participants: [],
             groups: [],
+            loadingGroups: true,
         }
     },
     created () {
-        groupAPI.getAllFromCourse(this.course.id)
-            .then((groups) => { this.groups = groups })
-        participationAPI.getEnrolled(this.course.id)
-            .then((participants) => { this.participants = participants })
+        courseAPI.get(this.cID)
+            .then((course) => {
+                this.course = course
+
+                groupAPI.getAllFromCourse(course.id)
+                    .then((groups) => {
+                        this.groups = groups
+                        this.loadingGroups = false
+                    })
+                participationAPI.getEnrolled(course.id)
+                    .then((participants) => { this.participants = participants })
+            })
     },
     methods: {
         getDataNoseGroups () {

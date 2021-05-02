@@ -3,10 +3,7 @@
         name="fade"
         mode="out-in"
     >
-        <load-spinner
-            v-if="showSpinner"
-            class="mt-5"
-        />
+        <load-spinner v-if="showSpinner"/>
         <div v-else-if="!loading">
             <slot/>
         </div>
@@ -32,19 +29,17 @@ export default {
     data () {
         return {
             keepSpinning: false,
-            minTimePassed: false,
         }
     },
     computed: {
         showSpinner () {
-            return (this.loading && this.minTimePassed) || this.keepSpinning
+            return this.loading || this.keepSpinning
         },
     },
     created () {
         setTimeout(() => {
             if (this.loading) {
                 this.keepSpinning = true
-                this.minTimePassed = true
                 setTimeout(() => {
                     this.keepSpinning = false
                 }, 500)

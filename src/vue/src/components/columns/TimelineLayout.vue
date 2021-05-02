@@ -4,11 +4,11 @@
             md="12"
             lg="8"
             xl="9"
+            class="combined-content-timeline-page"
         >
             <b-row noGutters>
                 <b-col
                     md="12"
-                    lg="auto"
                     xl="4"
                     class="left-content-timeline-page"
                 >
@@ -17,7 +17,6 @@
 
                 <b-col
                     md="12"
-                    lg="auto"
                     xl="8"
                     class="main-content-timeline-page"
                 >

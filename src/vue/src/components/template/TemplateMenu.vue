@@ -1,42 +1,33 @@
 <template>
-    <div>
-        <h3
-            class="theme-h3 cursor-pointer unselectable"
+    <b-card noBody>
+        <div
+            slot="header"
+            class="cursor-pointer "
             @click="expanded = !expanded"
         >
-            Templates
-            <icon :name="(expanded) ? 'angle-down' : 'angle-up'"/>
-        </h3>
+            <h3 class="theme-h3 unselectable">
+                Templates
+            </h3>
+            <icon
+                :name="(expanded) ? 'angle-down' : 'angle-up'"
+                class="float-right fill-grey mt-1 mr-1"
+            />
+        </div>
+        <template v-if="expanded">
+            <template-menu-item
+                v-for="template in templates"
+                :key="`template-${template.id}-menu-item`"
+                :template="template"
+                @delete-template="deleteTemplate($event)"
+                @select-template="selectTemplate({ template: $event })"
+            />
 
-        <div
-            v-if="expanded"
-            class="d-block"
-        >
-            <b-card
-                :class="$root.getBorderClass($route.params.cID)"
-                class="no-hover"
+            <b-card-body
+                class="d-block p-2"
             >
-                <div
-                    v-if="templates.length > 0"
-                    class="menu-list-header"
-                >
-                    <b class="float-right">
-                        Type
-                    </b>
-                    <b>Name</b>
-                </div>
-
-                <template-menu-item
-                    v-for="template in templates"
-                    :key="`template-${template.id}-menu-item`"
-                    :template="template"
-                    @delete-template="deleteTemplate($event)"
-                    @select-template="selectTemplate({ template: $event })"
-                />
-
                 <b-button
-                    class="green-button full-width"
-                    :class="{ 'mt-2': templates.length > 0 }"
+                    variant="link"
+                    class="green-button"
                     @click="createTemplate({ fromPresetNode: false })"
                 >
                     <icon name="plus"/>
@@ -44,15 +35,16 @@
                 </b-button>
 
                 <b-button
-                    class="orange-button mt-2 full-width"
+                    variant="link"
+                    class="orange-button"
                     @click.stop="importTemplate()"
                 >
                     <icon name="file-import"/>
                     Import Template
                 </b-button>
-            </b-card>
-        </div>
-    </div>
+            </b-card-body>
+        </template>
+    </b-card>
 </template>
 
 <script>

@@ -16,11 +16,6 @@ export default {
             .then((response) => response.data.assignment)
     },
 
-    delete (aID, cID, connArgs = auth.DEFAULT_CONN_ARGS) {
-        return auth.delete(`assignments/${aID}`, { course_id: cID }, connArgs)
-            .then((response) => response.data)
-    },
-
     list (cID = null, connArgs = auth.DEFAULT_CONN_ARGS) {
         return auth.get('assignments', { course_id: cID }, connArgs)
             .then((response) => response.data.assignments)

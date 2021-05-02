@@ -3,7 +3,7 @@ const webpack = require('webpack') // eslint-disable-line import/no-extraneous-d
 const currentRelease = require('./build/current-release')
 const SentryWebpackPlugin = require('@sentry/webpack-plugin')
 
-CHUNKS_WHICH_SHOULD_NOT_BE_PREFETCHED = [
+const CHUNKS_WHICH_SHOULD_NOT_BE_PREFETCHED = [
     'exceljs',
     'pdf',
     'sortable',
@@ -13,9 +13,9 @@ CHUNKS_WHICH_SHOULD_NOT_BE_PREFETCHED = [
 ]
 
 module.exports = {
-    chainWebpack: config => {
+    chainWebpack: (config) => {
         if (config.plugins.has('prefetch')) {
-            config.plugin('prefetch').tap(options => {
+            config.plugin('prefetch').tap((options) => {
                 options[0].fileBlacklist = options[0].fileBlacklist || []
 
                 options[0].fileBlacklist.push(/.+?\.map$/)
@@ -42,7 +42,7 @@ module.exports = {
                 cacheGroups: {
                     vendor: {
                         test: /[\\/]node_modules[\\/]/,
-                        name(module) {
+                        name (module) {
                             /* Get the name, e.g. node_modules/packageName/not/this.js or node_modules/packageName */
                             const packageName = module.context.match(/[\\/]node_modules[\\/](.*?)([\\/]|$)/)[1]
 
@@ -75,13 +75,13 @@ module.exports = {
             new webpack.ProvidePlugin({
                 introJs: ['intro.js'],
             }),
-        ].concat(process.env.NODE_ENV === 'production' ?
-            new SentryWebpackPlugin({
+        ].concat(process.env.NODE_ENV === 'production'
+            ? new SentryWebpackPlugin({
                 include: './dist',
                 ignore: ['node_modules', 'webpack.config.js'],
                 release: process.env.RELEASE_VERSION,
             })
-            : []
+            : [],
         ),
     },
 
@@ -93,7 +93,7 @@ module.exports = {
                     @import "~sass/modules/breakpoints.sass"
                     @import "~sass/modules/dimensions.sass"
                 `,
-            }
-        }
+            },
+        },
     },
 }

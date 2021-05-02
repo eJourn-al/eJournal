@@ -25,7 +25,7 @@
 
         <small
             v-if="acceptedFiletype !== '*/*'"
-            class="multi-form"
+            class="mb-2"
         >
             <b>Accepted extension(s):</b> {{ acceptedFiletype }}
         </small>

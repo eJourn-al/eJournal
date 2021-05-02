@@ -6,6 +6,7 @@ This file tests whether all permissions behave as required.
 import datetime
 import test.factory as test_factory
 from test.factory.user import DEFAULT_PASSWORD
+from test.utils.performance import QueryContext, assert_num_queries_less_than
 
 from django.core.validators import ValidationError
 from django.test import TestCase
@@ -264,8 +265,11 @@ class PermissionTests(TestCase):
         assert not result['can_add_course']
         self.assertEqual(len(Role.GENERAL_PERMISSIONS), len(result))
 
-        role = factory.make_role_default_no_perms("SD", self.course_independent,
-                                                  can_view_course_users=True, can_edit_assignment=True)
+        role = factory.make_role_default_no_perms(
+            "SD", self.course_independent,
+            can_view_course_users=True,
+            can_edit_assignment=True,
+        )
         factory.make_participation(self.user, self.course_independent, role)
 
         result = permissions.serialize_course_permissions(self.user, self.course_independent)
@@ -273,10 +277,50 @@ class PermissionTests(TestCase):
         assert not result['can_edit_course_details']
         self.assertEqual(len(Role.COURSE_PERMISSIONS), len(result))
 
-        result = permissions.serialize_assignment_permissions(self.user, self.assignment_independent)
+        with QueryContext() as queries_with_one_course:
+            result = permissions.serialize_assignment_permissions(self.user, self.assignment_independent)
         assert result['can_edit_assignment']
         assert not result['can_have_journal']
         self.assertEqual(len(Role.ASSIGNMENT_PERMISSIONS), len(result))
+        assert len(queries_with_one_course) <= 2, \
+            'Max two queries may be used for permission serialization with one course attached' + \
+            '(get assignment courses & get roles from course)'
+
+        Participation.objects.filter(user=self.user).delete()
+        role_can_do_stuff = factory.make_role_default_no_perms(
+            "R1", self.course1,
+            can_view_course_users=True,
+            can_edit_assignment=True,
+            can_view_all_journals=False,
+            can_manage_journal_import_requests=False,
+        )
+        factory.make_participation(self.user, self.course1, role_can_do_stuff)
+        role_cannot_do_stuff = factory.make_role_default_no_perms(
+            "R2", self.course2,
+            can_view_course_users=True,
+            can_edit_assignment=True,
+            can_view_all_journals=True,
+            can_manage_journal_import_requests=False,
+        )
+        factory.make_participation(self.user, self.course2, role_cannot_do_stuff)
+
+        result = permissions.serialize_assignment_permissions(self.user, self.assignment)
+        assert result['can_view_all_journals'], \
+            'Permission needs to be true when at least 1 role in a course has the permission'
+        assert not result['can_manage_journal_import_requests'], \
+            'Permission needs to be false when roles from all courses do not have the permission'
+        assert 'can_post_teacher_entries' in result, \
+            'All permissions needs to be serialized, also some that were not in the make_role_default_no_perms call'
+        Role.objects.filter(name='R1').update(can_view_all_journals=True)
+        Role.objects.filter(name='R2').update(can_view_all_journals=False)
+        with assert_num_queries_less_than(
+            2 * len(queries_with_one_course),
+            msg='Query count of assignment serializer should only scale with the amount of connected courses',
+        ):
+            result = permissions.serialize_assignment_permissions(self.user, self.assignment)
+        assert result['can_view_all_journals'], \
+            'Permission needs to be true when at least 1 role in a course has the permission.' + \
+            'The order of roles should not matter'
 
     def test_is_supervisor(self):
         high_user = test_factory.Teacher()

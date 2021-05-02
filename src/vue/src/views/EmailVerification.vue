@@ -1,9 +1,9 @@
 <template>
     <content-single-column>
         <h1 class="theme-h1">
-            <span>Email Verification</span>
+            Email Verification
         </h1>
-        <b-card class="no-hover">
+        <b-card>
             <div class="center-content">
                 <h2 class="theme-h2 center-content">
                     Verifying

@@ -9,15 +9,17 @@
 
         <icon
             v-if="showInfo && category.description"
-            class="ml-1 category-information-icon"
+            class="category-information-icon shift-up-3"
             name="info-circle"
+            scale="0.8"
             @click.native.stop="$emit('show-info', category)"
         />
 
         <icon
             v-if="removable"
-            class="fill-red category-tag__remove ml-1 "
+            class="category-tag__remove ml-1 shift-up-3"
             name="times"
+            scale="0.8"
             @click.stop.native="$emit('remove-category', category)"
         />
     </b-badge>
@@ -45,15 +47,10 @@ export default {
     .category-tag
         user-select: none
         &:not(:last-child)
-            margin-right: 5px
-
-    .category-tag__remove
-        cursor: pointer
-
-    .category-information-icon
-        &:hover
+            margin-right: 4px
+        svg
+            opacity: 0.5
             cursor: pointer
-            fill: $theme-dark-grey !important
-        &.help-cursor:hover
-            cursor: help
+            &:hover
+                opacity: 1
 </style>

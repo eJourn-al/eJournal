@@ -154,8 +154,8 @@ class UserView(viewsets.ViewSet):
         instance = Instance.objects.get_or_create(pk=1)[0]
         if not instance.allow_standalone_registration:
             return response.bad_request(
-                ('{} does not allow you to register through the website,' +
-                 ' please use an LTI instance.').format(instance.name))
+                f'{instance.name} does not allow you to register through the website, please use an LTI instance.'
+            )
 
         username, full_name, email = utils.required_params(request.data, 'username', 'full_name', 'email')
 
@@ -274,7 +274,7 @@ class UserView(viewsets.ViewSet):
 
         request.user.set_password(new_password)
         request.user.save()
-        return response.success(description='Successfully changed the password.')
+        return response.success(description='Password succesfully updated.')
 
     @action(methods=['get'], detail=True)
     def GDPR(self, request, pk):

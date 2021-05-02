@@ -1,27 +1,24 @@
 <template>
-    <div>
-        <h4 class="theme-h4 mb-2">
-            Manage course members
-        </h4>
+    <load-wrapper :loading="loadingMembers">
         <div class="d-flex">
-            <input
+            <b-input
                 v-if="viewEnrolled"
                 v-model="searchValue"
-                class="theme-input flex-grow-1 no-width multi-form mr-2"
+                class="flex-grow-1 no-width mb-2 mr-2"
                 type="text"
                 placeholder="Search..."
             />
-            <input
+            <b-input
                 v-if="!viewEnrolled"
                 v-model="unenrolledQuery"
-                class="theme-input flex-grow-1 no-width multi-form mr-2"
+                class="flex-grow-1 no-width mb-2 mr-2"
                 type="text"
                 placeholder="Name or username with at least 5 characters"
                 @keyup.enter="searchUnenrolled"
             />
             <b-button
                 v-if="!viewEnrolled"
-                class="multi-form mr-2"
+                class="mb-2 mr-2"
                 @click="searchUnenrolled"
             >
                 <icon name="search"/>
@@ -29,7 +26,7 @@
             </b-button>
             <b-button
                 v-if="viewEnrolled"
-                class="multi-form"
+                class="mb-2"
                 @click.stop
                 @click="toggleEnrolled"
             >
@@ -38,7 +35,7 @@
             </b-button>
             <b-button
                 v-if="!viewEnrolled"
-                class="multi-form"
+                class="mb-2"
                 @click.stop
                 @click="toggleEnrolled"
             >
@@ -46,11 +43,14 @@
                 Unenrolled
             </b-button>
         </div>
-        <div class="d-flex">
+        <div
+            v-if="filteredUsers.length > 0"
+            class="d-flex"
+        >
             <b-form-select
                 v-model="selectedSortOption"
                 :selectSize="1"
-                class="theme-select multi-form mr-2"
+                class="theme-select mb-2 mr-2"
             >
                 <option value="name">
                     Sort by name
@@ -60,9 +60,10 @@
                 </option>
             </b-form-select>
             <b-form-select
+                v-if="viewEnrolled"
                 v-model="groupFilter"
                 :selectSize="1"
-                class="theme-select multi-form mr-2"
+                class="theme-select mb-2 mr-2"
             >
                 <option :value="null">
                     Filter on group...
@@ -77,7 +78,7 @@
             </b-form-select>
             <b-button
                 v-if="!order"
-                class="multi-form"
+                class="mb-2"
                 @click.stop
                 @click="setOrder(!order)"
             >
@@ -86,7 +87,7 @@
             </b-button>
             <b-button
                 v-if="order"
-                class="multi-form"
+                class="mb-2"
                 @click.stop
                 @click="setOrder(!order)"
             >
@@ -94,20 +95,12 @@
                 Descending
             </b-button>
         </div>
-        <b-card
-            v-if="!viewEnrolled && !unenrolledStudents.length"
-            class="no-hover"
-        >
-            <div class="float-left">
-                <b>{{ unenrolledQueryDescription }}</b>
-            </div>
-        </b-card>
 
-        <div v-if="viewEnrolled">
+        <template v-if="viewEnrolled">
             <course-participant-card
                 v-for="p in filteredUsers"
                 :key="p.id"
-                :cID="course.id"
+                :cID="cID"
                 :group.sync="p.group"
                 :groups="groups"
                 :user="p"
@@ -116,22 +109,33 @@
                 @delete-participant="deleteParticipantLocally"
                 @update-participants="updateParticipants"
             />
-        </div>
-        <div v-else>
+            <not-found
+                v-if="filteredUsers.length === 0"
+                subject="users"
+                explanation="Change the search value."
+            />
+        </template>
+        <template v-else-if="filteredUsers.length > 0">
             <add-user-card
                 v-for="p in filteredUsers"
                 :key="p.id"
-                :cID="course.id"
+                :cID="cID"
                 :user="p"
                 @add-participant="addParticipantLocally"
             />
-        </div>
-    </div>
+        </template>
+        <not-found
+            v-else
+            subject="users"
+            explanation="Change the search value, then press 'Search Users' again."
+        />
+    </load-wrapper>
 </template>
 
 <script>
-import addUsersToCourseCard from '@/components/course/AddUsersToCourseCard.vue'
-import courseParticipantCard from '@/components/course/CourseParticipantCard.vue'
+import AddUsersToCourseCard from '@/components/course/AddUsersToCourseCard.vue'
+import CourseParticipantCard from '@/components/course/CourseParticipantCard.vue'
+import LoadWrapper from '@/components/loading/LoadWrapper.vue'
 
 import groupAPI from '@/api/group.js'
 import participationAPI from '@/api/participation.js'
@@ -142,11 +146,12 @@ import { mapGetters, mapMutations } from 'vuex'
 export default {
     name: 'CourseEdit',
     components: {
-        'add-user-card': addUsersToCourseCard,
-        'course-participant-card': courseParticipantCard,
+        'add-user-card': AddUsersToCourseCard,
+        'course-participant-card': CourseParticipantCard,
+        LoadWrapper,
     },
     props: {
-        course: {
+        cID: {
             required: true,
         },
     },
@@ -159,6 +164,7 @@ export default {
             numTeachers: 0,
             roles: [],
             unenrolledQuery: '',
+            loadingMembers: true,
             unenrolledQueryDescription: 'Search unenrolled users in the search field above.',
         }
     },
@@ -256,11 +262,14 @@ export default {
         },
     },
     created () {
-        participationAPI.getEnrolled(this.course.id)
-            .then((users) => { this.participants = users })
-        roleAPI.getFromCourse(this.course.id)
+        participationAPI.getEnrolled(this.cID)
+            .then((users) => {
+                this.participants = users
+                this.loadingMembers = false
+            })
+        roleAPI.getFromCourse(this.cID)
             .then((roles) => { this.roles = roles })
-        groupAPI.getAllFromCourse(this.course.id)
+        groupAPI.getAllFromCourse(this.cID)
             .then((groups) => { this.groups = groups })
     },
     methods: {
@@ -305,7 +314,7 @@ export default {
 
         searchUnenrolled () {
             this.unenrolledQuery = this.unenrolledQuery.trim()
-            participationAPI.getUnenrolled(this.course.id, this.unenrolledQuery)
+            participationAPI.getUnenrolled(this.cID, this.unenrolledQuery)
                 .then((users) => {
                     this.unenrolledStudents = users
                     if (!this.unenrolledStudents.length) {

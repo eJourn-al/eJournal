@@ -1,3 +1,5 @@
+
+import sentry_sdk
 from django.conf import settings
 from django.db.utils import IntegrityError
 from django.utils import timezone
@@ -10,6 +12,7 @@ from VLE.utils.error_handling import VLEBadRequest, VLEProgrammingError
 
 class UserData(lti.utils.PreparedData):
     model = User
+    _is_test_student = None
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -86,11 +89,20 @@ class UserData(lti.utils.PreparedData):
 
     @property
     def is_test_student(self):
+        # If this function was already performed, return the cached value
+        if self._is_test_student is not None:
+            return self._is_test_student
+
         # TODO EXPANSION: this is Canvas specific, should be changed to also work with other LTI hosts
-        return (
-            not self.email
-            and self.full_name.lower() == settings.LTI_TEST_STUDENT_FULL_NAME.lower()
-        )
+        self._is_test_student = not self.email
+
+        # When we have a test student that does not have a full name like a test student, create a sentry warning
+        if self._is_test_student and self.full_name not in settings.LTI_TEST_STUDENT_FULL_NAMES:
+            with sentry_sdk.push_scope() as scope:
+                scope.set_context('user', self.asdict())
+                sentry_sdk.capture_message(f'Unusual test student created, called {self.full_name}', level='warning')
+
+        return self._is_test_student
 
     def normalize_profile_picture(self, picture):
         # TODO EXPANSION: this is Canvas specific, should be changed to also work with other LTI hosts
@@ -220,6 +232,14 @@ class UserData(lti.utils.PreparedData):
             user = self.find_in_db()
         if not user:
             raise VLEProgrammingError('User does not exist, so it cannot be updated')
+
+        # When a user used to be a test student, it should not be able to magically change to a normal user
+        # This could happen when a test student gets an email, there is no valid way
+        if user.is_test_student and not self.is_test_student:
+            raise VLEProgrammingError(
+                'This account was previously configured as a test student, which no longer seems to be the case.'
+                f' Please contact {settings.EMAILS.support.email}.'
+            )
 
         if self.is_test_student:
             self.handle_test_student(course=course)

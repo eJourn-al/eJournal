@@ -1,10 +1,7 @@
 <template>
     <!-- This check helps prevent user seeing the teacher view of the assignment user is not allowed to -->
     <content-columns v-if="$hasPermission('can_view_all_journals')">
-        <bread-crumb
-            slot="main-content-column"
-            @edit-click="handleEdit()"
-        />
+        <bread-crumb slot="main-content-column"/>
         <b-alert
             v-if="LTILeftJournal"
             slot="main-content-column"
@@ -16,210 +13,140 @@
         </b-alert>
 
         <div slot="main-content-column">
-            <input
-                v-model="searchValue"
-                class="theme-input full-width multi-form"
-                type="text"
-                placeholder="Search..."
-            />
-
-            <div class="d-flex">
-                <theme-select
-                    v-model="journalGroupFilter"
-                    label="name"
-                    trackBy="name"
-                    :options="groups"
-                    :multiple="true"
-                    :searchable="true"
-                    :multiSelectText="`active group filter${journalGroupFilter &&
-                        journalGroupFilter.length === 1 ? '' : 's'}`"
-                    placeholder="Filter By Group"
-                    class="multi-form mr-2"
+            <div
+                v-if="assignmentJournals.length > 0"
+                class="p-2 background-light-grey round-border mb-2"
+            >
+                <b-input
+                    v-model="searchValue"
+                    class="full-width"
+                    type="text"
+                    placeholder="Search..."
                 />
-                <b-form-select
-                    v-model="selectedSortOption"
-                    :selectSize="1"
-                    class="theme-select multi-form mr-2"
-                >
-                    <option value="name">
-                        Sort by name
-                    </option>
-                    <option value="username">
-                        Sort by username
-                    </option>
-                    <option value="markingNeeded">
-                        Sort by marking needed
-                    </option>
-                    <option
-                        v-if="$hasPermission('can_manage_journal_import_requests')
-                            && !loadingJournals && assignment.stats.import_requests"
-                        value="importRequests"
+
+                <div class="d-flex">
+                    <theme-select
+                        v-model="journalGroupFilter"
+                        label="name"
+                        trackBy="name"
+                        :options="groups"
+                        :multiple="true"
+                        :searchable="true"
+                        :multiSelectText="`active group filter${journalGroupFilter &&
+                            journalGroupFilter.length === 1 ? '' : 's'}`"
+                        placeholder="Filter By Group"
+                        class="mt-2 mr-2"
+                    />
+                    <b-form-select
+                        v-model="selectedSortOption"
+                        :selectSize="1"
+                        class="theme-select mt-2 mr-2"
                     >
-                        Sort by import requests
-                    </option>
-                    <option value="points">
-                        Sort by points
-                    </option>
-                </b-form-select>
-                <b-button
-                    v-if="!order"
-                    class="multi-form"
-                    @click.stop
-                    @click="toggleOrder(!order)"
-                >
-                    <icon name="long-arrow-alt-down"/>
-                    Ascending
-                </b-button>
-                <b-button
-                    v-if="order"
-                    class="multi-form"
-                    @click.stop
-                    @click="toggleOrder(!order)"
-                >
-                    <icon name="long-arrow-alt-up"/>
-                    Descending
-                </b-button>
+                        <option value="name">
+                            Sort by name
+                        </option>
+                        <option value="username">
+                            Sort by username
+                        </option>
+                        <option value="markingNeeded">
+                            Sort by marking needed
+                        </option>
+                        <option
+                            v-if="$hasPermission('can_manage_journal_import_requests')
+                                && !loadingJournals && assignment.stats.import_requests"
+                            value="importRequests"
+                        >
+                            Sort by import requests
+                        </option>
+                        <option value="points">
+                            Sort by points
+                        </option>
+                    </b-form-select>
+                    <b-button
+                        v-if="!order"
+                        class="mt-2"
+                        @click.stop
+                        @click="toggleOrder(!order)"
+                    >
+                        <icon name="long-arrow-alt-down"/>
+                        Ascending
+                    </b-button>
+                    <b-button
+                        v-if="order"
+                        class="mt-2"
+                        @click.stop
+                        @click="toggleOrder(!order)"
+                    >
+                        <icon name="long-arrow-alt-up"/>
+                        Descending
+                    </b-button>
+                </div>
             </div>
 
-            <b-modal
+            <bonus-file-upload-modal
                 ref="bonusPointsModal"
-                title="Import bonus points"
-                size="lg"
-                hideFooter
-                noEnforceFocus
-                @hide="$refs['bounsPointsUpload'].resetErrorLogs()"
-            >
-                <b-card class="no-hover">
-                    <h2 class="theme-h2 multi-form">
-                        Add bonus points to multiple journals at once
-                    </h2>
-                    Use the button below to import bonus points from a <i>comma separated value</i> file (.csv).
-                    This type of file can be easily generated by any spreadsheet application. Use the following
-                    format:<br/>
+                :aID="$route.params.aID"
+                :endpoint="'assignments/' + $route.params.aID + '/add_bonus_points'"
+                @bonusPointsSuccessfullyUpdated="hideModal('bonusPointsModal'); init()"
+            />
 
-                    <div class="text-monospace multi-form full-width text-center">
-                        username1, bonus1<br/>
-                        username2, bonus2<br/>
-                        username3, bonus3<br/>
-                    </div>
-
-                    <b>Note:</b> Importing bonus points for a user will overwrite their current bonus points!
-                    <hr/>
-
-                    <bonus-file-upload-input
-                        ref="bounsPointsUpload"
-                        :endpoint="'assignments/' + $route.params.aID + '/add_bonus_points'"
-                        :aID="$route.params.aID"
-                        class="mt-2"
-                        @bonusPointsSuccessfullyUpdated="hideModal('bonusPointsModal'); init()"
-                    />
-                </b-card>
-            </b-modal>
-
-            <b-modal
+            <assignment-spreadsheet-export-modal
                 ref="assignmentExportSpreadsheetModal"
-                title="Export results"
-                size="lg"
-                hideFooter
-                noEnforceFocus
-            >
-                <b-card class="no-hover">
-                    <h2 class="theme-h2 multi-form">
-                        Export assignment results to spreadsheet
-                    </h2>
-                    Select which columns should be included in the exported file.
-                    <hr/>
-                    <assignment-spreadsheet-export
-                        :assignment="assignment"
-                        :filteredJournals="filteredJournals"
-                        :assignmentJournals="assignmentJournals"
-                        @spreadsheet-exported="hideModal('assignmentExportSpreadsheetModal')"
-                    />
-                </b-card>
-            </b-modal>
+                :assignment="assignment"
+                :filteredJournals="filteredJournals"
+                :assignmentJournals="assignmentJournals"
+                @spreadsheet-exported="hideModal('assignmentExportSpreadsheetModal')"
+            />
 
-            <b-modal
+            <post-teacher-entry-modal
+                v-if="$hasPermission('can_post_teacher_entries')"
                 ref="postTeacherEntry"
-                title="Post teacher entries"
-                size="lg"
-                hideFooter
-                noEnforceFocus
-            >
-                <b-card class="no-hover">
-                    <h2 class="theme-h2 multi-form">
-                        Post teacher-initiated entries to student journals
-                    </h2>
+                :aID="aID"
+                :assignmentJournals="assignmentJournals"
+                @teacher-entry-posted="
+                    hideModal('postTeacherEntry'); init();
+                    if (assignment.has_teacher_entries) {$refs.manageTeacherEntries.loadTeacherEntries()}"
+            />
 
-                    <hr/>
-                    <post-teacher-entry
-                        :aID="aID"
-                        :assignmentJournals="assignmentJournals"
-                        @teacher-entry-posted="hideModal('postTeacherEntry'); init()"
-                    />
-                </b-card>
-            </b-modal>
-
-            <b-modal
+            <manage-teacher-entries-modal
+                v-if="$hasPermission('can_post_teacher_entries') && assignment.has_teacher_entries"
                 ref="manageTeacherEntries"
-                title="Manage teacher entries"
-                size="lg"
-                hideFooter
-                noEnforceFocus
-            >
-                <b-card class="no-hover">
-                    <h2 class="theme-h2 multi-form">
-                        Manage existing teacher entries
-                    </h2>
-                    <b>Note:</b>
-                    <ul>
-                        <li>Changes will not be saved until you click 'save' at the bottom of this window!</li>
-                        <li>Categories are synchronised with any changes made to the teacher entry.</li>
-                    </ul>
-
-                    <hr/>
-                    <teacher-entries
-                        :aID="aID"
-                        :assignmentJournals="assignmentJournals"
-                        @teacher-entry-updated="hideModal('manageTeacherEntries'); init()"
-                    />
-                </b-card>
-            </b-modal>
+                :aID="aID"
+                :assignmentJournals="assignmentJournals"
+                @teacher-entry-updated="hideModal('manageTeacherEntries'); init()"
+            />
 
             <b-modal
                 v-if="$hasPermission('can_edit_assignment') && assignment.lti_courses
                     && Object.keys(assignment.lti_courses).length > 1"
                 ref="manageLTIModal"
-                title="Manage LTI"
+                title="Select active LTI course"
                 size="lg"
-                hideFooter
                 noEnforceFocus
                 @show="newActiveLTICourse = assignment.active_lti_course.course_id"
                 @hide="newActiveLTICourse = null"
             >
-                <b-card class="no-hover">
-                    <h2 class="theme-h2">
-                        Select active course
-                    </h2>
-                    This assignment is linked to multiple courses on your LMS.
-                    Grades can only be passed back to one course at a time.
-                    Select from the options below which course should be used for grade passback.<br/>
-                    <hr/>
-                    <b-form-select
-                        v-model="newActiveLTICourse"
-                        class="theme-select full-width mt-2 mb-2"
+                This assignment is linked to multiple courses on your LMS.
+                Grades can only be passed back to one course at a time.
+                Select from the options below which course should be used for grade passback.<br/>
+                <b-form-select
+                    v-model="newActiveLTICourse"
+                    class="theme-select full-width mt-2 mb-2"
+                >
+                    <option
+                        v-for="(name, id) in assignment.lti_courses"
+                        :key="`lti-option-${cID}-${id}`"
+                        :value="parseInt(id)"
                     >
-                        <option
-                            v-for="(name, id) in assignment.lti_courses"
-                            :key="`lti-option-${cID}-${id}`"
-                            :value="parseInt(id)"
-                        >
-                            {{ name }}
-                        </option>
-                    </b-form-select>
+                        {{ name }}
+                    </option>
+                </b-form-select>
 
-                    <b class="text-red">Warning:</b> After changing this option, students might need to visit the
-                    assignment through the LMS at least once before they can continue working on their journals.<br/>
-                    <hr/>
+                <b class="text-red">Warning:</b> After changing this option, students might not be
+                able to update their journals for this assignment until they visit the assignment
+                on your LMS at least once.<br/>
+
+                <template #modal-footer>
                     <b-button
                         class="green-button d-block float-right"
                         :class="{'input-disabled': assignment.active_lti_course.course_id === newActiveLTICourse}"
@@ -228,7 +155,7 @@
                         <icon name="save"/>
                         Save
                     </b-button>
-                </b-card>
+                </template>
             </b-modal>
         </div>
 
@@ -240,122 +167,104 @@
                 v-for="journal in filteredJournals"
                 :key="journal.id"
             >
-                <b-link
-                    :to="{
-                        name: 'Journal',
-                        params: {
-                            cID: $route.params.cID,
-                            aID: assignment.id,
-                            jID: journal.id
-                        }
-                    }"
-                >
-                    <journal-card
-                        :journal="journal"
-                        :assignment="assignment"
-                        @journal-deleted="journalDeleted(journal)"
-                    />
-                </b-link>
+                <journal-card
+                    :journal="journal"
+                    :assignment="assignment"
+                    @journal-deleted="journalDeleted(journal)"
+                />
             </div>
-            <main-card
+            <not-found
                 v-if="assignmentJournals.length === 0"
-                text="No journals for this assignment"
-                class="no-hover"
+                subject="journals"
+                :explanation="assignment.is_group_assignment ? 'Create journals by using the button below.' :
+                    'No participants with a journal.'"
             >
-                {{ assignment.is_group_assignment ? 'Create journals by using the button below.' :
-                    'No participants with a journal' }}
-            </main-card>
-            <main-card
+                <b-button
+                    v-if="$hasPermission('can_manage_journals') && assignment.is_group_assignment"
+                    class="mt-2 green-button d-block"
+                    @click="showModal('createJournalModal')"
+                >
+                    <icon name="plus"/>
+                    Create new journals
+                </b-button>
+            </not-found>
+            <not-found
                 v-else-if="filteredJournals.length === 0"
-                text="No journals found"
-                class="no-hover"
-            >
-                There are no journals that match your search query.
-            </main-card>
-            <b-button
-                v-if="$hasPermission('can_manage_journals') && assignment.is_group_assignment"
-                class="multi-form green-button"
-                @click="showModal('createJournalModal')"
-            >
-                <icon name="plus"/>
-                Create new journals
-            </b-button>
+                subject="journals"
+                explanation="There are no journals that match your search query."
+            />
 
             <b-modal
                 v-if="$hasPermission('can_manage_journals') && assignment.is_group_assignment"
                 ref="createJournalModal"
                 title="Create new journals"
                 size="lg"
-                hideFooter
                 @show="resetNewJournals"
             >
-                <b-card class="no-hover">
-                    <b-form @submit.prevent="createNewJournals">
-                        <h2 class="theme-h2 field-heading multi-form">
-                            Name
-                        </h2>
-                        <b-input
-                            v-model="newJournalName"
-                            placeholder="Journal"
-                            class="theme-input multi-form"
-                        />
-                        <h2 class="theme-h2 field-heading">
-                            Member limit
-                        </h2>
-                        <b-input
-                            v-model="newJournalMemberLimit"
-                            type="number"
-                            placeholder="No member limit"
-                            min="2"
-                            class="theme-input multi-form"
-                        />
-
+                <b-form @submit.prevent="createNewJournals">
+                    <h2 class="theme-h2 field-heading mb-2">
+                        Name
+                    </h2>
+                    <b-input
+                        v-model="newJournalName"
+                        placeholder="Journal"
+                        class="mb-2"
+                    />
+                    <h2 class="theme-h2 field-heading">
+                        Member limit
+                    </h2>
+                    <b-input
+                        v-model="newJournalMemberLimit"
+                        type="number"
+                        placeholder="No member limit"
+                        min="2"
+                        class="mb-2"
+                    />
+                </b-form>
+                <template #modal-footer>
+                    <div class="mr-auto">
                         <b-button
-                            v-if="!repeatCreateJournal"
-                            class="multi-form mr-3"
-                            @click="repeatCreateJournal = true"
-                        >
-                            <icon name="book"/>
-                            Create multiple journals
-                        </b-button>
-                        <b-button
-                            v-else
-                            class="multi-form mr-3"
+                            v-if="repeatCreateJournal"
+                            class="mr-2"
                             @click="repeatCreateJournal = false"
                         >
                             <icon name="book"/>
-                            Create single journal
+                            Multiple journals
                         </b-button>
-
-                        <div
-                            v-if="repeatCreateJournal"
-                            class="shift-deadlines-input"
+                        <b-button
+                            v-else
+                            class="mr-2"
+                            @click="repeatCreateJournal = true"
                         >
-                            <icon
-                                v-b-tooltip:hover="'All journals created will be numbered sequentially'"
-                                name="info-circle"
-                            />
+                            <icon name="book"/>
+                            Single journal
+                        </b-button>
+                        <template v-if="repeatCreateJournal">
                             Repeat
                             <b-form-input
                                 v-model="newJournalCount"
                                 type="number"
                                 min="2"
-                                class="theme-input inline"
+                                class="inline"
                                 required
                             />
                             times
-                        </div>
+                            <icon
+                                v-b-tooltip:hover="'All journals created will be numbered sequentially'"
+                                name="info-circle"
+                            />
+                        </template>
+                    </div>
 
-                        <b-button
-                            type="submit"
-                            class="green-button d-block float-right"
-                            :class="{'input-disabled': newJournalRequestInFlight}"
-                        >
-                            <icon name="plus-square"/>
-                            Create
-                        </b-button>
-                    </b-form>
-                </b-card>
+                    <b-button
+                        class="green-button"
+                        :class="{'input-disabled': newJournalRequestInFlight}"
+                        @click="createNewJournals"
+                    >
+                        <icon name="plus-square"/>
+                        Create
+                    </b-button>
+                </template>
             </b-modal>
         </load-wrapper>
 
@@ -364,11 +273,8 @@
                 v-if="stats"
                 md="6"
                 lg="12"
-                class="mb-3"
+                class="mb-2"
             >
-                <h3 class="theme-h3">
-                    Insights
-                </h3>
                 <statistics-card :stats="stats"/>
             </b-col>
             <b-col
@@ -377,73 +283,101 @@
                 md="6"
                 lg="12"
             >
-                <h3 class="theme-h3">
-                    Actions
-                </h3>
-                <b-button
-                    v-if="canPublishGradesAssignment"
-                    class="green-button multi-form full-width"
-                    @click="publishGradesAssignment"
-                >
-                    <icon name="upload"/>
-                    {{ assignment.journals.length === filteredJournals.length ?
-                        "Publish all grades" : "Publish grades" }}
-                </b-button>
-                <b-button
-                    v-if="canManageLTI"
-                    class="green-button multi-form full-width"
-                    @click="showModal('manageLTIModal')"
-                >
-                    <icon name="graduation-cap"/>
-                    Manage LTI
-                </b-button>
-                <b-button
-                    v-if="canImportBonusPoints"
-                    class="orange-button multi-form full-width"
-                    @click="showModal('bonusPointsModal')"
-                >
-                    <icon name="star"/>
-                    Import bonus points
-                </b-button>
-                <b-button
-                    v-if="canExportResults"
-                    class="green-button multi-form full-width"
-                    @click="showModal('assignmentExportSpreadsheetModal')"
-                >
-                    <icon name="file-export"/>
-                    Export results
-                </b-button>
-                <b-button
-                    v-if="$hasPermission('can_post_teacher_entries')"
-                    class="green-button multi-form full-width mb-2"
-                    @click="showModal('postTeacherEntry')"
-                >
-                    <icon name="plus"/>
-                    Post teacher entries
-                </b-button>
-                <b-button
-                    v-if="$hasPermission('can_post_teacher_entries') && assignment.has_teacher_entries"
-                    class="orange-button multi-form full-width"
-                    @click="showModal('manageTeacherEntries')"
-                >
-                    <icon name="edit"/>
-                    Manage teacher entries
-                </b-button>
+                <b-card>
+                    <h3
+                        slot="header"
+                        class="theme-h3"
+                    >
+                        Actions
+                    </h3>
+                    <b-button
+                        v-if="$hasPermission('can_edit_assignment')"
+                        class="grey-button edit-button"
+                        variant="link"
+                        @click="openAssignmentEditor"
+                    >
+                        <icon name="cog"/>
+                        Edit assignment
+                    </b-button>
+                    <b-button
+                        v-if="canPublishGradesAssignment"
+                        variant="link"
+                        class="green-button"
+                        @click="publishGradesAssignment"
+                    >
+                        <icon name="upload"/>
+                        {{ assignment.journals.length === filteredJournals.length ?
+                            "Publish all grades" : "Publish grades" }}
+                    </b-button>
+                    <b-button
+                        v-if="canManageLTI"
+                        variant="link"
+                        class="green-button"
+                        @click="showModal('manageLTIModal')"
+                    >
+                        <icon name="graduation-cap"/>
+                        Manage LTI
+                    </b-button>
+                    <b-button
+                        v-if="canImportBonusPoints"
+                        variant="link"
+                        class="orange-button"
+                        @click="showModal('bonusPointsModal')"
+                    >
+                        <icon name="star"/>
+                        Import bonus points
+                    </b-button>
+                    <b-button
+                        v-if="canCreateJournals"
+                        variant="link"
+                        class=" green-button"
+                        @click="showModal('createJournalModal')"
+                    >
+                        <icon name="plus"/>
+                        Create new journals
+                    </b-button>
+                    <b-button
+                        v-if="canExportResults"
+                        variant="link"
+                        class="green-button"
+                        @click="showModal('assignmentExportSpreadsheetModal')"
+                    >
+                        <icon name="file-export"/>
+                        Export results
+                    </b-button>
+                    <b-button
+                        v-if="$hasPermission('can_post_teacher_entries')"
+                        variant="link"
+                        class="green-button"
+                        @click="showModal('postTeacherEntry')"
+                    >
+                        <icon name="plus"/>
+                        Post teacher entries
+                    </b-button>
+                    <b-button
+                        v-if="$hasPermission('can_post_teacher_entries') && assignment.has_teacher_entries"
+                        variant="link"
+                        class="orange-button"
+                        @click="showModal('manageTeacherEntries')"
+                    >
+                        <icon name="edit"/>
+                        Manage teacher entries
+                    </b-button>
+                </b-card>
             </b-col>
         </b-row>
     </content-columns>
 </template>
 
 <script>
-import BonusFileUploadInput from '@/components/assets/file_handling/BonusFileUploadInput.vue'
+import BonusFileUploadModal from '@/components/assets/file_handling/BonusFileUploadModal.vue'
 import BreadCrumb from '@/components/assets/BreadCrumb.vue'
 import ContentColumns from '@/components/columns/ContentColumns.vue'
 import JournalCard from '@/components/assignment/JournalCard.vue'
 import LoadWrapper from '@/components/loading/LoadWrapper.vue'
-import MainCard from '@/components/assets/MainCard.vue'
-import PostTeacherEntry from '@/components/assignment/PostTeacherEntry.vue'
+import ManageTeacherEntriesModal from '@/components/assignment/ManageTeacherEntriesModal.vue'
+import PostTeacherEntryModal from '@/components/assignment/PostTeacherEntryModal.vue'
 import StatisticsCard from '@/components/assignment/StatisticsCard.vue'
-import TeacherEntries from '@/components/assignment/TeacherEntries.vue'
 
 import { mapGetters, mapMutations } from 'vuex'
 import assignmentAPI from '@/api/assignment.js'
@@ -453,22 +387,22 @@ import journalAPI from '@/api/journal.js'
 import participationAPI from '@/api/participation.js'
 import store from '@/Store.vue'
 
-const AssignmentSpreadsheetExport = () => import(
-    /* webpackChunkName: 'assignment-spreadsheet-export' */ '@/components/assignment/AssignmentSpreadsheetExport.vue')
+const AssignmentSpreadsheetExportModal = () => import(
+    /* webpackChunkName: 'assignment-spreadsheet-export-modal' */
+    '@/components/assignment/AssignmentSpreadsheetExportModal.vue')
 
 export default {
     name: 'Assignment',
     components: {
-        AssignmentSpreadsheetExport,
-        BonusFileUploadInput,
+        AssignmentSpreadsheetExportModal,
+        BonusFileUploadModal,
         BreadCrumb,
         ContentColumns,
         JournalCard,
         LoadWrapper,
-        MainCard,
-        PostTeacherEntry,
+        PostTeacherEntryModal,
         StatisticsCard,
-        TeacherEntries,
+        ManageTeacherEntriesModal,
     },
     props: {
         cID: {
@@ -538,6 +472,7 @@ export default {
         canPerformActions () {
             return this.canPublishGradesAssignment || this.canManageLTI || this.canImportBonusPoints
                 || this.canExportResults || this.$hasPermission('can_post_teacher_entries')
+                || this.canCreateJournals || this.$hasPermission('can_edit_assignment')
         },
         canPublishGradesAssignment  () {
             return this.$hasPermission('can_publish_grades') && this.assignmentJournals
@@ -546,6 +481,9 @@ export default {
         canManageLTI  () {
             return this.$hasPermission('can_edit_assignment') && this.assignment.lti_courses
                     && Object.keys(this.assignment.lti_courses).length > 1
+        },
+        canCreateJournals () {
+            return this.$hasPermission('can_manage_journals') && this.assignment.is_group_assignment
         },
         canImportBonusPoints  () {
             return this.$hasPermission('can_publish_grades') && this.assignmentJournals
@@ -623,7 +561,7 @@ export default {
         hideModal (ref) {
             this.$refs[ref].hide()
         },
-        handleEdit () {
+        openAssignmentEditor () {
             this.$router.push({
                 name: 'AssignmentEditor',
                 params: {

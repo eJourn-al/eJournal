@@ -1,25 +1,26 @@
 <template>
-    <b-card
-        :class="$root.getBorderClass($route.params.cID)"
-        class="no-hover"
-    >
-        <b-row
-            no-gutters
-            class="multi-form"
-        >
-            <span class="theme-h2">
-                {{ (category.name) ? category.name : 'Category name' }}
-            </span>
-
+    <b-card>
+        <template #header>
             <b-button
-                class="ml-auto"
+                class="float-right ml-2"
                 :class="headerButtonClass"
                 @click="changeMode()"
             >
                 <icon :name="headerButtonIconName"/>
                 {{ headerButtonText }}
             </b-button>
-        </b-row>
+            <b-button
+                v-if="!create && readMode"
+                class="red-button float-right"
+                @click.stop="confirmDeleteCategory()"
+            >
+                <icon name="trash"/>
+                Delete
+            </b-button>
+            <h2 class="theme-h2">
+                {{ (category.name) ? category.name : 'Category name' }}
+            </h2>
+        </template>
 
         <category-read-mode
             v-if="readMode"
@@ -39,7 +40,6 @@
                             v-model="category.name"
                             autofocus
                             placeholder="Name"
-                            class="theme-input"
                             type="text"
                             trim
                         />
@@ -84,27 +84,19 @@
                     placeholder="Add or remove templates"
                 />
             </b-form-group>
+        </template>
 
-            <hr/>
-
-            <b-row no-gutters>
-                <b-button
-                    v-if="!create"
-                    class="red-button"
-                    @click.stop="confirmDeleteCategory()"
-                >
-                    <icon name="trash"/>
-                    Delete
-                </b-button>
-
-                <b-button
-                    class="green-button ml-auto"
-                    @click="finalizeCategoryChanges"
-                >
-                    <icon :name="(create) ? 'plus' : 'save'"/>
-                    {{ (create) ? 'Add Category' : 'Save' }}
-                </b-button>
-            </b-row>
+        <template
+            v-if="!readMode"
+            #footer
+        >
+            <b-button
+                class="green-button float-right"
+                @click="finalizeCategoryChanges"
+            >
+                <icon :name="(create) ? 'plus' : 'save'"/>
+                {{ (create) ? 'Add Category' : 'Save' }}
+            </b-button>
         </template>
     </b-card>
 </template>
@@ -146,7 +138,7 @@ export default {
             return (this.create) ? 'Preview' : 'Cancel'
         },
         headerButtonClass () {
-            if (this.readMode) { return 'orange-button' }
+            if (this.readMode) { return 'grey-button' }
             return (this.create) ? 'green-button' : 'red-button'
         },
         headerButtonIconName () {

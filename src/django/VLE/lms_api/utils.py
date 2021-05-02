@@ -6,11 +6,11 @@ import sentry_sdk
 from django.conf import settings
 from django.http import HttpResponse
 from django.template.loader import get_template
-from pylti1p3.exception import LtiException
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny
 
 import VLE.utils.responses as response
+from pylti1p3.exception import LtiException
 from VLE.lms_api import groups
 from VLE.models import Instance, User
 from VLE.utils.generic_utils import build_url

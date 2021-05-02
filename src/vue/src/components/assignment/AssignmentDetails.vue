@@ -10,7 +10,6 @@
                 <b-input-group>
                     <b-input
                         v-model="assignmentDetails.name"
-                        class="theme-input"
                         placeholder="Assignment name"
                         trim
                         required
@@ -57,7 +56,6 @@
 
                 <b-input
                     v-model="assignmentDetails.points_possible"
-                    class="theme-input"
                     placeholder="Points"
                     type="number"
                     required
@@ -85,7 +83,7 @@
                     :multiSelectText="`group${assignmentDetails.assigned_groups &&
                         assignmentDetails.assigned_groups.length === 1 ? '' : 's'} assigned`"
                     placeholder="Everyone"
-                    class="multi-form mr-2"
+                    class="mb-2 mr-2"
                 />
             </template>
 
@@ -95,13 +93,11 @@
                 :presetNodes="presetNodes"
             />
 
-            <b-card
-                v-if="(
-                    assignmentDetails.is_group_assignment
+            <div
+                v-if="assignmentDetails.is_group_assignment
                     || !assignmentDetails.id
-                    || assignmentDetails.can_change_type
-                )"
-                class="no-hover mt-3"
+                    || assignmentDetails.can_change_type"
+                class="bordered-content p-3 mt-3"
             >
                 <radio-button
                     v-model="assignmentDetails.is_group_assignment"
@@ -120,99 +116,111 @@
                     ]"
                     class="float-right mb-2 ml-2"
                 />
-                <h2 class="theme-h2 field-heading multi-form">
+                <h2 class="theme-h2 field-heading mb-2">
                     Group assignment
                 </h2>
-                Have multiple students contribute to a shared journal.
-                Selecting this option requires you to create journals on the assignment page for students to join.
-                <template v-if="assignmentDetails.is_group_assignment">
-                    <hr/>
-                    <radio-button
-                        v-model="assignmentDetails.can_lock_journal"
-                        :options="[
-                            {
-                                value: true,
-                                icon: 'check',
-                                class: 'green-button',
-                            },
-                            {
-                                value: false,
-                                icon: 'times',
-                                class: 'red-button',
-                            },
-                        ]"
-                        class="float-right mb-2 ml-2"
-                    />
-                    <h2 class="theme-h2 field-heading multi-form">
-                        Allow locking for journal members
-                    </h2>
+                <small>
+                    Have multiple students contribute to a shared journal.
+                    Selecting this option requires you to create journals on the assignment page for students to join.
+                </small>
+            </div>
+            <div
+                v-if="assignmentDetails.is_group_assignment"
+                class="background-light-grey round-border p-3 mt-2"
+            >
+                <radio-button
+                    v-model="assignmentDetails.can_lock_journal"
+                    :options="[
+                        {
+                            value: true,
+                            icon: 'check',
+                            class: 'green-button',
+                        },
+                        {
+                            value: false,
+                            icon: 'times',
+                            class: 'red-button',
+                        },
+                    ]"
+                    class="float-right mb-2 ml-2"
+                />
+                <h2 class="theme-h2 field-heading mb-2">
+                    Allow locking for journal members
+                </h2>
+                <small>
                     Once the members of a journal are locked, it cannot be joined by other students.
                     Teachers can still manually add students to a journal.
-                    <hr/>
-                    <radio-button
-                        v-model="assignmentDetails.can_set_journal_name"
-                        :options="[
-                            {
-                                value: true,
-                                icon: 'check',
-                                class: 'green-button',
-                            },
-                            {
-                                value: false,
-                                icon: 'times',
-                                class: 'red-button',
-                            },
-                        ]"
-                        class="float-right mb-2 ml-2"
-                    />
-                    <h2 class="theme-h2 field-heading">
-                        Allow custom journal name
-                    </h2>
+                </small>
+                <hr/>
+                <radio-button
+                    v-model="assignmentDetails.can_set_journal_name"
+                    :options="[
+                        {
+                            value: true,
+                            icon: 'check',
+                            class: 'green-button',
+                        },
+                        {
+                            value: false,
+                            icon: 'times',
+                            class: 'red-button',
+                        },
+                    ]"
+                    class="float-right mb-2 ml-2"
+                />
+                <h2 class="theme-h2 field-heading">
+                    Allow custom journal name
+                </h2>
+                <small>
                     Allow members of a journal to override its given name.
-                    <hr/>
-                    <radio-button
-                        v-model="assignmentDetails.can_set_journal_image"
-                        :options="[
-                            {
-                                value: true,
-                                icon: 'check',
-                                class: 'green-button',
-                            },
-                            {
-                                value: false,
-                                icon: 'times',
-                                class: 'red-button',
-                            },
-                        ]"
-                        class="float-right mb-2 ml-2"
-                    />
-                    <h2 class="theme-h2 field-heading">
-                        Allow custom display picture
-                    </h2>
+                </small>
+                <hr/>
+                <radio-button
+                    v-model="assignmentDetails.can_set_journal_image"
+                    :options="[
+                        {
+                            value: true,
+                            icon: 'check',
+                            class: 'green-button',
+                        },
+                        {
+                            value: false,
+                            icon: 'times',
+                            class: 'red-button',
+                        },
+                    ]"
+                    class="float-right mb-2 ml-2"
+                />
+                <h2 class="theme-h2 field-heading">
+                    Allow custom display picture
+                </h2>
+                <small>
                     Allow members of a journal to override its display picture.
-                    <hr/>
-                    <radio-button
-                        v-model="assignmentDetails.remove_grade_upon_leaving_group"
-                        :options="[
-                            {
-                                value: true,
-                                icon: 'check',
-                                class: 'green-button',
-                            },
-                            {
-                                value: false,
-                                icon: 'times',
-                                class: 'red-button',
-                            },
-                        ]"
-                        class="float-right mb-2 ml-2"
-                    />
-                    <h2 class="theme-h2 field-heading multi-form">
-                        Reset grade when leaving journal
-                    </h2>
+                </small>
+                <hr/>
+                <radio-button
+                    v-model="assignmentDetails.remove_grade_upon_leaving_group"
+                    :options="[
+                        {
+                            value: true,
+                            icon: 'check',
+                            class: 'green-button',
+                        },
+                        {
+                            value: false,
+                            icon: 'times',
+                            class: 'red-button',
+                        },
+                    ]"
+                    class="float-right mb-2 ml-2"
+                />
+                <h2 class="theme-h2 field-heading mb-2">
+                    Reset grade when leaving journal
+                </h2>
+                <small>
                     Reset the grade of a student to 0 if they leave (or are removed from) a journal.
-                </template>
-            </b-card>
+                </small>
+            </div>
         </template>
     </load-wrapper>
 </template>

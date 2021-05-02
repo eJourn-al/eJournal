@@ -199,13 +199,12 @@
 </template>
 
 <script>
-import instanceAPI from '@/api/instance.js'
+import { mapActions, mapGetters } from 'vuex'
 
 export default {
     name: 'Admin',
     data () {
         return {
-            instance: null,
             apiClientSecret: null,
             configuredToolStep: 0,
             maxSteps: 6,
@@ -216,6 +215,10 @@ export default {
         }
     },
     computed: {
+        ...mapGetters({
+            getInstance: 'instance/instance',
+        }),
+        instance () { return this.getInstance },
         configureUrl () {
             return `${CustomEnv.API_URL}/lti/configure/`
         },
@@ -230,15 +233,18 @@ export default {
             }
         },
     },
-    created () {
-        instanceAPI.get().then((instance) => { this.instance = instance })
-    },
     methods: {
+        ...mapActions({
+            update: 'instance/update',
+        }),
         save () {
             if (this.apiClientSecret !== null) {
                 this.instance.api_client_secret = this.apiClientSecret
             }
-            instanceAPI.update(this.instance, { customSuccessToast: 'Updated settings' })
+            this.update({
+                data: this.instance,
+                connArgs: { customSuccessToast: 'Updated settings' },
+            })
                 .then((instance) => { this.instance = instance })
         },
     },

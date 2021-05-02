@@ -51,42 +51,34 @@
                     lg="12"
                     class="mb-2"
                 >
-                    <h3 class="theme-h3">
-                        Details
-                    </h3>
-                    <b-card
-                        :class="$root.getBorderClass($route.params.cID)"
-                        class="journal-details-card no-hover mb-3"
+                    <journal-details
+                        v-if="!loadingNodes"
+                        :journal="journal"
+                        :assignment="assignment"
                     >
-                        <journal-details
-                            v-if="!loadingNodes"
-                            :journal="journal"
-                            :assignment="assignment"
-                        />
-                    </b-card>
-                    <div
-                        v-if="filteredJournals.length > 1"
-                        class="d-flex mb-2"
-                    >
-                        <b-button
-                            v-if="filteredJournals.length !== 0"
-                            :to="{ name: 'Journal', params: { cID: cID, aID: aID, jID: prevJournal.id } }"
-                            class="mr-2 flex-grow-1"
-                            tag="b-button"
+                        <div
+                            v-if="filteredJournals.length > 1"
+                            slot="footer"
+                            class="d-flex"
                         >
-                            <icon name="arrow-left"/>
-                            Previous
-                        </b-button>
-                        <b-button
-                            v-if="filteredJournals.length !== 0"
-                            :to="{ name: 'Journal', params: { cID: cID, aID: aID, jID: nextJournal.id } }"
-                            class="flex-grow-1"
-                            tag="b-button"
-                        >
-                            Next
-                            <icon name="arrow-right"/>
-                        </b-button>
-                    </div>
+                            <b-button
+                                v-if="filteredJournals.length !== 0"
+                                :to="{ name: 'Journal', params: { cID: cID, aID: aID, jID: prevJournal.id } }"
+                                class="flex-grow-1 mr-1 flex-basis-50 grey-button"
+                            >
+                                <icon name="angle-left"/>
+                                Previous
+                            </b-button>
+                            <b-button
+                                v-if="filteredJournals.length !== 0"
+                                :to="{ name: 'Journal', params: { cID: cID, aID: aID, jID: nextJournal.id } }"
+                                class="flex-grow-1 flex-basis-50 grey-button"
+                            >
+                                Next
+                                <icon name="angle-right"/>
+                            </b-button>
+                        </div>
+                    </journal-details>
                 </b-col>
 
                 <b-col
@@ -94,59 +86,76 @@
                     md="6"
                     lg="12"
                 >
-                    <h3 class="theme-h3">
-                        Grading
-                    </h3>
-                    <div
-                        v-if="$hasPermission('can_grade')"
-                        class="bonus-section grade-section mb-2 full-width"
-                    >
-                        <div>
+                    <b-card>
+                        <h3
+                            slot="header"
+                            class="theme-h3"
+                        >
+                            Grading
+                        </h3>
+                        <b-button
+                            v-if="$hasPermission('can_grade') && !showBonusInput"
+                            variant="link"
+                            class="yellow-button"
+                            @click="showBonusInput = true"
+                        >
+                            <icon name="star"/>
+                            Give bonus points
+                        </b-button>
+                        <b-input-group
+                            v-if="showBonusInput"
+                            class="mb-2 p-2 background-light-grey round-border"
+                        >
+                            <b-input-group-text
+                                slot="prepend"
+                                class="no-right-radius"
+                            >
+                                Bonus points
+                            </b-input-group-text>
                             <b-form-input
                                 v-model="bonusPointsTemp"
                                 type="number"
-                                class="theme-input mr-2"
+                                class="no-left-radius"
                                 size="2"
                                 placeholder="0"
                                 min="0.0"
                             />
-                            Bonus points
-                        </div>
-                        <b-button
-                            class="green-button"
-                            @click="commitBonus"
-                        >
-                            <icon
-                                name="save"
-                                scale="1"
-                            />
-                            Save bonus
-                        </b-button>
-                    </div>
-                    <b-button
-                        v-if="$hasPermission('can_publish_grades')"
-                        class="green-button mb-2 full-width"
-                        @click="publishGradesJournal"
-                    >
-                        <icon name="upload"/>
-                        Publish all grades
-                    </b-button>
-                    <div v-if="$hasPermission('can_manage_journal_import_requests') && !loadingNodes">
-                        <b-button
-                            v-if="journal.import_requests"
-                            v-b-modal="'journal-import-request-approval-modal'"
-                            class="multi-form orange-button mb-2 full-width"
-                        >
-                            <icon name="file-import"/>
-                            Manage Import Requests
-                        </b-button>
 
-                        <journal-import-request-approval-modal
-                            v-if="journal.import_requests"
-                            modalID="journal-import-request-approval-modal"
-                            @jir-processed="loadJournal(false)"
-                        />
-                    </div>
+                            <b-button
+                                class="green-button full-width mt-1"
+                                @click="commitBonus"
+                            >
+                                <icon name="save"/>
+                                Save
+                            </b-button>
+                        </b-input-group>
+                        <b-button
+                            v-if="$hasPermission('can_publish_grades')"
+                            variant="link"
+                            class="green-button"
+                            @click="publishGradesJournal"
+                        >
+                            <icon name="upload"/>
+                            Publish all grades
+                        </b-button>
+                        <div v-if="$hasPermission('can_manage_journal_import_requests') && !loadingNodes">
+                            <b-button
+                                v-if="journal.import_requests"
+                                v-b-modal="'journal-import-request-approval-modal'"
+                                variant="link"
+                                class="orange-button"
+                            >
+                                <icon name="file-import"/>
+                                Manage Import Requests
+                            </b-button>
+
+                            <journal-import-request-approval-modal
+                                v-if="journal.import_requests"
+                                modalID="journal-import-request-approval-modal"
+                                @jir-processed="loadJournal(false)"
+                            />
+                        </div>
+                    </b-card>
                 </b-col>
             </b-row>
         </template>
@@ -195,6 +204,7 @@ export default {
             journal: null,
             loadingNodes: true,
             bonusPointsTemp: 0,
+            showBonusInput: false,
         }
     },
     computed: {
@@ -360,32 +370,14 @@ export default {
                 journalAPI.update(
                     this.journal.id,
                     { bonus_points: this.bonusPointsTemp },
-                    { customSuccessToast: 'Bonus successfully added.' },
+                    { customSuccessToast: 'Successfully updated bonus points.' },
                 )
-                    .then((journal) => { this.journal = journal })
+                    .then((journal) => {
+                        this.journal = journal
+                        this.showBonusInput = false
+                    })
             }
         },
     },
 }
 </script>
-
-<style lang="sass">
-@import '~sass/partials/shadows.sass'
-
-.grade-section.bonus-section
-    @extend .theme-shadow
-    .btn
-        display: block
-        width: 100%
-        border-width: 1px 0px 0px 0px !important
-        border-radius: 0px 0px 5px 5px !important
-        box-shadow: none
-    .theme-input, .theme-input:hover, .theme-input:focus
-        margin-left: 0px
-        width: 3.5em
-        display: inline-block
-        padding-right: 0px !important
-
-.journal-details-card > .card-body
-    padding-top: 45px
-</style>

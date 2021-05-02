@@ -89,19 +89,40 @@ EMAILS = Emails()
 LTI_SECRET = os.environ['LTI_SECRET']
 LTI_KEY = os.environ['LTI_KEY']
 ROLES = OrderedDict({
-    'Teacher': ['instructor', 'administrator'],
-    'TA': ['teachingassistant'],
-    'Student': ['learner']
+    'Teacher': [
+        'instructor',
+        'administrator',
+        'urn:lti:role:ims/lis/instructor',
+        'urn:lti:role:ims/lis/contentdeveloper',
+        'urn:lti:role:ims/lis/administrator',
+    ],
+    'TA': [
+        'teachingassistant',
+        'urn:lti:role:ims/lis/mentor',
+        'urn:lti:role:ims/lis/teachingassistant',
+    ],
+    'Student': [
+        'learner',
+        'urn:lti:role:ims/lis/learner',
+    ]
 })
 LTI_ROLES = OrderedDict({
     'instructor': 'Teacher',
     'administrator': 'Teacher',
-    'teachingassistant': 'TA',
+    'urn:lti:role:ims/lis/instructor': 'Teacher',
+    'urn:lti:role:ims/lis/contentdeveloper': 'Teacher',
+    'urn:lti:role:ims/lis/administrator': 'Teacher',
+    'urn:lti:role:ims/lis/mentor': 'TA',
+    'urn:lti:role:ims/lis/teachingassistant': 'TA',
+    'urn:lti:role:ims/lis/learner': 'Student',
     'learner': 'Student',
 })
+# TODO LTI: remove this var
 LTI_TEST_STUDENT_FULL_NAME = 'Test student'
 LTI13 = 'LTI-1p3'
 LTI10 = 'LTI-1p0'
+# Names we have encountered used for test students
+LTI_TEST_STUDENT_FULL_NAMES = {'Test student'}
 
 # Celery settings
 CELERY_BROKER_URL = os.environ['BROKER_URL']

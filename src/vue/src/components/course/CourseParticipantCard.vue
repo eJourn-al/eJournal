@@ -1,8 +1,5 @@
 <template>
-    <b-card
-        :class="$root.getBorderClass(user.id)"
-        class="no-hover"
-    >
+    <b-card>
         <b-row>
             <b-col
                 sm="8"

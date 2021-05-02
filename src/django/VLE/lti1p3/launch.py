@@ -4,13 +4,13 @@ from django.http import HttpResponse, JsonResponse
 from django.shortcuts import redirect
 from django.urls import reverse
 from django.utils.datastructures import MultiValueDictKeyError
-from pylti1p3.contrib.django import DjangoCacheDataStorage, DjangoOIDCLogin
-from pylti1p3.deep_link_resource import DeepLinkResource
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
 import VLE.lti1p3 as lti
+from pylti1p3.contrib.django import DjangoCacheDataStorage, DjangoOIDCLogin
+from pylti1p3.deep_link_resource import DeepLinkResource
 from VLE.models import Instance, Journal
 from VLE.utils.error_handling import VLEBadRequest
 from VLE.utils.generic_utils import build_url

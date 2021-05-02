@@ -14,7 +14,7 @@
         :preserveSearch="false"
         :showLabels="false"
         :placeholder="(!multiple && value) ? value[label] : placeholder"
-        class="theme-multiselect theme-shadow"
+        class="theme-multiselect"
         open-direction="bottom"
         @input="newValue => $emit('input', newValue)"
         @select="(selectedOption, id) => $emit('select', selectedOption, id)"
@@ -37,7 +37,10 @@
                 v-if="values.length && !isOpen"
                 class="multiselect__single"
             >
-                {{ values.length }} {{ multiSelectText }}
+                <template v-if="showCount">
+                    {{ values.length }}
+                </template>
+                {{ multiSelectText }}
             </span>
         </template>
     </multiselect>
@@ -72,6 +75,9 @@ export default {
         searchable: {
             default: false,
         },
+        showCount: {
+            default: true,
+        },
         multiSelectText: {
             default: 'selected',
         },
@@ -98,11 +104,11 @@ export default {
 <style lang="sass">
 
 div.theme-multiselect
-    color: $theme-dark-blue
+    color: $text-color
     word-wrap: nowrap !important
     border-radius: 5px
     &, .multiselect__content-wrapper
-        border: 1px solid $theme-dark-grey
+        border: 1px solid $border-color
     &, .multiselect__content-wrapper, .multiselect__tags
         border-radius: 5px !important
     &.no-right-radius
@@ -113,6 +119,7 @@ div.theme-multiselect
         border-width: 0px
         input
             padding: 0px !important
+            margin-bottom: 0px
             &:focus
                 border-width: 0px
         input, span
@@ -124,12 +131,15 @@ div.theme-multiselect
             overflow: hidden
         .multiselect__placeholder, .multiselect__single
             color: inherit
+        .multiselect__placeholder
+            padding-top: 0px
+            margin-bottom: 0px
     .multiselect__select::before
-        border-color: $theme-dark-blue transparent transparent
+        border-color: $text-color transparent transparent
     span.multiselect__option--selected, span.multiselect__option--selected::after,
     span.multiselect__option--highlight, span.multiselect__option--highlight::after
         background: $theme-light-grey !important
-        color: $theme-dark-blue
+        color: $text-color
     span.multiselect__option--selected::before
         content: '\2022'
         font-size: 2em

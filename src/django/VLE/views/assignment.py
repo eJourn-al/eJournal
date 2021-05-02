@@ -135,7 +135,7 @@ class AssignmentView(viewsets.ViewSet):
             unlock_date -- (optional) date the assignment becomes available on
             due_date -- (optional) date the assignment is due for
             lock_date -- (optional) date the assignment becomes unavailable on
-            lti_id -- (optional) id labeled link to LTI instance
+            launch_id -- (optional) id labeled link to LTI instance
 
         Returns:
         On failure:
@@ -162,13 +162,14 @@ class AssignmentView(viewsets.ViewSet):
             )
             return response.created({'assignment': serializer.data})
 
-        name, description, course_id = utils.required_typed_params(
+        name, description, course_id, points_possible, = utils.required_typed_params(
             request.data,
             (str, 'name'),
             (str, 'description'),
             (int, 'course_id'),
+            (float, 'points_possible'),
         )
-        unlock_date, due_date, lock_date, is_published, points_possible, is_group_assignment, \
+        unlock_date, due_date, lock_date, is_published, is_group_assignment, \
             can_set_journal_name, can_set_journal_image, can_lock_journal, remove_grade_upon_leaving_group = \
             utils.optional_typed_params(
                 request.data,
@@ -176,7 +177,6 @@ class AssignmentView(viewsets.ViewSet):
                 (datetime, 'due_date'),
                 (datetime, 'lock_date'),
                 (bool, 'is_published'),
-                (float, 'points_possible'),
                 (bool, 'is_group_assignment'),
                 (bool, 'can_set_journal_name'),
                 (bool, 'can_set_journal_image'),
@@ -258,7 +258,7 @@ class AssignmentView(viewsets.ViewSet):
         update_lti_course, lti_id = utils.optional_typed_params(
             request.data,
             (int, 'update_lti_course'),
-            (int, 'lti_id')
+            (str, 'lti_id')
         )
         assigned_groups, = utils.optional_params(request.data, 'assigned_groups')
 
@@ -284,6 +284,14 @@ class AssignmentView(viewsets.ViewSet):
             # NOTE: after a link, we update the assignment variables, this causes updates with the assignment
             # name, due/lock date, assignments_grades_service
             launch_data.assignment.update(obj=assignment)
+
+        # TODO: Treat empty string as valid blank value for date(time) db fields.
+        if 'unlock_date' in request.data and request.data['unlock_date'] == '':
+            request.data['unlock_date'] = None
+        if 'due_date' in request.data and request.data['due_date'] == '':
+            request.data['due_date'] = None
+        if 'lock_date' in request.data and request.data['lock_date'] == '':
+            request.data['lock_date'] = None
 
         serializer = AssignmentSerializer(
             assignment, data=request.data, context={'user': request.user, 'course': course}, partial=True)

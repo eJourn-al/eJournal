@@ -9,16 +9,16 @@ from VLE.models import Entry, Node, Template
 from VLE.serializers import EntrySerializer, FileSerializer, TemplateSerializer
 
 
-def get_nodes(journal, author=None):
+def get_nodes(journal, user=None):
     """Convert a journal to a list of node dictionaries.
 
     First sorts the nodes on date, then attempts to add an
     add-node if the user can add to the journal, the subsequent
     progress node is in the future and maximally one.
     """
-    can_add = journal.can_add(author)
+    needs_add_node = journal.can_add(user)
 
-    node_qry = journal.get_sorted_nodes().select_related(
+    node_qry = journal.get_sorted_nodes(user=user).select_related(
         'preset__forced_template',
     ).prefetch_related(
         'preset__attached_files',
@@ -30,19 +30,19 @@ def get_nodes(journal, author=None):
         # NOTE: Order is relevant
         if node.is_progress:
             is_future = (node.preset.due_date - timezone.now()).total_seconds() > 0
-            if can_add and is_future:
+            if needs_add_node and is_future:
                 add_node = get_add_node(journal)
                 if add_node:
                     node_list.append(add_node)
-                can_add = False
+                needs_add_node = False
 
             node_list.append(get_progress(journal, node))
         elif node.is_entry:
-            node_list.append(get_entry_node(journal, node, author))
+            node_list.append(get_entry_node(journal, node, user))
         elif node.is_deadline:
-            node_list.append(get_deadline(journal, node, author))
+            node_list.append(get_deadline(journal, node, user))
 
-    if can_add and not journal.assignment.is_locked():
+    if needs_add_node:
         add_node = get_add_node(journal)
         if add_node:
             node_list.append(add_node)

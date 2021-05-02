@@ -4,30 +4,30 @@
 -->
 
 <template>
-    <div class="timeline-node-circle-border">
+    <div
+        :title="nodeTitle"
+        :class="nodeClass"
+        class="timeline-node-circle unselectable shadow"
+        data-toggle="tooltip"
+    >
+        <icon
+            v-if="node.type !== 'p'"
+            :name="iconName"
+            :class="iconClass"
+            :scale="iconScale"
+        />
         <div
-            :title="nodeTitle"
-            :class="nodeClass"
-            class="timeline-node-circle unselectable"
-            data-toggle="tooltip"
+            v-else
+            class="timeline-node-circle-text"
         >
-            <icon
-                v-if="node.type !== 'p'"
-                :name="iconName"
-                :class="iconClass"
-                :scale="iconScale"
-            />
-            <div
-                v-else
-                class="timeline-node-circle-text"
-            >
-                {{ node.target }}
-            </div>
+            {{ node.target }}
         </div>
     </div>
 </template>
 
 <script>
+import comparison from '@/utils/comparison.js'
+
 import { mapGetters } from 'vuex'
 
 export default {
@@ -72,6 +72,8 @@ export default {
         },
         iconName () {
             switch (this.nodeState()) {
+            case 'draft':
+                return 'edit'
             case 'graded':
                 return 'check'
             case 'failed':
@@ -95,6 +97,8 @@ export default {
         },
         nodeTitle () {
             switch (this.nodeState()) {
+            case 'draft':
+                return 'Draft'
             case 'graded':
                 return 'Graded'
             case 'failed':
@@ -153,22 +157,7 @@ export default {
         },
     },
     methods: {
-        dueDateHasPassed () {
-            const currentDate = new Date()
-            const dueDate = new Date((this.node === this.endNode) ? this.assignment.due_date : this.node.due_date)
-
-            return currentDate > dueDate
-        },
-        lockDateHasPassed () {
-            if (!this.node.lock_date) {
-                return false
-            }
-
-            const currentDate = new Date()
-            const lockDate = new Date(this.node.lock_date)
-
-            return currentDate > lockDate
-        },
+        /* eslint-disable-next-line complexity */
         nodeState () {
             if (this.node.type === 's') {
                 return 'start'
@@ -183,13 +172,15 @@ export default {
             const entry = this.node.entry
             const isGrader = this.$hasPermission('can_grade')
 
-            if (entry && entry.grade && entry.grade.published) {
+            if (entry && entry.is_draft) {
+                return 'draft'
+            } else if (entry && entry.grade && entry.grade.published) {
                 return 'graded'
-            } else if (!entry && this.lockDateHasPassed()) {
+            } else if (!entry && comparison.nodeLockDateHasPassed(this.node)) {
                 return 'failed'
-            } else if (!entry && this.dueDateHasPassed()) {
+            } else if (!entry && comparison.nodeDueDateHasPassed(this.node, this.assignment)) {
                 return 'overdue'
-            } else if (!entry && !this.dueDateHasPassed()) {
+            } else if (!entry && !comparison.nodeDueDateHasPassed(this.node, this.assignment)) {
                 return 'empty'
             } else if (!isGrader && entry && !entry.grade) {
                 return 'awaiting_grade'
@@ -206,14 +197,7 @@ export default {
 </script>
 
 <style lang="sass">
-@import '~sass/partials/shadows.sass'
-
-.timeline-node-circle-border
-    border-radius: 50% !important
-    padding: 5px
-
 .timeline-node-circle
-    @extend .theme-shadow
     width: 55px
     height: 55px
     border-radius: 50% !important
@@ -234,6 +218,8 @@ export default {
         height: 55px
     &.enc-entry, &.enc-deadline
         background-color: white
+    &.enc-selected
+        background-color: $theme-dark-blue
     &.enc-start
         background-color: $theme-green
     &.enc-end
@@ -241,9 +227,7 @@ export default {
     &.enc-add
         background-color: $theme-blue
     &.enc-progress
-        background-color: $theme-orange
-    &.enc-selected
-        background-color: $theme-dark-blue
+        background-color: $theme-yellow
     svg
         transition: all 0.3s cubic-bezier(.25,.8,.25,1)
     .timeline-node-circle-text

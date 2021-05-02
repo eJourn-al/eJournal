@@ -1,106 +1,101 @@
 <template>
-    <div>
-        <b-card
-            v-if="editing"
-            class="no-hover"
+    <b-card v-if="editing">
+        <b-button
+            class="float-right"
+            type="submit"
+            @click="editing = false"
         >
-            <b-button
-                class="float-right"
-                type="submit"
-                @click="editing = false"
-            >
-                <icon name="times"/>
-                Stop editing
-            </b-button>
-            <b-form @submit.prevent="updateGroupName">
-                <h2 class="theme-h2 field-heading">
-                    Group name
-                </h2><br/>
-                <div class="d-flex">
-                    <b-input
-                        v-model="group.name"
-                        :readonly="!$hasPermission('can_edit_course_user_group')"
-                        class="multi-form  mr-2 theme-input"
-                        required
-                        placeholder="Group name"
-                    />
-                    <b-button
-                        class="green-button multi-form"
-                        type="submit"
-                    >
-                        <icon name="save"/>
-                        Save
-                    </b-button>
-                </div>
-            </b-form>
+            <icon name="times"/>
+            Stop editing
+        </b-button>
+        <b-form @submit.prevent="updateGroupName">
             <h2 class="theme-h2 field-heading">
-                Members
-            </h2>
-            <ul
-                v-if="$hasPermission('can_edit_course_user_group')"
-                class="member-list"
-            >
-                <li
-                    v-for="member in members"
-                    :key="member.id"
+                Group name
+            </h2><br/>
+            <div class="d-flex">
+                <b-input
+                    v-model="group.name"
+                    :readonly="!$hasPermission('can_edit_course_user_group')"
+                    class="mb-2  mr-2"
+                    required
+                    placeholder="Group name"
+                />
+                <b-button
+                    class="green-button mb-2"
+                    type="submit"
                 >
-                    <b>{{ member.full_name }}</b> ({{ member.username }})
-                    <b-button
-                        class="float-right red-button"
-                        type="submit"
-                        @click.stop
-                        @click="removeUser(member)"
-                    >
-                        <icon name="user-times"/>
-                        Remove
-                    </b-button>
-                </li>
-            </ul>
-
-            <div v-if="$hasPermission('can_edit_course_user_group')">
-                <div class="d-flex">
-                    <theme-select
-                        v-model="participantsToAdd"
-                        label="full_name"
-                        trackBy="id"
-                        :options="notMembers"
-                        :multiple="true"
-                        :searchable="true"
-                        :multiSelectText="`user${participantsToAdd &&
-                            participantsToAdd.length === 1 ? '' : 's'} selected`"
-                        placeholder="Select Users To Add"
-                        class="multi-form no-right-radius"
-                    />
-                    <b-button
-                        class="green-button multi-form no-left-radius"
-                        @click.prevent.stop="addToGroup()"
-                    >
-                        <icon name="user-plus"/>
-                        Add
-                    </b-button>
-                </div>
+                    <icon name="save"/>
+                    Save
+                </b-button>
             </div>
-
-            <b-button
-                v-if="$hasPermission('can_delete_course_user_group')"
-                class="float-left red-button"
-                @click.prevent.stop="removeGroup()"
-            >
-                <icon name="trash"/>
-                Delete group
-            </b-button>
-        </b-card>
-        <b-card
-            v-else
-            class="hover"
-            @click="editing = true"
+        </b-form>
+        <h2 class="theme-h2 field-heading">
+            Members
+        </h2>
+        <ul
+            v-if="$hasPermission('can_edit_course_user_group')"
+            class="member-list"
         >
-            <span class="float-left">
-                <h2 class="theme-h2 field-heading">{{ group.name }}</h2>
-                {{ members.length }} {{ members.length === 1 ? "member" : "members" }}
-            </span>
-        </b-card>
-    </div>
+            <li
+                v-for="member in members"
+                :key="member.id"
+            >
+                <b>{{ member.full_name }}</b> ({{ member.username }})
+                <b-button
+                    class="float-right red-button"
+                    type="submit"
+                    @click.stop
+                    @click="removeUser(member)"
+                >
+                    <icon name="user-times"/>
+                    Remove
+                </b-button>
+            </li>
+        </ul>
+
+        <div v-if="$hasPermission('can_edit_course_user_group')">
+            <div class="d-flex">
+                <theme-select
+                    v-model="participantsToAdd"
+                    label="full_name"
+                    trackBy="id"
+                    :options="notMembers"
+                    :multiple="true"
+                    :searchable="true"
+                    :multiSelectText="`user${participantsToAdd &&
+                        participantsToAdd.length === 1 ? '' : 's'} selected`"
+                    placeholder="Select Users To Add"
+                    class="mb-2 no-right-radius"
+                />
+                <b-button
+                    class="green-button mb-2 no-left-radius"
+                    @click.prevent.stop="addToGroup()"
+                >
+                    <icon name="user-plus"/>
+                    Add
+                </b-button>
+            </div>
+        </div>
+
+        <b-button
+            v-if="$hasPermission('can_delete_course_user_group')"
+            class="float-left red-button"
+            @click.prevent.stop="removeGroup()"
+        >
+            <icon name="trash"/>
+            Delete group
+        </b-button>
+    </b-card>
+    <b-card
+        v-else
+        class="hover"
+        @click="editing = true"
+    >
+        <span class="float-left">
+            <h2 class="theme-h2 field-heading">{{ group.name }}</h2>
+            {{ members.length }} {{ members.length === 1 ? "member" : "members" }}
+        </span>
+    </b-card>
 </template>
 
 <style lang="sass">

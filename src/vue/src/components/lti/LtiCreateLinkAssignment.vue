@@ -1,13 +1,17 @@
+
 <template>
     <div>
         <load-wrapper
             :loading="loadingAssignments"
             :timeBeforeShow="0"
         >
-            <p>
+            <h2 class="theme-h2 mb-2">
+                Configuring an assignment
+            </h2>
+            <span class="d-block mb-2">
                 You came here from a learning management system through an unconfigured
                 assignment. Select one of the options below to perform a one-time configuration.
-            </p>
+            </span>
             <hr/>
             <div class="clearfix">
                 <p class="mb-1">
@@ -16,7 +20,7 @@
                 </p>
 
                 <b-button
-                    class="add-button float-right"
+                    class="green-button float-right"
                     @click="createAssignment"
                 >
                     <icon name="plus-square"/>
@@ -32,16 +36,13 @@
                 </p>
                 <b-button
                     v-b-modal="'lti-assignment-import-modal'"
-                    class="change-button float-right"
+                    class="orange-button float-right"
                 >
                     <icon name="file-import"/>
                     Import existing assignment
                 </b-button>
             </div>
-            <div
-                v-if="assignments && assignments.some(linkable => linkable.assignments.length > 0)"
-                class="no-hover"
-            >
+            <div v-if="assignments && assignments.some(linkable => linkable.assignments.length > 0)">
                 <hr/>
                 <p class="mb-1">
                     If you have already configured an assignment on eJournal, you can link it to the assignment in
@@ -49,7 +50,7 @@
                     working on their existing journals related to this assignment.
                 </p>
                 <b-button
-                    class="change-button float-right"
+                    class="orange-button float-right"
                     @click="showModal('linkAssignmentRef')"
                 >
                     <icon name="link"/>
@@ -57,18 +58,12 @@
                 </b-button>
             </div>
         </load-wrapper>
-        <b-modal
+
+        <link-assignment-modal
             ref="linkAssignmentRef"
-            title="Link to existing assignment"
-            size="lg"
-            hideFooter
-            noEnforceFocus
-        >
-            <link-assignment
-                :linkableAssignments="linkableAssignments"
-                @assignmentLinked="(assignment) => $emit('assignmentLinked', assignment)"
-            />
-        </b-modal>
+            :linkableAssignments="linkableAssignments"
+            @assignmentLinked="(assignment) => $emit('assignmentLinked', assignment)"
+        />
         <assignment-import-modal
             modalID="lti-assignment-import-modal"
             @assignmentImported="(assignment) => $emit('assignmentImported', assignment)"
@@ -79,13 +74,13 @@
 <script>
 import assignmentAPI from '@/api/assignment.js'
 import assignmentImportModal from '@/components/assignment/AssignmentImportModal.vue'
-import linkAssignment from '@/components/lti/LinkAssignment.vue'
+import linkAssignmentModal from '@/components/lti/LinkAssignmentModal.vue'
 import loadWrapper from '@/components/loading/LoadWrapper.vue'
 
 export default {
     name: 'LtiCreateLinkAssignment',
     components: {
-        linkAssignment,
+        linkAssignmentModal,
         assignmentImportModal,
         loadWrapper,
     },

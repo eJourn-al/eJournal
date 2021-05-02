@@ -64,7 +64,7 @@ jobs:
         uses: actions/cache@v2
         with:
           path: ${{ env.pythonLocation }}
-          key: python-${{ hashFiles('requirements/base.txt') }}-${{ hashFiles('requirements/ci.txt') }}
+          key: python-${{ hashFiles('requirements/base.txt') }}-${{ hashFiles('requirements/ci.txt') }}-manual_1.0
 
       - name: Install dependencies
         run: pip3 install -r requirements/ci.txt
@@ -98,7 +98,7 @@ jobs:
         uses: actions/cache@v2
         with:
           path: ${{ env.pythonLocation }}
-          key: python-${{ hashFiles('requirements/base.txt') }}-${{ hashFiles('requirements/ci.txt') }}
+          key: python-${{ hashFiles('requirements/base.txt') }}-${{ hashFiles('requirements/ci.txt') }}-manual_1.0
 
       - name: Install dependencies
         run: pip3 install -r requirements/ci.txt
@@ -133,7 +133,7 @@ jobs:
         uses: actions/cache@v2
         with:
           path: ${{ env.pythonLocation }}
-          key: python-${{ hashFiles('requirements/base.txt') }}-${{ hashFiles('requirements/ci.txt') }}
+          key: python-${{ hashFiles('requirements/base.txt') }}-${{ hashFiles('requirements/ci.txt') }}-manual_1.0
 
       - name: Install dependencies
         run: pip3 install -r requirements/ci.txt
@@ -145,4 +145,3 @@ jobs:
 
       - name: Run linters
         run: make check-linters
-

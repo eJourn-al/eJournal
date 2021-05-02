@@ -76,7 +76,7 @@ def queries_invariant_to_db_size(
 
 
 @contextmanager
-def assert_num_queries_less_than(value, db_alias='default', verbose=False):
+def assert_num_queries_less_than(value, db_alias='default', verbose=False, msg=''):
     """
     Asserts that the number of queries in the executed block is less than value.
 
@@ -87,7 +87,8 @@ def assert_num_queries_less_than(value, db_alias='default', verbose=False):
     with CaptureQueriesContext(connections[db_alias]) as context:
         yield
 
-    msg = '\n%s' % json.dumps(context.captured_queries, indent=4) if verbose else ''
+    msg = '\n%s' % json.dumps(context.captured_queries, indent=4) if verbose else msg
+    msg += f' ({len(context.captured_queries)} < {value})'
 
     assert len(context.captured_queries) < value, msg
 

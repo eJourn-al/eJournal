@@ -12,7 +12,7 @@
                 </h2>
                 <b-input
                     v-model="form.username"
-                    class="multi-form theme-input"
+                    class="mb-2"
                     placeholder="Username"
                     maxlength="30"
                     required
@@ -24,20 +24,9 @@
                 </h2>
                 <b-input
                     v-model="form.fullName"
-                    class="multi-form theme-input"
+                    class="mb-2"
                     placeholder="Full name"
                     maxlength="200"
-                    required
-                />
-                <h2
-                    class="theme-h2 field-heading required"
-                >
-                    Email
-                </h2>
-                <b-input
-                    v-model="form.email"
-                    class="multi-form theme-input"
-                    placeholder="Email"
                     required
                 />
             </template>
@@ -49,7 +38,7 @@
             </h2>
             <b-input
                 v-model="form.password"
-                class="multi-form theme-input"
+                class="mb-2"
                 type="password"
                 placeholder="Password"
                 required
@@ -59,20 +48,33 @@
             </h2>
             <b-input
                 v-model="form.password2"
-                class="multi-form theme-input"
+                class="mb-2"
                 type="password"
                 placeholder="Repeat password"
                 required
             />
+            <h2
+                v-if="!$route.query.launch_id"
+                class="theme-h2 field-heading required"
+            >
+                Email
+            </h2>
+            <b-input
+                v-if="!$route.query.launch_id"
+                v-model="form.email"
+                class="mb-2"
+                placeholder="Email"
+                required
+            />
             <b-button
-                class="float-left orange-button multi-form"
+                class="orange-button"
                 type="reset"
             >
                 <icon name="undo"/>
                 Reset
             </b-button>
             <b-button
-                class="float-right multi-form"
+                class="float-right"
                 :class="{ 'input-disabled': saveRequestInFlight }"
                 type="submit"
             >

@@ -212,6 +212,9 @@ const mutations = {
                 display_name: '',
                 description: '',
                 attached_files: [],
+                unlock_date: null,
+                due_date: null,
+                lock_date: null,
             }
 
             state.selectedPresetNode = newPreset

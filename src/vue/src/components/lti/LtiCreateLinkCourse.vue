@@ -4,6 +4,9 @@
             :loading="loadingCourses"
             :timeBeforeShow="0"
         >
+            <h2 class="theme-h2 mb-2">
+                Configuring a Course
+            </h2>
             <p>
                 You came here from a learning environment through an unconfigured
                 course. Do you want to create a new course on eJournal,
@@ -17,7 +20,7 @@
                     grade passback.
                 </p>
                 <b-button
-                    class="add-button float-right"
+                    class="green-button float-right"
                     @click="createCourse"
                 >
                     <icon name="plus-square"/>
@@ -31,7 +34,7 @@
                     your learning environment by clicking the button below.
                 </p>
                 <b-button
-                    class="change-button float-right"
+                    class="orange-button float-right"
                     @click="showModal('linkCourseRef')"
                 >
                     <icon name="link"/>
@@ -39,30 +42,24 @@
                 </b-button>
             </div>
         </load-wrapper>
-        <b-modal
+
+        <link-course-modal
             ref="linkCourseRef"
-            title="Link Course"
-            size="lg"
-            hideFooter
-            noEnforceFocus
-        >
-            <link-course
-                :courses="courses"
-                @courseLinked="(course) => $emit('courseLinked', course)"
-            />
-        </b-modal>
+            :courses="courses"
+            @courseLinked="(course) => $emit('courseLinked', course)"
+        />
     </div>
 </template>
 
 <script>
 import courseAPI from '@/api/course.js'
-import linkCourse from '@/components/lti/LinkCourse.vue'
+import linkCourseModal from '@/components/lti/LinkCourseModal.vue'
 import loadWrapper from '@/components/loading/LoadWrapper.vue'
 
 export default {
     name: 'LtiCreateLinkCourse',
     components: {
-        linkCourse,
+        linkCourseModal,
         loadWrapper,
     },
     data () {

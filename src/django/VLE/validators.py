@@ -56,6 +56,24 @@ def validate_youtube_url_with_video_id(url):
         raise ValidationError('Enter a valid YouTube video URL.')
 
 
+def validate_kaltura_video_embed_code(data):
+    r = r"(?:<iframe.*src=\")(?P<src>https:\/\/api\.eu\.kaltura\.com[^ ]*)(?:\")"
+    if not (isinstance(data, str) and re.match(r, data)):
+        raise ValidationError('Enter a valid Kaltura embed code.')
+
+
+def validate_video_data(field, data):
+    if field.youtube_allowed and field.kaltura_allowed:
+        try:
+            validate_kaltura_video_embed_code(data)
+        except ValidationError:
+            validate_youtube_url_with_video_id(data)
+    elif field.youtube_allowed:
+        validate_youtube_url_with_video_id(data)
+    elif field.kaltura_allowed:
+        validate_kaltura_video_embed_code(data)
+
+
 def validate_entry_content(content, field): # NOQA C901
     """Validates the given data based on its field type, any validation error will be thrown."""
     if field.required and not (content or content == ''):
@@ -77,7 +95,7 @@ def validate_entry_content(content, field): # NOQA C901
         url_validate(content)
 
     if field.type == VLE.models.Field.VIDEO:
-        validate_youtube_url_with_video_id(content)
+        validate_video_data(field, content)
 
     if field.type == VLE.models.Field.SELECTION:
         if content not in json.loads(field.options):

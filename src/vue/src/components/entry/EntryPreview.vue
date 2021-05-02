@@ -1,22 +1,19 @@
 <template>
     <section>
-        <b-row
-            no-gutters
-            class="multi-form"
-        >
-            <span class="theme-h2">
-                {{ (presetNode) ? presetNode.display_name : template.name }}
-            </span>
-
-            <slot name="edit-button"/>
-        </b-row>
-
         <template v-if="presetNode">
             <sandboxed-iframe
                 v-if="presetNode.description"
                 :content="presetNode.description"
             />
-            <files-list :files="presetNode.attached_files"/>
+            <files-list
+                v-if="presetNode.attached_files && presetNode.attached_files.length > 0"
+                class="mb-2 mr-2 align-top"
+                :files="presetNode.attached_files"
+            />
+            <deadline-date-display
+                class="mb-2 align-top"
+                :subject="presetNode"
+            />
         </template>
 
         <b-form-group
@@ -27,7 +24,7 @@
                 v-if="template.title_description"
                 :content="template.title_description"
             />
-            <b-input class="theme-input input-disabled"/>
+            <b-input class="input-disabled"/>
         </b-form-group>
 
         <entry-fields
@@ -36,16 +33,21 @@
             :edit="true"
             :readOnly="true"
         />
-        <category-display
+        <entry-categories
             :id="`template-${template.id}-preview`"
+            :create="false"
+            :edit="false"
+            :entry="{}"
             :template="template"
-            :categories="template.categories"
+            :displayOnly="true"
+            class="mr-2 align-top"
         />
     </section>
 </template>
 
 <script>
-import CategoryDisplay from '@/components/category/CategoryDisplay.vue'
+import DeadlineDateDisplay from '@/components/assets/DeadlineDateDisplay.vue'
+import EntryCategories from '@/components/category/EntryCategories.vue'
 import EntryFields from '@/components/entry/EntryFields.vue'
 import FilesList from '@/components/assets/file_handling/FilesList.vue'
 import SandboxedIframe from '@/components/assets/SandboxedIframe.vue'
@@ -53,7 +55,8 @@ import SandboxedIframe from '@/components/assets/SandboxedIframe.vue'
 export default {
     name: 'EntryPreview',
     components: {
-        CategoryDisplay,
+        DeadlineDateDisplay,
+        EntryCategories,
         EntryFields,
         FilesList,
         SandboxedIframe,

@@ -1,71 +1,64 @@
 <template>
     <b-modal
-        :id="modalID"
-        :ref="modalID"
+        id="journalImportModal"
+        ref="journalImportModal"
         size="lg"
         title="Import journal"
-        hideFooter
         noEnforceFocus
     >
-        <b-card class="no-hover">
-            <h2 class="theme-h2 multi-form">
-                Select a journal to import
-            </h2>
+        <p>
+            Please select a journal to import. Your request will be sent to your educator for approval. Once
+            approved, the entries of the selected journal will be added to your journal. The transfer of existing
+            grades remains at the discretion of your eduator.
+        </p>
 
-            <p>
-                Please select a journal to import. Your request will be sent to your educator for approval. Once
-                approved, the entries of the selected journal will be added to your journal. The transfer of existing
-                grades remains at the discretion of your eduator.
-            </p>
+        <load-wrapper
+            :loading="loading"
+        >
+            <div v-if="courses && courses.length > 0">
+                <theme-select
+                    v-model="selectedCourse"
+                    label="name"
+                    trackBy="id"
+                    :options="courses"
+                    :multiple="false"
+                    :searchable="true"
+                    placeholder="Select A Course"
+                    class="mb-2"
+                    @select="() => {
+                        selectedAssignment = null
+                    }"
+                />
 
-            <load-wrapper
-                :loading="loading"
+                <theme-select
+                    v-if="selectedCourse"
+                    v-model="selectedAssignment"
+                    label="name"
+                    trackBy="id"
+                    :options="assignments"
+                    :multiple="false"
+                    :searchable="true"
+                    placeholder="Select An Assignment"
+                    class="mb-2"
+                />
+            </div>
+
+            <not-found
+                v-else
+                subject="journals"
+                explanation="You can only import your own journals from other assignments."
+            />
+        </load-wrapper>
+        <template #modal-footer>
+            <b-button
+                class="orange-button float-right"
+                :class="{ 'input-disabled': !selectedAssignment }"
+                @click="importJournal(selectedAssignment)"
             >
-                <div v-if="courses && courses.length > 0">
-                    <theme-select
-                        v-model="selectedCourse"
-                        label="name"
-                        trackBy="id"
-                        :options="courses"
-                        :multiple="false"
-                        :searchable="true"
-                        placeholder="Select A Course"
-                        class="multi-form"
-                        @select="() => {
-                            selectedAssignment = null
-                        }"
-                    />
-
-                    <theme-select
-                        v-if="selectedCourse"
-                        v-model="selectedAssignment"
-                        label="name"
-                        trackBy="id"
-                        :options="assignments"
-                        :multiple="false"
-                        :searchable="true"
-                        placeholder="Select An Assignment"
-                        class="multi-form"
-                    />
-
-                    <b-button
-                        class="orange-button float-right"
-                        :class="{ 'input-disabled': !selectedAssignment }"
-                        @click="importJournal(selectedAssignment)"
-                    >
-                        <icon name="file-import"/>
-                        Import journal
-                    </b-button>
-                </div>
-
-                <div v-else>
-                    <b>No importable journals available</b>
-                    <hr/>
-                    You can only import journal your own journals, and you cannot import a journal from within the same
-                    assignment.
-                </div>
-            </load-wrapper>
-        </b-card>
+                <icon name="file-import"/>
+                Import journal
+            </b-button>
+        </template>
     </b-modal>
 </template>
 
@@ -81,10 +74,6 @@ export default {
         loadWrapper,
     },
     props: {
-        modalID: {
-            required: true,
-            type: String,
-        },
         targetAssignmentID: {
             required: true,
             type: Number,
@@ -151,6 +140,7 @@ export default {
                     this.selectedCourse = null
                     this.selectedAssignment = null
                     this.fetchedAssignments = this.fetchedAssignments.filter((a) => a.id !== assignment.id)
+                    this.$refs.journalImportModal.hide()
                 })
             }
         },

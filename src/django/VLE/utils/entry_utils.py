@@ -40,7 +40,7 @@ def check_fields(template, content_dict):
             raise VLEMissingRequiredField(field)
 
 
-def add_entry_to_deadline_preset_node(node, template, author, category_ids=None, title=None):
+def add_entry_to_deadline_preset_node(node, template, author, category_ids=None, title=None, is_draft=False):
     if not (node.preset and node.preset.forced_template == template):
         if (
             node.preset
@@ -60,7 +60,7 @@ def add_entry_to_deadline_preset_node(node, template, author, category_ids=None,
     if node.preset.is_locked():
         raise VLEBadRequest('The lock date for this deadline has passed.')
 
-    entry = factory.make_entry(template, author, node, category_ids, title)
+    entry = factory.make_entry(template, author, node, category_ids, title, is_draft=is_draft)
     node.entry = entry
     node.save()
     return entry

@@ -3,100 +3,86 @@
         :id="modalID"
         size="lg"
         title="Import assignment"
-        hideFooter
         noEnforceFocus
     >
-        <b-card class="no-hover">
-            <h2 class="theme-h2 multi-form">
-                Select an assignment to import
-            </h2>
-            <p>
-                This action will create a new assignment that is identical to the assignment of your choice.
-                Existing journals are not imported and will remain accessible only from the original assignment.
-            </p>
+        <p>
+            This action will create a new assignment that is identical to the assignment of your choice.
+            Existing journals are not imported and will remain accessible only from the original assignment.
+        </p>
 
-            <theme-select
-                v-model="selectedCourse"
-                label="name"
-                trackBy="id"
-                :options="courses"
-                :multiple="false"
-                :searchable="true"
-                placeholder="Select A Course"
-                class="multi-form"
-                @select="() => {
-                    selectedAssignment = null
-                }"
+        <theme-select
+            v-model="selectedCourse"
+            label="name"
+            trackBy="id"
+            :options="courses"
+            :multiple="false"
+            :searchable="true"
+            placeholder="Select A Course"
+            class="mb-2"
+            @select="() => {
+                selectedAssignment = null
+            }"
+        />
+        <theme-select
+            v-if="selectedCourse"
+            v-model="selectedAssignment"
+            label="name"
+            trackBy="id"
+            :options="assignments"
+            :multiple="false"
+            :searchable="true"
+            placeholder="Select An Assignment"
+            class="mb-2"
+        />
+
+        <not-found
+            v-if="!importableFormats"
+            subject="assignments"
+            explanation="Only assignments where you have permission to edit are available to import."
+        />
+
+        <template v-if="selectedAssignment !== null && shiftImportDates">
+            Dates will be shifted by
+            <b-form-input
+                id="months"
+                v-model="months"
+                type="number"
+                class="inline"
             />
-            <theme-select
-                v-if="selectedCourse"
-                v-model="selectedAssignment"
-                label="name"
-                trackBy="id"
-                :options="assignments"
-                :multiple="false"
-                :searchable="true"
-                placeholder="Select An Assignment"
-                class="multi-form"
+            months
+            <icon
+                v-b-tooltip:hover="'The weekdays of the deadlines will be kept intact'"
+                name="info-circle"
             />
-
-            <div v-if="!importableFormats">
-                <b>No existing assignments available</b>
-                <hr/>
-                Only assignments where you have permission to edit are available to import.
-            </div>
-
-            <div v-if="selectedAssignment !== null">
-                <hr/>
-                <b-form
-                    class="full-width"
-                    @submit="importAssignment"
-                >
-                    <b-button
-                        v-if="!shiftImportDates"
-                        class="multi-form mr-3"
-                        @click="shiftImportDates = true"
-                    >
-                        <icon name="calendar"/>
-                        Shift Deadlines
-                    </b-button>
-                    <b-button
-                        v-else
-                        class="multi-form mr-3"
-                        @click="shiftImportDates = false"
-                    >
-                        <icon name="calendar"/>
-                        Keep existing deadlines
-                    </b-button>
-
-                    <div
-                        v-if="shiftImportDates"
-                        class="shift-deadlines-input"
-                    >
-                        <icon
-                            v-b-tooltip:hover="'The weekdays of the deadlines will be kept intact'"
-                            name="info-circle"
-                        />
-                        Dates will be shifted by
-                        <b-form-input
-                            id="months"
-                            v-model="months"
-                            type="number"
-                            class="theme-input inline"
-                        />
-                        months
-                    </div>
-
-                    <b-button
-                        class="orange-button float-right"
-                        type="submit"
-                    >
-                        <icon name="file-import"/>
-                        Import
-                    </b-button>
-                </b-form>
-            </div>
-        </b-card>
+        </template>
+        <template #modal-footer>
+            <b-button
+                v-if="!shiftImportDates"
+                class="mr-auto"
+                :class="{ 'input-disabled': selectedAssignment === null }"
+                @click="shiftImportDates = true"
+            >
+                <icon name="calendar"/>
+                Shift Deadlines
+            </b-button>
+            <b-button
+                v-else
+                class="mr-auto"
+                :class="{ 'input-disabled': selectedAssignment === null }"
+                @click="shiftImportDates = false"
+            >
+                <icon name="calendar"/>
+                Keep existing deadlines
+            </b-button>
+            <b-button
+                class="orange-button"
+                :class="{ 'input-disabled': selectedAssignment === null }"
+                @click="importAssignment"
+            >
+                <icon name="file-import"/>
+                Import
+            </b-button>
+        </template>
     </b-modal>
 </template>
 
@@ -184,14 +170,3 @@ export default {
     },
 }
 </script>
-
-<style lang="sass">
-.shift-deadlines-input
-    font-weight: bold
-    color: grey
-    margin-bottom: 10px
-    display: inline-block
-    svg
-        margin-top: -5px
-        fill: grey
-</style>

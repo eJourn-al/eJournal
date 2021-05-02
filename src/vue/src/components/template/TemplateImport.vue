@@ -1,13 +1,13 @@
 <template>
     <load-wrapper :loading="loading">
-        <b-card
-            class="no-hover"
-            :class="$root.getBorderClass($route.params.cID)"
-        >
-            <div v-if="importableTemplates && importableTemplates.length > 0">
-                <h2 class="theme-h2 multi-form">
-                    Select a template to import
-                </h2>
+        <b-card>
+            <h2
+                slot="header"
+                class="theme-h2 mb-2"
+            >
+                Import template
+            </h2>
+            <template v-if="importableTemplates && importableTemplates.length > 0">
                 <p>
                     This action will create a new template in the current assignment that is identical to the template
                     of your choice. Any changes made will only affect the current assignment.
@@ -21,7 +21,7 @@
                     :multiple="false"
                     :searchable="true"
                     placeholder="Select A Course"
-                    class="multi-form"
+                    class="mb-2"
                     @select="() => {
                         selectedAssignment = null
                         selectedTemplate = null
@@ -38,7 +38,7 @@
                     :multiple="false"
                     :searchable="true"
                     placeholder="Select An Assignment"
-                    class="multi-form"
+                    class="mb-2"
                     @select="() => {
                         selectedTemplate = null
                         previewTemplate = false
@@ -55,7 +55,7 @@
                     :multiple="false"
                     :searchable="true"
                     placeholder="Select A Template"
-                    class="multi-form"
+                    class="mb-2"
                     @select="() => {
                         if (previewTemplate) {
                             previewTemplate = null
@@ -63,17 +63,27 @@
                     }"
                 />
 
-                <hr/>
-
-                <template v-if="previewTemplate">
+                <div
+                    v-if="previewTemplate"
+                    class="p-2"
+                >
                     <entry-preview
-                        class="multi-form"
+                        class="mb-2"
                         :template="selectedTemplate"
                     />
+                </div>
+            </template>
 
-                    <hr/>
-                </template>
+            <not-found
+                v-else
+                subject="templates"
+                explanation="Only templates in assignments where you have permission to edit are available to import."
+            />
 
+            <template
+                v-if="importableTemplates && importableTemplates.length > 0"
+                #footer
+            >
                 <b-button
                     v-if="!previewTemplate"
                     class="green-button"
@@ -91,7 +101,6 @@
                     <icon name="eye-slash"/>
                     Hide preview
                 </b-button>
-
                 <b-button
                     class="green-button float-right"
                     :class="{ 'input-disabled': !selectedTemplate }"
@@ -100,13 +109,7 @@
                     <icon name="plus"/>
                     Add template
                 </b-button>
-            </div>
-
-            <div v-else>
-                <b>No existing templates available</b>
-                <hr/>
-                Only templates in assignments where you have permission to edit are available to import.
-            </div>
+            </template>
         </b-card>
     </load-wrapper>
 </template>
