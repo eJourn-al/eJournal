@@ -10,10 +10,13 @@ class Instance(CreateUpdateModel):
         default=True
     )
     name = models.TextField(
-        default='eJournal'
+        default='Demo'
     )
     default_lms_profile_picture = models.TextField(
         default=settings.DEFAULT_LMS_PROFILE_PICTURE
+    )
+    kaltura_url = models.URLField(
+        blank=True,
     )
 
     def to_string(self, user=None):

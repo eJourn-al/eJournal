@@ -1,14 +1,12 @@
 <template>
     <wide-content>
         <bread-crumb/>
-        <b-card
-            class="no-hover no-left-border"
-            noBody
-        >
+        <b-card noBody>
             <b-tabs
                 card
                 pills
                 lazy
+                @activate-tab="tabActivated"
             >
                 <b-tab active>
                     <template slot="title">
@@ -18,7 +16,7 @@
                         />
                         Edit Instance
                     </template>
-                    <edit-instance/>
+                    <edit-instance @dirty-changed="dirty = $event"/>
                 </b-tab>
                 <b-tab>
                     <template slot="title">
@@ -75,8 +73,29 @@ export default {
     },
     data () {
         return {
-            errorLogs: '',
-            requestInFlight: false,
+            dirty: false,
+        }
+    },
+    methods: {
+        safeToLeave () {
+            if (this.dirty && !window.confirm('Unsaved changes will be lost if you leave. Do you wish to continue?')) {
+                return false
+            }
+            return true
+        },
+        tabActivated (newTabIndex, prevTabIndex, bvEvent) {
+            if (!this.safeToLeave()) {
+                bvEvent.preventDefault()
+            } else {
+                this.dirty = false
+            }
+        },
+    },
+    beforeRouteLeave (to, from, next) {
+        if (!this.safeToLeave()) {
+            next(false)
+        } else {
+            next()
         }
     },
 }

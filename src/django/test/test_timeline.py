@@ -137,7 +137,7 @@ class TimelineTests(TestCase):
         factory.ProgressPresetNode(format=journal.assignment.format)
 
         # NOTE: Does not grow linearly, see Z#1435
-        data = timeline.get_nodes(journal, author=student)
+        data = timeline.get_nodes(journal, user=student)
 
         assert data[-1]['type'] == Node.PROGRESS, 'Progress goal should be the last timeline node'
         assert data[-2]['type'] == Node.ADDNODE, 'Add node should be positioned before the final progress goal'
@@ -147,7 +147,7 @@ class TimelineTests(TestCase):
         journal = Journal.objects.get(pk=journal.pk)
         student = journal.author
 
-        data = timeline.get_nodes(journal, author=student)
+        data = timeline.get_nodes(journal, user=student)
         assert data[-1]['type'] == Node.ADDNODE, \
             'Add node should be positioned as the final node if no progress goals are set'
 
@@ -155,6 +155,6 @@ class TimelineTests(TestCase):
         assignment.lock_date = timezone.now()
         assignment.save()
         journal = Journal.objects.get(pk=journal.pk)
-        data = timeline.get_nodes(journal, author=student)
+        data = timeline.get_nodes(journal, user=student)
         for n in data:
             assert n['type'] != Node.ADDNODE, 'When the assignment is locked no add node should be serialized'

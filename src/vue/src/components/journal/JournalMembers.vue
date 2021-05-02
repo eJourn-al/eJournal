@@ -1,5 +1,8 @@
 <template>
-    <div class="members">
+    <div
+        class="journal-members"
+        @click.prevent.stop
+    >
         <div class="members-header">
             <div @click="lockJournal">
                 <icon
@@ -42,7 +45,7 @@
                     class="trash-icon"
                 />
             </div>
-            <b class="max-one-line">
+            <span class="max-one-line">
                 <b-badge
                     v-if="author.needs_lti_link"
                     v-b-tooltip:hover="'This user has not yet visited the assignment in the LMS (Canvas) yet'"
@@ -57,10 +60,10 @@
                     LTI
                 </b-badge>
                 {{ author.user.full_name }}
-            </b>
+            </span>
             <span
                 v-if="author.user.username"
-                class="max-one-line"
+                class="max-one-line small"
             >
                 {{ author.user.username }}
             </span>
@@ -74,7 +77,7 @@
         <div
             v-if="$hasPermission('can_manage_journals') && (journal.author_limit === 0 ||
                 journal.author_count < journal.author_limit) && participantsWithoutJournal.length > 0"
-            class="d-flex mt-3 full-width"
+            class="d-flex p-2 full-width"
         >
             <theme-select
                 v-model="participantsToAdd"
@@ -158,7 +161,7 @@ export default {
                         this.authors = this.authors.filter((author) => author.user.id !== user.id)
                         this.journal.author_count = this.authors.length
                         this.journal.usernames = this.authors.map((author) => author.user.username).join(', ')
-                        if (this.journal.author_count === 0 && this.$router.app.$route.name !== 'Assignment') {
+                        if (this.journal.author_count === 0 && this.$route.name !== 'Assignment') {
                             this.$router.push(this.$root.assignmentRoute(this.assignment))
                         }
                     })
@@ -209,12 +212,15 @@ export default {
 </script>
 
 <style lang="sass">
-.members
+.journal-members
+    cursor: auto
     .members-header
-        border-bottom: 2px solid $theme-dark-grey
+        padding: 0px 10px 5px 10px
+        border-bottom: 1px solid $theme-medium-grey
     .member
-        padding: 5px
-        border-bottom: 1px solid $theme-dark-grey
+        padding: 5px 10px
+        &:not(:last-child)
+            border-bottom: 1px solid $theme-medium-grey
         .trash-icon
             margin-top: 3px
         .max-one-line
@@ -226,9 +232,6 @@ export default {
     .lock-members-icon
         float: right
         margin-top: 3px
-        margin-right: 9px
-        &.unlocked-icon
-            margin-right: 4px
         svg
             fill: red
 </style>

@@ -12,6 +12,7 @@ import initSentry from '@/helpers/sentry.js'
 import Icon from 'vue-awesome/components/Icon.vue'
 import Toasted from 'vue-toasted'
 import VueIntro from 'vue-introjs'
+import VueTimeago from 'vue-timeago'
 import flatPickr from 'vue-flatpickr-component'
 
 import connection from '@/api/connection.js'
@@ -19,6 +20,7 @@ import connection from '@/api/connection.js'
 import { sync } from 'vuex-router-sync'
 
 import App from './App.vue'
+import NotFound from './components/assets/NotFound.vue'
 import ResetWrapper from '@/components/assets/ResetWrapper.vue'
 import ThemeSelect from './components/assets/ThemeSelect.vue'
 import router from './router/index.js'
@@ -35,10 +37,15 @@ Vue.use(Toasted, {
 })
 Vue.use(flatPickr)
 Vue.use(VueIntro)
+Vue.use(VueTimeago, {
+    name: 'Timeago',
+    locale: 'en',
+})
 
 Vue.component('icon', Icon)
-Vue.component('theme-select', ThemeSelect)
+Vue.component('not-found', NotFound)
 Vue.component('reset-wrapper', ResetWrapper)
+Vue.component('theme-select', ThemeSelect)
 
 initSentry(Vue)
 initBootstrap(Vue)
@@ -84,7 +91,6 @@ new Vue({
     store,
     components: { App },
     data: {
-        borderColors: ['border-pink', 'border-purple', 'border-yellow', 'border-blue'],
         previousPage: null,
         windowWidth: 0,
         maxFileSizeBytes: 10485760,
@@ -140,9 +146,6 @@ new Vue({
         this.windowWidth = window.innerWidth
     },
     methods: {
-        getBorderClass (id) {
-            return this.borderColors[id % this.borderColors.length]
-        },
         beautifyDate (date, displayDate = true, displayTime = true) {
             if (!date) {
                 return ''
@@ -156,7 +159,7 @@ new Vue({
                 s += `${day}-${month}-${year}`
             }
             if (displayDate && displayTime) {
-                s += ' at '
+                s += ' '
             }
             if (displayTime) {
                 s += time

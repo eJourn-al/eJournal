@@ -10,6 +10,7 @@ from VLE.tasks.notifications import generate_new_entry_notifications
 from .base import CreateUpdateModel
 from .category import EntryCategoryLink
 from .node import Node
+from .notification import Notification
 from .user import User
 
 
@@ -133,6 +134,10 @@ class Entry(CreateUpdateModel):
         blank=True,
     )
 
+    is_draft = models.BooleanField(
+        default=False,
+    )
+
     @staticmethod
     def validate_categories(category_ids, assignment, template=None):
         """
@@ -192,6 +197,11 @@ class Entry(CreateUpdateModel):
 
     def save(self, *args, **kwargs):
         is_new = not self.pk
+        if not is_new:
+            was_draft = Entry.objects.get(pk=self.pk).is_draft
+        else:
+            # We define newly created entries to come from a draft
+            was_draft = True
         author_id = self.__dict__.get('author_id', None)
         node_id = self.__dict__.get('node_id', None)
         author = self.author if self.author else User.objects.get(pk=author_id) if author_id else None
@@ -212,9 +222,35 @@ class Entry(CreateUpdateModel):
 
         super().save(*args, **kwargs)
 
-        if is_new and not isinstance(self, VLE.models.TeacherEntry):
+        if self.should_send_new_entry_notification(is_new, was_draft):
             generate_new_entry_notifications.apply_async(
                 args=[self.pk, self.node.pk], countdown=settings.WEBSERVER_TIMEOUT)
+        elif self.should_delete_new_entry_notifications(was_draft):
+            Notification.objects.filter(entry=self, type=Notification.NEW_ENTRY).delete()
+
+    def should_send_new_entry_notification(self, is_new, was_draft):
+        # Teacher entries should never get a notification
+        if isinstance(self, VLE.models.TeacherEntry):
+            return False
+        # Entries should send notification when it is new, and not a draft
+        if is_new and not self.is_draft:
+            return True
+        # Entries should send notification when it is switched from draft to no draft
+        if was_draft and not self.is_draft:
+            return True
+
+        return False
+
+    def should_delete_new_entry_notifications(self, was_draft):
+        # Teacher entries cannot get any notifications, so also dont delete them
+        if isinstance(self, VLE.models.TeacherEntry):
+            return False
+
+        # If an entry goes from non draft state, to a draft state, delete the notifications
+        if not was_draft and self.is_draft:
+            return True
+
+        return False
 
     def to_string(self, user=None):
         return "Entry"

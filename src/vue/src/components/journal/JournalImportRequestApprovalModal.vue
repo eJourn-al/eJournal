@@ -4,83 +4,75 @@
         :ref="modalID"
         size="lg"
         :title="(autoShow) ? 'This journal has outstanding import requests' : 'Manage Import Requests'"
-        hideFooter
         noEnforceFocus
         @hide="updateJIRModalDisplayPreferences"
     >
-        <b-card class="no-hover">
-            <h2 class="theme-h2 multi-form">
-                Select an import request
-            </h2>
+        <p>
+            The author of this journal has requested to import content from another journal.
+            An approved import request will add all entries to the timeline and copy any related comments. Any
+            imported entries will be flagged as "<i>imported</i>".
+        </p>
 
-            <p>
-                An approved import request will add all entries to the timeline and copy any related comments. Any
-                imported entries will be flagged as "<i>imported</i>".
-            </p>
+        <load-wrapper
+            :loading="loading"
+        >
+            <div v-if="assignments && assignments.length > 0">
+                <theme-select
+                    v-model="selectedAssignment"
+                    label="name"
+                    trackBy="id"
+                    :options="assignments"
+                    :multiple="false"
+                    :searchable="true"
+                    placeholder="Select An Assignment"
+                    class="mb-2"
+                />
 
-            <load-wrapper
-                :loading="loading"
-            >
-                <div v-if="assignments && assignments.length > 0">
-                    <theme-select
-                        v-model="selectedAssignment"
-                        label="name"
-                        trackBy="id"
-                        :options="assignments"
-                        :multiple="false"
-                        :searchable="true"
-                        placeholder="Select An Assignment"
-                        class="multi-form"
-                    />
+                <journal-card
+                    v-if="selectedJir"
+                    v-b-tooltip.hover="'Navigate to original journal'"
+                    :journal="selectedJir.source.journal"
+                    :assignment="selectedJir.source.assignment"
+                    :openInNewTab="true"
+                />
+            </div>
 
-                    <journal-card
-                        v-if="selectedJir"
-                        v-b-tooltip.hover="'Navigate to journal in full'"
-                        :journal="selectedJir.source.journal"
-                        :assignment="selectedJir.source.assignment"
-                        @click.native="openSelectedJirInNewWindow()"
-                    />
-
-                    <hr/>
-
-                    <dropdown-button
-                        v-if="$hasPermission('can_grade')"
-                        :up="true"
-                        :selectedOption="$store.getters['preferences/journalImportRequestButtonSetting']"
-                        :options="{
-                            AIG: {
-                                text: 'Approve including grades',
-                                icon: 'check',
-                                class: 'green-button',
-                            },
-                            AEG: {
-                                text: 'Approve excluding grades',
-                                icon: 'check',
-                                class: 'green-button',
-                            },
-                            AWGZ: {
-                                text: 'Approve with grades zeroed',
-                                icon: 'check',
-                                class: 'orange-button',
-                            },
-                            DEC: {
-                                text: 'Decline',
-                                icon: 'times',
-                                class: 'red-button',
-                            },
-                        }"
-                        class="float-right"
-                        :class="{ 'input-disabled': !selectedAssignment || jirPatchInFlight }"
-                        @change-option="$store.commit('preferences/SET_JOURNAL_IMPORT_REQUEST_BUTTON_SETTING', $event)"
-                        @click="handleJIR(selectedJir)"
-                    />
-                </div>
-
-                <div v-else>
-                    <b>No outstanding journal import requests.</b>
-                </div>
-            </load-wrapper>
-        </b-card>
+            <div v-else>
+                <b>No outstanding journal import requests.</b>
+            </div>
+        </load-wrapper>
+        <dropdown-button
+            v-if="!loading && $hasPermission('can_grade') && assignments && assignments.length > 0"
+            slot="modal-footer"
+            :up="true"
+            :selectedOption="$store.getters['preferences/journalImportRequestButtonSetting']"
+            :options="{
+                AIG: {
+                    text: 'Approve including grades',
+                    icon: 'check',
+                    class: 'green-button',
+                },
+                AEG: {
+                    text: 'Approve excluding grades',
+                    icon: 'check',
+                    class: 'green-button',
+                },
+                AWGZ: {
+                    text: 'Approve with grades zeroed',
+                    icon: 'check',
+                    class: 'orange-button',
+                },
+                DEC: {
+                    text: 'Decline',
+                    icon: 'times',
+                    class: 'red-button',
+                },
+            }"
+            class="float-right"
+            :class="{ 'input-disabled': !selectedAssignment || jirPatchInFlight }"
+            @change-option="$store.commit('preferences/SET_JOURNAL_IMPORT_REQUEST_BUTTON_SETTING', $event)"
+            @click="handleJIR(selectedJir)"
+        />
     </b-modal>
 </template>
 
@@ -149,12 +141,6 @@ export default {
         })
     },
     methods: {
-        jirToJournalUrl (jir) {
-            return `${window.location.protocol}//${window.location.host}/Home/`
-                + `Course/${jir.source.assignment.course.id}/`
-                + `Assignment/${jir.source.assignment.id}/`
-                + `Journal/${jir.source.journal.id}`
-        },
         handleJIR (jir) {
             this.jirPatchInFlight = true
             jirAPI.update(
@@ -178,9 +164,6 @@ export default {
             }).finally(() => {
                 this.jirPatchInFlight = false
             })
-        },
-        openSelectedJirInNewWindow () {
-            window.open(this.jirToJournalUrl(this.selectedJir), '_blank')
         },
         updateJIRModalDisplayPreferences (event) {
             /*

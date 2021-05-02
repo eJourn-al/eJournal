@@ -5,7 +5,6 @@
     padding: 30px 10px 10px 10px !important
     @include xl
         height: calc(100vh - #{$header-height})
-        padding: 30px 30px 10px 30px !important
         overflow-x: hidden
         overflow-y: auto
     scrollbar-width: none
@@ -16,17 +15,27 @@
     padding: 30px 10px 10px 10px !important
     @include xl
         height: calc(100vh - #{$header-height})
-        overflow-y: auto
         overflow-x: hidden
+        overflow-y: auto
     @include md-max
         margin-bottom: 30px
+
+.combined-content-timeline-page
+    @include lg
+        height: calc(100vh - #{$header-height})
+        overflow-x: hidden
+        overflow-y: auto
+    @include xl
+        height: auto
+        overflow-x: hidden
+        overflow-y: auto
 
 .right-content-timeline-page
     @include lg
         height: calc(100vh - #{$header-height})
+        padding: 30px 30px 10px 30px !important
         overflow-y: auto
         overflow-x: hidden
-        padding: 30px 30px 10px 30px !important
     scrollbar-width: none
     &::-webkit-scrollbar
         display: none

@@ -3,7 +3,7 @@
         <div
             v-for="field in orderedFields"
             :key="`node ${nodeID}-field-${field.id}`"
-            class="multi-form"
+            class="mb-2"
         >
             <h2
                 v-if="field.title"
@@ -21,7 +21,6 @@
                 <b-input
                     v-if="field.type == 't'"
                     v-model="content[field.id]"
-                    class="theme-input"
                     rows="1"
                 />
                 <reset-wrapper
@@ -56,12 +55,10 @@
                     @fileUploadFailed="$emit('finished-uploading-file')"
                     @fileUploadSuccess="content[field.id] = $event; $emit('finished-uploading-file')"
                 />
-                <validated-input
+                <entry-video-field-input
                     v-else-if="field.type == 'v'"
                     v-model="content[field.id]"
-                    :validator="youtubeVideoUrlValidator"
-                    placeholder="Enter a YouTube video URL"
-                    invalidFeedback="Enter a valid YouTube video URL"
+                    :field="field"
                 />
                 <!-- Newly added fields in template editor have id <0. -->
                 <text-editor
@@ -94,7 +91,7 @@
         <div
             v-for="field in displayFields"
             :key="`node-${nodeID}-field-${field.id}`"
-            class="multi-form"
+            class="mb-2"
         >
             <h2
                 v-if="field.title"
@@ -119,26 +116,19 @@
                 v-else-if="field.type == 'f'"
                 :file="content[field.id]"
             />
-            <template v-else-if="field.type == 'v'">
-                <b-embed
-                    v-if="youtubeEmbedFromURL(content[field.id], field.id)"
-                    :src="youtubeEmbedFromURL(content[field.id], field.id)"
-                    type="iframe"
-                    aspect="16by9"
-                    allowfullscreen
-                />
-                <span
-                    v-else
-                >
-                    {{ content[field.id] }}
-                </span>
-            </template>
+            <entry-video-field-display
+                v-else-if="field.type == 'v'"
+                :data="content[field.id]"
+                :field="field"
+            />
             <sandboxed-iframe
                 v-else-if="field.type == 'rt'"
                 :content="content[field.id]"
             />
             <a
                 v-else-if="field.type == 'u'"
+                class="text-blue"
+                target="_blank"
                 :href="content[field.id]"
             >
                 {{ content[field.id] }}
@@ -149,18 +139,19 @@
             v-if="displayFields && displayFields.length === 0"
             class="text-grey"
         >
-            This entry has no content.
+            This entry has no content
         </i>
     </div>
 </template>
 
 <script>
+import EntryVideoFieldDisplay from '@/components/entry/EntryVideoFieldDisplay.vue'
+import EntryVideoFieldInput from '@/components/entry/EntryVideoFieldInput.vue'
 import ValidatedInput from '@/components/assets/ValidatedInput.vue'
 import fileDisplay from '@/components/assets/file_handling/FileDisplay.vue'
 import fileUploadInput from '@/components/assets/file_handling/FileUploadInput.vue'
 import sandboxedIframe from '@/components/assets/SandboxedIframe.vue'
 
-import genericUtils from '@/utils/generic_utils.js'
 import validation from '@/utils/validation.js' /* eslint-disable-line */
 
 export default {
@@ -169,6 +160,8 @@ export default {
         fileUploadInput,
         fileDisplay,
         sandboxedIframe,
+        EntryVideoFieldDisplay,
+        EntryVideoFieldInput,
         ValidatedInput,
     },
     props: {
@@ -192,7 +185,6 @@ export default {
     },
     data () {
         return {
-            youtubeVideoUrlValidator: validation.validateYouTubeUrlWithVideoID,
             urlValidator: validation.validateURL,
         }
     },
@@ -205,23 +197,6 @@ export default {
         },
     },
     methods: {
-        youtubeEmbedFromURL (url, fieldID) {
-            const match = genericUtils.parseYouTubeVideoID(url)
-
-            if (match) {
-                return `https://www.youtube.com/embed/${match}?rel=0&amp;showinfo=0`
-            } else {
-                this.$store.commit('sentry/CAPTURE_SCOPED_MESSAGE', {
-                    level: 'warning',
-                    msg: 'A YouTube video field contained an invalid URL.',
-                    extra: {
-                        url,
-                        fieldID,
-                    },
-                })
-                return null
-            }
-        },
         parseSelectionOptions (fieldOptions) {
             if (!fieldOptions) {
                 return [{ value: null, text: 'Please select an option...' }]

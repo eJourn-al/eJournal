@@ -2,7 +2,7 @@
     <load-wrapper :loading="loadingCourses">
         <b-input
             v-model="searchValue"
-            class="theme-input full-width mb-2"
+            class="full-width mb-2"
             placeholder="Search by name"
         />
         <b-table-simple

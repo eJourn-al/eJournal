@@ -14,10 +14,7 @@
 
         <selected-timeline-component-switch v-else-if="activeComponent === activeComponentOptions.timeline"/>
 
-        <b-card
-            v-else
-            :class="$root.getBorderClass($route.params.cID)"
-        >
+        <b-card v-else>
             Select any item to get started.
         </b-card>
     </div>

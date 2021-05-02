@@ -7,26 +7,22 @@
         hideFooter
         noEnforceFocus
     >
-        <b-card
-            class="no-hover no-left-border"
-        >
-            <b-form-group label="Category">
-                <category-tag :category="category"/>
-            </b-form-group>
+        <b-form-group>
+            <category-tag :category="category"/>
+        </b-form-group>
 
-            <b-form-group label="Description">
-                <sandboxed-iframe
-                    v-if="category.description"
-                    :content="category.description"
-                />
-                <span
-                    v-else
-                    class="no-optional-content-value"
-                >
-                    No description provided.
-                </span>
-            </b-form-group>
-        </b-card>
+        <b-form-group label="Description">
+            <sandboxed-iframe
+                v-if="category.description"
+                :content="category.description"
+            />
+            <span
+                v-else
+                class="no-optional-content-value"
+            >
+                No description provided.
+            </span>
+        </b-form-group>
     </b-modal>
 </template>
 

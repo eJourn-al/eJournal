@@ -6,12 +6,10 @@ const PERMISSIONLESS_CONTENT = new Set([
     'ErrorPage',
     'SetPassword',
     'EmailVerification',
-    'Guest',
 ])
 
 const UNAVAILABLE_WHEN_LOGGED_IN = new Set([
     'Login',
-    'Guest',
     'Register',
 ])
 

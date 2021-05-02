@@ -1,64 +1,35 @@
-@import url('https://fonts.googleapis.com/css?family=Roboto:400,700')
+@import url('https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,400;0,700;1,400;1,700&display=swap')
 
 $font-family-sans-serif: 'Roboto', sans-serif
 
 .theme-h1
-    font-weight: bold
-    font-size: 1.8em
+    font-weight: 700
     display: inline-block
     max-width: 100%
-    word-wrap: break-word
-    span
-        padding: 0.2em 0.6em
-        border-radius: 2em !important
-        background-color: $theme-dark-blue
-        color: white
-        box-decoration-break: clone
-        line-height: 1.7em
-        vertical-align: middle
-        span
-            padding: 0px
+    font-size: 2em
 
 .theme-h2
-    font-weight: bold
-    font-size: 1.5em
+    font-weight: 700
+    font-size: 1.4em
     margin-bottom: 0px
 
 .theme-h3
-    font-weight: bold
-    font-size: 1.3em
+    font-weight: 700
+    margin-bottom: 0px
     display: inline-block
-    padding: 0.2em 0.6em
-    background-color: $theme-dark-blue
-    color: white
-    border-radius: 1.7em !important
-    box-decoration-break: clone
+    font-size: 1em
 
 .theme-h4
-    font-weight: bold
-    font-size: 1.2em
+    font-size: 1em
     display: block
     margin-bottom: 0px
     max-width: 100%
     word-wrap: break-word
     margin-bottom: 0.4em
     a
-        color: $theme-dark-blue
+        color: $text-color
     a:hover, svg:hover
         color: grey
-    span
-        background-color: white
-        padding: 0.2em 0.6em
-        border-radius: 1.4em !important
-        color: $theme-dark-blue
-        box-decoration-break: clone
-        line-height: 1.6em
-        span
-            padding: 0px
-
-.theme-h5
-    font-size: 1.2em
-    margin-bottom: 0px
 
 .field-heading
     margin-bottom: 5px
@@ -76,7 +47,7 @@ $font-family-sans-serif: 'Roboto', sans-serif
         font-weight: bold
         padding: 0px
 
-    &.required
+    &.required, &[required]
         legend::after
             content: " *"
             color: $theme-red

@@ -7,26 +7,23 @@
 
         <b-card
             v-if="presetNode.type"
-            :class="$root.getBorderClass($route.params.cID)"
-            class="no-hover overflow-x-hidden"
+            class="overflow-x-hidden"
         >
-            <b-row
+            <template
                 v-if="edit"
-                no-gutters
-                class="multi-form"
+                #header
             >
-                <span class="theme-h2">
-                    {{ presetNode.display_name }}
-                </span>
-
                 <b-button
-                    class="red-button ml-auto"
+                    class="red-button float-right"
                     @click="cancelPresetNodeEdit({ presetNode }); setModeToRead()"
                 >
                     <icon name="ban"/>
                     Cancel
                 </b-button>
-            </b-row>
+                <h2 class="theme-h2">
+                    {{ presetNode.display_name }}
+                </h2>
+            </template>
 
             <b-form-group
                 label="Display name"
@@ -36,18 +33,16 @@
             >
                 <b-input
                     v-model="presetNode.display_name"
-                    class="theme-input"
                     placeholder="Timeline display name"
                     trim
                     required
                 />
 
-                <template
+                <small
                     v-if="presetNode.template && presetNode.template.allow_custom_title"
-                    #description
                 >
                     The template setting <i>"allow custom title"</i> allows students to override this value.
-                </template>
+                </small>
             </b-form-group>
 
             <preset-node-edit-select-and-preview-template
@@ -72,7 +67,6 @@
                 <b-input
                     v-model="presetNode.target"
                     type="number"
-                    class="theme-input"
                     placeholder="Number of points"
                     min="1"
                     required
@@ -112,26 +106,15 @@
                 />
             </b-form-group>
 
-            <hr/>
-
-            <b-row no-gutters>
+            <template #footer>
                 <b-button
-                    v-if="edit"
-                    class="red-button"
-                    @click.stop="deletePresetNode()"
-                >
-                    <icon name="trash"/>
-                    Delete
-                </b-button>
-
-                <b-button
-                    class="green-button ml-auto"
+                    class="green-button float-right"
                     @click.stop="finalizePresetNodeChanges()"
                 >
                     <icon :name="(edit) ? 'save' : 'plus'"/>
                     {{ (edit) ? 'Save' : 'Add Deadline' }}
                 </b-button>
-            </b-row>
+            </template>
         </b-card>
     </div>
 </template>
@@ -189,11 +172,9 @@ export default {
     methods: {
         ...mapActions({
             create: 'presetNode/create',
-            delete: 'presetNode/delete',
             update: 'presetNode/update',
             cancelPresetNodeEdit: 'assignmentEditor/cancelPresetNodeEdit',
             presetNodeCreated: 'assignmentEditor/presetNodeCreated',
-            presetNodeDeleted: 'assignmentEditor/presetNodeDeleted',
             presetNodeUpdated: 'assignmentEditor/presetNodeUpdated',
         }),
         ...mapMutations({
@@ -269,13 +250,6 @@ export default {
                 `
             } else {
                 this.targetInputState = null
-            }
-        },
-        deletePresetNode () {
-            if (window.confirm(
-                `Are you sure you want to remove '${this.presetNode.display_name}' from the assignment?`)) {
-                this.delete({ id: this.presetNode.id, aID: this.$route.params.aID })
-                    .then(() => { this.presetNodeDeleted({ presetNode: this.presetNode }) })
             }
         },
         finalizePresetNodeChanges () {

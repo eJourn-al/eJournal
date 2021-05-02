@@ -1,139 +1,136 @@
 <template>
-    <div
-        class="comment-card"
-    >
+    <div class="comment-card">
         <img
             :src="comment.author.profile_picture"
-            class="theme-img profile-picture-sm no-hover"
+            class="theme-img profile-picture-sm"
         />
-        <b-card
-            :class="$root.getBorderClass($route.params.cID)"
-            class="no-hover"
-        >
-            <!-- Show comment -->
-            <div v-if="!editing && !createCard">
-                <sandboxed-iframe
-                    v-if="comment.text"
-                    :content="comment.text"
-                />
-                <files-list :files="comment.files"/>
-                <hr/>
+        <b-card v-if="!editing && !createCard">
+            <div
+                slot="header"
+                class="small"
+            >
                 <b>{{ comment.author.full_name }}</b>
                 <icon
                     v-if="comment.can_edit"
                     name="trash"
-                    class="float-right trash-icon"
+                    class="float-right trash-icon ml-2"
                     @click.native="$emit('deleteComment', comment.id)"
                 />
                 <icon
                     v-if="comment.can_edit"
                     name="edit"
-                    scale="1.07"
                     class="float-right ml-2 edit-icon"
                     @click.native="editing = true"
                 />
-                <span
-                    v-if="comment.published && !comment.last_edited"
-                    class="timestamp"
-                >
-                    {{ $root.beautifyDate(comment.creation_date) }}<br/>
-                </span>
-                <span
-                    v-else-if="comment.published"
-                    v-b-tooltip:hover="`Last edit by: ${comment.last_edited_by}`"
-                    class="timestamp"
-                >
-                    Last edited: {{ $root.beautifyDate(comment.last_edited) }}
-                </span>
-                <span
+                commented
+                <timeago
+                    v-b-tooltip.hover="$root.beautifyDate(comment.creation_date)"
+                    :datetime="comment.creation_date"
+                />
+                <icon
+                    v-if="comment.last_edited"
+                    v-b-tooltip.hover="`Last edited ${$root.beautifyDate(comment.last_edited)} by
+                        ${comment.last_edited_by}`"
+                    class="ml-1 fill-grey"
+                    scale="0.8"
+                    name="history"
+                />
+                <icon
+                    v-if="!comment.published"
+                    v-b-tooltip.hover="'Will be published along with grade'"
+                    name="eye-slash"
+                    class="fill-blue ml-1 shift-up-2"
+                />
+            </div>
+            <sandboxed-iframe
+                v-if="comment.text"
+                :content="comment.text"
+            />
+            <files-list :files="comment.files"/>
+        </b-card>
+        <!-- Edit comment -->
+        <b-card v-else>
+            <text-editor
+                :id="textEditorKey"
+                :key="textEditorKey"
+                :ref="textEditorKey"
+                v-model="comment.text"
+                :basic="true"
+                :footer="false"
+                class="mb-2"
+                @startedUploading="uploadingFiles ++"
+                @finishedUploading="uploadingFiles --"
+            />
+            <files-list
+                :attachNew="true"
+                :files="comment.files"
+                @uploading-file="uploadingFiles ++"
+                @fileUploadSuccess="comment.files.push($event) && uploadingFiles --"
+                @fileUploadFailed="uploadingFiles --"
+                @fileRemoved="(i) => comment.files.splice(i, 1)"
+            />
+            <template
+                v-if="createCard"
+                #footer
+            >
+                <dropdown-button
+                    v-if="$hasPermission('can_grade')"
+                    :up="true"
+                    :selectedOption="$store.getters['preferences/saved'].comment_button_setting"
+                    :options="{
+                        p: {
+                            text: 'Send',
+                            icon: 'paper-plane',
+                            class: '',
+                        },
+                        s: {
+                            text: 'Send & publish after grade',
+                            icon: 'paper-plane',
+                            class: '',
+                        },
+                        g: {
+                            text: 'Send & publish grade',
+                            icon: 'paper-plane',
+                            class: '',
+                        },
+                    }"
+                    :class="disableSend"
+                    class="ml-2 float-right"
+                    @change-option="(e) => $emit('change-option', e)"
+                    @click="createComment"
+                />
+                <b-button
                     v-else
-                    class="timestamp"
+                    :class="disableSend"
+                    class="ml-2 float-right"
+                    @click="createComment('p')"
                 >
-                    <icon
-                        name="hourglass-half"
-                        scale="0.8"
-                    />
-                    Will be published along with grade<br/>
-                </span>
-            </div>
-            <!-- Edit comment -->
-            <div v-else>
-                <text-editor
-                    :id="textEditorKey"
-                    :key="textEditorKey"
-                    :ref="textEditorKey"
-                    v-model="comment.text"
-                    :basic="true"
-                    :footer="false"
-                    class="multi-form"
-                    @startedUploading="uploadingFiles ++"
-                    @finishedUploading="uploadingFiles --"
-                />
-                <files-list
-                    :attachNew="true"
-                    :files="comment.files"
-                    @uploading-file="uploadingFiles ++"
-                    @fileUploadSuccess="comment.files.push($event) && uploadingFiles --"
-                    @fileUploadFailed="uploadingFiles --"
-                    @fileRemoved="(i) => comment.files.splice(i, 1)"
-                />
-                <template v-if="createCard">
-                    <dropdown-button
-                        v-if="$hasPermission('can_grade')"
-                        :up="true"
-                        :selectedOption="$store.getters['preferences/saved'].comment_button_setting"
-                        :options="{
-                            p: {
-                                text: 'Send',
-                                icon: 'paper-plane',
-                                class: '',
-                            },
-                            s: {
-                                text: 'Send & publish after grade',
-                                icon: 'paper-plane',
-                                class: '',
-                            },
-                            g: {
-                                text: 'Send & publish grade',
-                                icon: 'paper-plane',
-                                class: '',
-                            },
-                        }"
-                        :class="disableSend"
-                        class="ml-2 float-right"
-                        @change-option="(e) => $emit('change-option', e)"
-                        @click="createComment"
-                    />
-                    <b-button
-                        v-else
-                        :class="disableSend"
-                        class="ml-2 float-right"
-                        @click="createComment('p')"
-                    >
-                        <icon name="paper-plane"/>
-                        Send
-                    </b-button>
-                </template>
-                <template v-else>
-                    <b-button
-                        v-if="comment.can_edit"
-                        class="red-button"
-                        @click="resetComment()"
-                    >
-                        <icon name="ban"/>
-                        Cancel
-                    </b-button>
-                    <b-button
-                        v-if="comment.can_edit"
-                        :class="disableSend"
-                        class="ml-2 green-button float-right"
-                        @click="editComment()"
-                    >
-                        <icon name="save"/>
-                        Save
-                    </b-button>
-                </template>
-            </div>
+                    <icon name="paper-plane"/>
+                    Send
+                </b-button>
+            </template>
+            <template
+                v-else
+                #footer
+            >
+                <b-button
+                    v-if="comment.can_edit"
+                    class="red-button"
+                    @click="resetComment()"
+                >
+                    <icon name="ban"/>
+                    Cancel
+                </b-button>
+                <b-button
+                    v-if="comment.can_edit"
+                    :class="disableSend"
+                    class="ml-2 green-button float-right"
+                    @click="editComment()"
+                >
+                    <icon name="save"/>
+                    Save
+                </b-button>
+            </template>
         </b-card>
     </div>
 </template>
@@ -235,7 +232,7 @@ export default {
 .comment-card
     display: flex
     .profile-picture-sm
-        margin: 0px 12px
+        margin: 0px 12px 0px 0px
         display: inline
     .new-comment.card-body
         display: flex
@@ -243,8 +240,7 @@ export default {
     .card
         flex: 1 1 auto
         overflow: hidden
-        .card-body
-            padding-bottom: 5px
+        .card-footer
             .trash-icon, .edit-icon
                 margin-top: 4px
                 margin-left: 4px

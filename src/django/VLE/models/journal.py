@@ -85,6 +85,7 @@ class JournalQuerySet(models.QuerySet):
             VLE.models.Entry.objects.filter(
                 node__journal=OuterRef('pk'),
                 grade__published=True,
+                is_draft=False,
             ).values(
                 'node__journal',  # NOTE: Could be replaced by Sum(distinct=True) in Django 3.0+
             ).annotate(
@@ -103,6 +104,7 @@ class JournalQuerySet(models.QuerySet):
             VLE.models.Entry.objects.filter(
                 grade__published=False,
                 node__journal=OuterRef('pk'),
+                is_draft=False,
             ).values(
                 'node__journal',
             ).annotate(
@@ -121,6 +123,7 @@ class JournalQuerySet(models.QuerySet):
             VLE.models.Entry.objects.filter(
                 grade__isnull=True,
                 node__journal=OuterRef('pk'),
+                is_draft=False,
             ).values(
                 'node__journal',
             ).annotate(
@@ -292,13 +295,25 @@ class Journal(CreateUpdateModel):
         self.import_request_targets.all().delete()
         self.import_request_sources.filter(state=VLE.models.JournalImportRequest.PENDING).delete()
 
-    def get_sorted_nodes(self):
+    def is_in_journal(self, user):
+        '''Return wether the user is in a journal'''
+        return user and self.authors.filter(user=user).exists()
+
+    def can_see_drafted_entries(self, user):
+        '''Check if the user can see drafted entries, aka is part of the journal'''
+        return user and self.is_in_journal(user)
+
+    def get_sorted_nodes(self, user=None):
         """
         Get all the nodes of a journal in sorted order.
-
         Sorts first by preset due date, defaulting to entry creation date when dealing with an unlimited entry.
+        If "user" is set, it checks if the user can see drafted entries, if so, also return drafted entries
         """
-        return self.node_set.select_related(
+        nodes = self.node_set
+        if not user or not self.can_see_drafted_entries(user):
+            nodes = nodes.exclude(entry__is_draft=True)
+
+        return nodes.select_related(
             'entry',
             'preset'
         ).annotate(sort_due_date=Case(
@@ -362,14 +377,14 @@ class Journal(CreateUpdateModel):
     def can_add(self, user):
         """
         Checks wether the provided user can add an entry to the journal
-
         Used to help determine if the add node appears in the timeline.
         """
         return user \
-            and self.authors.filter(user=user).exists() \
+            and self.is_in_journal(user) \
             and user.has_permission('can_have_journal', self.assignment) \
             and not len(self.needs_lti_link) > 0 \
-            and self.assignment.format.template_set.filter(archived=False, preset_only=False).exists()
+            and self.assignment.format.template_set.filter(archived=False, preset_only=False).exists() \
+            and not self.assignment.is_locked()
 
     def generate_missing_nodes(self, create=True):
         nodes = [VLE.models.Node(

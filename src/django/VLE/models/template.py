@@ -231,6 +231,13 @@ class Template(CreateUpdateModel):
                 if location < 0 or location >= len(field_set_data):
                     raise ValidationError('Template field location is out of bounds.')
 
+                if field_data['type'] == Field.VIDEO:
+                    if not field_data['options']:
+                        raise ValidationError('Please select which video hosts are allowed.')
+
+                    if not set(field_data['options'].split(',')).issubset(Field.VIDEO_OPTIONS):
+                        raise ValidationError('Video host not supported.')
+
                 locations.add(location)
 
             if len(locations) == 0:

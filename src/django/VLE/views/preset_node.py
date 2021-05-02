@@ -64,6 +64,8 @@ class PresetNodeView(viewsets.ViewSet):
             target, = utils.required_typed_params(request.data, (int, 'target'))
         elif type == Node.ENTRYDEADLINE:
             template, = utils.required_params(request.data, 'template')
+            if 'id' not in template:
+                return response.bad_request('No template provided.')
             template = template['id']
             unlock_date, lock_date = utils.optional_typed_params(
                 request.data,

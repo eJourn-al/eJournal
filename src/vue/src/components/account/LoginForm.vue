@@ -1,98 +1,102 @@
 <template>
     <div>
-        <b-card class="no-hover card-last-elem-button">
-            <b-form @submit.prevent="handleLogin()">
-                <h2 class="theme-h2 field-heading">
-                    Username
-                </h2>
-                <b-input
-                    v-model="username"
-                    class="multi-form theme-input"
-                    autofocus
-                    required
-                    placeholder="Username"
-                    autocomplete="username"
-                />
-                <h2 class="theme-h2 field-heading">
-                    Password
-                </h2>
-                <b-input
-                    v-model="password"
-                    class="multi-form theme-input"
-                    type="password"
-                    required
-                    placeholder="Password"
-                    autocomplete="current-password"
-                />
-                <b-button
-                    class="float-right multi-form"
-                    type="submit"
-                >
-                    <icon name="sign-in-alt"/>
-                    Log in
-                </b-button>
-                <b-button
-                    v-b-modal.forgotPasswordModal
-                    class="multi-form orange-button mr-2"
-                >
-                    <icon name="question"/>
-                    Forgot password
-                </b-button>
-                <b-button
-                    v-if="allowRegistration"
-                    :to="{ name: 'Register' }"
-                    class="multi-form"
-                >
-                    <icon name="user-plus"/>
-                    Register
-                </b-button>
-            </b-form>
-        </b-card>
+        <b-form @submit.prevent="handleLogin()">
+            <h2 class="theme-h2 field-heading">
+                Username
+            </h2>
+            <b-input
+                v-model="username"
+                class="mb-2"
+                autofocus
+                required
+                placeholder="Username"
+                autocomplete="username"
+            />
+            <h2 class="theme-h2 field-heading">
+                Password
+            </h2>
+            <b-input
+                v-model="password"
+                type="password"
+                required
+                placeholder="Password"
+                autocomplete="current-password"
+            />
+            <b-button
+                class="float-right mt-2"
+                type="submit"
+            >
+                <icon name="sign-in-alt"/>
+                Log in
+            </b-button>
+            <b-button
+                v-b-modal.forgotPasswordModal
+                class="mt-2 orange-button mr-2"
+            >
+                <icon name="question"/>
+                Forgot password
+            </b-button>
+            <b-button
+                v-if="allowRegistration"
+                :to="{ name: 'Register' }"
+                class="mt-2"
+            >
+                <icon name="user-plus"/>
+                Register
+            </b-button>
+        </b-form>
 
         <b-modal
             id="forgotPasswordModal"
             ref="forgotPasswordModalRef"
             size="lg"
             title="Password recovery"
-            hideFooter
             noEnforceFocus
-            @shown="$refs.usernameEmailInput.focus(); usernameEmail=username"
+            @shown="$refs.usernameEmailInput.focus(); usernameEmail = username"
         >
-            <b-card class="no-hover">
-                <b-form @submit.prevent="handleForgotPassword">
-                    <h2 class="theme-h2 field-heading">
-                        Username or email
-                    </h2>
-                    <b-input
+            <b-form
+                id="forgotPasswordModalForm"
+                @submit.prevent="handleForgotPassword"
+            >
+                <b-form-group
+                    label="Username or email"
+                    required
+                >
+                    <b-form-input
                         ref="usernameEmailInput"
                         v-model="usernameEmail"
-                        required
                         placeholder="Please enter your username or email"
-                        class="theme-input multi-form"
+                        class="mb-2"
+                        required
                     />
-                    <b-button
-                        class="float-right orange-button"
-                        type="submit"
-                    >
-                        <icon name="key"/>
-                        Recover password
-                    </b-button>
-                    <b-button
-                        class="red-button"
-                        @click="$refs.forgotPasswordModalRef.hide()"
-                    >
-                        <icon name="times"/>
-                        Cancel
-                    </b-button>
-                </b-form>
-            </b-card>
+                </b-form-group>
+            </b-form>
+
+            <template #modal-footer="{ cancel }">
+                <b-button
+                    class="red-button mr-auto"
+                    @click="cancel()"
+                >
+                    <icon name="times"/>
+                    Cancel
+                </b-button>
+                <b-button
+                    class="orange-button"
+                    type="submit"
+                    form="forgotPasswordModalForm"
+                >
+                    <icon name="key"/>
+                    Recover password
+                </b-button>
+            </template>
         </b-modal>
     </div>
 </template>
 
 <script>
 import authAPI from '@/api/auth.js'
-import instanceAPI from '@/api/instance.js'
+
+import { mapGetters } from 'vuex'
 
 export default {
     name: 'LoginForm',
@@ -101,14 +105,12 @@ export default {
             usernameEmail: null,
             username: null,
             password: null,
-            allowRegistration: null,
         }
     },
-    created () {
-        instanceAPI.get()
-            .then((instance) => {
-                this.allowRegistration = instance.allow_standalone_registration
-            })
+    computed: {
+        ...mapGetters({
+            allowRegistration: 'instance/allowRegistration',
+        }),
     },
     mounted () {
         if (this.$root.previousPage && this.$root.previousPage.name === 'SetPassword') {

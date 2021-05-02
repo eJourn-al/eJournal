@@ -1,63 +1,78 @@
 <template>
-    <div
-        class="journal-details"
-        :class="$root.getBorderClass($route.params.cID)"
+    <b-card
+        class="journal-details-card"
+        noBody
     >
-        <img
-            :src="journal.image"
-            class="journal-image no-hover"
-        />
-        <span
-            v-if="canManageJournal"
-            class="edit-journal"
-            @click="showEditJournalModal"
-        >
-            <icon name="edit"/>
-            Edit
-        </span>
-        <span
-            v-if="!assignment.is_group_assignment"
-            class="journal-name mt-2"
-        >
-            {{ journal.name }}
-        </span>
-        <progress-bar
-            :currentPoints="journal.grade"
-            :totalPoints="assignment.points_possible"
-            :comparePoints="assignment && assignment.stats ? assignment.stats.average_points : -1"
-            :bonusPoints="journal.bonus_points"
-        />
+        <template #header>
+            <h3 class="theme-h3">
+                Details
+            </h3>
+            <b-button
+                v-if="canManageJournal"
+                variant="link"
+                class="float-right grey-button mt-0 mb-0"
+                @click="showModal('editJournalModal')"
+            >
+                <icon name="edit"/>
+                Edit
+            </b-button>
+        </template>
+        <b-card-body class="d-flex flex-wrap">
+            <img
+                :src="journal.image"
+                class="journal-image mr-2"
+            />
+            <div
+                v-if="!assignment.is_group_assignment && $hasPermission('can_view_all_journals')"
+                class="flex-grow-1"
+            >
+                <span class="max-one-line">
+                    {{ journal.full_names }}
+                </span>
+                <span class="max-one-line small">
+                    {{ journal.usernames }}
+                </span>
+            </div>
+            <progress-bar
+                :currentPoints="journal.grade"
+                :totalPoints="assignment.points_possible"
+                :comparePoints="assignment && assignment.stats ? assignment.stats.average_points : -1"
+                :bonusPoints="journal.bonus_points"
+                class="flex-grow-1"
+                :class="{
+                    'flex-basis-100': !assignment.is_group_assignment && $hasPermission('can_view_all_journals'),
+                    'mt-2': !assignment.is_group_assignment && $hasPermission('can_view_all_journals'),
+                }"
+            />
+        </b-card-body>
         <journal-members
             v-if="assignment.is_group_assignment"
             :journal="journal"
             :assignment="assignment"
-            class="mt-2"
         />
-        <b-modal
+        <edit-journal-modal
             v-if="canManageJournal"
             ref="editJournalModal"
-            size="lg"
-            title="Edit journal"
-            hideFooter
-        >
-            <edit-journal
-                :journal="journal"
-                :assignment="assignment"
-                @journal-updated="hideEditJournalModal"
-                @journal-deleted="$router.push($root.assignmentRoute(assignment))"
-            />
-        </b-modal>
-    </div>
+            :journal="journal"
+            :assignment="assignment"
+            @journal-updated="hideModal('editJournalModal')"
+            @journal-deleted="$router.push($root.assignmentRoute(assignment))"
+        />
+        <slot
+            slot="footer"
+            name="footer"
+        />
+    </b-card>
 </template>
 
 <script>
-import editJournal from '@/components/journal/EditJournal.vue'
+import editJournalModal from '@/components/journal/EditJournalModal.vue'
 import journalMembers from '@/components/journal/JournalMembers.vue'
 import progressBar from '@/components/assets/ProgressBar.vue'
 
 export default {
     components: {
-        editJournal,
+        editJournalModal,
         progressBar,
         journalMembers,
     },
@@ -76,46 +91,22 @@ export default {
         },
     },
     methods: {
-        showEditJournalModal () {
-            this.$refs.editJournalModal.show()
+        showModal (ref) {
+            this.$refs[ref].show()
         },
-        hideEditJournalModal () {
-            this.$refs.editJournalModal.hide()
+        hideModal (ref) {
+            this.$refs[ref].hide()
         },
     },
 }
 </script>
 
 <style lang="sass">
-@import '~sass/partials/shadows.sass'
-
-.journal-details
+.journal-details-card
     .journal-image
-        @extend .theme-shadow
-        border: 2px solid $theme-dark-grey
-        position: absolute
-        width: 70px
-        height: 70px
-        left: 50%
-        top: -25px
-        margin-left: -35px
+        border: 1px solid $border-color
+        width: 40px
+        height: 40px
         border-radius: 50% !important
         background-color: white
-    .journal-name
-        text-align: center
-        display: block
-        font-weight: bold
-    .edit-journal
-        position: absolute
-        right: 10px
-        top: 5px
-        color: grey
-        svg
-            margin-top: -2px
-            fill: grey !important
-        &:hover:not(.no-hover)
-            cursor: pointer
-            color: darken(grey, 20)
-            svg
-                fill: darken(grey, 20) !important
 </style>

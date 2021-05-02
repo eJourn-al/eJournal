@@ -74,6 +74,11 @@ class Preferences(CreateUpdateModel):
         default=WEEKLY,
     )
 
+    hide_past_deadlines_of_assignments = models.ManyToManyField(
+        'Assignment',
+        related_name='+',
+    )
+
     # Only get notifications of people that are in your group
     group_only_notifications = models.BooleanField(
         default=True,

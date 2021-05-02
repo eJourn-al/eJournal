@@ -1,6 +1,5 @@
 import os
 
-from django.conf import settings
 from django.contrib.auth.models import AbstractUser, UserManager
 from django.contrib.postgres.fields import CIEmailField, CITextField
 from django.core.exceptions import ValidationError
@@ -222,8 +221,8 @@ class User(AbstractUser):
             raise ValidationError('A legitimate user requires an email adress.')
 
         if self._state.adding:
-            if self.is_test_student and settings.LTI_TEST_STUDENT_FULL_NAME not in self.full_name:
-                raise ValidationError('Test user\'s full name deviates on creation.')
+            if self.is_test_student and self.email:
+                raise ValidationError('A test user is not expected to have an email adress.')
         else:
             pre_save = User.objects.get(pk=self.pk)
             if pre_save.is_test_student and not self.is_test_student:

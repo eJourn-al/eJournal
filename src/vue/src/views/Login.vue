@@ -1,9 +1,17 @@
 <template>
-    <content-single-column>
-        <h1 class="theme-h1">
-            <span>Login</span>
-        </h1>
-        <login-form @handleAction="handleLoginSucces"/>
+    <content-single-column class="not-logged-in-page">
+        <img
+            class="not-logged-in-page-logo"
+            src="ejournal-logo.svg"
+        />
+        <b-card>
+            <template #header>
+                <h2 class="theme-h2">
+                    Log in
+                </h2>
+            </template>
+            <login-form @handleAction="handleLoginSucces"/>
+        </b-card>
         <custom-footer/>
     </content-single-column>
 </template>

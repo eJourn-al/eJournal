@@ -93,16 +93,21 @@ def optional_typed_params(data, *type_key_tuples):
         return [None] * len(type_key_tuples)
 
     result = []
-    for type, key in type_key_tuples:
+    for tuple_ in type_key_tuples:
+        if len(tuple_) == 2:
+            type_, key = tuple_
+            default = None
+        elif len(tuple_) == 3:
+            type_, key, default = tuple_
         try:
             if isinstance(data[key], list):
-                result.append([cast_value(elem, type, optional=True) for elem in data[key]])
+                result.append([cast_value(elem, type_, optional=True) for elem in data[key]])
             else:
-                result.append(cast_value(data[key], type, optional=True))
+                result.append(cast_value(data[key], type_, optional=True))
         except (ValueError, TypeError) as err:
             raise VLE.utils.error_handling.VLEParamWrongType(err)
         except KeyError:
-            result.append(None)
+            result.append(default)
 
     return result
 

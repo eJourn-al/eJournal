@@ -9,9 +9,9 @@ class InstanceAPITest(TestCase):
     def test_get(self):
         # Check if PK does not matter
         resp = api.get(self, 'instance', params={'pk': 0})
-        assert resp['instance']['name'] == 'eJournal'
+        assert resp['instance']['name'] == 'Demo'
         resp = api.get(self, 'instance', params={'pk': 0})
-        assert resp['instance']['name'] == 'eJournal'
+        assert resp['instance']['name'] == 'Demo'
 
     def test_update(self):
         api.update(self, 'instance', params={'pk': 0}, user=factory.Teacher(), status=403)

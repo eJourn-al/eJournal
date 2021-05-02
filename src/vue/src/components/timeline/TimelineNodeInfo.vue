@@ -12,6 +12,7 @@
             v-if="nodeTitle"
             class="node-title max-one-line"
             :class="{ dirty: dirty }"
+            @click="setCurrentNode(node); $root.$emit('bv::toggle::collapse', 'timeline-container')"
         >
             <icon
                 v-if="new Date(nodeDate) > new Date()"
@@ -26,6 +27,7 @@
             :id="`timeline-node-${node.id}-categories`"
             :categories="nodeCategories"
             :compact="true"
+            class="small"
         />
         <span
             v-if="nodeDate"
@@ -40,7 +42,7 @@
 <script>
 import CategoryDisplay from '@/components/category/CategoryDisplay.vue'
 
-import { mapGetters } from 'vuex'
+import { mapGetters, mapMutations } from 'vuex'
 
 export default {
     components: {
@@ -73,6 +75,8 @@ export default {
                 return 'End of assignment'
             case 's':
                 return 'Assignment details'
+            case 'a':
+                return `New ${this.$route.name === 'Journal' ? 'entry' : 'deadline'}`
             default:
                 return null
             }
@@ -113,11 +117,11 @@ export default {
             const lockDate = this.$root.beautifyDate(this.node.lock_date)
 
             if (unlockDate && lockDate) {
-                return `Available from ${unlockDate} until ${lockDate}`
+                return `Available: from ${unlockDate} until ${lockDate}`
             } else if (unlockDate) {
-                return `Available from ${unlockDate}`
+                return `Available: from ${unlockDate}`
             } else if (lockDate) {
-                return `Available until ${lockDate}`
+                return `Available: until ${lockDate}`
             }
 
             return ''
@@ -134,6 +138,11 @@ export default {
             return false
         },
     },
+    methods: {
+        ...mapMutations({
+            setCurrentNode: 'timeline/SET_CURRENT_NODE',
+        }),
+    },
 }
 </script>
 
@@ -143,6 +152,9 @@ export default {
     user-select: none
     &:not(.selected)
         color: grey
+        .node-title:hover
+            cursor: pointer
+            color: $text-color
     .node-title
         font-weight: bold
     .node-date

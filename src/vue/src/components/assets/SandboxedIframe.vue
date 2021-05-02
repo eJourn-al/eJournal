@@ -53,7 +53,7 @@ export default {
             const css = `
 body {
     font-family: 'Roboto', sans-serif;
-    color: ${themeColors.darkblue};
+    color: ${themeColors.textcolor};
     word-wrap: break-word;
 }
 
@@ -71,6 +71,7 @@ p a {
 
 img {
     max-width: 100%;
+    border-radius: 5px;
     height: auto
 }`
             const style = document.createElement('style')

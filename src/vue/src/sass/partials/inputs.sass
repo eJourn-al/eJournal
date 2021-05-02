@@ -1,8 +1,5 @@
-.theme-input, .mce-edit-area
-    @extend .small-inner-shadow
-    background-color: white !important
+input, .b-form-input, .mce-edit-area, .input-group-text
     padding: 0.375rem 0.75rem !important
-    border: 1px solid $theme-dark-grey !important
     border-radius: 5px !important
     height: auto
     &.inline
@@ -19,32 +16,24 @@
     [aria-invalid='true']
         border-color: $theme-green
         box-shadow: 0 0 2px 2px $theme-green
-    &:read-only:not(.mce-edit-area):not(.input-append-icon):not(select)
-        background-color: #fff1ca !important
-        pointer-events: none
-        -moz-user-select: -moz-none
-        -khtml-user-select: none
-        -webkit-user-select: none
-        -o-user-select: none
-        user-select: none
-
     // TODO possible rewrite of the arias to .form-control with .is-valid and .is-invalid
 
+.b-form-input, .mce-edit-area, .input-group-text, .form-control
+    border: 1px solid $border-color !important
+
+
 .fileinput
-    @extend .theme-shadow
     background-color: white !important
     border-radius: 5px !important
 
 // When using an alt date display, a read-only input field directly following the flatpickr-input should be clicked.
 .flatpickr-input, .flatpickr-input + input
-    @extend .small-inner-shadow
     border: 1px solid $theme-medium-grey
     background-color: white !important
     border-radius: 5px
     cursor: pointer
 
 .flatpickr-calendar
-    @extend .theme-shadow
     box-sizing: content-box
     border: 1px solid $theme-medium-grey
     border-radius: 5px
@@ -67,18 +56,18 @@
 
 .custom-checkbox
     .custom-control-label:before
-        background-color: $theme-dark-grey
+        background-color: $border-color
         border-radius: 5px
     .custom-control-input:checked~.custom-control-label::before
         background-color: $theme-blue
         border-radius: 5px
 
 .input-group-text
-    background-color: $theme-orange
-    border: none
+    background-color: white
+    border: 1px solid $border-color
 
 .input-group
     .input-group-prepend:first-child
         .input-group-text
             border-radius: 4px 0px 0px 0px
-            border-right: 1px solid $theme-dark-grey
+            border-right: 1px solid $border-color

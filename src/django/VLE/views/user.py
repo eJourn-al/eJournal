@@ -155,7 +155,7 @@ class UserView(viewsets.ViewSet):
 
         lti_id, user_image, full_name, email, is_teacher = get_lti_params(
             request, 'user_id', 'custom_user_image', 'custom_user_full_name', 'custom_user_email')
-        is_test_student = bool(lti_id) and not bool(email) and full_name == settings.LTI_TEST_STUDENT_FULL_NAME
+        is_test_student = bool(lti_id) and not bool(email)
 
         if lti_id is None:
             # Check if instance allows standalone registration if user did not register through some LTI instance
@@ -246,8 +246,7 @@ class UserView(viewsets.ViewSet):
         if lti_id is not None:
             if User.objects.filter(lti_id=lti_id).exists():
                 return response.bad_request('User with this lti id already exists.')
-            elif (bool(lti_id) and not bool(user_email) and user_full_name == settings.LTI_TEST_STUDENT_FULL_NAME or
-                  user.is_test_student):
+            elif bool(lti_id) and not bool(user_email) or user.is_test_student:
                 return response.forbidden('You are not allowed to link a test account to an existing account.')
             user.lti_id = lti_id
 
@@ -315,7 +314,7 @@ class UserView(viewsets.ViewSet):
 
         request.user.set_password(new_password)
         request.user.save()
-        return response.success(description='Successfully changed the password.')
+        return response.success(description='Password succesfully updated.')
 
     @action(methods=['get'], detail=True)
     def GDPR(self, request, pk):

@@ -1,5 +1,5 @@
 <template>
-    <div class="theme-radio-button theme-shadow no-hover">
+    <div class="theme-radio-button text-nowrap">
         <b-button
             v-for="option in options"
             :key="`radio-button-${option.value}`"
@@ -29,14 +29,12 @@ export default {
 .theme-radio-button
     border-radius: 5px
     .btn.radio-button-option, .btn-secondary.radio-button-option
-        box-shadow: none
         position: relative
         border-radius: 0px
-        color: darkgrey
+        color: $text-color
         svg
-            fill: darkgrey
+            fill: $text-color
         &:hover, &.active, &:hover:not(.no-hover)
-            box-shadow: none
             svg
                 fill: white
         &:first-child

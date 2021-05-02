@@ -41,22 +41,24 @@
                 />
             </template>
         </b-progress>
-        <span v-if="bonusPoints != 0">
+        <small v-if="bonusPoints != 0">
             <icon
                 name="star"
+                scale="0.8"
                 class="fill-orange shift-up-2 mr-1"
             />
             <b>{{ bonusPoints }}</b> bonus point{{ Math.abs(bonusPoints) !== 1 ? "s" : "" }}
             <br/>
-        </span>
-        <span v-if="comparePoints >= 0">
+        </small>
+        <small v-if="comparePoints >= 0">
             <icon
                 :class="compareClass"
                 name="signal"
+                scale="0.8"
                 class="shift-up-2"
             />
             {{ message }}
-        </span>
+        </small>
     </div>
 </template>
 
@@ -136,10 +138,10 @@ export default {
     color: $theme-blue
     font-weight: bold
 
-.progress-bar-box
-    height: 15px
+.progress.progress-bar-box
+    height: 10px
     background-color: $theme-light-grey
-    border: 1px solid $theme-dark-grey
+    border: 1px solid $border-color
     border-radius: 5px !important
 
 .first-bar

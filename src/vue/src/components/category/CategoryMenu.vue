@@ -1,48 +1,40 @@
 <template>
-    <div>
-        <h3
-            class="theme-h3 cursor-pointer unselectable"
+    <b-card noBody>
+        <div
+            slot="header"
+            class="cursor-pointer"
             @click="expanded = !expanded"
         >
-            Categories
-            <icon :name="(expanded) ? 'angle-down' : 'angle-up'"/>
-        </h3>
+            <h3 class="theme-h3 unselectable">
+                Categories
+            </h3>
+            <icon
+                :name="(expanded) ? 'angle-down' : 'angle-up'"
+                class="float-right fill-grey mt-1 mr-1"
+            />
+        </div>
 
-        <div
-            v-if="expanded"
-            class="d-block"
-        >
-            <b-card
-                :class="$root.getBorderClass($route.params.cID)"
-                class="no-hover"
-            >
-                <b-row
-                    v-if="assignmentHasCategories"
-                    no-gutters
-                    class="menu-list-header"
-                >
-                    <b>Name</b>
-                </b-row>
+        <template v-if="expanded">
+            <category-menu-item
+                v-for="category in categories"
+                :key="`category-${category.id}-menu-item`"
+                :category="category"
+                @delete-category="deleteCategory($event)"
+                @select-category="selectCategory({ category: $event })"
+            />
 
-                <category-menu-item
-                    v-for="category in categories"
-                    :key="`category-${category.id}-menu-item`"
-                    :category="category"
-                    @delete-category="deleteCategory($event)"
-                    @select-category="selectCategory({ category: $event })"
-                />
-
+            <b-card-body class="p-2">
                 <b-button
-                    class="green-button full-width"
-                    :class="{ 'mt-2': assignmentHasCategories }"
+                    variant="link"
+                    class="green-button"
                     @click="createCategory({ colorIndex: categories.length })"
                 >
                     <icon name="plus"/>
                     Create New Category
                 </b-button>
-            </b-card>
-        </div>
-    </div>
+            </b-card-body>
+        </template>
+    </b-card>
 </template>
 
 <script>

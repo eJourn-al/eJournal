@@ -57,12 +57,15 @@ def roles_to_list(params):
     roles = list()
     if 'roles' in params:
         for role in params['roles'].split(','):
-            roles.append(role.split('/')[-1].lower())
+            roles.append(role.lower())
     return roles
 
 
 def roles_to_lti_roles(lti_params):
-    return [settings.LTI_ROLES[r] if r in settings.LTI_ROLES else r for r in roles_to_list(lti_params)]
+    return [
+        settings.LTI_ROLES[r] if r in settings.LTI_ROLES else r
+        for r in roles_to_list(lti_params)
+    ]
 
 
 def get_user_lti(request):

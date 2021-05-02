@@ -2,7 +2,7 @@
     <journal-end-card :assignment="assignment">
         <template #edit-button>
             <b-button
-                class="ml-auto orange-button"
+                class="float-right grey-button"
                 @click.stop="setModeToEdit()"
             >
                 <icon name="edit"/>

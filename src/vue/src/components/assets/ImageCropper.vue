@@ -1,26 +1,24 @@
 <template>
     <div>
-        <div class="profile-picture-lg profile-picture-cropper">
-            <croppa
-                v-model="croppa"
-                :width="250"
-                :height="250"
-                :showRemoveButton="false"
-                :showLoading="true"
-                :loadingSize="50"
-                :fileSizeLimit="this.$root.maxFileSizeBytes"
-                :initialImage="pictureUrl"
-                disableClickToChoose
-                canvasColor="transparent"
-                accept="image/*"
-                initialSize="natural"
-                initialPosition="center"
-                @file-type-mismatch="onFileTypeMismatch"
-                @file-size-exceed="onFileSizeExceed"
-            />
-        </div>
+        <croppa
+            v-model="croppa"
+            :width="250"
+            :height="250"
+            :showRemoveButton="false"
+            :showLoading="true"
+            :loadingSize="50"
+            :fileSizeLimit="this.$root.maxFileSizeBytes"
+            :initialImage="pictureUrl"
+            disableClickToChoose
+            canvasColor="transparent"
+            class="profile-picture-lg profile-picture-cropper"
+            accept="image/*"
+            initialPosition="center"
+            @file-type-mismatch="onFileTypeMismatch"
+            @file-size-exceed="onFileSizeExceed"
+        />
         <b-button
-            class="multi-form"
+            class="mt-2"
             :class="{
                 'mr-2': !hideSaveButton,
                 'float-right': hideSaveButton,
@@ -31,7 +29,7 @@
             Upload
         </b-button>
         <b-button
-            class="orange-button multi-form"
+            class="orange-button mt-2"
             @click="refreshPicture()"
         >
             <icon name="undo"/>
@@ -39,7 +37,7 @@
         </b-button>
         <b-button
             v-if="!hideSaveButton"
-            class="green-button float-right"
+            class="green-button float-right mt-2"
             @click="savePicture()"
         >
             <icon name="save"/>
@@ -93,11 +91,9 @@ export default {
 
 <style lang="sass">
 .croppa-container
-    background-color: $theme-dark-blue
     height: 100%
     width: 100%
 
 .croppa-container:hover
     opacity: 1
-    background-color: $theme-dark-blue
 </style>

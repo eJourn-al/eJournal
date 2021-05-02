@@ -28,6 +28,10 @@ class Field(CreateUpdateModel):
 
     TYPES_WITHOUT_FILE_CONTEXT = {TEXT, VIDEO, URL, DATE, DATETIME, SELECTION, NO_SUBMISSION}
 
+    KALTURA = 'k'
+    YOUTUBE = 'y'
+    VIDEO_OPTIONS = {KALTURA, YOUTUBE}
+
     TYPES = (
         (TEXT, 'text'),
         (RICH_TEXT, 'rich text'),
@@ -57,6 +61,14 @@ class Field(CreateUpdateModel):
         on_delete=models.CASCADE
     )
     required = models.BooleanField()
+
+    @property
+    def kaltura_allowed(self):
+        return self.type == Field.VIDEO and Field.KALTURA in self.options.split(',')
+
+    @property
+    def youtube_allowed(self):
+        return self.type == Field.VIDEO and Field.YOUTUBE in self.options.split(',')
 
     def to_string(self, user=None):
         return "{} ({})".format(self.title, self.id)

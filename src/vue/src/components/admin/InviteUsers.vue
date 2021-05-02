@@ -32,26 +32,23 @@
                     :key="index"
                 >
                     <b-td class="align-middle">
-                        <input
+                        <b-input
                             v-model="user.full_name"
                             type="text"
-                            class="theme-input"
                             placeholder="Name"
                         />
                     </b-td>
                     <b-td class="align-middle">
-                        <input
+                        <b-input
                             v-model="user.username"
                             type="text"
-                            class="theme-input"
                             placeholder="Username"
                         />
                     </b-td>
                     <b-td class="align-middle">
-                        <input
+                        <b-input
                             v-model="user.email"
                             type="text"
-                            class="theme-input"
                             placeholder="Email"
                         />
                     </b-td>
@@ -70,8 +67,9 @@
                 </b-tr>
             </b-tbody>
         </b-table-simple>
-        <span
-            class="text-grey ml-3 cursor-pointer unselectable darken-on-hover"
+        <b-button
+            variant="link"
+            class="green-button d-inline-block"
             @click="addRow"
         >
             <icon
@@ -79,9 +77,10 @@
                 class="shift-up-3"
             />
             Add Row
-        </span>
-        <span
-            class="text-grey ml-3 cursor-pointer unselectable darken-on-hover"
+        </b-button>
+        <b-button
+            variant="link"
+            class="orange-button d-inline-block"
             @click="$refs['invite-user-file-upload-modal'].show()"
         >
             <icon
@@ -89,10 +88,10 @@
                 class="shift-up-3"
             />
             Import Spreadsheet
-        </span>
+        </b-button>
         <b-card
             v-if="errorLogs"
-            class="mt-2 mb-2 no-hover"
+            class="mt-2 mb-2"
         >
             <template v-if="errorLogs.duplicate_usernames">
                 <b class="text-red">The following usernames occur multiple times:</b>
@@ -155,76 +154,71 @@
             size="lg"
             hideFooter
             noEnforceFocus
-            title="Import users"
+            title="Import users from spreadsheet"
         >
-            <b-card class="no-hover">
-                <h2 class="theme-h2 mb-2">
-                    Import users to invite from a spreadsheet
-                </h2>
-                Upload a spreadsheet to import new users to eJournal. Please adhere to the following format, with each
-                new user on a new row. <b>Note:</b> no headers shall be present in the file.
+            Upload a spreadsheet to import new users to eJournal. Please adhere to the following format, with each
+            new user on a new row. <b>Note:</b> no headers shall be present in the file.
 
-                <table
-                    class="mt-2 mb-2 full-width border"
-                >
-                    <thead>
-                        <tr class="text-align-left border">
-                            <th class="p-1 border">
-                                Name
-                            </th>
-                            <th class="p-1 border">
-                                Username
-                            </th>
-                            <th class="p-1 border">
-                                Email
-                            </th>
-                            <th class="p-1 border">
-                                Is teacher
-                            </th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <td class="p-1 border">
-                                John Doe
-                            </td>
-                            <td class="p-1 border">
-                                user1
-                            </td>
-                            <td class="p-1 border">
-                                test@example.com
-                            </td>
-                            <td class="p-1 border">
-                                1
-                            </td>
-                        </tr>
-                        <tr>
-                            <td class="p-1 border">
-                                Jane Doe
-                            </td>
-                            <td class="p-1 border">
-                                user2
-                            </td>
-                            <td class="p-1 border">
-                                test2@example.com
-                            </td>
-                            <td class="p-1 border">
-                                0
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
+            <table
+                class="mt-2 mb-2 full-width border"
+            >
+                <thead>
+                    <tr class="text-align-left border">
+                        <th class="p-1 border">
+                            Name
+                        </th>
+                        <th class="p-1 border">
+                            Username
+                        </th>
+                        <th class="p-1 border">
+                            Email
+                        </th>
+                        <th class="p-1 border">
+                            Is teacher
+                        </th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td class="p-1 border">
+                            John Doe
+                        </td>
+                        <td class="p-1 border">
+                            user1
+                        </td>
+                        <td class="p-1 border">
+                            test@example.com
+                        </td>
+                        <td class="p-1 border">
+                            1
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="p-1 border">
+                            Jane Doe
+                        </td>
+                        <td class="p-1 border">
+                            user2
+                        </td>
+                        <td class="p-1 border">
+                            test2@example.com
+                        </td>
+                        <td class="p-1 border">
+                            0
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
 
-                <b-form-file
-                    ref="fileinput"
-                    class="fileinput mt-1"
-                    multiple
-                    placeholder="Select file"
-                    accept="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,
-                        application/vnd.ms-excel"
-                    @change="importRowsFromSpreadsheet"
-                />
-            </b-card>
+            <b-form-file
+                ref="fileinput"
+                class="fileinput mt-1"
+                multiple
+                placeholder="Select file"
+                accept="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,
+                    application/vnd.ms-excel"
+                @change="importRowsFromSpreadsheet"
+            />
         </b-modal>
     </div>
 </template>

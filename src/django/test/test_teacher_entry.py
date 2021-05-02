@@ -12,7 +12,7 @@ from django.test import TestCase
 from django.test.utils import override_settings
 
 from VLE.models import Comment, Entry, EntryCategoryLink, Field, FileContext, Grade, Journal, Node, TeacherEntry
-from VLE.serializers import EntrySerializer, TeacherEntrySerializer
+from VLE.serializers import AssignmentSerializer, EntrySerializer, TeacherEntrySerializer
 from VLE.utils.error_handling import VLEPermissionError
 
 
@@ -488,6 +488,18 @@ class TeacherEntryAPITest(TestCase):
                 TeacherEntrySerializer.setup_eager_loading(TeacherEntry.objects.filter(pk=te_id)).get()
             ).data
         assert len(context_pre) == len(context_post) and len(context_pre) <= 8
+
+    def test_assignment_has_teacher_entries(self):
+        assignment = factory.Assignment()
+        teacher = assignment.author
+        factory.Journal(assignment=assignment, entries__n=0)
+
+        assert not AssignmentSerializer(assignment, context={'user': teacher}).data['has_teacher_entries']
+
+        params = factory.TeacherEntryCreationParams(assignment=assignment, grade=1, published=True)
+        api.create(self, 'teacher_entries', params=params, user=teacher)['teacher_entry']['id']
+
+        assert AssignmentSerializer(assignment, context={'user': teacher}).data['has_teacher_entries']
 
     def test_teacher_entry_crash_recovery(self):
         # Setup some earlier DB context

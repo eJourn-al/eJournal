@@ -5,41 +5,44 @@
     border-radius: 5px !important
 
 .introjs-tooltip
-    @extend .theme-shadow
-    background-color: $theme-light-grey
-    border-radius: 7px 7px 5px 5px !important
+    border-radius: 10px !important
+    border: 1px solid $border-color
     &:before
-        border-radius: 5px 5px 0px 0px !important
+        border-radius: 10px 10px 0px 0px !important
         font-weight: bold
-        font-size: 20px
+        font-size: 1em
         margin: -10px -10px 0px -10px
-        background-color: $theme-dark-blue
+        background-color: $theme-light-grey
         display: block
-        padding: 5px 10px 5px 10px
-        color: white
+        padding: 10px
         margin-bottom: 10px
+        border-bottom: 1px solid $border-color
         content: "Tutorial"
     .introjs-arrow
         &.left
-            border-right-color: $theme-dark-blue
+            border-right-color: $border-color
         &.right
-            border-left-color: $theme-dark-blue
+            border-left-color: $border-color
         &.top
-            border-bottom-color: $theme-dark-blue
+            border-bottom-color: $border-color
     .introjs-bullets ul li a
-        background-color: $theme-dark-grey
+        background-color: $theme-medium-grey
         &:hover
             background-color: $theme-medium-grey
         &.active
             background-color: $theme-blue
             &:hover
                 cursor: default
-    .introjs-button
-        @extend .btn
-        background-image: none
-        text-shadow: none
-        &.introjs-disabled, &:hover.introjs-disabled
-            opacity: 0.7
-            box-shadow: 0 4px 7px rgba(0,0,0,0.16), 0 4px 7px rgba(0,0,0,0.23)
-            color: $theme-dark-blue !important
-            background-color: white !important
+    .introjs-tooltipbuttons
+        background-color: $theme-light-grey
+        padding: 5px
+        border-radius: 10px
+        .introjs-button
+            @extend .btn
+            margin-top: 0px
+            background-image: none
+            text-shadow: none
+            &:last-child
+                margin-left: 5px
+            &.btn.introjs-disabled
+                opacity: 0.7

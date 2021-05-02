@@ -1,10 +1,13 @@
 <template>
-    <b-card
-        :class="$root.getBorderClass($route.params.cID)"
-        class="no-hover statistics-card"
-    >
-        <div class="multi-form">
-            <b>Needs marking</b>
+    <b-card>
+        <h3
+            slot="header"
+            class="theme-h3"
+        >
+            Statistics
+        </h3>
+        <div class="mb-2">
+            Needs marking
             <number-badge
                 :badges="[{ value: stats.needsMarking }]"
                 :absolute="false"
@@ -12,8 +15,8 @@
                 class="float-right"
             />
         </div>
-        <div class="multi-form">
-            <b>Unpublished grades</b>
+        <div class="mb-2">
+            Unpublished grades
             <number-badge
                 :badges="[{ value: stats.unpublished }]"
                 :absolute="false"
@@ -21,8 +24,8 @@
                 keyPrefix="unpublished-grades-statistics"
             />
         </div>
-        <div :class="{'multi-form': stats.importRequests > 0}">
-            <b>Average points</b>
+        <div :class="{'mb-2': stats.importRequests > 0}">
+            Average points
             <number-badge
                 :badges="[{ value: stats.averagePoints }]"
                 :absolute="false"
@@ -31,7 +34,7 @@
             />
         </div>
         <div v-if="stats.importRequests">
-            <b>Import requests</b>
+            Import requests
             <number-badge
                 :badges="[{ value: stats.importRequests }]"
                 :absolute="false"
@@ -52,8 +55,3 @@ export default {
     props: ['stats'],
 }
 </script>
-
-<style lang="sass">
-.statistics-card .badge
-    font-size: 1em
-</style>

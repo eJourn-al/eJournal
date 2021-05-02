@@ -2,7 +2,7 @@
     <content-single-column>
         <div
             v-if="$root.canGradeForSomeCourse()"
-            class="text-grey float-right unselectable cursor-pointer"
+            class="text-grey small float-right unselectable cursor-pointer"
         >
             <span
                 v-if="filterOwnGroups"
@@ -26,75 +26,77 @@
 
         <bread-crumb/>
 
-        <input
-            v-model="searchValue"
-            class="theme-input full-width multi-form"
-            type="text"
-            placeholder="Search..."
-        />
-
-        <div class="d-flex">
-            <b-form-select
-                v-model="sortBy"
-                :selectSize="1"
-                class="theme-select multi-form mr-2"
-            >
-                <option value="date">
-                    Sort by date
-                </option>
-                <option value="name">
-                    Sort by name
-                </option>
-                <option
-                    v-if="$root.canGradeForSomeCourse()"
-                    value="markingNeeded"
-                >
-                    Sort by marking needed
-                </option>
-            </b-form-select>
-            <b-button
-                v-if="!order"
-                class="button multi-form"
-                @click.stop
-                @click="setOrder(!order)"
-            >
-                <icon name="long-arrow-alt-down"/>
-                Ascending
-            </b-button>
-            <b-button
-                v-if="order"
-                class="button multi-form"
-                @click.stop
-                @click="setOrder(!order)"
-            >
-                <icon name="long-arrow-alt-up"/>
-                Descending
-            </b-button>
-        </div>
-
         <load-wrapper :loading="loadingAssignments">
+            <template v-if="assignments.length > 0">
+                <div
+                    class="p-2 background-light-grey round-border mb-2"
+                >
+                    <b-input
+                        v-model="searchValue"
+                        class="full-width"
+                        type="text"
+                        placeholder="Search..."
+                    />
+
+                    <div class="d-flex">
+                        <b-form-select
+                            v-model="sortBy"
+                            :selectSize="1"
+                            class="theme-select mt-2 mr-2"
+                        >
+                            <option value="date">
+                                Sort by date
+                            </option>
+                            <option value="name">
+                                Sort by name
+                            </option>
+                            <option
+                                v-if="$root.canGradeForSomeCourse()"
+                                value="markingNeeded"
+                            >
+                                Sort by marking needed
+                            </option>
+                        </b-form-select>
+                        <b-button
+                            v-if="!order"
+                            class="button mt-2"
+                            @click.stop
+                            @click="setOrder(!order)"
+                        >
+                            <icon name="long-arrow-alt-down"/>
+                            Ascending
+                        </b-button>
+                        <b-button
+                            v-if="order"
+                            class="button mt-2"
+                            @click.stop
+                            @click="setOrder(!order)"
+                        >
+                            <icon name="long-arrow-alt-up"/>
+                            Descending
+                        </b-button>
+                    </div>
+                </div>
+            </template>
             <div
                 v-for="(d, i) in computedAssignments"
                 :key="i"
             >
-                <b-link
-                    :to="$root.assignmentRoute(d)"
-                    tag="b-button"
-                >
-                    <todo-card
-                        :deadline="d"
-                        :courses="d.courses"
-                        :filterOwnGroups="filterOwnGroups"
-                    />
+                <b-link :to="$root.assignmentRoute(d)">
+                    <b-card>
+                        <todo-item
+                            :deadline="d"
+                            :courses="d.courses"
+                            :filterOwnGroups="filterOwnGroups"
+                        />
+                    </b-card>
                 </b-link>
             </div>
-            <main-card
+            <not-found
                 v-if="computedAssignments.length === 0"
-                text="No assignments found"
-                class="no-hover"
-            >
-                You currently do not participate in any assignments.
-            </main-card>
+                subject="assignments"
+                explanation="You currently do not participate in any assignments."
+            />
         </load-wrapper>
     </content-single-column>
 </template>
@@ -105,8 +107,7 @@ import breadCrumb from '@/components/assets/BreadCrumb.vue'
 import comparison from '@/utils/comparison.js'
 import contentSingleColumn from '@/components/columns/ContentSingleColumn.vue'
 import loadWrapper from '@/components/loading/LoadWrapper.vue'
-import mainCard from '@/components/assets/MainCard.vue'
-import todoCard from '@/components/assets/TodoCard.vue'
+import todoItem from '@/components/assets/TodoItem.vue'
 
 import { mapGetters, mapMutations } from 'vuex'
 
@@ -116,8 +117,7 @@ export default {
         contentSingleColumn,
         breadCrumb,
         loadWrapper,
-        todoCard,
-        mainCard,
+        todoItem,
     },
     data () {
         return {
