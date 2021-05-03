@@ -17,7 +17,6 @@
     <div>
         <b-collapse id="timeline-container">
             <b-card
-                v-if="assignmentHasCategories"
                 class="timeline-filter"
                 noBody
             >
@@ -26,6 +25,7 @@
                         Timeline
                     </h3>
                     <b-button
+                        v-if="timelineOptionsAvailable"
                         variant="link"
                         class="grey-button float-right pt-0 pb-0"
                         @click="showFilters = !showFilters"
@@ -44,6 +44,7 @@
                         Hide past deadlines
                     </b-form-checkbox>
                     <category-select
+                        v-if="assignmentHasCategories"
                         v-model="filteredCategories"
                         :options="$store.getters['category/assignmentCategories']"
                         :multiple="true"
@@ -131,6 +132,12 @@ export default {
             startNode: 'timeline/startNode',
             addNodeSymbol: 'timeline/addNodeSymbol',
         }),
+        timelineOptionsAvailable () {
+            return (
+                this.assignmentHasCategories
+                || this.nodesHoldPastDeadlines
+            )
+        },
         filteredCategories: {
             set (value) { this.$store.commit('timeline/SET_FILTERED_CATEGORIES', value) },
             get () { return this.$store.getters['timeline/filteredCategories'] },
