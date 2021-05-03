@@ -106,6 +106,9 @@ from test.factory.presetnode import ProgressPresetNodeCreationParamsFactory as P
 from test.factory.presetnode import ProgressPresetNodeFactory as ProgressPresetNode  # noqa: F401
 from test.factory.role import RoleFactory as Role  # noqa: F401
 from test.factory.role import StudentRoleFactory as StudentRole  # noqa: F401
+from test.factory.rubric import CriterionFactory as Criterion  # noqa: F401
+from test.factory.rubric import LevelFactory as Level  # noqa: F401
+from test.factory.rubric import RubricFactory as Rubric  # noqa: F401
 from test.factory.template import ColloquiumTemplateFactory as ColloquiumTemplate  # noqa: F401
 from test.factory.template import FilesTemplateFactory as FilesTemplate  # noqa: F401
 from test.factory.template import MentorgesprekTemplateFactory as MentorgesprekTemplate  # noqa: F401
