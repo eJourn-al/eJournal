@@ -21,6 +21,7 @@ from .participation import Participation  # noqa: F401
 from .preferences import Preferences  # noqa: F401
 from .preset_node import PresetNode  # noqa: F401
 from .role import Role  # noqa: F401
+from .rubric import Criterion, Level, Rubric  # noqa: F401
 from .teacher_entry import TeacherEntry  # noqa: F401
 from .template import Template, TemplateChain  # noqa: F401
 from .user import User, UserManagerExtended  # noqa: F401
