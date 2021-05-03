@@ -28,5 +28,4 @@ entrypoints==0.3 # TODO figure out specific use cases
 sentry-sdk==0.12.1 # Logging
 django-anymail==7.0.0 # Email client
 chardet==3.0.4 # Encoding estimation
-dataclasses==0.8 # Email sender config
 setuptools==45.1.0
