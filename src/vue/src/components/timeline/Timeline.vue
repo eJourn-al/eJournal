@@ -61,10 +61,14 @@
                 aria-expanded="false"
                 aria-controls="timeline-container"
             >
-                <timeline-nodes
-                    :filteredNodes="filteredNodes"
-                    :allNodes="nodes"
-                />
+                <!-- Nested components make use of the store assignment, this ensures both are available -->
+                <load-wrapper :loading="!(assignment && storeAssignment)">
+                    <timeline-nodes
+                        v-if="assignment && storeAssignment"
+                        :filteredNodes="filteredNodes"
+                        :allNodes="nodes"
+                    />
+                </load-wrapper>
             </template>
         </b-collapse>
 
@@ -97,6 +101,7 @@
 
 <script>
 import CategorySelect from '@/components/category/CategorySelect.vue'
+import LoadWrapper from '@/components/loading/LoadWrapper.vue'
 import TimelineNodes from '@/components/timeline/TimelineNodes.vue'
 
 import comparison from '@/utils/comparison.js'
@@ -107,6 +112,7 @@ export default {
     components: {
         CategorySelect,
         TimelineNodes,
+        LoadWrapper,
     },
     props: {
         /* Array of nodes (journal view) or preset nodes (assignment editor view) */
@@ -127,6 +133,7 @@ export default {
     },
     computed: {
         ...mapGetters({
+            storeAssignment: 'assignment/assignment',
             assignmentHasCategories: 'category/assignmentHasCategories',
             currentNode: 'timeline/currentNode',
             startNode: 'timeline/startNode',
