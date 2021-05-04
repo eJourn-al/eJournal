@@ -17,6 +17,7 @@ from VLE.views.participation import ParticipationView
 from VLE.views.preferences import PreferencesView
 from VLE.views.preset_node import PresetNodeView
 from VLE.views.role import RoleView
+from VLE.views.rubric import RubricView
 from VLE.views.teacher_entry import TeacherEntryView
 from VLE.views.template import TemplateView
 from VLE.views.user import UserView
@@ -42,5 +43,6 @@ router.register(r'journal_import_request', JournalImportRequestView, basename='j
 router.register(r'categories', CategoryView, basename='categories')
 router.register(r'templates', TemplateView, basename='template')
 router.register(r'preset_nodes', PresetNodeView, basename='preset_node')
+router.register(r'rubrics', RubricView, basename='rubric')
 
 urlpatterns = router.urls
