@@ -139,7 +139,7 @@ export default {
                         (dd) => (
                             dd.stats.needs_marking_own_groups
                             + dd.stats.unpublished_own_groups
-                            + dd.stats.import_requests_own_groups
+                            + (dd.stats.import_requests_own_groups ?? 0)
                         ) > 0
                         || !dd.is_published,
                     )
@@ -148,7 +148,7 @@ export default {
                         (d) => (
                             d.stats.needs_marking
                             + d.stats.unpublished
-                            + d.stats.import_requests
+                            + (d.stats.import_requests ?? 0)
                         ) > 0
                         || !d.is_published,
                     )
