@@ -1204,6 +1204,8 @@ class LevelSerializer(serializers.ModelSerializer, EagerLoadingMixin):
         model = VLE.models.Level
         fields = (
             'id',
+            'name',
+            'description',
             'points',
             'initial_feedback',
             'location',
@@ -1218,7 +1220,6 @@ class CriterionSerializer(serializers.ModelSerializer, EagerLoadingMixin):
             'id',
             'name',
             'description',
-            'long_description',
             'score_as_range',
             'location',
             'levels',

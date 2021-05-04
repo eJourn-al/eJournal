@@ -53,6 +53,8 @@ class Rubric(CreateUpdateModel):
     # ]
 
 
+# TODO Rubric: Validation, should consist of atleast two levels first max points last min points
+# Any level in between needs to consist of lte points of the left hand level
 class Criterion(CreateUpdateModel):
     class Meta:
         constraints = [
@@ -75,10 +77,6 @@ class Criterion(CreateUpdateModel):
         blank=True,
     )
 
-    long_description = models.TextField(
-        blank=True,
-    )
-
     score_as_range = models.BooleanField(
         default=False,
     )
@@ -91,13 +89,23 @@ class Level(CreateUpdateModel):
     class Meta:
         constraints = [
             CheckConstraint(check=Q(points__gte=0.0), name='points_gte_0'),
+            CheckConstraint(check=~Q(name=''), name='non_empty_name'),
         ]
         ordering = ['location']
+        unique_together = (
+            ('name', 'criterion'),
+        )
 
     criterion = models.ForeignKey(
         'Criterion',
         on_delete=models.CASCADE,
         related_name='levels',
+    )
+
+    name = models.TextField()
+
+    description = models.TextField(
+        blank=True,
     )
 
     points = models.FloatField()

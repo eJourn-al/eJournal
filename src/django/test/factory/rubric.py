@@ -12,10 +12,8 @@ class RubricFactory(factory.django.DjangoModelFactory):
     class Params:
         full = factory.Trait(
             criterion_1=factory.RelatedFactory(
-                'test.factory.rubric.CriterionFactory', factory_related_name='rubric', add_levels=2),
-            criterion_2=factory.RelatedFactory(
-                'test.factory.rubric.CriterionFactory', factory_related_name='rubric', add_levels=1),
-            criterion_3=factory.RelatedFactory('test.factory.rubric.CriterionFactory', factory_related_name='rubric'),
+                'test.factory.rubric.CriterionFactory', factory_related_name='rubric', add_levels=3),
+            criterion_2=factory.RelatedFactory('test.factory.rubric.CriterionFactory', factory_related_name='rubric'),
         )
 
     assignment = factory.SubFactory('test.factory.assignment.AssignmentFactory')
@@ -31,8 +29,7 @@ class CriterionFactory(factory.django.DjangoModelFactory):
 
     rubric = factory.SubFactory('test.factory.rubric.RubricFactory')
     name = factory.Sequence(lambda x: f'Criterion {x + 1}')
-    description = 'Brief criterion description'
-    long_description = factory.Faker('paragraphs')
+    description = factory.Faker('paragraph')
     score_as_range = False
     location = factory.Sequence(lambda x: x)
 
@@ -47,6 +44,19 @@ class CriterionFactory(factory.django.DjangoModelFactory):
         elif isinstance(extracted, int):
             for _ in range(extracted):
                 test.factory.Level(**{**kwargs, 'criterion': self})
+        else:
+            test.factory.Level(
+                criterion=self,
+                name='Full marks',
+                points=5,
+                location=0,
+            )
+            test.factory.Level(
+                criterion=self,
+                name='No marks',
+                points=0,
+                location=1,
+            )
 
 
 class LevelFactory(factory.django.DjangoModelFactory):
@@ -54,6 +64,8 @@ class LevelFactory(factory.django.DjangoModelFactory):
         model = 'VLE.Level'
 
     criterion = factory.SubFactory('test.factory.rubric.Criterion')
-    points = 3
+    name = factory.Sequence(lambda x: f'Level {x + 1}')
+    description = factory.Faker('paragraph')
+    points = 5
     initial_feedback = 'Initial feedback snippet'
     location = factory.Sequence(lambda x: x)
