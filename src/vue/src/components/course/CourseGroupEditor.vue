@@ -47,7 +47,7 @@
                 <icon name="sync-alt"/>
                 Sync groups from DataNose
             </b-button>
-            <!-- TODO LTI: only visible when its lti 1.3 course with Canvas -->
+            <!-- TODO LTI: only visible when its course with Canvas -->
             <b-button
                 v-if="course.lti_linked"
                 class="lti-sync mb-2 mr-2"

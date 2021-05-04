@@ -12,7 +12,6 @@
                 >
                     Welcome to eJournal
                 </h2>
-                Hi {{ lti.fullName ? lti.fullName : lti.username }},
                 <template v-if="usernameAlreadyExists">
                     <p>
                         It looks like you already have an account on eJournal. Please verify this by logging in below.
