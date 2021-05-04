@@ -10,9 +10,9 @@ import VLE.factory
 import VLE.lti1p3 as lti
 import VLE.utils.generic_utils as utils
 import VLE.utils.responses as response
-from VLE.lti1p3 import grading
 from VLE.models import Assignment, AssignmentParticipation, Course, Journal, User
 from VLE.serializers import AssignmentParticipationSerializer, JournalSerializer
+from VLE.utils import grading
 
 
 def _get_sequence_of_available_names(base_name, n, assignment):

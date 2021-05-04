@@ -186,11 +186,10 @@ class GroupView(viewsets.ViewSet):
         course = Course.objects.get(pk=course_id)
         check_can_view_groups(request.user, course)
 
-        if settings.LTI13 not in course.lti_versions:
+        if Instance.objects.get_or_create(pk=1)[0].lms_name != Instance.CANVAS:
             msg = 'This option is not available for this Course.'
             # TODO EXPANSION: This is UvA specific, and should be removed when expanding
-            if settings.LTI11 in course.lti_versions and \
-               Instance.objects.get_or_create(pk=1)[0].lms_name == Instance.CANVAS:
+            if True:
                 msg += ' Try to sync with DataNose instead.'
             return response.bad_request(msg)
 

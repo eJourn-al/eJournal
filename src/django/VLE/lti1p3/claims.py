@@ -7,6 +7,7 @@ COURSE = 'https://purl.imsglobal.org/spec/lti/claim/context'
 CUSTOM = 'https://purl.imsglobal.org/spec/lti/claim/custom'
 ROLES = 'https://purl.imsglobal.org/spec/lti/claim/roles'
 RESOURCE = 'https://purl.imsglobal.org/spec/lti/claim/resource_link'
+# NOTE: CG grebruikt deze niiet eens, alleen maar $com.instructure.Assignment.lti.id
 ASSIGNMENT = 'https://purl.imsglobal.org/spec/lti/claim/resource_link'
 NAMESROLES = 'https://purl.imsglobal.org/spec/lti-nrps/claim/namesroleservice'
 GRADES = 'https://purl.imsglobal.org/spec/lti-ags/claim/endpoint'

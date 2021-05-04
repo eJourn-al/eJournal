@@ -17,6 +17,7 @@ class AssignmentData(utils.PreparedData):
     model = Assignment
     _connected_course = None
     _author = None
+    _user_data = None
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -144,6 +145,8 @@ class AssignmentData(utils.PreparedData):
 
 
 class Lti1p3AssignmentData(AssignmentData):
+    lti_version = settings.LTI13
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.create_keys = [
@@ -211,10 +214,17 @@ class Lti1p3AssignmentData(AssignmentData):
 
     @property
     def assignments_grades_service(self):
+        # TODO: https://canvas.instructure.com/lti/submission extra claim moet heerm,ee geupdate worden
+        # https://imgur.com/a/52IwCPV
+        # LTI loggers overal zodat je achter veel bugs wordt.
+        # Rollen parser
+        # Aan de NRS kan je custom substitution claims meegeven
         return json.dumps(self.data[lti.claims.ASSIGNMENTSGRADES])
 
 
 class Lti1p0AssignmentData(AssignmentData):
+    lti_version = settings.LTI10
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.create_keys = [

@@ -11,6 +11,7 @@ from VLE.utils.error_handling import VLEBadRequest, VLEProgrammingError
 class CourseData(lti.utils.PreparedData):
     model = Course
     _author = None
+    _user_data = None
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -92,6 +93,8 @@ class CourseData(lti.utils.PreparedData):
 
 
 class Lti1p3CourseData(CourseData):
+    lti_version = settings.LTI13
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.create_keys = [
@@ -150,6 +153,8 @@ class Lti1p3CourseData(CourseData):
 
 
 class Lti1p0CourseData(CourseData):
+    lti_version = settings.LTI10
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.create_keys = [

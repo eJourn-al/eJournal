@@ -91,7 +91,7 @@ class PreparedData(object):
     '''
     _db_obj = None
 
-    def __init__(self, data, lti_version=None):
+    def __init__(self, data, *args, lti_version=None, **kwags):
         self.data = data
         self.lti_version = lti_version
 
@@ -246,12 +246,12 @@ class eMessageLaunchData(object):
 
         if self.lti_version == settings.LTI13:
             self.user = lti.user.Lti1p3UserData(message_launch_data)
-            self.course = lti.course.Lti1p3CourseData(message_launch_data)
-            self.assignment = lti.assignment.Lti1p3AssignmentData(message_launch_data)
+            self.course = lti.course.Lti1p3CourseData(message_launch_data, user_data=self.user)
+            self.assignment = lti.assignment.Lti1p3AssignmentData(message_launch_data, user_data=self.user)
         else:
             self.user = lti.user.Lti1p0UserData(message_launch_data)
-            self.course = lti.course.Lti1p0CourseData(message_launch_data)
-            self.assignment = lti.assignment.Lti1p0AssignmentData(message_launch_data)
+            self.course = lti.course.Lti1p0CourseData(message_launch_data, user_data=self.user)
+            self.assignment = lti.assignment.Lti1p0AssignmentData(message_launch_data, user_data=self.user)
 
     def asdict(self):
         user = self.user.asdict()
