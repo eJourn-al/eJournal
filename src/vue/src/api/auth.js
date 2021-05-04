@@ -12,6 +12,8 @@ const ERRORS_TO_REDIRECT = new Set([
     statuses.INTERNAL_SERVER_ERROR,
 ])
 
+const TOKEN_INVALID_MSG = 'Given token not valid for any token type'
+
 /*
  * Defines how success and error responses are handled and toasted by default.
  *
@@ -56,7 +58,9 @@ function toastError (error, connArgs) {
 
         /* The Django throttle module uses detail as description. */
         const message = data.description ? data.description : data.detail
-        if (message) { router.app.$toasted.error(sanitization.escapeHtml(message)) }
+        if (message && message !== TOKEN_INVALID_MSG) {
+            router.app.$toasted.error(sanitization.escapeHtml(message))
+        }
     }
 }
 
