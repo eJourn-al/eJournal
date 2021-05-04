@@ -1,0 +1,10 @@
+import VLE.lti.assignment  # noqa: F401
+import VLE.lti.claims  # noqa: F401
+import VLE.lti.course  # noqa: F401
+import VLE.lti.grading  # noqa: F401
+import VLE.lti.launch  # noqa: F401
+import VLE.lti.members  # noqa: F401
+import VLE.lti.roles  # noqa: F401
+import VLE.lti.scopes  # noqa: F401
+import VLE.lti.user  # noqa: F401
+import VLE.lti.utils  # noqa: F401

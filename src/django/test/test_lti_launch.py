@@ -11,7 +11,7 @@ import oauth2
 from django.conf import settings
 from django.test import RequestFactory, TestCase
 
-import VLE.lti1p3 as lti
+import VLE.lti as lti
 from VLE.models import Group, Instance, Journal, User, access_gen
 from VLE.utils.error_handling import VLEProgrammingError
 

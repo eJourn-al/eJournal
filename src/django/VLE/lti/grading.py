@@ -357,7 +357,7 @@ def _get_grades(authors, left_journal=False, journal=None):
 
         is_lti_10 = author.assignment.is_lti10_version()
         if is_lti_10:
-            key = settings.LTI10
+            key = settings.LTI1P0
         else:
             key = author.assignment.assignments_grades_service
 
@@ -391,7 +391,7 @@ def send_grade(authors, left_journal=False, journal=None):
     assert not left_journal or journal, 'When a user leaves a journal, journal param should be set'
     grades = _get_grades(authors, left_journal=left_journal, journal=journal)
     result = []
-    for lti_10_grade in grades.pop(settings.LTI10, []):
+    for lti_10_grade in grades.pop(settings.LTI1P0, []):
         print('LTI 1.0', lti_10_grade)
         result.append(GradePassBackRequest(lti_10_grade).send_grade_to_lms())
 

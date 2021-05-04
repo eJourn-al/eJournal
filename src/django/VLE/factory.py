@@ -86,7 +86,7 @@ def make_course(*args, **kwargs):
     """Create a course."""
     course = VLE.models.Course.objects.create(**kwargs)
 
-    if settings.LTI10 in course.lti_versions and \
+    if settings.LTI1P0 in course.lti_versions and \
        VLE.models.Instance.objects.get_or_create(pk=1)[0].lms_name == VLE.models.Instance.CANVAS:
         make_lti_groups(course)
 
@@ -140,7 +140,7 @@ def get_lti_groups_with_name(course):
     # TODO EXPANSION: If the instance is not specificly the UvA, do not execute this request
 
     # It requires lms id to be set
-    if settings.LTI10 not in course.lti_versions:
+    if settings.LTI1P0 not in course.lti_versions:
         return []
 
     dn_groups = requests.get(settings.GROUP_API.format(course.lms_id)).json()

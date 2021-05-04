@@ -7,7 +7,7 @@ from django.conf import settings
 from django.test import RequestFactory
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
-import VLE.lti1p3 as lti
+import VLE.lti as lti
 from VLE.models import User, access_gen
 
 BASE_PARAMS = {

@@ -3,7 +3,7 @@ import json
 from django.conf import settings
 
 import VLE.factory as factory
-import VLE.lti1p3 as lti
+import VLE.lti as lti
 from VLE.models import Course
 from VLE.utils.error_handling import VLEBadRequest, VLEProgrammingError
 
@@ -65,9 +65,9 @@ class CourseData(lti.utils.PreparedData):
     def user_data(self):
         if self._user_data:
             return self._user_data
-        elif self.lti_version == settings.LTI13:
+        elif self.lti_version == settings.LTI1P3:
             self._user_data = lti.user.Lti1p3UserData(self.data)
-        elif self.lti_version == settings.LTI10:
+        elif self.lti_version == settings.LTI1P0:
             self._user_data = lti.user.Lti1p0UserData(self.data)
         else:
             raise VLEProgrammingError('A valid lti_version should be supplied to access user data')
@@ -93,7 +93,7 @@ class CourseData(lti.utils.PreparedData):
 
 
 class Lti1p3CourseData(CourseData):
-    lti_version = settings.LTI13
+    lti_version = settings.LTI1P3
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -153,7 +153,7 @@ class Lti1p3CourseData(CourseData):
 
 
 class Lti1p0CourseData(CourseData):
-    lti_version = settings.LTI10
+    lti_version = settings.LTI1P0
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

@@ -9,7 +9,7 @@ from django.db.models import Q
 from pylti1p3.contrib.django import DjangoCacheDataStorage, DjangoMessageLaunch
 from pylti1p3.exception import LtiException
 
-import VLE.lti1p3 as lti
+import VLE.lti as lti
 from VLE.utils.error_handling import VLEMissingRequiredKey
 
 
@@ -244,7 +244,7 @@ class eMessageLaunchData(object):
 
         self.lti_version = lti_version
 
-        if self.lti_version == settings.LTI13:
+        if self.lti_version == settings.LTI1P3:
             self.user = lti.user.Lti1p3UserData(message_launch_data)
             self.course = lti.course.Lti1p3CourseData(message_launch_data, user_data=self.user)
             self.assignment = lti.assignment.Lti1p3AssignmentData(message_launch_data, user_data=self.user)
@@ -288,7 +288,7 @@ class eDjangoMessageLaunch(DjangoMessageLaunch):
         return (
             self._jwt.get('body', {}).get('lti_version') or  # Check if lti version is inside jwt body
             self._request._request.POST.get('lti_version') or  # Else, check if it might be in POST data
-            settings.LTI13  # Else default to LTI 1.3 (which also does not include lti_version information)
+            settings.LTI1P3  # Else default to LTI 1.3 (which also does not include lti_version information)
         )
 
     def validate_1p0(self):
@@ -306,7 +306,7 @@ class eDjangoMessageLaunch(DjangoMessageLaunch):
         return self
 
     def validate(self, *args, **kwargs):
-        if self.lti_version == settings.LTI10:
+        if self.lti_version == settings.LTI1P0:
             self._session_service.save_launch_data(self._launch_id, self._jwt['body'])
             return self.validate_1p0(*args, **kwargs)
         else:
@@ -326,7 +326,7 @@ class eDjangoMessageLaunch(DjangoMessageLaunch):
         return super(eDjangoMessageLaunch, self).validate_nonce()
 
     def get_launch_data(self, *args, **kwargs):
-        if self.lti_version == settings.LTI10:
+        if self.lti_version == settings.LTI1P0:
             if 'body' not in self._jwt:
                 self.set_jwt({'body': self._request._request.POST})
             if not self._validated and self._auto_validation:
@@ -346,7 +346,7 @@ class eDjangoMessageLaunch(DjangoMessageLaunch):
         if not launch_data:
             raise LtiException("Launch data not found")
 
-        if launch_data.get('lti_version', settings.LTI13) == settings.LTI13:
+        if launch_data.get('lti_version', settings.LTI1P3) == settings.LTI1P3:
             return obj.validate_registration()
 
         return obj

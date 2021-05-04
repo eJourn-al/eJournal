@@ -8,7 +8,7 @@ from django.db import transaction
 from django.db.models import Max
 from rest_framework import viewsets
 
-import VLE.lti1p3 as lti
+import VLE.lti as lti
 import VLE.utils.generic_utils as utils
 import VLE.utils.responses as response
 from VLE.models import (Assignment, AssignmentParticipation, Entry, EntryCategoryLink, Grade, Journal, Node,

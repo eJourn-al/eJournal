@@ -7,7 +7,7 @@ from rest_framework import viewsets
 from rest_framework.decorators import action
 
 import VLE.factory
-import VLE.lti1p3 as lti
+import VLE.lti as lti
 import VLE.utils.generic_utils as utils
 import VLE.utils.responses as response
 from VLE.models import Assignment, AssignmentParticipation, Course, Journal, User

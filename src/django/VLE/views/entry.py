@@ -7,7 +7,7 @@ from django.utils import timezone
 from rest_framework import viewsets
 
 import VLE.factory as factory
-import VLE.lti1p3 as lti
+import VLE.lti as lti
 import VLE.serializers as serialize
 import VLE.timeline as timeline
 import VLE.utils.entry_utils as entry_utils

@@ -119,8 +119,8 @@ LTI_ROLES = OrderedDict({
 })
 # TODO LTI: remove this var
 LTI_TEST_STUDENT_FULL_NAME = 'Test student'
-LTI13 = 'LTI-1p3'
-LTI10 = 'LTI-1p0'
+LTI1P3 = 'LTI-1p3'
+LTI1P0 = 'LTI-1p0'
 # Names we have encountered used for test students
 LTI_TEST_STUDENT_FULL_NAMES = {'Test student'}
 

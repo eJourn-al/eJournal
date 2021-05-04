@@ -10,7 +10,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
-import VLE.lti1p3 as lti
+import VLE.lti as lti
 from VLE.models import Instance, Journal
 from VLE.utils.error_handling import VLEBadRequest
 from VLE.utils.generic_utils import build_url
@@ -164,7 +164,7 @@ def launch(request):
             request, settings.TOOL_CONF, launch_data_storage=DjangoCacheDataStorage())
         launch_id = message_launch.get_launch_id()
 
-        if message_launch.lti_version == settings.LTI13 and message_launch.is_deep_link_launch():
+        if message_launch.lti_version == settings.LTI1P3 and message_launch.is_deep_link_launch():
             launch_url = request.build_absolute_uri(reverse('lti_launch'))
             resource = eDeepLinkResource()
             resource.set_url(launch_url)
@@ -228,7 +228,7 @@ def launch(request):
         if journal:
             author = journal.authors.get(user=user)
             # TODO LTI: only update if sth actually changed
-            if launch_data.lti_version == settings.LTI10 and \
+            if launch_data.lti_version == settings.LTI1P0 and \
                launch_data.assignment.active_lti_id == assignment.active_lti_id:
                 author.grade_url = launch_data.user.grade_url
                 author.sourcedid = launch_data.user.sourcedid

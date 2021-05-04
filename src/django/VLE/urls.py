@@ -25,7 +25,7 @@ from django.urls import path
 from rest_framework_simplejwt.views import TokenRefreshView, TokenVerifyView
 
 from VLE.lms_api.utils import lms_authenticate
-from VLE.lti1p3 import launch
+from VLE.lti import launch
 from VLE.views import common, email, user
 
 urlpatterns = [

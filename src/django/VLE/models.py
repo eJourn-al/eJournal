@@ -989,9 +989,9 @@ class Course(CreateUpdateModel):
     def lti_versions(self):
         versions = []
         if self.lti_id:
-            versions.append(settings.LTI13)
+            versions.append(settings.LTI1P3)
         elif self.lms_id:
-            versions.append(settings.LTI10)
+            versions.append(settings.LTI1P0)
 
         return versions
 
@@ -1657,9 +1657,9 @@ class Assignment(CreateUpdateModel):
     @property
     def lti_version(self):
         if self.is_lti13_version():
-            return settings.LTI13
+            return settings.LTI1P3
         elif self.is_lti10_version():
-            return settings.LTI10
+            return settings.LTI1P0
 
         return None
 

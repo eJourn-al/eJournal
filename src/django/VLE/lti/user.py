@@ -4,7 +4,7 @@ from django.conf import settings
 from django.db.utils import IntegrityError
 from django.utils import timezone
 
-import VLE.lti1p3 as lti
+import VLE.lti as lti
 from VLE import factory
 from VLE.models import Group, Participation, Role, User
 from VLE.utils.error_handling import VLEBadRequest, VLEProgrammingError

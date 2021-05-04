@@ -2,7 +2,7 @@ import json
 
 import sentry_sdk
 
-import VLE.lti1p3 as lti
+import VLE.lti as lti
 from VLE.lms_api import utils
 from VLE.models import Course, Group, Instance, Participation
 from VLE.utils.error_handling import VLEMissingRequiredKey

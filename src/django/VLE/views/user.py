@@ -13,7 +13,7 @@ from rest_framework_simplejwt.views import TokenObtainPairView
 from sentry_sdk import capture_exception
 
 import VLE.factory as factory
-import VLE.lti1p3 as lti
+import VLE.lti as lti
 import VLE.permissions as permissions
 import VLE.utils.generic_utils as utils
 import VLE.utils.responses as response

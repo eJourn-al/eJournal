@@ -5,7 +5,7 @@ from django.conf import settings
 from pylti1p3.names_roles import NamesRolesProvisioningService
 from pylti1p3.service_connector import ServiceConnector
 
-import VLE.lti1p3 as lti
+import VLE.lti as lti
 from VLE.models import Course, Instance
 
 
@@ -23,7 +23,7 @@ def sync_members(course_pk):
     # "This may take some time: updating / creating all users." Say that to frontend
 
     # LTI 1.0 courses cannot sync
-    if settings.LTI13 not in course.lti_versions:
+    if settings.LTI1P3 not in course.lti_versions:
         return
 
     instance = Instance.objects.get_or_create(pk=1)[0]
