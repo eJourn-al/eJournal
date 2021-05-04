@@ -6,11 +6,17 @@
             class="mb-2"
         >
             <h2
-                v-if="field.title"
-                :class="{ 'required': field.required }"
                 class="theme-h2 field-heading"
             >
-                {{ field.title }}
+                <span v-if="field.title">
+                    {{ field.title }}
+                </span>
+                <span
+                    v-if="!field.required"
+                    class="text-grey"
+                >
+                    (optional)
+                </span>
             </h2>
             <sandboxed-iframe
                 v-if="field.description"
