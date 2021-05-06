@@ -12,6 +12,11 @@
             :category="selectedCategory"
         />
 
+        <rubric-edit
+            v-else-if="activeComponent === activeComponentOptions.rubric"
+            :rubric="selectedRubric"
+        />
+
         <selected-timeline-component-switch v-else-if="activeComponent === activeComponentOptions.timeline"/>
 
         <b-card v-else>
@@ -22,6 +27,7 @@
 
 <script>
 import CategoryEdit from '@/components/category/CategoryEdit.vue'
+import RubricEdit from '@/components/rubric/RubricEdit.vue'
 import SelectedTimelineComponentSwitch from
     '@/components/assignment_editor/timeline_controlled/SelectedTimelineComponentSwitch.vue'
 import TemplateEdit from '@/components/template/TemplateEdit.vue'
@@ -34,6 +40,7 @@ export default {
     components: {
         CategoryEdit,
         SelectedTimelineComponentSwitch,
+        RubricEdit,
         TemplateEdit,
         TemplateImport,
     },
@@ -43,6 +50,7 @@ export default {
             activeComponentOptions: 'assignmentEditor/activeComponentOptions',
             selectedCategory: 'assignmentEditor/selectedCategory',
             selectedTemplate: 'assignmentEditor/selectedTemplate',
+            selectedRubric: 'assignmentEditor/selectedRubric',
         }),
     },
 }

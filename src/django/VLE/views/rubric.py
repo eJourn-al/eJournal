@@ -1,11 +1,23 @@
 # from django.core.exceptions import ValidationError
-# from django.db import transaction
+from django.db import transaction
 from rest_framework import viewsets
 
 import VLE.utils.generic_utils as utils
 import VLE.utils.responses as response
 from VLE.models import Assignment, Rubric
-from VLE.serializers import RubricSerializer
+from VLE.serializers import CriterionSerializer, LevelSerializer, RubricSerializer
+
+
+def flatten_rubric_data(data):
+    criteria = data.pop('criteria')
+
+    levels = []
+    for criterion in criteria:
+        c_levels = criterion.pop('levels')
+        for level in c_levels:
+            levels.append(level)
+
+    return data, criteria, levels
 
 
 class RubricView(viewsets.ViewSet):
@@ -26,6 +38,46 @@ class RubricView(viewsets.ViewSet):
         )
 
         return response.success({'rubrics': serializer.data})
+
+    def create(self, request):
+        assignment_id, = utils.required_typed_params(request.data, (int, 'assignment_id'))
+        # rubric_import, = utils.optional_typed_params(request.data, (bool, 'rubric_import'))  # TODO RUBRIC IMPORT
+
+        assignment = Assignment.objects.get(pk=assignment_id)
+        request.user.check_permission('can_edit_assignment', assignment)
+
+        request.data['assignment'] = assignment.pk
+        Rubric.validate(request.data, assignment=assignment)
+
+        with transaction.atomic():
+            criteria_data = request.data.pop('criteria')
+            serializer = RubricSerializer(data=request.data, context={'user': request.user})
+            if not serializer.is_valid():
+                return response.bad_request('One or more rubric fields contain invalid data.')
+            rubric = serializer.save()
+
+            for criterion_data in criteria_data:
+                levels_data = criterion_data.pop('levels')
+                criterion_data['rubric'] = rubric.pk
+
+                serializer = CriterionSerializer(data=criterion_data, context={'user': request.user})
+                if not serializer.is_valid():
+                    return response.bad_request(f'Criterion {criterion_data["name"]} contains invalid data.')
+                criterion = serializer.save()
+
+                for level_data in levels_data:
+                    level_data['criterion'] = criterion.pk
+                serializer = LevelSerializer(data=levels_data, context={'user': request.user}, many=True)
+                if not serializer.is_valid():
+                    return response.bad_request(f'One or more levels contain invalid data.')
+                serializer.save()
+
+        return response.created({
+            'rubric': RubricSerializer(
+                RubricSerializer.setup_eager_loading(Rubric.objects.filter(pk=rubric.pk)).get(),
+                context={'user': request.user},
+            ).data
+        })
 
     def destroy(self, request, pk):
         rubric = Rubric.objects.select_related('assignment').get(pk=pk)

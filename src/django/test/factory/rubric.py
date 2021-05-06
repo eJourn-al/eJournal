@@ -1,6 +1,7 @@
 import test.factory
 
 import factory
+from factory.helpers import generate
 
 import VLE.models
 
@@ -69,3 +70,51 @@ class LevelFactory(factory.django.DjangoModelFactory):
     points = 5
     initial_feedback = 'Initial feedback snippet'
     location = factory.Sequence(lambda x: x)
+
+
+class RubricCreationParamsFactory(factory.Factory):
+    class Meta:
+        model = dict
+
+    name = factory.Sequence(lambda x: f'Rubric {x + 1}')
+    description = 'Rubric description'
+    visibility = VLE.models.Rubric.VISIBLE
+    hide_score_from_students = False
+
+    @classmethod
+    def _adjust_kwargs(cls, **kwargs):
+        assert kwargs['assignment_id'], 'assignment_id is a required parameter key for rubric creation'
+
+        n_criteria = kwargs.pop('n_criteria', 2)
+
+        kwargs['criteria'] = []
+        for i in range(n_criteria):
+            levels = [
+                {
+                    'criterion': -1 - i,
+                    'name': 'Pass',
+                    'description': '',
+                    'points': 10,
+                    'initial_feedback': '',
+                    'location': 0,
+                },
+                {
+                    'criterion': -1 - i,
+                    'name': 'Fail',
+                    'description': '',
+                    'points': 0,
+                    'initial_feedback': '',
+                    'location': 1,
+                },
+            ]
+
+            kwargs['criteria'].append({
+                'rubric': -1,
+                'name': f'Criterion {i + 1}',
+                'description': '',
+                'score_as_range': False,
+                'location': i,
+                'levels': levels,
+            })
+
+        return kwargs

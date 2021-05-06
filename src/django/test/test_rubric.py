@@ -55,7 +55,21 @@ class RoleAPITest(TestCase):
         assert len(resp['rubrics']) == self.assignment.rubrics.count()
 
     def test_rubric_create(self):
-        assert False, 'TODO'
+        params = factory.RubricCreationParams(
+            assignment_id=self.assignment.pk,
+            name='New name',
+        )
+
+        # from pprint import pprint
+        # pprint(params)
+
+        with mock.patch('VLE.models.User.check_permission') as check_permission_mock:
+            resp = api.create(self, 'rubrics', params=params, user=self.assignment.author)
+            check_permission_mock.assert_called_with('can_edit_assignment', self.assignment)
+
+        assert resp['rubric'], 'A created rubric is returned'
+        assert self.assignment.rubrics.filter(pk=resp['rubric']['id']).exists(), \
+            'The created rubric is linked to the correct assignment'
 
     def test_rubric_partial_update(self):
         assert False, 'TODO'

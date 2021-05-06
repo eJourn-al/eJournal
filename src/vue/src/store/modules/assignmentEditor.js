@@ -8,6 +8,8 @@ const categorySymbol = Symbol('category')
 const timelineSymbol = Symbol('timeline')
 const templateSymbol = Symbol('template')
 const templateImportSymbol = Symbol('templateImport')
+const rubricSymbol = Symbol('rubric')
+const rubricImportSymbol = Symbol('rubricImport')
 
 const readSymbol = Symbol('read')
 const editSymbol = Symbol('edit')
@@ -47,6 +49,9 @@ const getters = {
     selectedTemplate: (state) => state.selectedTemplate,
     newTemplateDraft: (state) => state.newTemplateDraft,
 
+    selectedRubric: (state) => state.selectedRubric,
+    newRubricDraft: (state) => state.newRubricDraft,
+
     selectedPresetNode: (state) => state.selectedPresetNode,
     newPresetNodeDraft: (state) => state.newPresetNodeDraft,
 
@@ -56,6 +61,7 @@ const getters = {
     isCategoryDirty: (state) => (originalCategory) => isDraftDirty(state.categoryDrafts, originalCategory),
     isPresetNodeDirty: (state) => (originalPresetNode) => isDraftDirty(state.presetNodeDrafts, originalPresetNode),
     isTemplateDirty: (state) => (originalTemplate) => isDraftDirty(state.templateDrafts, originalTemplate),
+    isRubricDirty: (state) => (originalRubric) => isDraftDirty(state.rubricDrafts, originalRubric),
 }
 
 const mutations = {
@@ -195,6 +201,61 @@ const mutations = {
     CLEAR_SELECTED_TEMPLATE (state) {
         Vue.delete(state.templateDrafts, state.selectedTemplate.id)
         state.selectedTemplate = null
+    },
+
+    SELECT_RUBRIC (state, { rubric }) {
+        const draft = fromDraft(state.rubricDrafts, rubric)
+
+        state.selectedRubric = draft.draft
+        state.activeComponent = state.activeComponentOptions.rubric
+        state.activeComponentMode = (draft.edited)
+            ? state.activeComponentModeOptions.edit : state.activeComponentModeOptions.read
+    },
+    CREATE_RUBRIC (state) {
+        if (state.newRubricDraft) {
+            state.selectedRubric = state.newRubricDraft
+        } else {
+            const newRubric = {
+                id: -1,
+                name: '',
+                description: '',
+                visibility: 'v',
+                hide_score_from_students: false,
+                criteria: [{
+                    id: -1,
+                    name: 'Criteria 1',
+                    description: '',
+                    long_description: '',
+                    score_as_range: false,
+                    location: 0,
+                    levels: [
+                        {
+                            name: 'Full marks',
+                            points: 10,
+                            location: 0,
+                        },
+                        {
+                            name: 'No marks',
+                            points: 0,
+                            location: 1,
+                        },
+                    ],
+                }],
+            }
+
+            state.selectedRubric = newRubric
+            state.newRubricDraft = newRubric
+        }
+
+        state.activeComponent = state.activeComponentOptions.rubric
+        state.activeComponentMode = state.activeComponentModeOptions.edit
+    },
+    SET_ACTIVE_COMPONENT_TO_RUBRIC_IMPORT (state) {
+        state.activeComponent = state.activeComponentOptions.rubricImport
+    },
+    CLEAR_SELECTED_RUBRIC (state) {
+        Vue.delete(state.rubricDrafts, state.selectedRubric.id)
+        state.selectedRubric = null
     },
 
     SELECT_TIMELINE_ELEMENT (state, { mode = editSymbol }) {
@@ -340,6 +401,16 @@ const actions = {
             }
         }
     },
+    rubricDeleted (context, { rubric }) {
+        if (context.state.selectedRubric && context.state.selectedRubric.id === rubric.id) {
+            context.commit('CLEAR_SELECTED_RUBRIC')
+
+            if (context.state.activeComponent === context.state.activeComponentOptions.rubric) {
+                context.dispatch('clearActiveComponent')
+            }
+        }
+    },
+
 
     categoryUpdated (context, { category }) {
         context.commit('CLEAR_DRAFT', { drafts: context.state.categoryDrafts, obj: category })
@@ -404,6 +475,13 @@ const actions = {
         context.commit('CLEAR_DRAFT', { drafts: context.state.templateDrafts, obj: template })
         context.commit('SELECT_TEMPLATE', { template: originalTemplate })
     },
+    cancelRubricEdit (context, { rubric }) {
+        const rubrics = context.rootGetters['rubric/assignmentRubrics']
+        const originalRubric = rubrics.find((elem) => elem.id === rubric.id)
+
+        context.commit('CLEAR_DRAFT', { drafts: context.state.rubricDrafts, obj: rubric })
+        context.commit('SELECT_RUBRIC', { rubric: originalRubric })
+    },
 
     clearActiveComponent (context) {
         context.commit('CLEAR_ACTIVE_COMPONENT')
@@ -416,6 +494,8 @@ const actions = {
         const categories = context.rootGetters['category/assignmentCategories']
         const presetNodes = context.rootGetters['presetNode/assignmentPresetNodes']
         const templates = context.rootGetters['template/assignmentTemplates']
+        // TODO RUBRIC: Dirty check
+        // const rubrics = context.rootGetters['rubric/assignmentRubrics']
 
         if (context.state.assignmentDetailsDraft
             && !Vue.prototype.$_isEqual(context.state.assignmentDetailsDraft, assignment)) {
@@ -482,6 +562,8 @@ export default {
             timeline: timelineSymbol,
             template: templateSymbol,
             templateImport: templateImportSymbol,
+            rubric: rubricSymbol,
+            rubricImport: rubricImportSymbol,
         },
         activeComponent: timelineSymbol,
 
@@ -500,6 +582,10 @@ export default {
         selectedTemplate: null,
         newTemplateDraft: null,
         templateDrafts: {},
+
+        selectedRubric: null,
+        newRubricDraft: null,
+        rubricDrafts: {},
 
         selectedPresetNode: null,
         newPresetNodeDraft: null,

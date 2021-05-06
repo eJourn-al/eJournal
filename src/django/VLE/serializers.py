@@ -1209,6 +1209,7 @@ class LevelSerializer(serializers.ModelSerializer, EagerLoadingMixin):
             'points',
             'initial_feedback',
             'location',
+            'criterion',
         )
         read_only_fields = ()
 
@@ -1223,6 +1224,7 @@ class CriterionSerializer(serializers.ModelSerializer, EagerLoadingMixin):
             'score_as_range',
             'location',
             'levels',
+            'rubric',
         )
         read_only_fields = ()
 

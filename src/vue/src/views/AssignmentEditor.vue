@@ -66,6 +66,8 @@
                 class="mb-3"
             />
 
+            <rubric-menu/>
+
             <assignment-editor-danger-zone/>
         </template>
     </timeline-layout>
@@ -78,6 +80,7 @@ import AssignmentEditorDangerZone from '@/components/assignment_editor/Assignmen
 import BreadCrumb from '@/components/assets/BreadCrumb.vue'
 import CategoryMenu from '@/components/category/CategoryMenu.vue'
 import LoadWrapper from '@/components/loading/LoadWrapper.vue'
+import RubricMenu from '@/components/rubric/RubricMenu.vue'
 import TemplateMenu from '@/components/template/TemplateMenu.vue'
 import TimelineLayout from '@/components/columns/TimelineLayout.vue'
 import timeline from '@/components/timeline/Timeline.vue'
@@ -93,6 +96,7 @@ export default {
         BreadCrumb,
         CategoryMenu,
         LoadWrapper,
+        RubricMenu,
         TemplateMenu,
         TimelineLayout,
     },
@@ -167,6 +171,7 @@ This tutorial can be consulted again by clicking the <i>info</i> sign.
             this.presetNodeList({ aID: this.$route.params.aID }),
             this.categoryList({ aID: this.$route.params.aID }),
             this.templateList({ aID: this.$route.params.aID }),
+            this.rubricList({ aID: this.$route.params.aID }), // TODO RUBRIC: should we even wait for rubrics to load
         ]
 
         Promise.all(init).then(() => {
@@ -194,6 +199,7 @@ This tutorial can be consulted again by clicking the <i>info</i> sign.
             presetNodeList: 'presetNode/list',
             categoryList: 'category/list',
             templateList: 'template/list',
+            rubricList: 'rubric/list',
         }),
     },
     beforeRouteLeave (to, from, next) {

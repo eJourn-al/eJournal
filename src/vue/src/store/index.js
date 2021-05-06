@@ -15,6 +15,7 @@ import instance from './modules/instance.js'
 import permissions from './modules/permissions.js'
 import preferences from './modules/preferences.js'
 import presetNode from './modules/presetNode.js'
+import rubric from './modules/rubric.js'
 import sentry from './modules/sentry.js'
 import template from './modules/template.js'
 import timeline from './modules/timeline.js'
@@ -37,6 +38,7 @@ export default createStore(Vuex.Store, {
         permissions,
         preferences,
         presetNode,
+        rubric,
         sentry,
         template,
         timeline,
