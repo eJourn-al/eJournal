@@ -46,14 +46,28 @@
                         </b-button>
                     </template>
                 </template>
-                <b-button
-                    v-if="edit"
-                    class="ml-2 red-button float-right"
-                    @click="clearDraft()"
-                >
-                    <icon name="ban"/>
-                    Cancel
-                </b-button>
+                <template v-if="edit">
+                    <b-button
+                        v-if="preferences.auto_save_drafts"
+                        class="ml-2 green-button float-right"
+                        :class="{ 'input-disabled': !allowPreview }"
+                        @click="edit = false"
+                    >
+                        <icon name="eye"/>
+                        Preview
+                    </b-button>
+                    <b-button
+                        v-else
+                        class="ml-2 red-button float-right"
+                        @click="() => {
+                            clearDraft()
+                            edit = false
+                        }"
+                    >
+                        <icon name="ban"/>
+                        Cancel
+                    </b-button>
+                </template>
 
                 <entry-title
                     :template="template"
@@ -169,7 +183,7 @@
                     Auto save
                 </b-form-checkbox>
                 <dropdown-button
-                    v-if="edit"
+                    v-if="!preferences.auto_save_drafts"
                     :selectedOption="draftPostEntrySetting"
                     :options="{
                         p: {
@@ -188,37 +202,25 @@
                     :up="true"
                     class="float-right"
                     @change-option="(e) => draftPostEntrySetting = e"
-                    @click="() => saveChanges(isDraft = draftPostEntrySetting === 'd')"
+                    @click="() => edit
+                        ? saveChanges(isDraft = draftPostEntrySetting === 'd')
+                        : createEntry(isDraft = draftPostEntrySetting === 'd')"
                 />
+                <b-button
+                    v-else
+                    class="green-button float-right"
+                    :class="{ 'input-disabled': requestInFlight || uploadingFiles > 0 }"
+                    @click="createEntry"
+                >
+                    <icon name="paper-plane"/>
+                    Submit
+                </b-button>
                 <span
                     v-if="preferences.auto_save_drafts"
                     class="float-right mt-2 mr-2 text-grey"
                 >
                     {{ autoSaveMessage }}
                 </span>
-
-                <dropdown-button
-                    v-else-if="create"
-                    :selectedOption="draftPostEntrySetting"
-                    :options="{
-                        p: {
-                            text: 'Submit',
-                            icon: 'paper-plane',
-                            class: 'green-button',
-                        },
-                        d: {
-                            text: 'Save as draft',
-                            icon: 'save',
-                            class: 'gray-button',
-                            tooltip: 'This will also hide the entry from the teacher(s)'
-                        },
-                    }"
-                    :class="{ 'input-disabled': requestInFlight || uploadingFiles > 0 }"
-                    :up="true"
-                    class="float-right"
-                    @change-option="(e) => draftPostEntrySetting = e"
-                    @click="() => createEntry(isDraft = draftPostEntrySetting === 'd')"
-                />
             </template>
         </b-card>
         <comments
@@ -258,10 +260,13 @@ export default {
         template: {
             required: true,
         },
+        justCreated: {
+            default: false,
+        },
     },
     data () {
         return {
-            edit: this.startInEdit,
+            edit: false,
             requestInFlight: false,
             newEntryContent: Object(),
             title: null,
@@ -269,6 +274,7 @@ export default {
             draftPostEntrySetting: 'p',
             autoSaveMessage: '',
             autoSaveDrafts: false,
+            allowPreview: true,
         }
     },
     computed: {
@@ -288,7 +294,7 @@ export default {
             immediate: true,
             handler () {
                 this.clearDraft()
-                this.edit = this.startInEdit
+                this.edit = this.justCreated && this.node.entry.is_draft
             },
         },
         template: {
@@ -317,9 +323,14 @@ export default {
                 }
             },
         },
+        'preferences.auto_save_drafts': {
+            immediate: true,
+            handler () {
+                this.doAutoSave()
+            },
+        },
     },
     created () {
-        console.log('asdfasdflkhasldkjhlkj')
         this.autoSaveDrafts = this.preferences.auto_save_drafts
     },
     methods: {
@@ -333,13 +344,15 @@ export default {
 
             if (this.entryContentHasPendingChanges()) {
                 this.autoSaveMessage = ''
+                this.allowPreview = false
                 const func = this.create ? this.createEntry : this.saveChanges
                 this.autoSaveTimeout = window.setTimeout(() => {
                     this.autoSaveMessage = 'Saving...'
+                    this.allowPreview = true
                     func(true)
-                }, 1000)
+                }, this.create ? 5000 : 1000)
             } else {
-                this.autoSaveMessage = this.create ? null : 'Saved'
+                this.autoSaveMessage = this.create ? null : 'Saved as draft'
             }
         },
         saveChanges (isDraft = false) {
@@ -373,8 +386,6 @@ export default {
                 this.newEntryContent = Object()
                 this.title = ''
             }
-            // Draft nodes should NOT immidiatly go to edit mode, only after saving it should stay in edit mode
-            this.edit = false
         },
         deleteEntry (isDraft = false) {
             if (isDraft) {
@@ -417,13 +428,14 @@ export default {
                     category_ids: categoryIds,
                     title: this.template.allow_custom_title ? this.title : null,
                     is_draft: isDraft,
-                }, { customSuccessToast: this.preferences.auto_save_drafts ? null : 'Entry successfully posted.' })
+                }, { customSuccessToast: this.preferences.auto_save_drafts
+                    ? 'Created draft entry.'
+                    : 'Entry successfully posted.' })
                     .then((data) => {
-                        // this.$emit('entry-posted', data)
+                        this.$emit('entry-posted', data)
                         this.autoSaveMessage = 'Saved as draft'
                         // Draft nodes should immidiatly go to edit mode
                         this.edit = data.entry.is_draft
-                        this.setCurrentNode(data.nodes[data.added])
                     })
                     .finally(() => {
                         this.requestInFlight = false

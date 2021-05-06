@@ -87,6 +87,7 @@
                     ref="entry"
                     :class="{'input-disabled': loadingNodes || needsLtiLink}"
                     :template="currentTemplate"
+                    :justCreated="justCreated"
                     @entry-deleted="removeCurrentEntry"
                     @entry-posted="entryPosted"
                 />
@@ -183,7 +184,7 @@ export default {
             assignment: null,
             loadingNodes: true,
             selectedTemplate: null,
-            startInEdit: false,
+            justCreated: false,
         }
     },
     computed: {
@@ -281,11 +282,16 @@ export default {
             this.setCurrentNode(this.startNode)
         },
         entryPosted (data) {
-            this.startInEdit = data.entry.is_draft
+            this.justCreated = true
+
             this.nodes = data.nodes
-            this.loadingNodes = false // Why is this here?
+            this.loadingNodes = false
             this.setCurrentNode(this.nodes[data.added])
-            // this.selectedTemplate = null
+            this.selectedTemplate = null
+
+            this.$nextTick(() => {
+                this.justCreated = false
+            })
         },
         safeToLeave () {
             return (
