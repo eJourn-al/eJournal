@@ -338,7 +338,7 @@ class PreferencesSerializer(serializers.ModelSerializer):
         fields = (
             'user',
             # Toggle preferences
-            'auto_select_ungraded_entry', 'auto_proceed_next_journal', 'group_only_notifications',
+            'auto_select_ungraded_entry', 'auto_proceed_next_journal', 'group_only_notifications', 'auto_save_drafts',
             # Notification preferences
             'new_grade_notifications', 'new_comment_notifications', 'new_entry_notifications',
             'new_course_notifications', 'new_assignment_notifications', 'new_node_notifications',

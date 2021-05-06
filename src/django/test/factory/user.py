@@ -9,7 +9,7 @@ class UserFactory(factory.django.DjangoModelFactory):
         model = 'VLE.User'
 
     username = factory.Sequence(lambda x: f"{10000000 + x}")
-    full_name = factory.Faker('name_nonbinary')
+    full_name = factory.Faker('name')
     email = factory.Sequence(lambda x: f'email{x + 1}@example.com')
     password = factory.PostGenerationMethodCall('set_password', DEFAULT_PASSWORD)
     verified_email = True

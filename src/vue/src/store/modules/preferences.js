@@ -46,6 +46,8 @@ const mutations = {
             'hide_version_alert',
             'grade_button_setting',
             'comment_button_setting',
+            'auto_save_drafts',
+            'show_format_tutorial',
         ].includes(key))
         preferencesAPI.update(
             store.getters['user/uID'],

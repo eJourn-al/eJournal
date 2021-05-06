@@ -161,12 +161,19 @@
                 v-if="edit || create"
                 #footer
             >
+                <b-form-checkbox
+                    v-model="autoSaveDrafts"
+                    class="float-left mt-2"
+                    @change="(val) => { updatePreferences({ auto_save_drafts: autoSaveDrafts }) }"
+                >
+                    Auto save
+                </b-form-checkbox>
                 <dropdown-button
                     v-if="edit"
                     :selectedOption="draftPostEntrySetting"
                     :options="{
                         p: {
-                            text: 'Post',
+                            text: 'Submit',
                             icon: 'paper-plane',
                             class: 'green-button',
                         },
@@ -183,13 +190,19 @@
                     @change-option="(e) => draftPostEntrySetting = e"
                     @click="() => saveChanges(isDraft = draftPostEntrySetting === 'd')"
                 />
+                <span
+                    v-if="preferences.auto_save_drafts"
+                    class="float-right mt-2 mr-2 text-grey"
+                >
+                    {{ autoSaveMessage }}
+                </span>
 
                 <dropdown-button
                     v-else-if="create"
                     :selectedOption="draftPostEntrySetting"
                     :options="{
                         p: {
-                            text: 'Post',
+                            text: 'Submit',
                             icon: 'paper-plane',
                             class: 'green-button',
                         },
@@ -226,6 +239,7 @@ import SandboxedIframe from '@/components/assets/SandboxedIframe.vue'
 import Tooltip from '@/components/assets/Tooltip.vue'
 import filesList from '@/components/assets/file_handling/FilesList.vue'
 
+import { mapGetters, mapMutations } from 'vuex'
 import entryAPI from '@/api/entry.js'
 
 export default {
@@ -244,16 +258,6 @@ export default {
         template: {
             required: true,
         },
-        node: {
-            required: false,
-            default: null,
-        },
-        create: {
-            default: false,
-        },
-        startInEdit: {
-            default: false,
-        },
     },
     data () {
         return {
@@ -263,11 +267,20 @@ export default {
             title: null,
             uploadingFiles: 0,
             draftPostEntrySetting: 'p',
+            autoSaveMessage: '',
+            autoSaveDrafts: false,
         }
     },
     computed: {
+        ...mapGetters({
+            preferences: 'preferences/saved',
+            node: 'timeline/currentNode',
+        }),
         gradePublished () {
             return this.node.entry && this.node.entry.grade && this.node.entry.grade.published
+        },
+        create () {
+            return this.node.type === 'a'
         },
     },
     watch: {
@@ -288,8 +301,47 @@ export default {
                 }
             },
         },
+        newEntryContent: {
+            deep: true,
+            handler () {
+                if (this.preferences.auto_save_drafts) {
+                    this.doAutoSave()
+                }
+            },
+        },
+        title: {
+            deep: true,
+            handler () {
+                if (this.preferences.auto_save_drafts) {
+                    this.doAutoSave()
+                }
+            },
+        },
+    },
+    created () {
+        console.log('asdfasdflkhasldkjhlkj')
+        this.autoSaveDrafts = this.preferences.auto_save_drafts
     },
     methods: {
+        ...mapMutations({
+            updatePreferences: 'preferences/CHANGE_PREFERENCES',
+            setCurrentNode: 'timeline/SET_CURRENT_NODE',
+        }),
+        doAutoSave () {
+            window.clearTimeout(this.autoSaveTimeout)
+
+
+            if (this.entryContentHasPendingChanges()) {
+                this.autoSaveMessage = ''
+                const func = this.create ? this.createEntry : this.saveChanges
+                this.autoSaveTimeout = window.setTimeout(() => {
+                    this.autoSaveMessage = 'Saving...'
+                    func(true)
+                }, 1000)
+            } else {
+                this.autoSaveMessage = this.create ? null : 'Saved'
+            }
+        },
         saveChanges (isDraft = false) {
             if (isDraft || this.checkRequiredFields()) {
                 this.requestInFlight = true
@@ -300,14 +352,17 @@ export default {
                         title: this.template.allow_custom_title ? this.title : null,
                         is_draft: isDraft,
                     },
-                    { customSuccessToast: 'Entry successfully updated.' },
+                    { customSuccessToast: this.preferences.auto_save_drafts ? null : 'Entry successfully updated.' },
                 )
                     .then((entry) => {
                         this.node.entry = entry
                         // Draft nodes should immidiatly go to edit mode
                         this.edit = entry.is_draft
+                        this.autoSaveMessage = 'Saved as draft'
                     })
-                    .finally(() => { this.requestInFlight = false })
+                    .finally(() => {
+                        this.requestInFlight = false
+                    })
             }
         },
         clearDraft () {
@@ -362,11 +417,17 @@ export default {
                     category_ids: categoryIds,
                     title: this.template.allow_custom_title ? this.title : null,
                     is_draft: isDraft,
-                }, { customSuccessToast: 'Entry successfully posted.' })
+                }, { customSuccessToast: this.preferences.auto_save_drafts ? null : 'Entry successfully posted.' })
                     .then((data) => {
-                        this.$emit('entry-posted', data)
+                        // this.$emit('entry-posted', data)
+                        this.autoSaveMessage = 'Saved as draft'
+                        // Draft nodes should immidiatly go to edit mode
+                        this.edit = data.entry.is_draft
+                        this.setCurrentNode(data.nodes[data.added])
                     })
-                    .finally(() => { this.requestInFlight = false })
+                    .finally(() => {
+                        this.requestInFlight = false
+                    })
             }
         },
         checkRequiredFields () {
@@ -381,7 +442,7 @@ export default {
             // For newly created entries simply check if any field or the title has any content
             if (this.create) {
                 return this.template.field_set.some((field) => this.newEntryContent[field.id])
-                    || this.title !== this.node.entry.title
+                    || this.title !== ''
             } else {
                 // For existing entries check if the content or title is changed
                 return !this.$_isEqual(this.newEntryContent, this.node.entry.content)

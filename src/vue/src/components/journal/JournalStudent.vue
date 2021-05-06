@@ -85,14 +85,8 @@
                 <entry
                     v-else-if="currentTemplate && ['d', 'e', 'a'].includes(currentNode.type)"
                     ref="entry"
-                    :key="`entry-${currentTemplate.id}-${currentNode.id}`"
-                    :class="{'input-disabled': !loadingNodes && journal.needs_lti_link.length > 0
-                        && assignment.active_lti_course}"
+                    :class="{'input-disabled': loadingNodes || needsLtiLink}"
                     :template="currentTemplate"
-                    :assignment="assignment"
-                    :node="currentNode"
-                    :create="currentNode.type == 'a' || (currentNode.type == 'd' && !currentNode.entry)"
-                    :startInEdit="startInEdit"
                     @entry-deleted="removeCurrentEntry"
                     @entry-posted="entryPosted"
                 />
@@ -236,6 +230,9 @@ export default {
             // Add node with multiple choices: select from dropdown.
             return this.selectedTemplate
         },
+        needsLtiLink () {
+            return this.journal.needs_lti_link.length > 0 && this.assignment.active_lti_course
+        },
     },
     created () {
         this.setCurrentNode(this.startNode)
@@ -286,12 +283,9 @@ export default {
         entryPosted (data) {
             this.startInEdit = data.entry.is_draft
             this.nodes = data.nodes
-            this.loadingNodes = false
+            this.loadingNodes = false // Why is this here?
             this.setCurrentNode(this.nodes[data.added])
-            this.selectedTemplate = null
-            this.$nextTick(() => {
-                this.startInEdit = false
-            })
+            // this.selectedTemplate = null
         },
         safeToLeave () {
             return (

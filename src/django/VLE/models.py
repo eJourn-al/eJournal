@@ -555,6 +555,9 @@ class Preferences(CreateUpdateModel):
     auto_proceed_next_journal = models.BooleanField(
         default=False
     )
+    auto_save_drafts = models.BooleanField(
+        default=False
+    )
     hide_version_alert = models.TextField(
         max_length=20,
         null=True,

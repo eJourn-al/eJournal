@@ -2,7 +2,7 @@
     <div v-if="edit">
         <div
             v-for="field in orderedFields"
-            :key="`node ${nodeID}-field-${field.id}`"
+            :key="`node-field-${field.id}`"
             class="mb-2"
         >
             <h2
@@ -90,7 +90,7 @@
     <div v-else>
         <div
             v-for="field in displayFields"
-            :key="`node-${nodeID}-field-${field.id}`"
+            :key="`node-field-${field.id}`"
             class="mb-2"
         >
             <h2
@@ -178,9 +178,6 @@ export default {
         readOnly: {
             type: Boolean,
             default: false,
-        },
-        nodeID: {
-            default: -1,
         },
     },
     data () {
