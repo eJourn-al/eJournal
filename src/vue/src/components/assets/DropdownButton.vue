@@ -115,6 +115,7 @@ export default {
         emitChangeOption (option) {
             this.isOpen = false
             this.$emit('change-option', option)
+            this.$emit('click', option)
         },
     },
 }
