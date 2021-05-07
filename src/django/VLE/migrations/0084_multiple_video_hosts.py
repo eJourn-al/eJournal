@@ -1,10 +1,14 @@
 from django.db import migrations, models
+from django.db.models import Q
 
 
 def add_hosts_to_field_options(apps, schema_editor):
     Field = apps.get_model('VLE', 'Field')
 
-    Field.objects.filter(type='v', options__isnull=True).update(options='y,k')
+    Field.objects.filter(
+        Q(options__isnull=True) | Q(options=''),
+        type='v',
+    ).update(options='y,k')
 
 
 class Migration(migrations.Migration):

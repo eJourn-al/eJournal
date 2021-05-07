@@ -17,7 +17,6 @@
     <div>
         <b-collapse id="timeline-container">
             <b-card
-                v-if="assignmentHasCategories"
                 class="timeline-filter"
                 noBody
             >
@@ -26,6 +25,7 @@
                         Timeline
                     </h3>
                     <b-button
+                        v-if="timelineOptionsAvailable"
                         variant="link"
                         class="grey-button float-right pt-0 pb-0"
                         @click="showFilters = !showFilters"
@@ -44,6 +44,7 @@
                         Hide past deadlines
                     </b-form-checkbox>
                     <category-select
+                        v-if="assignmentHasCategories"
                         v-model="filteredCategories"
                         :options="$store.getters['category/assignmentCategories']"
                         :multiple="true"
@@ -60,10 +61,14 @@
                 aria-expanded="false"
                 aria-controls="timeline-container"
             >
-                <timeline-nodes
-                    :filteredNodes="filteredNodes"
-                    :allNodes="nodes"
-                />
+                <!-- Nested components make use of the store assignment, this ensures both are available -->
+                <load-wrapper :loading="!(assignment && storeAssignment)">
+                    <timeline-nodes
+                        v-if="assignment && storeAssignment"
+                        :filteredNodes="filteredNodes"
+                        :allNodes="nodes"
+                    />
+                </load-wrapper>
             </template>
         </b-collapse>
 
@@ -96,6 +101,7 @@
 
 <script>
 import CategorySelect from '@/components/category/CategorySelect.vue'
+import LoadWrapper from '@/components/loading/LoadWrapper.vue'
 import TimelineNodes from '@/components/timeline/TimelineNodes.vue'
 
 import comparison from '@/utils/comparison.js'
@@ -106,6 +112,7 @@ export default {
     components: {
         CategorySelect,
         TimelineNodes,
+        LoadWrapper,
     },
     props: {
         /* Array of nodes (journal view) or preset nodes (assignment editor view) */
@@ -126,11 +133,18 @@ export default {
     },
     computed: {
         ...mapGetters({
+            storeAssignment: 'assignment/assignment',
             assignmentHasCategories: 'category/assignmentHasCategories',
             currentNode: 'timeline/currentNode',
             startNode: 'timeline/startNode',
             addNodeSymbol: 'timeline/addNodeSymbol',
         }),
+        timelineOptionsAvailable () {
+            return (
+                this.assignmentHasCategories
+                || this.nodesHoldPastDeadlines
+            )
+        },
         filteredCategories: {
             set (value) { this.$store.commit('timeline/SET_FILTERED_CATEGORIES', value) },
             get () { return this.$store.getters['timeline/filteredCategories'] },
