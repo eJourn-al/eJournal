@@ -13,6 +13,6 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='preferences',
             name='auto_save_drafts',
-            field=models.BooleanField(default=False),
+            field=models.BooleanField(default=True),
         ),
     ]

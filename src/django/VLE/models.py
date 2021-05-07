@@ -556,7 +556,7 @@ class Preferences(CreateUpdateModel):
         default=False
     )
     auto_save_drafts = models.BooleanField(
-        default=False
+        default=True
     )
     hide_version_alert = models.TextField(
         max_length=20,
