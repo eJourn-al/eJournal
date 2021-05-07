@@ -215,12 +215,12 @@
                     <icon name="paper-plane"/>
                     Submit
                 </b-button>
-                <span
+                <small
                     v-if="preferences.auto_save_drafts"
                     class="float-right mt-2 mr-2 text-grey"
                 >
                     {{ autoSaveMessage }}
-                </span>
+                </small>
             </template>
         </b-card>
         <comments
@@ -392,7 +392,7 @@ export default {
             if (isDraft) {
                 if (window.confirm('Are you sure that you want to discard this entry?')) {
                     this.requestInFlight = true
-                    entryAPI.delete(this.node.entry.id, { customSuccessToast: 'Entry successfully discarded.' })
+                    entryAPI.delete(this.node.entry.id, { customSuccessToast: 'Entry draft successfully discarded.' })
                         .then((data) => {
                             this.clearDraft()
                             this.$emit('entry-deleted', data)
