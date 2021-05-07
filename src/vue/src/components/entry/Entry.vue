@@ -286,7 +286,7 @@ export default {
             return this.node.entry && this.node.entry.grade && this.node.entry.grade.published
         },
         create () {
-            return this.node.type === 'a'
+            return this.node.type === 'a' || !this.node.entry
         },
     },
     watch: {
@@ -350,7 +350,7 @@ export default {
                     this.autoSaveMessage = 'Saving...'
                     this.allowPreview = true
                     func(true)
-                }, this.create ? 5000 : 1000)
+                }, this.create ? 1000 : 1000)
             } else {
                 this.autoSaveMessage = this.create ? null : 'Saved as draft'
             }
