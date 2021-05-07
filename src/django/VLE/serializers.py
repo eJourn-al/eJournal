@@ -1221,7 +1221,6 @@ class CriterionSerializer(serializers.ModelSerializer, EagerLoadingMixin):
             'id',
             'name',
             'description',
-            'score_as_range',
             'location',
             'levels',
             'rubric',

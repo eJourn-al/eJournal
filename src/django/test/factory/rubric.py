@@ -1,7 +1,6 @@
 import test.factory
 
 import factory
-from factory.helpers import generate
 
 import VLE.models
 
@@ -31,7 +30,6 @@ class CriterionFactory(factory.django.DjangoModelFactory):
     rubric = factory.SubFactory('test.factory.rubric.RubricFactory')
     name = factory.Sequence(lambda x: f'Criterion {x + 1}')
     description = factory.Faker('paragraph')
-    score_as_range = False
     location = factory.Sequence(lambda x: x)
 
     @factory.post_generation
@@ -112,7 +110,6 @@ class RubricCreationParamsFactory(factory.Factory):
                 'rubric': -1,
                 'name': f'Criterion {i + 1}',
                 'description': '',
-                'score_as_range': False,
                 'location': i,
                 'levels': levels,
             })

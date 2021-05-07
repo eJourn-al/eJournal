@@ -169,10 +169,6 @@ class Criterion(CreateUpdateModel):
         blank=True,
     )
 
-    score_as_range = models.BooleanField(
-        default=False,
-    )
-
     # Rows, ordered top to bottom
     location = models.PositiveIntegerField()
 
