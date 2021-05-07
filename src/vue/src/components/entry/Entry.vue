@@ -316,7 +316,7 @@ export default {
             },
         },
         title: {
-            deep: true,
+            immediate: true,
             handler () {
                 if (this.preferences.auto_save_drafts) {
                     this.doAutoSave()
@@ -326,7 +326,9 @@ export default {
         'preferences.auto_save_drafts': {
             immediate: true,
             handler () {
-                this.doAutoSave()
+                if (this.preferences.auto_save_drafts) {
+                    this.doAutoSave()
+                }
             },
         },
     },
@@ -341,7 +343,6 @@ export default {
         doAutoSave () {
             window.clearTimeout(this.autoSaveTimeout)
 
-
             if (this.entryContentHasPendingChanges()) {
                 this.autoSaveMessage = ''
                 this.allowPreview = false
@@ -350,7 +351,7 @@ export default {
                     this.autoSaveMessage = 'Saving...'
                     this.allowPreview = true
                     func(true)
-                }, this.create ? 1000 : 1000)
+                }, this.create ? 5000 : 1000)
             } else {
                 this.autoSaveMessage = this.create ? null : 'Saved as draft'
             }
