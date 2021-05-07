@@ -349,8 +349,14 @@ export default {
                 const func = this.create ? this.createEntry : this.saveChanges
                 this.autoSaveTimeout = window.setTimeout(() => {
                     this.autoSaveMessage = 'Saving...'
-                    this.allowPreview = true
                     func(true)
+                        .then(() => {
+                            this.allowPreview = true
+                            this.autoSaveMessage = 'Saved as draft'
+                        })
+                        .catch(() => {
+                            this.autoSaveMessage = 'Failed to save'
+                        })
                 }, this.create ? 5000 : 1000)
             } else {
                 this.autoSaveMessage = this.create ? null : 'Saved as draft'
@@ -359,7 +365,7 @@ export default {
         saveChanges (isDraft = false) {
             if (isDraft || this.checkRequiredFields()) {
                 this.requestInFlight = true
-                entryAPI.update(
+                return entryAPI.update(
                     this.node.entry.id,
                     {
                         content: this.newEntryContent,
@@ -372,12 +378,12 @@ export default {
                         this.node.entry = entry
                         // Draft nodes should immidiatly go to edit mode
                         this.edit = entry.is_draft
-                        this.autoSaveMessage = 'Saved as draft'
                     })
                     .finally(() => {
                         this.requestInFlight = false
                     })
             }
+            return null
         },
         clearDraft () {
             if (this.node && this.node.entry) {
@@ -421,7 +427,7 @@ export default {
                     categoryIds = this.newEntryContent.categories.map((category) => category.id)
                 }
 
-                entryAPI.create({
+                return entryAPI.create({
                     journal_id: this.$route.params.jID,
                     template_id: this.template.id,
                     content: newEntryContentWithoutCategories,
@@ -430,11 +436,10 @@ export default {
                     title: this.template.allow_custom_title ? this.title : null,
                     is_draft: isDraft,
                 }, { customSuccessToast: this.preferences.auto_save_drafts
-                    ? 'Created draft entry.'
+                    ? 'Created entry draft.'
                     : 'Entry successfully posted.' })
                     .then((data) => {
                         this.$emit('entry-posted', data)
-                        this.autoSaveMessage = 'Saved as draft'
                         // Draft nodes should immidiatly go to edit mode
                         this.edit = data.entry.is_draft
                     })
@@ -442,6 +447,7 @@ export default {
                         this.requestInFlight = false
                     })
             }
+            return null
         },
         checkRequiredFields () {
             if (this.template.field_set.some((field) => field.required && !this.newEntryContent[field.id])) {
