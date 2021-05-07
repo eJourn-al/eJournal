@@ -37,6 +37,9 @@ $font-family-sans-serif: 'Roboto', sans-serif
     &.required::after
         content: " *"
         color: $theme-red
+    &.optional::after
+        content: " (optional) "
+        color: grey
 
 .form-group
     margin-bottom: 10px

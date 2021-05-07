@@ -18,8 +18,13 @@
 
         <b-form-group
             v-if="template.allow_custom_title"
-            label="Title"
         >
+            <template #label>
+                <span class="field-heading optional">
+                    Title
+                </span>
+                <tooltip tip="The title will also be displayed in the timeline."/>
+            </template>
             <sandboxed-iframe
                 v-if="template.title_description"
                 :content="template.title_description"

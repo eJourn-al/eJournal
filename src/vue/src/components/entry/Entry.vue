@@ -120,9 +120,8 @@
 
             <b-form-group v-if="node && template.allow_custom_title && (edit || create)">
                 <template #label>
-                    Title
-                    <span class="text-grey">
-                        (optional)
+                    <span class="field-heading optional">
+                        Title
                     </span>
                     <tooltip tip="The title will also be displayed in the timeline."/>
                 </template>
