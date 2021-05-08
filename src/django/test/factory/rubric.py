@@ -78,6 +78,7 @@ class RubricCreationParamsFactory(factory.Factory):
     description = 'Rubric description'
     visibility = VLE.models.Rubric.VISIBLE
     hide_score_from_students = False
+    id = -1
 
     @classmethod
     def _adjust_kwargs(cls, **kwargs):
@@ -91,6 +92,7 @@ class RubricCreationParamsFactory(factory.Factory):
                 {
                     'criterion': -1 - i,
                     'name': 'Pass',
+                    'id': -i * 2 - 1,
                     'description': '',
                     'points': 10,
                     'initial_feedback': '',
@@ -99,6 +101,7 @@ class RubricCreationParamsFactory(factory.Factory):
                 {
                     'criterion': -1 - i,
                     'name': 'Fail',
+                    'id': -i * 2 - 2,
                     'description': '',
                     'points': 0,
                     'initial_feedback': '',
@@ -108,6 +111,7 @@ class RubricCreationParamsFactory(factory.Factory):
 
             kwargs['criteria'].append({
                 'rubric': -1,
+                'id': -i - 1,
                 'name': f'Criterion {i + 1}',
                 'description': '',
                 'location': i,
