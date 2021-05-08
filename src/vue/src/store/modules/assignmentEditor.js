@@ -412,7 +412,6 @@ const actions = {
         }
     },
 
-
     categoryUpdated (context, { category }) {
         context.commit('CLEAR_DRAFT', { drafts: context.state.categoryDrafts, obj: category })
         context.commit('PROPAGATE_DRAFT_CATEGORY_TEMPLATE_UPDATE', { updatedCategory: category })
@@ -431,6 +430,11 @@ const actions = {
         context.commit('PROPAGATE_DRAFT_TEMPLATE_PRESET_NODE_UPDATE', { updatedTemplate, oldTemplateId })
         context.commit('SELECT_TEMPLATE', { template: updatedTemplate })
     },
+    rubricUpdated (context, { rubric }) {
+        context.commit('CLEAR_DRAFT', { drafts: context.state.rubricDrafts, obj: rubric })
+        context.commit('SELECT_RUBRIC', { rubric })
+    },
+
     timelineElementSelected (context, { element, mode = editSymbol }) {
         context.commit('SELECT_TIMELINE_ELEMENT', { mode })
 

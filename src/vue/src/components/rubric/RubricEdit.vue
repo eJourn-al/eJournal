@@ -329,8 +329,8 @@ export default {
                     })
             } else {
                 this.updateRubric({ id: this.rubric.id, data: this.rubric, aID: this.$route.params.aID })
-                    .then((updatedRubric) => {
-                        this.rubricUpdated({ updatedRubric, oldRubricId: this.rubric.id })
+                    .then((rubric) => {
+                        this.rubricUpdated({ rubric })
                     })
             }
         },
