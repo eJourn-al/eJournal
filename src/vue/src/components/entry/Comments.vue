@@ -13,7 +13,7 @@
             />
         </div>
         <comment-card
-            v-if="$hasPermission('can_comment')"
+            v-if="$hasPermission('can_comment') && !isDraft"
             :createCard="true"
             :passedComment="createComment"
             :eID="eID"
@@ -39,6 +39,10 @@ export default {
             required: true,
         },
         entryGradePublished: {
+            type: Boolean,
+            default: false,
+        },
+        isDraft: {
             type: Boolean,
             default: false,
         },

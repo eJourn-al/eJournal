@@ -76,7 +76,7 @@ export default {
             case 's':
                 return 'Assignment details'
             case 'a':
-                return `New ${this.$route.name === 'Journal' ? 'entry' : 'deadline'}`
+                return this.addNodeTitle
             default:
                 return null
             }
@@ -136,6 +136,18 @@ export default {
             }
 
             return false
+        },
+        addNodeTitle () {
+            if (this.$route.name !== 'Journal') {
+                // Assignment editor
+                return 'New deadline'
+            } else if (this.node.templates.length > 1) {
+                // Multiple templates, cannot display a specific name
+                return 'New entry'
+            } else {
+                // Single template, display template name
+                return this.node.templates[0].name
+            }
         },
     },
     methods: {

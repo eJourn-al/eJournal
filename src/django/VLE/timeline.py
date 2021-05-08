@@ -17,6 +17,7 @@ def get_nodes(journal, user=None):
     progress node is in the future and maximally one.
     """
     needs_add_node = journal.can_add(user)
+    can_see_drafted_entries = user and journal.can_see_drafted_entries(user)
 
     node_qry = journal.get_sorted_nodes(user=user).select_related(
         'preset__forced_template',
@@ -37,10 +38,10 @@ def get_nodes(journal, user=None):
                 needs_add_node = False
 
             node_list.append(get_progress(journal, node))
-        elif node.is_entry:
+        elif node.is_entry and (not node.entry.is_draft or can_see_drafted_entries):
             node_list.append(get_entry_node(journal, node, user))
         elif node.is_deadline:
-            node_list.append(get_deadline(journal, node, user))
+            node_list.append(get_deadline(journal, node, user, can_see_drafted_entries))
 
     if needs_add_node:
         add_node = get_add_node(journal)
@@ -86,15 +87,17 @@ def get_entry_node(journal, node, user):
     } if node else None
 
 
-def get_deadline(journal, node, user):
+def get_deadline(journal, node, user, can_see_drafted_entries=None):
     """Convert entrydeadline to a dictionary."""
     if not node:
         return None
+    if can_see_drafted_entries is None:
+        can_see_drafted_entries = user and journal.can_see_drafted_entries(user)
 
     entry_data = EntrySerializer(
         EntrySerializer.setup_eager_loading(Entry.objects.filter(node=node)).first(),
         context={'user': user}
-    ).data if node.entry else None
+    ).data if node.entry and (not node.entry.is_draft or can_see_drafted_entries) else None
 
     node_data = {
         'type': node.type,

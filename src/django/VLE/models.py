@@ -1999,8 +1999,6 @@ class Journal(CreateUpdateModel):
         If "user" is set, it checks if the user can see drafted entries, if so, also return drafted entries
         """
         nodes = self.node_set
-        if not user or not self.can_see_drafted_entries(user):
-            nodes = nodes.exclude(entry__is_draft=True)
 
         return nodes.select_related(
             'entry',

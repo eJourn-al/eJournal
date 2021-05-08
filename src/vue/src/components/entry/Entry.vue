@@ -46,11 +46,11 @@
                         </b-button>
                     </template>
                 </template>
-                <template v-if="edit">
+                <template v-if="edit || create">
                     <b-button
-                        v-if="preferences.auto_save_drafts"
+                        v-if="preferences.auto_save_drafts || !entryContentHasPendingChanges()"
                         class="ml-2 green-button float-right"
-                        :class="{ 'input-disabled': !allowPreview }"
+                        :class="{ 'input-disabled': requestInFlight || create }"
                         @click="edit = false"
                     >
                         <icon name="eye"/>
@@ -66,6 +66,14 @@
                     >
                         <icon name="ban"/>
                         Cancel
+                    </b-button>
+                    <b-button
+                        v-if="edit && node.entry.is_draft && preferences.auto_save_drafts"
+                        class="ml-2 red-button float-right"
+                        @click="() => deleteEntry(true)"
+                    >
+                        <icon name="trash"/>
+                        Discard draft
                     </b-button>
                 </template>
 
@@ -202,15 +210,13 @@
                     :up="true"
                     class="float-right"
                     @change-option="(e) => draftPostEntrySetting = e"
-                    @click="() => edit
-                        ? saveChanges(isDraft = draftPostEntrySetting === 'd')
-                        : createEntry(isDraft = draftPostEntrySetting === 'd')"
+                    @click="() => saveChanges(isDraft = draftPostEntrySetting === 'd')"
                 />
                 <b-button
                     v-else
                     class="green-button float-right"
                     :class="{ 'input-disabled': requestInFlight || uploadingFiles > 0 }"
-                    @click="createEntry"
+                    @click="() => { saveChanges() }"
                 >
                     <icon name="paper-plane"/>
                     Submit
@@ -226,6 +232,7 @@
         <comments
             v-if="node && node.entry"
             :eID="node.entry.id"
+            :isDraft="node.entry.is_draft"
         />
     </div>
 </template>
@@ -274,7 +281,6 @@ export default {
             draftPostEntrySetting: 'p',
             autoSaveMessage: '',
             autoSaveDrafts: false,
-            allowPreview: true,
         }
     },
     computed: {
@@ -286,7 +292,7 @@ export default {
             return this.node.entry && this.node.entry.grade && this.node.entry.grade.published
         },
         create () {
-            return this.node.type === 'a' || !this.node.entry
+            return !this.node.entry
         },
     },
     watch: {
@@ -294,17 +300,8 @@ export default {
             immediate: true,
             handler () {
                 this.clearDraft()
-                this.edit = this.justCreated && this.node.entry.is_draft
-            },
-        },
-        template: {
-            immediate: true,
-            handler () {
-                // Add node should empty filled in entry content when switching template
-                if (this.node.type === 'a') {
-                    this.newEntryContent = Object()
-                    this.title = ''
-                }
+                this.edit = this.create ? false : this.node.entry.is_draft
+                this.autoSaveMessage = ''
             },
         },
         newEntryContent: {
@@ -345,22 +342,28 @@ export default {
 
             if (this.entryContentHasPendingChanges()) {
                 this.autoSaveMessage = ''
-                this.allowPreview = false
-                const func = this.create ? this.createEntry : this.saveChanges
+                this.requestInFlight = true
                 this.autoSaveTimeout = window.setTimeout(() => {
-                    this.autoSaveMessage = 'Saving...'
-                    func(true)
-                        .then(() => {
-                            this.allowPreview = true
-                            this.autoSaveMessage = 'Saved as draft'
-                        })
-                        .catch(() => {
-                            this.autoSaveMessage = 'Failed to save'
-                        })
-                }, this.create ? 5000 : 1000)
-            } else {
+                    if (this.create) {
+                        this.createEntry()
+                    } else {
+                        this.autoSave()
+                    }
+                }, this.create ? 1000 : 1000)
+            } else if (this.node.entry && this.node.entry.is_draft) {
                 this.autoSaveMessage = this.create ? null : 'Saved as draft'
             }
+        },
+        autoSave () {
+            this.autoSaveMessage = 'Saving...'
+            this.saveChanges(true)
+                .then(() => {
+                    this.autoSaveMessage = 'Saved as draft'
+                })
+                .catch(() => {
+                    this.autoSaveMessage = 'Failed to save'
+                })
+            return this.autoSaveTimeout
         },
         saveChanges (isDraft = false) {
             if (isDraft || this.checkRequiredFields()) {
@@ -378,6 +381,9 @@ export default {
                         this.node.entry = entry
                         // Draft nodes should immidiatly go to edit mode
                         this.edit = entry.is_draft
+                        if (!entry.is_draft) {
+                            this.autoSaveMessage = ''
+                        }
                     })
                     .finally(() => {
                         this.requestInFlight = false
@@ -415,39 +421,37 @@ export default {
                     .finally(() => { this.requestInFlight = false })
             }
         },
-        createEntry (isDraft = false) {
-            if (isDraft || this.checkRequiredFields()) {
-                this.requestInFlight = true
-
-                // Strip the categories from the request to be sent.
-                const { categories, ...newEntryContentWithoutCategories } = this.newEntryContent
-                // Instead, only the ids of the categories are used.
-                let categoryIds = []
-                if (this.newEntryContent.categories) {
-                    categoryIds = this.newEntryContent.categories.map((category) => category.id)
-                }
-
-                return entryAPI.create({
-                    journal_id: this.$route.params.jID,
-                    template_id: this.template.id,
-                    content: newEntryContentWithoutCategories,
-                    node_id: this.node && this.node.id > 0 ? this.node.id : null,
-                    category_ids: categoryIds,
-                    title: this.template.allow_custom_title ? this.title : null,
-                    is_draft: isDraft,
-                }, { customSuccessToast: this.preferences.auto_save_drafts
-                    ? 'Created entry draft.'
-                    : 'Entry successfully posted.' })
-                    .then((data) => {
-                        this.$emit('entry-posted', data)
-                        // Draft nodes should immidiatly go to edit mode
-                        this.edit = data.entry.is_draft
-                    })
-                    .finally(() => {
-                        this.requestInFlight = false
-                    })
+        createEntry () {
+            // Strip the categories from the request to be sent.
+            const { categories, ...newEntryContentWithoutCategories } = this.newEntryContent
+            // Instead, only the ids of the categories are used.
+            let categoryIds = []
+            if (this.newEntryContent.categories) {
+                categoryIds = this.newEntryContent.categories.map((category) => category.id)
             }
-            return null
+
+            return entryAPI.create({
+                journal_id: this.$route.params.jID,
+                template_id: this.template.id,
+                content: newEntryContentWithoutCategories,
+                node_id: this.node && this.node.id > 0 ? this.node.id : null,
+                category_ids: categoryIds,
+                title: this.template.allow_custom_title ? this.title : null,
+                is_draft: true,
+            }, { customSuccessToast: this.preferences.auto_save_drafts
+                ? null
+                : 'Entry successfully posted.' })
+                .then((data) => {
+                    this.$emit('entry-posted', data)
+                    // Draft nodes should immidiatly go to edit mode
+                    this.edit = data.entry.is_draft
+                    if (!data.entry.is_draft) {
+                        this.autoSaveMessage = ''
+                    }
+                })
+                .finally(() => {
+                    this.requestInFlight = false
+                })
         },
         checkRequiredFields () {
             if (this.template.field_set.some((field) => field.required && !this.newEntryContent[field.id])) {

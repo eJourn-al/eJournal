@@ -34,25 +34,11 @@
             </b-alert>
 
             <load-wrapper :loading="loadingNodes">
-                <b-form-select
-                    v-if="currentNode.type === addNodeSymbol && currentNode.templates.length > 1"
-                    v-model="selectedTemplate"
-                    class="theme-select mb-2"
-                >
-                    <option
-                        :value="null"
-                        disabled
-                    >
-                        New entry: select a template
-                    </option>
-                    <option
-                        v-for="template in currentNode.templates"
-                        :key="template.id"
-                        :value="template"
-                    >
-                        {{ template.name }}
-                    </option>
-                </b-form-select>
+                <template-selection
+                    v-if="currentNode.type === addNodeSymbol"
+                    :templates="currentNode.templates"
+                    @select-template="createEntry"
+                />
 
                 <journal-start-card
                     v-if="currentNode === startNode"
@@ -83,7 +69,7 @@
                     <deadline-date-display :subject="currentNode"/>
                 </b-card>
                 <entry
-                    v-else-if="currentTemplate && ['d', 'e', 'a'].includes(currentNode.type)"
+                    v-else-if="currentTemplate && ['d', 'e'].includes(currentNode.type)"
                     ref="entry"
                     :class="{'input-disabled': loadingNodes || needsLtiLink}"
                     :template="currentTemplate"
@@ -127,7 +113,7 @@
 
             <transition name="fade">
                 <b-button
-                    v-if="addNodeExists && currentNode.type !== addNodeSymbol"
+                    v-if="addNodeExists"
                     class="fab blue-filled-button shadow"
                     @click="setCurrentNode(nodes.find((node) => node.type === addNodeSymbol))"
                 >
@@ -144,6 +130,7 @@
 <script>
 import DeadlineDateDisplay from '@/components/assets/DeadlineDateDisplay.vue'
 import Entry from '@/components/entry/Entry.vue'
+import TemplateSelection from '@/components/template/TemplateSelection.vue'
 import TimelineLayout from '@/components/columns/TimelineLayout.vue'
 import UserMissingLtiLinkWarning from '@/components/journal/UserMissingLtiLinkWarning.vue'
 
@@ -157,6 +144,7 @@ import progressNode from '@/components/entry/ProgressNode.vue'
 import timeline from '@/components/timeline/Timeline.vue'
 
 import assignmentAPI from '@/api/assignment.js'
+import entryAPI from '@/api/entry.js'
 import journalAPI from '@/api/journal.js'
 
 import { mapGetters, mapMutations } from 'vuex'
@@ -175,6 +163,7 @@ export default {
         journalDetails,
         journalImportModal,
         UserMissingLtiLinkWarning,
+        TemplateSelection,
     },
     props: ['cID', 'aID', 'jID'],
     data () {
@@ -233,6 +222,16 @@ export default {
         },
         needsLtiLink () {
             return this.journal.needs_lti_link.length > 0 && this.assignment.active_lti_course
+        },
+    },
+    watch: {
+        currentNode: {
+            immediate: true,
+            handler () {
+                if (this.currentNode && this.currentNode.type === 'a' && this.currentNode.templates.length === 1) {
+                    this.createEntry(this.currentNode.templates[0].id)
+                }
+            },
         },
     },
     created () {
@@ -299,6 +298,27 @@ export default {
                 || this.$refs.entry.safeToLeave()
                 || window.confirm('Progress will not be saved if you leave. Do you wish to continue?')
             )
+        },
+        createEntry (templateId) {
+            return entryAPI.create({
+                journal_id: this.$route.params.jID,
+                template_id: templateId,
+                content: {},
+                node_id: this.node && this.node.id > 0 ? this.node.id : null,
+                title: null,
+                is_draft: true,
+            }, { customSuccessToast: null })
+                .then((data) => {
+                    this.justCreated = true
+                    this.nodes = data.nodes
+                    this.loadingNodes = false
+                    this.setCurrentNode(this.nodes[data.added])
+                    this.selectedTemplate = null
+
+                    this.$nextTick(() => {
+                        this.justCreated = false
+                    })
+                })
         },
     },
 }

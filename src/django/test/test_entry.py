@@ -1471,6 +1471,27 @@ class EntryAPITest(TestCase):
                 found = True
         assert not found, 'Teacher should NOT be able to see the draft entry'
 
+        entrydeadline = factory.DeadlinePresetNode(
+            format=self.group_journal.assignment.format,
+            due_date=timezone.now() + timedelta(days=1),
+            forced_template=self.group_journal.assignment.format.template_set.first()
+        )
+
+        entry = factory.PresetEntry(
+            node=self.group_journal.node_set.get(preset=entrydeadline),
+            is_draft=True,
+        )
+        data = timeline.get_nodes(self.group_journal, user=self.teacher)
+        found_node = False
+        found_entry = False
+        for node in data:
+            if node['id'] == entry.node.pk:
+                found_node = True
+            if node.get('entry', False) and node['entry']['id'] == entry.pk:
+                found_entry = True
+        assert not found_entry, 'Teacher should NOT be able to see the draft entry of an entrydeadline'
+        assert found_node, 'Teacher should able to see the node of a drafted entrydeadline'
+
         graded_entry = factory.Grade(entry__node__journal=self.group_journal).entry
         params = {
             'pk': graded_entry.pk,
