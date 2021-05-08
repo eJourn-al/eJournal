@@ -28,7 +28,6 @@
                 size="2"
                 placeholder="-"
                 min="0.0"
-                :disabled="criterion.score_as_range"
                 :formatter="floatFormatter"
             />
 
@@ -45,7 +44,7 @@
             class="add-level"
         >
             <icon
-                class="validate-icon"
+                class="add-icon"
                 name="plus"
                 @click.native="addLevel()"
             />
@@ -54,6 +53,8 @@
 </template>
 
 <script>
+import genericUtitls from '@/utils/generic_utils.js'
+
 export default {
     props: {
         level: {
@@ -65,14 +66,12 @@ export default {
             type: Object,
         },
     },
-    data () {
-        return {
-            newCriterionId: -1,
-        }
-    },
     computed: {
         firstLevel () { return this.level.location === 0 },
         lastLevel () { return this.level.location === this.criterion.levels.length - 1 },
+        criterionMinLevelId () {
+            return Math.min(...this.criterion.levels.map((level) => level.id), 0)
+        },
     },
     methods: {
         /* Adds a level after (to the right of) the current level */
@@ -84,19 +83,14 @@ export default {
                 description: '',
                 points: afterLevel.points,
                 location: afterLevel.location + 1,
-                id: this.newCriterionId--,
+                id: this.criterionMinLevelId - 1,
             })
 
-            this.syncLocations(this.criterion.levels)
+            genericUtitls.syncLocations(this.criterion.levels)
         },
         removeLevel () {
             this.criterion.levels = this.criterion.levels.filter((elem) => elem !== this.level)
-            this.syncLocations(this.criterion.levels)
-        },
-        syncLocations (arr) {
-            arr.forEach((obj, i) => {
-                obj.location = i
-            })
+            genericUtitls.syncLocations(this.criterion.levels)
         },
         floatFormatter (value) {
             if (value === '') { return 0 }

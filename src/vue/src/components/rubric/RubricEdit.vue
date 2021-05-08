@@ -41,12 +41,11 @@
             id="rubricEditForm"
             @submit.prevent="finalizeRubricChanges"
         >
-            <div style="overflow-x:auto;">
-                <table class="rubric-edit">
+            <div class="rubric-edit">
+                <table>
                     <thead>
                         <tr>
                             <th :colspan="3">
-                                <!-- {{ rubric.name }} -->
                                 <b-form-group
                                     style="max-width: 200px"
                                     :invalid-feedback="nameInvalidFeedback"
@@ -85,7 +84,6 @@
                             <td class="levels-cell-table-container">
                                 <table
                                     class="levels"
-                                    style="height: 100%"
                                 >
                                     <tbody>
                                         <tr>
@@ -287,18 +285,19 @@ export default {
                 name: `Criteria ${this.rubric.criteria.length + 1}`,
                 description: '',
                 long_description: '',
-                score_as_range: false,
                 location: this.rubric.criteria.length,
                 levels: [
                     {
                         name: 'Full marks',
                         points: 10,
                         location: 0,
+                        id: -1,
                     },
                     {
                         name: 'No marks',
                         points: 0,
                         location: 1,
+                        id: -2,
                     },
                 ],
             })
@@ -347,26 +346,21 @@ export default {
 </script>
 
 <style lang="sass">
-%remove-default-table-styling
-    margin: 0
-    padding: 0
-    border: 0
-    font-size: 100%
-    font: inherit
-    vertical-align: top
+@import '~sass/partials/rubric.sass'
+
+$level-add-border: 1px dashed #ccc
+$add-icon-margin: 5px
 
 .rubric-edit
+    overflow-x: auto
+
     & > table, caption, tbody, tfoot, thead, tr, th, td
         @extend %remove-default-table-styling
 
-    & > table
-        border-collapse: collapse
-        border-spacing: 0
-
     th, td
-        padding: 10px
+        padding: $cell-padding
         text-align: left
-        border: 1px solid #ccc
+        border: $default-border
 
     .main-column-headers
         font-weight: bold
@@ -375,49 +369,45 @@ export default {
         white-space: nowrap
 
     .criterion-cell
-        min-width: 150px
+        min-width: $min-cell-width
 
-    .levels-cell-table-container  // Outer container where the levels table is nested
-        padding: 0px
-        height: 250px // We have to define the heigth for the nested table to scale its heigth relative to this
+    & > table
+        border-collapse: collapse
+        border-spacing: 0
+        min-width: 100%
 
-    .levels
-        & > table
-            height: 100%
+        & > tbody > tr > td.levels-cell-table-container  // Outer container where the levels table is nested
+            padding: 0px
+            height: 250px // We have to define the heigth for the nested table to scale its heigth relative to this
 
-        & > table, caption, tbody, tfoot, thead, tr, th, td
-            border: 0
+            & > table.levels
+                height: 100%
+                min-width: 100%
 
-        tr > td
-            &:not(:first-child)
-                border-left: 1px dashed #ccc
-            &:not(:last-child)
-                border-right: 1px dashed #ccc
+                th, td
+                    border: 0
 
-        // TODO: Fix messy css
-        .level-container
-            display: flex
-            height: 100%
-            min-width: 200px
-            align-items: stretch
-            flex: 1
-            flex-direction: row
-            flex-wrap: nowrap
+                tbody > tr > td
+                    &:not(:first-child)
+                        border-left: $level-add-border
+                        .level-main-content
+                            margin-left: $add-icon-margin
+                    &:not(:last-child)
+                        border-right: $level-add-border
+                        .level-main-content
+                            margin-right: $add-icon-margin
 
-            .level-main-content
-                position: relative
-                min-width: 150px
-                flex-direction: column
-                flex: 1
-                // Create some extra spacing for the add level icon
-                &:not(:last-child)
-                    margin-right: 5px
-                &:not(:first-child)
-                    margin-left: 5px
+                .level-container
+                    display: flex
+                    height: 100%
+                    min-width: $min-cell-width
 
-            .add-level
-                flex-direction: column
-                display: flex
-                justify-content: center
-                margin-right: -1.1rem // align the icon on top of the table cell border
+                    .level-main-content
+                        flex: 1
+
+                    .add-level
+                        flex-direction: column
+                        display: flex
+                        justify-content: center
+                        margin-right: -1.1rem // align the icon on top of the table cell border
 </style>

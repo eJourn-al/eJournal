@@ -22,16 +22,15 @@
         </b-form-group>
 
         <b-form-group>
-            <b-form-checkbox
-                v-model="criterion.score_as_range"
-                inline
-                @change="scoreCriterionLevelsAsRange()"
-            >
-                Range
-            </b-form-checkbox>
+            <b-button @click="scoreCriterionLevelsAsRange(criterion)">
+                <icon
+                    name="balance-scale"
+                />
+                Balance Score
+            </b-button>
 
             <icon
-                v-if="criterion.location != 0"
+                v-if="rubric.criteria.length > 1"
                 class="trash-icon float-right"
                 name="trash"
                 @click.native="removeCriterion()"
@@ -41,6 +40,9 @@
 </template>
 
 <script>
+import genericUtitls from '@/utils/generic_utils.js'
+import rubricUtils from '@/utils/rubric.js'
+
 export default {
     props: {
         rubric: {
@@ -56,12 +58,9 @@ export default {
         return {
             nameInvalidFeedback: null,
             nameInputState: null,
+            scoreAsRange: false,
+            scoreCriterionLevelsAsRange: rubricUtils.scoreCriterionLevelsAsRange,
         }
-    },
-    computed: {
-        maxPoints () {
-            return Math.max(...this.criterion.levels.map((level) => level.points))
-        },
     },
     watch: {
         'criterion.name': 'validateName',
@@ -69,32 +68,7 @@ export default {
     methods: {
         removeCriterion () {
             this.rubric.criteria = this.rubric.criteria.filter((elem) => elem !== this.criterion)
-            this.syncLocations(this.rubric.criteria)
-        },
-        scoreCriterionLevelsAsRange () {
-            if (this.criterion.score_as_range) {
-                const max = this.maxPoints
-
-                let decrement
-                if (this.criterion.levels.length <= 1) {
-                    decrement = 0
-                } else {
-                    decrement = max / (this.criterion.levels.length - 1)
-                }
-
-                this.criterion.levels.forEach((level, i) => {
-                    level.points = Math.round(((max - (decrement * i)) + Number.EPSILON) * 100) / 100
-
-                    if (i === this.criterion.levels.length - 1 && this.criterion.levels.length !== 1) {
-                        level.points = 0
-                    }
-                })
-            }
-        },
-        syncLocations (arr) {
-            arr.forEach((obj, i) => {
-                obj.location = i
-            })
+            genericUtitls.syncLocations(this.rubric.criteria)
         },
         validateName () {
             const name = this.criterion.name

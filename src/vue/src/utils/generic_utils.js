@@ -76,4 +76,10 @@ export default {
         const match = code.match(re)
         return (match && match.groups.src) ? match.groups.src : false
     },
+
+    syncLocations (arr) {
+        arr.forEach((obj, i) => {
+            obj.location = i
+        })
+    },
 }

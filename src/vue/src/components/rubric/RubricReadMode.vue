@@ -1,6 +1,6 @@
 <template>
-    <div style="overflow-x:auto;">
-        <table class="rubric-read">
+    <div class="rubric-read">
+        <table>
             <thead>
                 <tr class="main-column-headers">
                     <th>Criteria</th>
@@ -25,10 +25,7 @@
                     </td>
 
                     <td class="levels-cell-table-container">
-                        <table
-                            class="levels"
-                            style="height: 100%"
-                        >
+                        <table class="levels">
                             <tbody>
                                 <tr>
                                     <td
@@ -53,14 +50,16 @@
                         </table>
                     </td>
 
-                    <td class="align-bottom score">
+                    <td class="align-bottom score-cell">
                         <b-form-input
+                            v-if="$hasPermission('can_grade')"
                             class="inline"
                             type="number"
                             size="2"
                             placeholder="-"
                             disabled
                         />
+                        <span v-else>TODO RUBRIC: Display criterion grade</span>
                     </td>
                 </tr>
             </tbody>
@@ -68,7 +67,7 @@
             <tfoot>
                 <tr>
                     <td colspan="2"/>
-                    <td>
+                    <td class="score-cell">
                         <span class="oneline">Score: </span>
                     </td>
                 </tr>
@@ -78,12 +77,8 @@
 </template>
 
 <script>
-// import CriterionReadMode from '@/components/rubric/CriterionReadMode.vue'
 
 export default {
-    components: {
-        // CriterionReadMode,
-    },
     props: {
         rubric: {
             required: true,
@@ -94,29 +89,21 @@ export default {
 </script>
 
 <style lang="sass">
-%remove-default-table-styling
-    margin: 0
-    padding: 0
-    border: 0
-    font-size: 100%
-    font: inherit
-    vertical-align: top
+@import '~sass/partials/rubric.sass'
 
 .rubric-read
+    overflow-x: auto
+
     & > table, caption, tbody, tfoot, thead, tr, th, td
         @extend %remove-default-table-styling
 
-    & > table
-        border-collapse: collapse
-        border-spacing: 0
-
     th, td
-        padding: 10px
+        padding: $cell-padding
         text-align: left
-        border: 1px solid #ccc
+        border: $default-border
 
-    td:not(.score)
-        min-width: 200px  // TODO Rubric table cell min width def
+    td:not(.score-cell)
+        min-width: $min-cell-width
 
     .main-column-headers
         font-weight: bold
@@ -124,23 +111,22 @@ export default {
     .oneline
         white-space: nowrap
 
-    .levels-cell-table-container  // Outer container where the levels table is nested
-        padding: 0px
-        height: 250px // We have to define the heigth for the nested table to scale its heigth relative to this
+    & > table
+        border-collapse: collapse
+        border-spacing: 0
 
-    .levels
-        & > table
-            height: 100%
+        & > tbody > tr > td.levels-cell-table-container  // Outer container where the levels table is nested
+            padding: 0px
+            height: 250px // We have to define the heigth for the nested table to scale its heigth relative to this
 
-        & > table, caption, tbody, tfoot, thead, tr, th, td
-            border: 0
+            & > table.levels
+                height: 100%
 
-        .level-cell
-            cursor: pointer
-            &:hover
-                background-color: $theme-light-grey
-            &:not(:first-child)
-                border-left: 1px solid #ccc
-            &:not(:last-child)
-                border-right: 1px solid #ccc
+                & > tbody > tr
+                    & > td, th
+                        border: 0
+                    & > td:not(:first-child)
+                        border-left: $default-border
+                    & > td:not(:last-child)
+                        border-right: $default-border
 </style>

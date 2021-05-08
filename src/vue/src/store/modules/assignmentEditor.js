@@ -226,18 +226,19 @@ const mutations = {
                     name: 'Criteria 1',
                     description: '',
                     long_description: '',
-                    score_as_range: false,
                     location: 0,
                     levels: [
                         {
                             name: 'Full marks',
                             points: 10,
                             location: 0,
+                            id: -1,
                         },
                         {
                             name: 'No marks',
                             points: 0,
                             location: 1,
+                            id: -2,
                         },
                     ],
                 }],
