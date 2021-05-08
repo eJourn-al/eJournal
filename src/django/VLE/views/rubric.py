@@ -95,7 +95,7 @@ class RubricView(viewsets.ViewSet):
         with transaction.atomic():
             criteria_data = request.data.pop('criteria')
             serializer = RubricSerializer(rubric, data=request.data, context={'user': request.user})
-            if not serializer.is_valid(raise_exception=True):
+            if not serializer.is_valid():
                 return response.bad_request('One or more rubric fields contain invalid data.')
             rubric = serializer.save()
 
@@ -111,7 +111,7 @@ class RubricView(viewsets.ViewSet):
                 else:
                     serializer = CriterionSerializer(data=criterion_data, context={'user': request.user})
 
-                if not serializer.is_valid(raise_exception=True):
+                if not serializer.is_valid():
                     return response.bad_request(f'Criterion {criterion_data.get("name")} contains invalid data.')
                 criterion = serializer.save()
 
@@ -126,7 +126,7 @@ class RubricView(viewsets.ViewSet):
                     else:
                         serializer = LevelSerializer(data=level_data, context={'user': request.user})
 
-                    if not serializer.is_valid(raise_exception=True):
+                    if not serializer.is_valid():
                         return response.bad_request(f'Level {level_data.get("name")} contains invalid data.')
                     serializer.save()
 
