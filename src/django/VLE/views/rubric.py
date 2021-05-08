@@ -4,7 +4,7 @@ from rest_framework import viewsets
 
 import VLE.utils.generic_utils as utils
 import VLE.utils.responses as response
-from VLE.models import Assignment, Rubric
+from VLE.models import Assignment, Criterion, Level, Rubric
 from VLE.serializers import CriterionSerializer, LevelSerializer, RubricSerializer
 
 
@@ -73,6 +73,67 @@ class RubricView(viewsets.ViewSet):
                 serializer.save()
 
         return response.created({
+            'rubric': RubricSerializer(
+                RubricSerializer.setup_eager_loading(Rubric.objects.filter(pk=rubric.pk)).get(),
+                context={'user': request.user},
+            ).data
+        })
+
+    def partial_update(self, request, pk):
+        rubric = Rubric.objects.select_related('assignment').get(pk=pk)
+        assignment = rubric.assignment
+
+        request.user.check_permission('can_edit_assignment', assignment)
+
+        Rubric.validate(request.data, assignment=assignment, old=rubric)
+
+        existing_criterion_pks = set(rubric.criteria.values_list('pk', flat=True))
+        existing_level_pks = set(Level.objects.filter(criterion__rubric=rubric).values_list('pk', flat=True))
+        data_criterion_pks = set()
+        data_level_pks = set()
+
+        with transaction.atomic():
+            criteria_data = request.data.pop('criteria')
+            serializer = RubricSerializer(rubric, data=request.data, context={'user': request.user})
+            if not serializer.is_valid(raise_exception=True):
+                return response.bad_request('One or more rubric fields contain invalid data.')
+            rubric = serializer.save()
+
+            for criterion_data in criteria_data:
+                pk, = utils.required_typed_params(criterion_data, (int, 'id'))
+                data_criterion_pks.add(pk)
+                levels_data = criterion_data.pop('levels')
+                criterion_data['rubric'] = rubric.pk
+
+                if pk >= 0:
+                    criterion = rubric.criteria.get(pk=pk)
+                    serializer = CriterionSerializer(criterion, data=criterion_data, context={'user': request.user})
+                else:
+                    serializer = CriterionSerializer(data=criterion_data, context={'user': request.user})
+
+                if not serializer.is_valid(raise_exception=True):
+                    return response.bad_request(f'Criterion {criterion_data.get("name")} contains invalid data.')
+                criterion = serializer.save()
+
+                for level_data in levels_data:
+                    pk, = utils.required_typed_params(level_data, (int, 'id'))
+                    data_level_pks.add(level_data['id'])
+                    level_data['criterion'] = criterion.pk
+
+                    if pk >= 0:
+                        level = criterion.levels.get(pk=pk)
+                        serializer = LevelSerializer(level, data=level_data, context={'user': request.user})
+                    else:
+                        serializer = LevelSerializer(data=level_data, context={'user': request.user})
+
+                    if not serializer.is_valid(raise_exception=True):
+                        return response.bad_request(f'Level {level_data.get("name")} contains invalid data.')
+                    serializer.save()
+
+            Criterion.objects.filter(pk__in=existing_criterion_pks - data_criterion_pks).delete()
+            Level.objects.filter(pk__in=existing_level_pks - data_level_pks).delete()
+
+        return response.success({
             'rubric': RubricSerializer(
                 RubricSerializer.setup_eager_loading(Rubric.objects.filter(pk=rubric.pk)).get(),
                 context={'user': request.user},

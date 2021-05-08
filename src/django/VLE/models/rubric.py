@@ -35,7 +35,7 @@ def validate_unique_names(data, instance_label):
 
 def validate_fks(data, attr, expected_fk, instance_label):
     for instance_data in data:
-        actual_fk = instance_data[attr]
+        actual_fk, = generic_utils.required_typed_params(instance_data, (int, attr))
         if actual_fk > 0 and actual_fk != expected_fk:
             raise ValidationError(
                 f'{instance_label} is unexpectedly linked to a different {attr}. `{actual_fk}` iso `{expected_fk}`.')
@@ -115,12 +115,12 @@ class Rubric(CreateUpdateModel):
             validate_locations(criteria_data, 'Criterion')
             validate_unique_names(criteria_data, 'Criterion')
             if old:
-                validate_fks(criteria_data, 'assignment', assignment.pk, 'Criterion')
+                validate_fks(criteria_data, 'rubric', old.pk, 'Criterion')
 
             if len(criteria_data) == 0:
                 raise ValidationError('A valid rubric consists of one or more criteria.')
 
-            existing_level_data_criterion_pks = {}
+            existing_level_data_criterion_pks = set()
             for criterion_data in criteria_data:
                 levels_data, = generic_utils.required_params(criterion_data, 'levels')
 
