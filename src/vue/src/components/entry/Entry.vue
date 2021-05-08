@@ -402,9 +402,9 @@ export default {
         },
         deleteEntry (isDraft = false) {
             if (isDraft) {
-                if (window.confirm('Are you sure that you want to discard this entry?')) {
+                if (window.confirm('Are you sure that you want to discard this draft?')) {
                     this.requestInFlight = true
-                    entryAPI.delete(this.node.entry.id, { customSuccessToast: 'Entry draft successfully discarded.' })
+                    entryAPI.delete(this.node.entry.id, { customSuccessToast: 'Draft successfully discarded.' })
                         .then((data) => {
                             this.clearDraft()
                             this.$emit('entry-deleted', data)
