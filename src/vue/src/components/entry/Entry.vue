@@ -68,7 +68,7 @@
                         Cancel
                     </b-button>
                     <b-button
-                        v-if="edit && node.entry.is_draft && preferences.auto_save_drafts"
+                        v-if="edit && node.entry.is_draft"
                         class="ml-2 red-button float-right"
                         @click="() => deleteEntry(true)"
                     >
@@ -349,7 +349,7 @@ export default {
                     } else {
                         this.autoSave()
                     }
-                }, this.create ? 1000 : 1000)
+                }, this.create ? 5000 : 1000)
             } else if (this.node.entry && this.node.entry.is_draft) {
                 this.autoSaveMessage = this.create ? null : 'Saved as draft'
             }

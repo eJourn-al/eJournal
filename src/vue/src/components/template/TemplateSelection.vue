@@ -10,7 +10,7 @@
                 variant="link"
                 @click="$emit('select-template', template.id)"
             >
-                <icon name="user-plus"/>
+                <icon name="plus"/>
                 Select
             </b-button>
         </template-card>
